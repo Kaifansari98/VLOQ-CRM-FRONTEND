@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   usePostProductionCompleteness,
   useQcPhotos,
@@ -26,38 +27,89 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
+
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface PostProductionQcPhotosSectionProps {
   leadId: number;
   accountId: number | null;
+  instanceId?: number | null;
 }
 
 export default function PostProductionQcPhotosSection({
   leadId,
   accountId,
+  instanceId,
 }: PostProductionQcPhotosSectionProps) {
+  const searchParams = useSearchParams();
+  const instanceFromUrl = searchParams.get("instance_id");
+  const instanceIdFromUrl = instanceFromUrl ? Number(instanceFromUrl) : null;
+  const effectiveInstanceId =
+    typeof instanceId !== "undefined"
+      ? instanceId
+      : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
+        ? instanceIdFromUrl
+        : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   const queryClient = useQueryClient();
 
-  const { data: qcPhotos, isLoading } = useQcPhotos(vendorId, leadId);
+  const { data: qcPhotos, isLoading } = useQcPhotos(
+    vendorId,
+    leadId,
+    effectiveInstanceId ?? undefined,
+  );
   const { mutateAsync: uploadQcFiles, isPending } = useUploadQcPhotos(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+
+  const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
+
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined,
   );
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -70,17 +122,20 @@ export default function PostProductionQcPhotosSection({
 
   const images =
     qcPhotos?.filter((file: any) =>
-      imageTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+      imageTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   const documents =
     qcPhotos?.filter((file: any) =>
-      docTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+      docTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one photo to upload.");
+      toastManager.add({
+        title: "Please select at least one photo to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -91,31 +146,74 @@ export default function PostProductionQcPhotosSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadQcFiles(formData);
-      toast.success("QC photos uploaded successfully!");
+      toastManager.add({
+        title: "QC photos uploaded successfully!",
+        type: "success",
+      });
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: ["qcPhotos", vendorId, leadId],
+        queryKey: ["qcPhotos", vendorId, leadId, effectiveInstanceId ?? "all"],
       });
       queryClient.invalidateQueries({
-        queryKey: ["postProductionCompleteness", vendorId, leadId],
+        queryKey: [
+          "postProductionCompleteness",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
       });
 
       await refetchCompleteness();
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload QC photos."
-      );
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload QC photos.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
+  const isPreProd = userType?.toLowerCase() === "pre-prod";
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "production-stage");
-
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
-
+    !isPreProd &&
+    !isAuditor &&
+    (userType === "super-admin" ||
+      (userType === "factory" &&
+        (leadStatusIns ?? leadStatus) === "production-stage"));
+  const canViewAndWork =
+    !isPreProd &&
+    !isAuditor &&
+    canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
+const canUploadQcPhotos =
+  !shouldDisableBlockedActions &&
+  (
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.upload",
+        )
+      : canViewAndWork
+  );
+  const canDeleteQcPhotos =
+  !shouldDisableBlockedActions &&
+  (
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.delete",
+        )
+      : canDelete
+  );
   const handleConfirmDelete = () => {
     if (confirmDelete) {
       deleteDocument({
@@ -137,49 +235,71 @@ export default function PostProductionQcPhotosSection({
             <h2 className="text-lg font-semibold tracking-tight">QC Photos</h2>
           </div>
           <p className="text-xs text-muted-foreground ml-7">
-            Upload and manage Quality Check photos for this lead.
+
           </p>
         </div>
 
         {hasFiles && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-3">
             {qcPhotos.length} File{qcPhotos.length > 1 && "s"}
           </span>
         )}
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canViewAndWork && (
-        <div className="p-6 border-b space-y-4">
+    {shouldDisableBlockedActions ? (
+  <div className="p-6 border-b space-y-4">
+
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <div>
           <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
+            value={[]}
+            onChange={() => {}}
             accept=".jpg,.jpeg,.png,.pdf,.zip"
             multiple
+            disabled
           />
-
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUpload}
-              disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Photos
-                </>
-              )}
-            </Button>
-          </div>
         </div>
-      )}
+      }
+    />
+
+
+  </div>
+) : (
+  canUploadQcPhotos && (
+    <div className="p-6 border-b space-y-4">
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept=".jpg,.jpeg,.png,.pdf,.zip"
+        multiple
+      />
+
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={handleUpload}
+          disabled={isPending || selectedFiles.length === 0}
+          className="flex items-center gap-2"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin size-4" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload size={16} />
+              Upload Photos
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+)}
 
       {/* -------------------------------- FILE LIST -------------------------------- */}
       <div className="p-6">
@@ -216,7 +336,7 @@ export default function PostProductionQcPhotosSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteQcPhotos}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -230,7 +350,7 @@ export default function PostProductionQcPhotosSection({
                   signedUrl: doc.signedUrl,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteQcPhotos}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

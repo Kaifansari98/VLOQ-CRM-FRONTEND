@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
-import { toast } from "react-toastify";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle, Plus, BadgeCheck } from "lucide-react";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -14,25 +14,51 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   useCompanyVendors,
   useOrderLoginByLead,
   useUpdateOrderLogin,
   useDeleteOrderLogin,
   useUploadMultipleFileBreakupsByLead,
+  useMarkOrderLoginFilled,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useLeadProductStructureInstances,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { canAccessAddNewSectionButton } from "@/components/utils/privileges";
 import FileBreakUpField from "./FileBreakUpField";
 import AddSectionModal from "./AddSectionModal";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import CustomeTooltip from "@/components/custom-tooltip";
+
+
 interface OrderLoginTabProps {
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
+  orderLoginApprovalPending?: boolean;
+  orderLoginApprovalPendingTooltip?: string;
 }
 
-const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
+const isOrderLoginMarkedInBackend = (instance: any) =>
+  instance?.is_order_login_filled === true;
+
+const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
+  leadId,
+  accountId,
+  instanceId,
+  orderLoginApprovalPending = false,
+  orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
+}) => {
   const queryClient = useQueryClient();
 
   // Redux selectors
@@ -41,21 +67,64 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
-  const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
+  const { data: orderLoginData } = useOrderLoginByLead(
+    vendorId,
+    leadId,
+    instanceId ?? undefined,
+  );
+  const { data: instanceStageData } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
 
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+  const {
+    data: orderLoginLockIns = [],
+    isLoading: orderLoginLockInsLoading,
+  } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
+
+  const lead = leadResponse?.data?.lead;
+  const isSmallOrderRequestLead = lead?.is_small_order_request === true;
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
+
+  const isOrderLoginMarked = useMemo(() => {
+    const instances = Array.isArray(instancesResponse?.data)
+      ? instancesResponse.data
+      : instancesResponse?.data?.data ?? [];
+    const current = instances.find(
+      (inst: any) => Number(inst.id) === Number(instanceId),
+    );
+    return isOrderLoginMarkedInBackend(current);
+  }, [instancesResponse, instanceId]);
+  const hasValidInstanceId = typeof instanceId === "number" && instanceId > 0;
 
   // Mutations
-  const { mutateAsync: updateSingle } = useUpdateOrderLogin(vendorId);
+  const { mutateAsync: updateSingle } = useUpdateOrderLogin(
+    vendorId,
+    instanceId ?? null,
+  );
+  const { mutate: markFilled, isPending: isMarkingComplete } =
+    useMarkOrderLoginFilled(vendorId!, leadId, instanceId!);
   const { mutateAsync: deleteOrderLogin, isPending: isDeleting } =
     useDeleteOrderLogin(vendorId);
   const { mutateAsync: uploadMultiple } = useUploadMultipleFileBreakupsByLead(
     vendorId,
     leadId,
     accountId,
+    instanceId ?? undefined,
   );
 
   // Local state
@@ -66,62 +135,171 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
     id: number;
     title: string;
   }>(null);
-  const [confirmVendorChange, setConfirmVendorChange] = useState<null | {
-    title: string;
-    vendorId: number;
-    existingData: any;
-  }>(null);
+  // ✅ New: confirmation dialog for "Order Login Completed"
+  const [confirmComplete, setConfirmComplete] = useState(false);
 
-  // Derived state
-  const leadStatus = leadData?.status;
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+  const shouldDisableActions =
+    shouldDisableBlockedActions || orderLoginApprovalPending;
+  const effectiveBlockedTooltip = orderLoginApprovalPending
+    ? orderLoginApprovalPendingTooltip
+    : blockedTooltip;
+
+  // Debounce timers for description auto-save
+  const descTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // ─────────────────────────────────────────────────────────
+  // STAGE RESOLUTION
+  // ─────────────────────────────────────────────────────────
+  const leadStatus: string = instanceId
+    ? (instanceStageData?.derived_stage ?? leadData?.status ?? "")
+    : (leadData?.status ?? "");
+
+
+
+  // ─────────────────────────────────────────────────────────
+  // ROLE HELPERS
+  // ─────────────────────────────────────────────────────────
+  const role = userType?.toLowerCase() ?? "";
+  const isAdmin = role === "admin" || role === "super-admin";
+  const isBackend = role === "backend";
+  const canAccessOrderLoginDetailsForCustomUser =
+    role === "custom"
+      ? customPrivilegeCodes.includes(
+        "production.order_login.order_login_details.enable_disable",
+      )
+      : true;
+  const isBackendLockedAfterOrderLogin = isBackend && isOrderLoginMarked;
+
+  const normalizedStage = leadStatus.toLowerCase().replace(/_/g, "-");
+  const isOrderLoginStage = normalizedStage.includes("order-login-stage");
+  const isProductionStage = normalizedStage.includes("production-stage");
+
+  // ─────────────────────────────────────────────────────────
+  // ACCESS HELPERS
+  // ─────────────────────────────────────────────────────────
   const canAccessButtons = canAccessAddNewSectionButton(userType, leadStatus);
 
-  const normalizedStage = (leadStatus || "").toLowerCase().replace(/_/g, "-");
-  const isOrderLoginStage = normalizedStage.includes("order-login");
-  const isProductionStage = normalizedStage.includes("production-stage");
-  const isBackendUser =
-    userType?.toLowerCase() === "backend" ||
-    userType?.toLowerCase() === "admin" ||
-    userType?.toLowerCase() === "super-admin";
-  const canManageCustomSections = isBackendUser && isOrderLoginStage;
+  const canAddCustomSection: boolean =
+    isAdmin ||
+    (isBackend &&
+      !isBackendLockedAfterOrderLogin &&
+      (isOrderLoginStage || isProductionStage));
 
-  // Formatted users list
-  const users =
-    companyVendors?.map((vendor: any) => ({
-      id: vendor.id,
-      label: vendor.company_name,
-      in_house: Boolean(vendor.in_house),
-    })) || [];
+  const canEditOrDeleteCustomSection: boolean =
+    isAdmin || (isBackend && !isBackendLockedAfterOrderLogin && isOrderLoginStage);
 
-  // Mandatory and default titles
-  const mandatoryTitles = ["Carcass", "Shutter", "Stock Hardware"];
-  const defaultTitles = [
-    ...mandatoryTitles,
+  // ─────────────────────────────────────────────────────────
+  // EDIT PERMISSIONS
+  //
+  // ORDER-LOGIN STAGE : Admin & Backend → freely editable
+  // PRODUCTION STAGE  : Admin & Backend → ONE CHANCE only
+  //                     (locked once vendor OR description is saved)
+  // Other             → never editable
+  // ─────────────────────────────────────────────────────────
+  const getItemEditPermissions = (item: any) => {
+    if (role === "custom") {
+      return { canEdit: canAccessOrderLoginDetailsForCustomUser };
+    }
+
+    if (isBackendLockedAfterOrderLogin) return { canEdit: false };
+
+    if (isOrderLoginStage && (isAdmin || isBackend)) return { canEdit: true };
+
+    if (isProductionStage && (isAdmin || isBackend)) {
+      const hasVendorAssigned = !!item?.company_vendor_id;
+      const hasDescription = !!(item?.item_desc && item.item_desc);
+      return { canEdit: !(hasVendorAssigned || hasDescription) };
+    }
+
+    return { canEdit: false };
+  };
+
+  // Users list
+  const users = useMemo(() => {
+    const list =
+      companyVendors
+        ?.filter((vendor: any) => vendor.is_inventory_company_vendor !== true)
+        ?.map((vendor: any) => ({
+          id: vendor.id,
+          label: vendor.company_name,
+          in_house: Boolean(vendor.in_house),
+        })) || [];
+
+    // Add any vendor already assigned in orderLoginData but not present in companyVendors
+    if (orderLoginData && Array.isArray(orderLoginData)) {
+      orderLoginData.forEach((item: any) => {
+        if (item.companyVendor) {
+          const exists = list.some((u: any) => u.id === item.companyVendor.id);
+          if (!exists) {
+            list.push({
+              id: item.companyVendor.id,
+              label: `${item.companyVendor.company_name}`,
+              in_house: Boolean(item.companyVendor.in_house),
+            });
+          }
+        }
+      });
+    }
+
+    return list;
+  }, [companyVendors, orderLoginData]);
+
+  // Titles
+  const legacyDefaultTitles = [
+    "Carcass",
+    "Shutter",
+    "Stock Hardware",
     "Special Hardware",
     "Profile Shutter",
     "Outsourced Shutter",
     "Glass Material",
   ];
+  const mandatoryTitles = isSmallOrderRequestLead
+    ? []
+    : ["Carcass", "Shutter", "Stock Hardware"];
+  const defaultTitles = [
+    ...mandatoryTitles,
+    ...(isSmallOrderRequestLead
+      ? []
+      : [
+          "Special Hardware",
+          "Profile Shutter",
+          "Outsourced Shutter",
+          "Glass Material",
+        ]),
+  ];
 
-  // Default and extra cards
   const defaultCards = useMemo(
     () =>
       defaultTitles.map((title) => ({
         title,
         existingData: orderLoginData?.find((i: any) => i.item_type === title),
       })),
-    [orderLoginData, defaultTitles],
+    [orderLoginData],
   );
 
   const extraFromApi = useMemo(
     () =>
       (orderLoginData || []).filter(
-        (i: any) => !defaultTitles.includes(i.item_type),
+        (i: any) =>
+          isSmallOrderRequestLead
+            ? !legacyDefaultTitles.includes(i.item_type)
+            : !defaultTitles.includes(i.item_type),
       ),
-    [orderLoginData, defaultTitles],
+    [defaultTitles, isSmallOrderRequestLead, orderLoginData],
   );
 
-  // Pre-fill breakups from API data
+  console.log("order login data: ", orderLoginData)
+  // Pre-fill breakups from API
   useEffect(() => {
     if (orderLoginData && orderLoginData.length > 0) {
       const prefilled = orderLoginData.reduce((acc: any, item: any) => {
@@ -132,200 +310,214 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         return acc;
       }, {});
       setBreakups(prefilled);
+    } else {
+      setBreakups({});
     }
-  }, [orderLoginData]);
+  }, [orderLoginData, instanceId]);
 
-  // Auto-save description (silent - no toast)
-  const handleDescriptionSave = async (title: string, description: string) => {
-    const existing = orderLoginData?.find(
-      (item: any) => item.item_type === title,
-    );
+  // Cleanup debounce timers
+  useEffect(() => {
+    return () => {
+      Object.values(descTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
-    // Update local state first
-    setBreakups((prev) => ({
-      ...prev,
-      [title]: {
-        ...prev[title],
-        item_desc: description,
-      },
-    }));
+  // ─────────────────────────────────────────────────────────
+  // MANDATORY VALIDATION
+  // All 3 mandatory sections must have vendor + description.
+  // "Order Login Completed" button is ONLY VISIBLE when isValid = true.
+  // ─────────────────────────────────────────────────────────
+  const mandatoryValidation = useMemo(() => {
+    if (isSmallOrderRequestLead) {
+      const hasAtLeastOneFilledCard = (orderLoginData || []).some((item: any) => {
+        if (legacyDefaultTitles.includes(item.item_type)) {
+          return false;
+        }
 
-    if (!existing?.id) {
-      // If no existing record, create new one
-      try {
-        const newRecord = {
-          id: null,
-          item_type: title,
-          item_desc: description.trim() || "N/A",
-          company_vendor_id: breakups[title]?.company_vendor_id || null,
-          created_by: userId,
-          updated_by: userId,
+        const local = breakups[item.item_type] ?? {
+          item_desc: item.item_desc || "",
+          company_vendor_id: item.company_vendor_id || null,
         };
+        const hasVendor = !!local.company_vendor_id;
+        const normalizedDescription = local.item_desc?.trim();
+        const hasDesc =
+          !!normalizedDescription &&
+          normalizedDescription.toLowerCase() !== "n/a";
+        return hasVendor && hasDesc;
+      });
 
-        await uploadMultiple([newRecord]);
-
-        queryClient.invalidateQueries({
-          queryKey: ["orderLoginByLead", vendorId, leadId],
-        });
-        // ✅ No toast for description save - silent
-      } catch (err: any) {
-        console.error("Failed to save description", err);
-      }
-      return;
+      return {
+        isValid: hasAtLeastOneFilledCard,
+        missingFields: hasAtLeastOneFilledCard
+          ? []
+          : ["Add and fill at least one order login section"],
+      };
     }
 
-    // Update existing record silently
-    try {
-      await updateSingle({
-        orderLoginId: existing.id,
-        payload: {
-          lead_id: existing.lead_id ?? leadId,
-          item_type: title,
-          item_desc: description.trim() || "N/A",
-          company_vendor_id: existing.company_vendor_id ?? null,
-          updated_by: userId,
-        },
-      });
+    const missing: string[] = [];
 
+    mandatoryTitles.forEach((title) => {
+      const local = breakups[title];
+      const hasVendor = !!local?.company_vendor_id;
+      const hasDesc = !!(
+        local?.item_desc &&
+        local.item_desc.trim() !== "" &&
+        local.item_desc.trim() !== ""
+      );
+      if (!hasVendor || !hasDesc) missing.push(title);
+    });
+
+    return {
+      isValid: missing.length === 0,
+      missingFields: missing,
+    };
+  }, [breakups, isSmallOrderRequestLead, legacyDefaultTitles, orderLoginData]);
+
+  // Completed button is visible only when role can access AND mandatory fields filled
+  const canShowCompletedButton =
+    (isAdmin || isBackend || role === "custom") &&
+    canAccessOrderLoginDetailsForCustomUser &&
+    hasValidInstanceId &&
+    (isOrderLoginStage || isProductionStage) &&
+    mandatoryValidation.isValid;
+  const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
+    const pendingTasks = Array.isArray(lockIn.pending_tasks)
+      ? lockIn.pending_tasks
+      : [];
+
+    if (instanceId) {
+      return pendingTasks.some((task) => task.instance_id === instanceId);
+    }
+
+    if (pendingTasks.length > 0) {
+      return true;
+    }
+
+    return !lockIn.is_approved;
+  });
+  const isOrderLoginApprovalPending =
+    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const orderLoginApprovalTooltip = orderLoginLockInsLoading
+    ? "Checking accounts approval status"
+    : "Accounts approval for Order Login is still pending";
+
+  // ─────────────────────────────────────────────────────────
+  // CORE SAVE
+  // ─────────────────────────────────────────────────────────
+  const saveItem = async (
+    title: string,
+    values: { item_desc: string; company_vendor_id: number | null },
+    existingData: any,
+    successMessage?: string,
+  ) => {
+    try {
+      if (!existingData?.id) {
+        await uploadMultiple([
+          {
+            id: null,
+            item_type: title,
+            item_desc: values.item_desc?.trim() || "N/A",
+            company_vendor_id: values.company_vendor_id || null,
+            instance_id: instanceId ?? null,
+            created_by: userId,
+            updated_by: userId,
+          },
+        ]);
+      } else {
+        await updateSingle({
+          orderLoginId: existingData.id,
+          payload: {
+            lead_id: existingData.lead_id ?? leadId,
+            item_type: title,
+            item_desc: values.item_desc?.trim() || "N/A",
+            company_vendor_id: values.company_vendor_id ?? null,
+            updated_by: userId,
+            instance_id: instanceId ?? null,
+          },
+        });
+      }
+
+      if (successMessage) toastManager.add({ title: successMessage, type: "success" });
+
+      queryClient.invalidateQueries({ queryKey: ["orderLoginByLead"] });
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["leadProductionReadiness"],
       });
-      // ✅ No toast for description save - silent
     } catch (err: any) {
-      console.error("Failed to save description", err);
+      console.error("Auto-save failed:", err);
+      toastManager.add({ title: err?.response?.data?.message || "Failed to save changes", type: "error" });
     }
   };
 
-  // Handle vendor selection
+  // ─────────────────────────────────────────────────────────
+  // VENDOR CHANGE → instant auto-save + toast
+  // ─────────────────────────────────────────────────────────
   const handleVendorChange = async (
     title: string,
     selectedVendorId: number,
     existingData: any,
   ) => {
-    const isProduction = isProductionStage;
-
-    // Check if vendor already assigned in production
-    if (isProduction && existingData?.company_vendor_id) {
-      toast.error(
-        "Vendor already assigned. Cannot change in production stage.",
-      );
-      return;
-    }
-
-    // Production stage requires confirmation
-    if (isProduction) {
-      setConfirmVendorChange({
-        title,
-        vendorId: selectedVendorId,
-        existingData,
-      });
-      return;
-    }
-
-    // Order login stage - save directly
-    await saveVendorChange(title, selectedVendorId, existingData);
+    const updatedValues = {
+      ...(breakups[title] || { item_desc: "", company_vendor_id: null }),
+      company_vendor_id: selectedVendorId,
+    };
+    setBreakups((prev) => ({ ...prev, [title]: updatedValues }));
+    await saveItem(
+      title,
+      updatedValues,
+      existingData,
+      `Vendor assigned for "${title}" successfully!`,
+    );
   };
 
-  const saveVendorChange = async (
+  // ─────────────────────────────────────────────────────────
+  // DESCRIPTION CHANGE → debounced auto-save (1 second)
+  // ─────────────────────────────────────────────────────────
+  const handleDescriptionChange = (
     title: string,
-    selectedVendorId: number,
+    description: string,
     existingData: any,
   ) => {
-    // Update local state first
-    setBreakups((prev) => ({
-      ...prev,
-      [title]: {
-        ...prev[title],
-        company_vendor_id: selectedVendorId,
-      },
-    }));
+    const updatedValues = {
+      ...(breakups[title] || { item_desc: "", company_vendor_id: null }),
+      item_desc: description,
+    };
+    setBreakups((prev) => ({ ...prev, [title]: updatedValues }));
 
-    if (!existingData?.id) {
-      // Create new record
-      try {
-        const newRecord = {
-          id: null,
-          item_type: title,
-          item_desc: breakups[title]?.item_desc?.trim() || "N/A",
-          company_vendor_id: selectedVendorId,
-          created_by: userId,
-          updated_by: userId,
-        };
+    if (descTimers.current[title]) clearTimeout(descTimers.current[title]);
+    descTimers.current[title] = setTimeout(async () => {
+      await saveItem(title, updatedValues, existingData);
+    }, 1000);
+  };
 
-        await uploadMultiple([newRecord]);
+  // ─────────────────────────────────────────────────────────
+  // ORDER LOGIN COMPLETED — confirm then call API
+  // ─────────────────────────────────────────────────────────
+  const handleConfirmComplete = () => {
+    setConfirmComplete(false);
 
-        // ✅ Show success toast
-        toast.success(`Vendor assigned to ${title} successfully!`);
-
-        queryClient.invalidateQueries({
-          queryKey: ["orderLoginByLead", vendorId, leadId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["leadProductionReadiness", vendorId, leadId],
-        });
-      } catch (err: any) {
-        console.error("Failed to save vendor", err);
-        toast.error(
-          err?.response?.data?.message || "Failed to save vendor selection",
-        );
-      }
+    if (!hasValidInstanceId) {
+      toastManager.add({
+        title: "instance_id is required to mark order login as completed.",
+        type: "error",
+      });
       return;
     }
 
-    // Update existing record
-    try {
-      await updateSingle({
-        orderLoginId: existingData.id,
-        payload: {
-          lead_id: existingData.lead_id ?? leadId,
-          item_type: title,
-          item_desc: existingData.item_desc || "N/A",
-          company_vendor_id: selectedVendorId,
-          updated_by: userId,
-        },
-      });
-
-      // ✅ Show success toast
-      toast.success(`Vendor updated for ${title} successfully!`);
-
-      queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["leadProductionReadiness", vendorId, leadId],
-      });
-    } catch (err: any) {
-      console.error("Failed to save vendor", err);
-      toast.error(
-        err?.response?.data?.message || "Failed to save vendor selection",
-      );
-    }
+    markFilled({ updated_by: userId! });
   };
 
+  // ─────────────────────────────────────────────────────────
+  // TITLE UPDATE
+  // ─────────────────────────────────────────────────────────
   const handleTitleUpdate = async (item: any, nextTitle: string) => {
     const trimmedTitle = nextTitle.trim();
 
-    if (!trimmedTitle) {
-      toast.error("Section name cannot be empty");
-      return false;
-    }
-
-    if (defaultTitles.includes(trimmedTitle)) {
-      toast.error("Section name cannot match a default section");
-      return false;
-    }
-
+    if (!trimmedTitle) { toastManager.add({ title: "Section name cannot be empty", type: "error" }); return false; }
+    if (!isSmallOrderRequestLead && defaultTitles.includes(trimmedTitle)) { toastManager.add({ title: "Section name cannot match a default section", type: "error" }); return false; }
     if (trimmedTitle === item.item_type) return true;
-
-    if (breakups[trimmedTitle]) {
-      toast.error("Section name already exists");
-      return false;
-    }
-
-    if (!item?.id) {
-      toast.error("Unable to update section name");
-      return false;
-    }
+    if (breakups[trimmedTitle]) { toastManager.add({ title: "Section name already exists", type: "error" }); return false; }
+    if (!item?.id) { toastManager.add({ title: "Unable to update section name", type: "error" }); return false; }
 
     try {
       await updateSingle({
@@ -341,27 +533,24 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
 
       setBreakups((prev) => {
         const next = { ...prev };
-        const current = next[item.item_type] || {
-          item_desc: "",
-          company_vendor_id: null,
-        };
+        const current = next[item.item_type] || { item_desc: "", company_vendor_id: null };
         delete next[item.item_type];
         next[trimmedTitle] = current;
         return next;
       });
 
-      toast.success("Section name updated successfully");
-
-      queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
-      });
+      toastManager.add({ title: "Section name updated successfully", type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["orderLoginByLead"] });
       return true;
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update section");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to update section", type: "error" });
       return false;
     }
   };
 
+  // ─────────────────────────────────────────────────────────
+  // DELETE SECTION
+  // ─────────────────────────────────────────────────────────
   const handleDeleteSection = async () => {
     if (!confirmDelete || !userId) return;
     try {
@@ -376,61 +565,18 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         return next;
       });
 
-      toast.success("Section deleted successfully");
+      toastManager.add({ title: "Section deleted successfully", type: "success" });
       setConfirmDelete(null);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete section");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to delete section", type: "error" });
     }
-  };
-
-  const getItemEditPermissions = (item: any) => {
-    const role = userType?.toLowerCase();
-    const stage = leadStatus?.toLowerCase();
-
-    const isAdmin = role === "admin" || role === "super-admin";
-    const isBackend = role === "backend";
-
-    const isOrderLoginStageCheck = stage === "order-login-stage";
-    const isProductionStageCheck = stage === "production-stage";
-
-    const hasVendorAssigned = !!item?.company_vendor_id;
-
-    // ✅ Admin override — full control always
-    if (isAdmin) {
-      return {
-        canEditVendor: true,
-        canEditDescription: true,
-      };
-    }
-
-    // ✅ Backend in order-login-stage
-    if (isBackend && isOrderLoginStageCheck) {
-      return {
-        canEditVendor: true, // Can edit vendor anytime in order-login-stage
-        canEditDescription: true, // Can edit description anytime
-      };
-    }
-
-    // ✅ Backend in production-stage
-    if (isBackend && isProductionStageCheck) {
-      return {
-        canEditVendor: !hasVendorAssigned, // Can only edit if not assigned yet
-        canEditDescription: true, // Can always edit description
-      };
-    }
-
-    // ❌ Everything else blocked
-    return {
-      canEditVendor: false,
-      canEditDescription: false,
-    };
   };
 
   return (
@@ -444,6 +590,66 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
             order login is finalized.
           </p>
         </div>
+
+   {isOrderLoginMarked ? (
+  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+    <BadgeCheck className="w-4 h-4" />
+    <span className="text-sm font-medium">
+      Order Login Completed
+    </span>
+  </div>
+) : (
+  canShowCompletedButton &&
+  (shouldDisableActions ? (
+<div className="ml-auto">
+  <CustomeTooltip
+    value={effectiveBlockedTooltip}
+    truncateValue={
+      <Button
+        disabled
+        className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+      >
+        <CheckCircle className="w-4 h-4" />
+        Order Login Completed
+      </Button>
+    }
+  />
+</div>
+  ) : isOrderLoginApprovalPending ? (
+<div className="ml-auto">
+  <CustomeTooltip
+    value={orderLoginApprovalTooltip}
+    truncateValue={
+      <Button
+        disabled
+        className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+      >
+        <CheckCircle className="w-4 h-4" />
+        Order Login Completed
+      </Button>
+    }
+  />
+</div>
+  ) : (
+    <Button
+      onClick={() => setConfirmComplete(true)}
+      disabled={isMarkingComplete}
+      className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+    >
+      {isMarkingComplete ? (
+        <>
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <CheckCircle className="w-4 h-4" />
+          Order Login Completed
+        </>
+      )}
+    </Button>
+  ))
+)}
       </div>
 
       {/* Grid of Breakups */}
@@ -467,17 +673,17 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
               onVendorChange={(selectedVendorId) =>
                 handleVendorChange(title, selectedVendorId, existingData)
               }
-              onDescriptionBlur={(description) =>
-                handleDescriptionSave(title, description)
+              onDescriptionChange={(description) =>
+                handleDescriptionChange(title, description, existingData)
               }
-              canEditVendor={perms.canEditVendor}
-              canEditDescription={perms.canEditDescription}
+              disabled={!perms.canEdit || shouldDisableActions}
               isMandatory={mandatoryTitles.includes(title)}
               vendorId={vendorId}
               leadId={leadId}
               orderLoginId={existingData?.id}
               userId={userId}
               showPoUpload
+              disablePoDelete={isBackendLockedAfterOrderLogin || shouldDisableActions}
             />
           );
         })}
@@ -501,68 +707,136 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
               onVendorChange={(selectedVendorId) =>
                 handleVendorChange(item.item_type, selectedVendorId, item)
               }
-              onDescriptionBlur={(description) =>
-                handleDescriptionSave(item.item_type, description)
+              onDescriptionChange={(description) =>
+                handleDescriptionChange(item.item_type, description, item)
               }
-              canEditDescription={perms.canEditDescription}
-              canEditVendor={perms.canEditVendor}
+              disabled={!perms.canEdit || shouldDisableActions}
               isMandatory={false}
-              isTitleEditable={canManageCustomSections && !!item.id}
-              canDelete={canManageCustomSections && !!item.id}
+              isTitleEditable={canEditOrDeleteCustomSection && !!item.id}
+              canDelete={canEditOrDeleteCustomSection && !!item.id && !shouldDisableActions}
               onTitleSave={(nextTitle) => handleTitleUpdate(item, nextTitle)}
               onDelete={() =>
-                setConfirmDelete({
-                  id: item.id,
-                  title: item.item_type,
-                })
+                setConfirmDelete({ id: item.id, title: item.item_type })
               }
               vendorId={vendorId}
               leadId={leadId}
               orderLoginId={item.id}
               userId={userId}
               showPoUpload
+              disablePoDelete={isBackendLockedAfterOrderLogin || shouldDisableActions}
             />
           );
         })}
 
         {/* Add New Section Card */}
-        {canAccessButtons && (
-          <div
-            className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5 
-                       hover:bg-primary/10 transition-all cursor-pointer group 
-                       flex flex-col items-center justify-center gap-3 min-h-[190px]"
-          >
-            <div
-              className="rounded-full bg-primary/10 p-3 
-                          group-hover:bg-primary/20 transition-colors"
-            >
-              <Plus className="w-6 h-6 text-primary" />
-            </div>
+        {canAccessButtons && canAddCustomSection && (
+          shouldDisableActions ? (
+            <CustomeTooltip
+              value={effectiveBlockedTooltip}
+              truncateValue={
+                <div
+                  className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5
+                     opacity-60 cursor-not-allowed
+                     flex flex-col items-center justify-center gap-3 min-h-47.5"
+                >
+                  <div className="rounded-full bg-primary/10 p-3">
+                    <Plus className="w-6 h-6 text-primary" />
+                  </div>
 
-            <div className="text-center">
-              <p className="font-medium text-sm text-primary">
-                Add New Section
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Create a new breakup category for this order
-              </p>
-            </div>
+                  <div className="text-center">
+                    <p className="font-medium text-sm text-primary">
+                      Add New Section
+                    </p>
 
-            <AddSectionModal
-              users={users}
-              leadId={leadId}
-              accountId={accountId}
-              onSectionAdded={() => {
-                queryClient.invalidateQueries({
-                  queryKey: ["orderLoginByLead", vendorId, leadId],
-                });
-              }}
+                    <p className="text-xs text-muted-foreground">
+                      Create a new breakup category for this order
+                    </p>
+                  </div>
+
+                  <Button>Click Here</Button>
+                </div>
+              }
             />
-          </div>
+          ) : (
+            <div
+              className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5
+                 hover:bg-primary/10 transition-all cursor-pointer group
+                 flex flex-col items-center justify-center gap-3 min-h-47.5"
+            >
+              <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                <Plus className="w-6 h-6 text-primary" />
+              </div>
+
+              <div className="text-center">
+                <p className="font-medium text-sm text-primary">
+                  Add New Section
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  Create a new breakup category for this order
+                </p>
+              </div>
+
+              <AddSectionModal
+                users={users}
+                leadId={leadId}
+                accountId={accountId}
+                instanceId={instanceId}
+                onSectionAdded={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: [
+                      "orderLoginByLead",
+                      vendorId,
+                      leadId,
+                      instanceId ?? "all",
+                    ],
+                  });
+                }}
+              />
+            </div>
+          )
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* ✅ Order Login Complete — Confirmation Dialog */}
+      <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+
+              Complete Order Login
+            </AlertDialogTitle>
+
+            <AlertDialogDescription className="pt-2 text-sm leading-relaxed">
+              This will mark the order login as completed and move the lead to the next stage.
+              Please confirm to proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMarkingComplete}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleConfirmComplete}
+              disabled={isMarkingComplete}
+
+            >
+              {isMarkingComplete ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                  Processing...
+                </span>
+              ) : (
+                "Mark as Completed"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Section — Confirmation Dialog */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={(open) => {
@@ -579,65 +853,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteSection}
-              disabled={isDeleting}
-            >
+            <AlertDialogAction onClick={handleDeleteSection} disabled={isDeleting}>
               {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Vendor Change Confirmation Dialog (Production Stage Only) */}
-      <AlertDialog
-        open={!!confirmVendorChange}
-        onOpenChange={(open) => {
-          if (!open) setConfirmVendorChange(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Vendor Selection</AlertDialogTitle>
-            <AlertDialogDescription>
-              You can select the vendor only once in production stage. Once
-              confirmed, you won't be able to change it. Are you sure you want
-              to proceed?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                // Reset local state on cancel
-                if (confirmVendorChange) {
-                  setBreakups((prev) => ({
-                    ...prev,
-                    [confirmVendorChange.title]: {
-                      ...prev[confirmVendorChange.title],
-                      company_vendor_id:
-                        confirmVendorChange.existingData?.company_vendor_id ||
-                        null,
-                    },
-                  }));
-                }
-                setConfirmVendorChange(null);
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (confirmVendorChange) {
-                  await saveVendorChange(
-                    confirmVendorChange.title,
-                    confirmVendorChange.vendorId,
-                    confirmVendorChange.existingData,
-                  );
-                  setConfirmVendorChange(null);
-                }
-              }}
-            >
-              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

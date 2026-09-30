@@ -30,25 +30,22 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import {
   useTechCheckUsers,
   useRequestToTechCheck,
 } from "@/api/client-approval";
 import AssignToPicker from "@/components/assign-to-picker";
-import CustomeDatePicker from "@/components/date-picker";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),
-  client_required_order_login_complition_date: z
-    .string()
-    .min(1, "Please select a date"),
 });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  assign_to_user_id: number;
+};
 
 interface RequestToTechCheckModalProps {
   open: boolean;
@@ -68,16 +65,40 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) =>
+      s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: techCheckUsers, isLoading } = useTechCheckUsers(vendorId!);
   const { mutate, isPending } = useRequestToTechCheck();
 
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
-  const [singleUserDate, setSingleUserDate] = useState<string | undefined>("");
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+  const activeUsers = techCheckUsers ?? [];
+  const isUsersLoading = isLoading;
+  const assignUserLabel =
+    vendorCustomUserTypeMode === true
+      ? "Assign Eligible User for Tech Check"
+      : "Assign User for Tech Check";
+  const loadingUsersLabel =
+    vendorCustomUserTypeMode === true
+      ? "Loading users..."
+      : "Loading tech check users...";
+  const singleUserConfirmTitle =
+    vendorCustomUserTypeMode === true
+      ? "Confirm Tech Check Assignment"
+      : "Confirm Tech Check Request";
+  const singleUserConfirmDescription =
+    vendorCustomUserTypeMode === true
+      ? "Assign this lead to the eligible user"
+      : "Assign this lead to";
 
   const mappedUsers =
-    techCheckUsers?.map((user: any) => ({
+    activeUsers?.map((user: any) => ({
       id: user.id,
       label: user.user_name,
     })) ?? [];
@@ -86,34 +107,27 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
     resolver: zodResolver(schema),
     defaultValues: {
       assign_to_user_id: 0,
-      client_required_order_login_complition_date: "",
     },
   });
 
   // Check if single user and show confirmation directly
   useEffect(() => {
-    if (open && techCheckUsers && techCheckUsers.length === 1) {
-      const singleUser = techCheckUsers[0];
+    if (open && activeUsers && activeUsers.length === 1) {
+      const singleUser = activeUsers[0];
       form.setValue("assign_to_user_id", singleUser.id);
       setSelectedUserName(singleUser.user_name);
       setShowSingleUserConfirm(true);
     } else if (open) {
       setShowSingleUserConfirm(false);
-      setSingleUserDate("");
+      form.setValue("assign_to_user_id", 0);
     }
-  }, [open, techCheckUsers, form]);
+  }, [open, activeUsers, form]);
 
-  // Handle single user confirmation with date
   const handleSingleUserSubmit = () => {
-    if (!singleUserDate) {
-      toast.error("Please select a completion date");
-      return;
-    }
-
     const assign_to_user_id = form.getValues("assign_to_user_id");
 
     if (!vendorId || !userId || !assign_to_user_id) {
-      toast.error("Missing required information");
+      toastManager.add({ title: "Missing required information", type: "error" });
       return;
     }
 
@@ -124,16 +138,14 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         accountId: data.accountId,
         assign_to_user_id,
         created_by: userId,
-        client_required_order_login_complition_date: singleUserDate,
       },
       {
         onSuccess: () => {
-          toast.success("Lead moved to Tech Check stage successfully!");
+          toastManager.add({ title: "Lead moved to Tech Check stage successfully!", type: "success" });
           router.push("/dashboard/production/tech-check");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           form.reset();
-          setSingleUserDate("");
           setShowSingleUserConfirm(false);
           onOpenChange(false);
         },
@@ -144,7 +156,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   // Handle multiple users flow
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     if (!vendorId || !userId) {
-      toast.error("Missing required information");
+      toastManager.add({ title: "Missing required information", type: "error" });
       return;
     }
 
@@ -155,14 +167,13 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         accountId: data.accountId,
         assign_to_user_id: values.assign_to_user_id,
         created_by: userId,
-        client_required_order_login_complition_date:
-          values.client_required_order_login_complition_date,
       },
       {
         onSuccess: () => {
-          toast.success("Lead moved to Tech Check stage successfully!");
+          toastManager.add({ title: "Lead moved to Tech Check stage successfully!", type: "success" });
           router.push("/dashboard/production/tech-check");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           form.reset();
           onOpenChange(false);
         },
@@ -171,7 +182,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   };
 
   // Single user confirmation dialog
-  if (showSingleUserConfirm && techCheckUsers?.length === 1) {
+  if (showSingleUserConfirm && activeUsers?.length === 1) {
     return (
       <AlertDialog
         open={showSingleUserConfirm}
@@ -179,35 +190,22 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
           setShowSingleUserConfirm(open);
           if (!open) {
             onOpenChange(false);
-            setSingleUserDate("");
           }
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Tech Check Request</AlertDialogTitle>
+            <AlertDialogTitle>{singleUserConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Assign this lead to <strong>{selectedUserName}</strong> for Tech
-              Check.
+              {singleUserConfirmDescription}{" "}
+              <strong>{selectedUserName}</strong> for Tech Check.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          <div className="py-4">
-            <label className="text-sm font-medium mb-2 block">
-              Client Required Completion Date
-            </label>
-            <CustomeDatePicker
-              value={singleUserDate}
-              onChange={(value) => setSingleUserDate(value || "")}
-              restriction="futureOnly"
-            />
-          </div>
 
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={isPending}
               onClick={() => {
-                setSingleUserDate("");
                 setShowSingleUserConfirm(false);
                 onOpenChange(false);
               }}
@@ -216,7 +214,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSingleUserSubmit}
-              disabled={isPending || !singleUserDate}
+              disabled={isPending}
             >
               {isPending ? "Submitting..." : "Confirm"}
             </AlertDialogAction>
@@ -235,9 +233,9 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         </DialogHeader>
 
         <ScrollArea className="pt-4 max-h-[60vh]">
-          {isLoading ? (
+          {isUsersLoading ? (
             <div className="p-6 text-center text-muted-foreground">
-              Loading tech check users...
+              {loadingUsersLabel}
             </div>
           ) : (
             <Form {...form}>
@@ -251,7 +249,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Assign To Tech Check User
+                        {assignUserLabel}
                       </FormLabel>
                       <FormControl>
                         <AssignToPicker
@@ -266,27 +264,6 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="client_required_order_login_complition_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Client Required Completion Date
-                      </FormLabel>
-                      <FormControl>
-                        <CustomeDatePicker
-                          value={field.value}
-                          onChange={field.onChange}
-                          restriction="futureOnly"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
                     type="button"

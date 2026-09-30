@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/form";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useAppSelector } from "@/redux/store";
-import { useUpdateSiteMeasurementMutation } from "@/hooks/Site-measruement/useUpdateSiteMeasurement";
+import { useUploadAdditionalSitePhotosMutation } from "@/hooks/Site-measruement/useUploadAdditionalSitePhotos";
 import BaseModal from "@/components/utils/baseModal";
+import { toastManager } from "@/components/ui/toast";
 
 // --------- Props ---------
 interface Data {
@@ -48,7 +49,7 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const updatedBy = useAppSelector((state) => state.auth.user?.id);
 
-  const { mutateAsync, isPending } = useUpdateSiteMeasurementMutation();
+  const { mutateAsync, isPending } = useUploadAdditionalSitePhotosMutation();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -75,14 +76,23 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
         formData.append("current_site_photos", file);
       });
 
-      await mutateAsync({
-        paymentId: data.paymentId || 0,
-        formData,
-      });
+      await mutateAsync(formData);
+      
+      
 
       form.reset();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Something went wrong";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
       console.error("Error uploading current site photos:", error);
     }
   };
@@ -92,8 +102,8 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
       open={open}
       onOpenChange={onOpenChange}
       title="Add Site Photos"
-      description="Upload current site photos or supporting documents."
-      size="lg"
+      description="Upload current site photos."
+      size="smd"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
@@ -111,9 +121,6 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                     accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tif,.tiff,.svg,.jfif"
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
-                  Upload photos or documents related to the site.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

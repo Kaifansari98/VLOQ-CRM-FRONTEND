@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,12 +40,33 @@ import { useQueryClient } from "@tanstack/react-query";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useBackendUsers } from "@/api/client-approval";
 import { useApproveTechCheck } from "@/api/tech-check";
+import CustomeDatePicker from "@/components/date-picker";
+import { addDays, format } from "date-fns";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
-const schema = z.object({
-  assign_to_user_id: z.number().min(1, "Please select a Backend user"),
-});
+const DEFAULT_MIN_DAYS = 20;
 
-type FormValues = z.infer<typeof schema>;
+const buildSchema = (
+  minDate: string,
+  minDays: number,
+  isFastProductionLead: boolean,
+) =>
+  z.object({
+    assign_to_user_id: z.number().min(1, "Please select a Backend user"),
+    client_required_order_login_complition_date: isFastProductionLead
+      ? z.string()
+      : z
+          .string()
+          .min(1, "Please select a date")
+          .refine((value) => value >= minDate, {
+            message: `Client required date must be at least ${minDays} days from today`,
+          }),
+  });
+
+type FormValues = {
+  assign_to_user_id: number;
+  client_required_order_login_complition_date: string;
+};
 
 interface MoveToOrderLoginModalProps {
   open: boolean;
@@ -53,8 +74,20 @@ interface MoveToOrderLoginModalProps {
   data: {
     id: number;
     accountId: number;
+    instanceId?: number | null;
   };
 }
+
+const formatDisplayDate = (value?: string | Date | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
 
 export default function MoveToOrderLoginModal({
   open,
@@ -66,13 +99,78 @@ export default function MoveToOrderLoginModal({
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) =>
+      s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate: approveTechCheck, isPending } = useApproveTechCheck();
-
+  const { data: leadStatusData } = useLeadStatus(data.id, vendorId);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedRequiredDate, setSelectedRequiredDate] = useState<string>("");
+  const dialogTitle =
+    vendorCustomUserTypeMode === true
+      ? "Assign User for Order Login"
+      : "Assign Backend User";
+  const assignUserLabel =
+    vendorCustomUserTypeMode === true
+      ? "Assign Eligible User for Order Login"
+      : "Assign To Backend User";
+  const loadingUsersLabel =
+    vendorCustomUserTypeMode === true
+      ? "Loading users..."
+      : "Loading backend users...";
+  const confirmTitle =
+    vendorCustomUserTypeMode === true
+      ? "Confirm Order Login Assignment"
+      : "Confirm Move to Order Login";
+  const minDays =
+    (leadStatusData as any)?.total_required_chs_manufacturing_days ??
+    DEFAULT_MIN_DAYS;
+  const isFastProductionLead =
+    (leadStatusData as any)?.is_fast_production === true;
+  const fastProductionLeadRequiredDate = (leadStatusData as any)
+    ?.client_required_order_login_complition_date as string | undefined;
+  const minClientRequiredDate = useMemo(
+    () => format(addDays(new Date(), minDays), "yyyy-MM-dd"),
+    [minDays],
+  );
+  const todayDateLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }),
+    [],
+  );
+  const fastProductionRequiredDateLabel = useMemo(
+    () => formatDisplayDate(fastProductionLeadRequiredDate),
+    [fastProductionLeadRequiredDate],
+  );
+  const shouldUpdateFastProductionDateToToday = useMemo(() => {
+    if (!fastProductionLeadRequiredDate) return false;
+
+    const requiredDate = new Date(fastProductionLeadRequiredDate);
+    if (Number.isNaN(requiredDate.getTime())) return false;
+
+    requiredDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return requiredDate < today;
+  }, [fastProductionLeadRequiredDate]);
+  const schema = useMemo(
+    () =>
+      buildSchema(minClientRequiredDate, minDays, isFastProductionLead),
+    [isFastProductionLead, minClientRequiredDate, minDays],
+  );
 
   const mappedUsers =
     backendUsers?.map((user: any) => ({
@@ -80,30 +178,43 @@ export default function MoveToOrderLoginModal({
       label: user.user_name,
     })) ?? [];
 
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { assign_to_user_id: 0 },
+    defaultValues: {
+      assign_to_user_id: 0,
+      client_required_order_login_complition_date: "",
+    },
   });
 
-  // ✅ Auto-select & directly open confirmation if only 1 backend user
-  useEffect(() => {
-    if (open && backendUsers && backendUsers.length === 1) {
-      const single = backendUsers[0];
-      form.setValue("assign_to_user_id", single.id);
-      setSelectedUserId(single.id);
-      setSelectedUserName(single.user_name);
 
-      onOpenChange(false);
-      setConfirmOpen(true);
+
+  useEffect(() => {
+    if (!open) {
+      form.reset({
+        assign_to_user_id: 0,
+        client_required_order_login_complition_date: "",
+      });
+      setSelectedUserId(null);
+      setSelectedUserName(null);
+      setSelectedRequiredDate("");
     }
-  }, [open, backendUsers, form, onOpenChange]);
+  }, [open, form]);
 
   // ❇️ Final Confirm Submit
   const handleConfirmSubmit = () => {
     const assignUserId = selectedUserId ?? form.getValues("assign_to_user_id");
+    const requiredDate =
+      selectedRequiredDate ||
+      form.getValues("client_required_order_login_complition_date");
 
-    if (!vendorId || !userId || !assignUserId) {
-      toast.error("Missing required details!");
+    if (
+      !vendorId ||
+      !userId ||
+      !assignUserId ||
+      (!isFastProductionLead && !requiredDate)
+    ) {
+      toastManager.add({ title: "Missing required details!", type: "error" });
       return;
     }
 
@@ -114,15 +225,33 @@ export default function MoveToOrderLoginModal({
         userId,
         assignToUserId: assignUserId,
         accountId: data.accountId,
+        clientRequiredOrderLoginComplitionDate: isFastProductionLead
+          ? undefined
+          : requiredDate,
+        productStructureInstanceId: data.instanceId ?? undefined,
       },
       {
-        onSuccess: () => {
-          toast.success("Lead moved to Order Login successfully!");
-          router.push("/dashboard/production/order-login");
+        onSuccess: (response: any) => {
+          const movedToOrderLogin = Boolean(
+            response?.data?.moved_to_order_login ||
+              response?.moved_to_order_login
+          );
+          toastManager.add({ title: movedToOrderLogin
+              ? "All instances completed. Lead moved to Order Login successfully!"
+              : data.instanceId
+              ? "Tech Check marked complete for this instance."
+              : "Lead moved to Order Login successfully!", type: "success" });
+          router.push(
+         
+              "/dashboard/production/order-login"
+              
+          );
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           setConfirmOpen(false);
           onOpenChange(false);
+          form.reset();
+          setSelectedRequiredDate("");
         },
       }
     );
@@ -133,37 +262,41 @@ export default function MoveToOrderLoginModal({
     const selected = mappedUsers.find((u: any) => u.id === values.assign_to_user_id);
     setSelectedUserName(selected?.label || null);
     setSelectedUserId(values.assign_to_user_id);
+    setSelectedRequiredDate(
+      isFastProductionLead
+        ? ""
+        : values.client_required_order_login_complition_date,
+    );
     setConfirmOpen(true);
   };
 
   return (
     <>
-      {backendUsers?.length !== 1 && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-md w-full">
-            <DialogHeader>
-              <DialogTitle>Assign Backend User</DialogTitle>
-            </DialogHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+          </DialogHeader>
 
-            <ScrollArea className="pt-4 max-h-[60vh]">
-              {isLoading ? (
-                <div className="p-6 text-center text-muted-foreground">
-                  Loading backend users...
-                </div>
-              ) : (
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-6"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="assign_to_user_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            Assign To Backend User
-                          </FormLabel>
+          <ScrollArea className="pt-4 max-h-[60vh]">
+            {isLoading ? (
+              <div className="p-6 text-center text-muted-foreground">
+                {loadingUsersLabel}
+              </div>
+            ) : (
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
+                  <FormField
+                    control={form.control}
+                    name="assign_to_user_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          {assignUserLabel}
+                        </FormLabel>
                           <FormControl>
                             <AssignToPicker
                               data={mappedUsers}
@@ -173,41 +306,110 @@ export default function MoveToOrderLoginModal({
                               }
                             />
                           </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {!isFastProductionLead ? (
+                    <FormField
+                      control={form.control}
+                      name="client_required_order_login_complition_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Client Required Completion Date
+                          </FormLabel>
+                          <FormControl>
+                            <CustomeDatePicker
+                              value={field.value}
+                              onChange={field.onChange}
+                              restriction="futureOnly"
+                              minDate={minClientRequiredDate}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Select a date from{" "}
+                            {new Date(minClientRequiredDate).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "long",
+                                year: "numeric",
+                              },
+                            )}{" "}
+                            onwards.
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  ) : null}
 
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={isPending}>
-                        {isPending ? "Processing..." : "Move To Order Login"}
-                      </Button>
+                  {isFastProductionLead ? (
+                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+                      {shouldUpdateFastProductionDateToToday &&
+                      fastProductionRequiredDateLabel ? (
+                        <p>
+                          Your LeadMaster client required delivery date was set
+                          to {` ${fastProductionRequiredDateLabel} `}and now
+                          it&apos;s going to get updated as {todayDateLabel}.
+                        </p>
+                      ) : fastProductionRequiredDateLabel ? (
+                        <p>
+                          LeadMaster client required delivery date:{" "}
+                          {fastProductionRequiredDateLabel}
+                        </p>
+                      ) : (
+                        <p>
+                          No LeadMaster client required delivery date is
+                          currently set for this fast production lead.
+                        </p>
+                      )}
                     </div>
-                  </form>
-                </Form>
-              )}
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-      )}
+                  ) : null}
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isPending}>
+                      {isPending ? "Processing..." : "Move To Order Login"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* 🔥 Confirmation Dialog */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Move to Order Login</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUserName
-                ? `Are you sure you want to assign this lead to ${selectedUserName}?`
+                ? vendorCustomUserTypeMode === true
+                  ? `Are you sure you want to assign this lead to the eligible user ${selectedUserName}?`
+                  : `Are you sure you want to assign this lead to ${selectedUserName}?`
                 : `Are you sure you want to move this lead to Order Login stage?`}
             </AlertDialogDescription>
+            {selectedRequiredDate ? (
+              <p className="text-sm text-muted-foreground">
+                Client required completion date:{" "}
+                {new Date(selectedRequiredDate).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>

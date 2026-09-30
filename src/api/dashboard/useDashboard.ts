@@ -2,9 +2,34 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  getSiteSupervisorAvgDaysToInstallation,
+  getSiteSupervisorMiscItems,
+  SiteSupervisorMiscItem,
+  getSiteSupervisorUpcomingSites,
+  SiteSupervisorUpcomingSite,
+  getSiteSupervisorServiceCounts,
+  SiteSupervisorServiceCounts,
+  getSiteSupervisorPendingServices,
+  SiteSupervisorPendingService,
+  getAdminLostApprovalLeads,
+  LostApprovalLead,
+  getAdminTaskOverview,
+  AdminTaskOverviewResponse,
+  AdminTaskOverviewParams,
+  getOverdueInstallations,
+  OverdueInstallation,
   getSalesExecutiveTaskStats,
   getPerformanceSnapshot,
   getLeadStatusWiseCounts,
+  getActiveFranchiseeCount,
+  getLeadsThisMonth,
+  getLeadsByFranchise,
+  getOverdueProjectsCount,
+  getFranchisePerformance,
+  getAvgDaysPerStage,
+  FranchiseLeadCount,
+  FranchisePerformanceRow,
+  AvgDaysPerStage,
   UiLeadStatusCounts,
   UiPerformanceSnapshot,
   UiSalesExecutiveTaskStats,
@@ -24,12 +49,43 @@ import {
   SalesExecutiveActivityStatusCounts,
   getAdminProjectsOverview,
   AdminProjectsOverview,
+  getAdminCompletedOverview,
+  AdminCompletedOverview,
+  getAdminLostApprovalOverview,
+  AdminLostApprovalOverview,
   getAdminOrdersInPipeline,
   AdminOrdersInPipeline,
   getAdminTotalRevenue,
   AdminTotalRevenue,
   getAdminStageCounts,
   AdminStageCounts,
+  getStageWiseCounts,
+  StageWiseCount,
+  getFranchiseLeads,
+  FranchiseLead,
+  getStageLeads,
+  getOverdueProductionCount,
+  getOverdueProduction,
+  OverdueProduction,
+  getPriorityLeadCounts,
+  PriorityLeadCounts,
+  getFactoryLeadBifurcation,
+  FactoryLeadBifurcation,
+  getFactoryAvgProductionToRTD,
+  FactoryAvgProductionToRTD,
+  getFactoryERDCalendar,
+  FactoryERDCalendarItem,
+  getFactoryUpcomingDispatches,
+  FactoryUpcomingDispatch,
+  getPreProdNewSites,
+  PreProdNewSites,
+  getPreProdAvgTimeline,
+  getBackendNewOrderLoginLeads,
+  BackendNewOrderLoginLeads,
+  getBackendAvgOLToProduction,
+  getTechCheckNewLeads,
+  TechCheckNewLeads,
+  getTechCheckAvgApprovalTimeline,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -57,7 +113,8 @@ export function useSalesExecutiveTaskStats(vendorId: number, userId: number) {
 // ---------------------------------------------------
 export function usePerformanceSnapshot(
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): UsePerformanceSnapshotResult {
   const [data, setData] = useState<UiPerformanceSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +129,7 @@ export function usePerformanceSnapshot(
     try {
       setIsLoading(true);
       setError(null);
-      const snapshot = await getPerformanceSnapshot(vendorId, userId);
+      const snapshot = await getPerformanceSnapshot(vendorId, userId, franchiseId);
       setData(snapshot);
     } catch (err) {
       logError("Failed to fetch performance snapshot:", err);
@@ -80,7 +137,7 @@ export function usePerformanceSnapshot(
     } finally {
       setIsLoading(false);
     }
-  }, [vendorId, userId]); // ADD dependencies here
+  }, [vendorId, userId, franchiseId]); // ADD dependencies here
 
   useEffect(() => {
     fetchData();
@@ -114,7 +171,8 @@ export interface UseAvgDaysToBookingResult {
 
 export function useAvgDaysToBooking(
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): UseAvgDaysToBookingResult {
   const [data, setData] = useState<UiAvgDaysToBooking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,7 +186,7 @@ export function useAvgDaysToBooking(
     try {
       setIsLoading(true);
       setError(null);
-      const res = await getAvgDaysToConvertLeadToBooking(vendorId, userId);
+      const res = await getAvgDaysToConvertLeadToBooking(vendorId, userId, franchiseId);
       setData(res);
     } catch (err: any) {
       console.error("Failed to fetch avg days to booking:", err);
@@ -140,7 +198,7 @@ export function useAvgDaysToBooking(
 
   useEffect(() => {
     fetchData();
-  }, [vendorId, userId]);
+  }, [vendorId, userId, franchiseId]);
 
   return { data, isLoading, error, refetch: fetchData };
 }
@@ -193,10 +251,26 @@ export function useLeadStatusCounts(
   return { overall, mine, isLoading, error, refetch: fetchData };
 }
 
-export function useAdminProjectsOverview(vendorId?: number) {
+export function useAdminProjectsOverview(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminProjectsOverview>({
-    queryKey: ["admin-projects-overview", vendorId],
-    queryFn: () => getAdminProjectsOverview(vendorId!),
+    queryKey: ["admin-projects-overview", vendorId, franchiseId],
+    queryFn: () => getAdminProjectsOverview(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminCompletedOverview(vendorId?: number, franchiseId?: number) {
+  return useQuery<AdminCompletedOverview>({
+    queryKey: ["admin-completed-overview", vendorId, franchiseId],
+    queryFn: () => getAdminCompletedOverview(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminLostApprovalOverview(vendorId?: number, franchiseId?: number) {
+  return useQuery<AdminLostApprovalOverview>({
+    queryKey: ["admin-lost-approval-overview", vendorId, franchiseId],
+    queryFn: () => getAdminLostApprovalOverview(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }
@@ -209,18 +283,82 @@ export function useAdminOrdersInPipeline(vendorId?: number) {
   });
 }
 
-export function useAdminTotalRevenue(vendorId?: number) {
+export function useAdminTotalRevenue(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminTotalRevenue>({
-    queryKey: ["admin-total-revenue", vendorId],
-    queryFn: () => getAdminTotalRevenue(vendorId!),
+    queryKey: ["admin-total-revenue", vendorId, franchiseId],
+    queryFn: () => getAdminTotalRevenue(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }
 
-export function useAdminStageCounts(vendorId?: number) {
+export function useAvgDaysPerStage(vendorId?: number, franchiseId?: number) {
+  return useQuery<AvgDaysPerStage>({
+    queryKey: ["avg-days-per-stage", vendorId, franchiseId],
+    queryFn: () => getAvgDaysPerStage(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useFranchisePerformance(vendorId?: number) {
+  return useQuery<FranchisePerformanceRow[]>({
+    queryKey: ["franchise-performance", vendorId],
+    queryFn: () => getFranchisePerformance(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useOverdueProjectsCount(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["overdue-projects-count", vendorId],
+    queryFn: () => getOverdueProjectsCount(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useLeadsByFranchise(vendorId?: number) {
+  return useQuery<FranchiseLeadCount[]>({
+    queryKey: ["leads-by-franchise", vendorId],
+    queryFn: () => getLeadsByFranchise(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useLeadsThisMonth(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["leads-this-month", vendorId],
+    queryFn: () => getLeadsThisMonth(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useOverdueInstallations(vendorId?: number, franchiseId?: number) {
+  return useQuery<OverdueInstallation[]>({
+    queryKey: ["overdue-installations", vendorId, franchiseId],
+    queryFn: () => getOverdueInstallations(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useActiveFranchiseeCount(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["active-franchisee-count", vendorId],
+    queryFn: () => getActiveFranchiseeCount(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminStageCounts(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminStageCounts>({
-    queryKey: ["admin-stage-counts", vendorId],
-    queryFn: () => getAdminStageCounts(vendorId!),
+    queryKey: ["admin-stage-counts", vendorId, franchiseId],
+    queryFn: () => getAdminStageCounts(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function usePriorityLeadCounts(vendorId?: number, franchiseId?: number) {
+  return useQuery<PriorityLeadCounts>({
+    queryKey: ["priority-lead-counts", vendorId, franchiseId],
+    queryFn: () => getPriorityLeadCounts(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }
@@ -234,7 +372,8 @@ export interface UseStageCountsResult {
 }
 export function useSalesExecutiveStageCounts(
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): UseStageCountsResult {
   const [data, setData] = useState<SalesExecutiveStageCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -248,7 +387,7 @@ export function useSalesExecutiveStageCounts(
     try {
       setIsLoading(true);
       setError(null);
-      const res = await getSalesExecutiveStageCounts(vendorId, userId);
+      const res = await getSalesExecutiveStageCounts(vendorId, userId, franchiseId);
       setData(res);
     } catch (err: any) {
       console.error("Failed to fetch stage counts:", err);
@@ -260,7 +399,7 @@ export function useSalesExecutiveStageCounts(
 
   useEffect(() => {
     fetchData();
-  }, [vendorId, userId]);
+  }, [vendorId, userId, franchiseId]);
 
   return { data, isLoading, error, refetch: fetchData };
 }
@@ -325,10 +464,10 @@ export const useGetDashboardAllLeads = (vendorId: number, userId: number) => {
   });
 };
 
-export const useGetAdminDashboardAllLeads = (vendorId: number) => {
+export const useGetAdminDashboardAllLeads = (vendorId: number, franchiseId?: number) => {
   return useQuery<StageData>({
-    queryKey: ["admin-dashboard-leads", vendorId],
-    queryFn: () => getAdminDashboardAllLeads(vendorId),
+    queryKey: ["admin-dashboard-leads", vendorId, franchiseId],
+    queryFn: () => getAdminDashboardAllLeads(vendorId, franchiseId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
@@ -343,6 +482,207 @@ export const useSalesExecutiveActivityStatusCounts = (
     queryKey: ["sales-executive-activity-status-counts", vendorId, userId],
     queryFn: () => getSalesExecutiveActivityStatusCounts(vendorId!, userId!),
     enabled: !!vendorId && !!userId,
-    staleTime: 1000 * 60, // 1 minute cache to avoid spamming
+    staleTime: 1000 * 60,
   });
 };
+
+export function useStageWiseCounts(vendorId?: number, franchiseId?: number) {
+  return useQuery<StageWiseCount[]>({
+    queryKey: ["stage-wise-counts", vendorId, franchiseId],
+    queryFn: () => getStageWiseCounts(vendorId!, franchiseId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFranchiseLeads(vendorId?: number, franchiseId?: number) {
+  return useQuery<FranchiseLead[]>({
+    queryKey: ["franchise-leads", vendorId, franchiseId],
+    queryFn: () => getFranchiseLeads(vendorId!, franchiseId!),
+    enabled: !!vendorId && !!franchiseId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useStageLeads(vendorId?: number, tag?: string, franchiseId?: number) {
+  return useQuery<FranchiseLead[]>({
+    queryKey: ["stage-leads", vendorId, tag, franchiseId],
+    queryFn: () => getStageLeads(vendorId!, tag!, franchiseId),
+    enabled: !!vendorId && !!tag,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorServiceCounts(vendorId: number, userId: number) {
+  return useQuery<SiteSupervisorServiceCounts>({
+    queryKey: ["site-supervisor-service-counts", vendorId, userId],
+    queryFn: () => getSiteSupervisorServiceCounts(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorUpcomingSites(vendorId: number, userId: number) {
+  return useQuery<SiteSupervisorUpcomingSite[]>({
+    queryKey: ["site-supervisor-upcoming-sites", vendorId, userId],
+    queryFn: () => getSiteSupervisorUpcomingSites(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorMiscItems(vendorId: number, userId: number) {
+  return useQuery<SiteSupervisorMiscItem[]>({
+    queryKey: ["site-supervisor-misc-items", vendorId, userId],
+    queryFn: () => getSiteSupervisorMiscItems(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorPendingServices(
+  vendorId: number,
+  userId: number,
+  filter: "month" | "year"
+) {
+  return useQuery<SiteSupervisorPendingService[]>({
+    queryKey: ["site-supervisor-pending-services", vendorId, userId, filter],
+    queryFn: () => getSiteSupervisorPendingServices(vendorId, userId, filter),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAvgDaysToInstallation(vendorId: number, userId: number) {
+  return useQuery<UiAvgDaysToBooking>({
+    queryKey: ["avg-days-to-installation", vendorId, userId],
+    queryFn: () => getSiteSupervisorAvgDaysToInstallation(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useOverdueProductionCount(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["overdue-production-count", vendorId],
+    queryFn: () => getOverdueProductionCount(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useOverdueProduction(vendorId?: number, franchiseId?: number) {
+  return useQuery<OverdueProduction[]>({
+    queryKey: ["overdue-production", vendorId, franchiseId],
+    queryFn: () => getOverdueProduction(vendorId!, franchiseId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAdminLostApprovalLeads(vendorId?: number, franchiseId?: number) {
+  return useQuery<LostApprovalLead[]>({
+    queryKey: ["admin-lost-approval-leads", vendorId, franchiseId],
+    queryFn: () => getAdminLostApprovalLeads(vendorId!, franchiseId),
+    enabled: false,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAdminTaskOverview(vendorId?: number, params: AdminTaskOverviewParams = {}) {
+  return useQuery<AdminTaskOverviewResponse>({
+    queryKey: ["admin-task-overview", vendorId, params],
+    queryFn: () => getAdminTaskOverview(vendorId!, params),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryLeadBifurcation(vendorId: number) {
+  return useQuery<FactoryLeadBifurcation>({
+    queryKey: ["factory-lead-bifurcation", vendorId],
+    queryFn: () => getFactoryLeadBifurcation(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useTechCheckNewLeads(vendorId: number) {
+  return useQuery<TechCheckNewLeads>({
+    queryKey: ["tech-check-new-leads", vendorId],
+    queryFn: () => getTechCheckNewLeads(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useTechCheckAvgApprovalTimeline(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["tech-check-avg-approval-timeline", vendorId],
+    queryFn: () => getTechCheckAvgApprovalTimeline(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useBackendNewOrderLoginLeads(vendorId: number) {
+  return useQuery<BackendNewOrderLoginLeads>({
+    queryKey: ["backend-new-order-login-leads", vendorId],
+    queryFn: () => getBackendNewOrderLoginLeads(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useBackendAvgOLToProduction(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["backend-avg-ol-to-production", vendorId],
+    queryFn: () => getBackendAvgOLToProduction(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function usePreProdNewSites(vendorId: number) {
+  return useQuery<PreProdNewSites>({
+    queryKey: ["pre-prod-new-sites", vendorId],
+    queryFn: () => getPreProdNewSites(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function usePreProdAvgTimeline(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["pre-prod-avg-timeline", vendorId],
+    queryFn: () => getPreProdAvgTimeline(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryUpcomingDispatches(vendorId: number) {
+  return useQuery<FactoryUpcomingDispatch[]>({
+    queryKey: ["factory-upcoming-dispatches", vendorId],
+    queryFn: () => getFactoryUpcomingDispatches(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryERDCalendar(vendorId: number) {
+  return useQuery<FactoryERDCalendarItem[]>({
+    queryKey: ["factory-erd-calendar", vendorId],
+    queryFn: () => getFactoryERDCalendar(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryAvgProductionToRTD(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["factory-avg-production-to-rtd", vendorId],
+    queryFn: () => getFactoryAvgProductionToRTD(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}

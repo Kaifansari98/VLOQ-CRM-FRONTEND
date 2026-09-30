@@ -5,6 +5,8 @@ interface BadgeProps {
 }
 
 export default function CustomeStatusBadge({ title }: BadgeProps) {
+  if (!title) return null;
+
   // 1. Replace hyphen with space
   let formatted = title.replace(/-/g, " ");
 

@@ -18,15 +18,26 @@ type Option = {
   label: string;
 };
 
+import type { Table } from "@tanstack/react-table";
+
 interface Props {
   column: Column<LeadColumn, unknown>;
+  table?: Table<LeadColumn>;
 }
 
 /* ===========================
    COMPONENT
 =========================== */
 
-export default function StageTypeFilter({ column }: Props) {
+export default function StageTypeFilter({ column, table }: Props) {
+  const meta = (table?.options?.meta ?? (column as any).table?.options?.meta) as any;
+  const adminTaskStatusFilter = meta?.adminTaskStatusFilter as
+    | {
+        value: (string | number)[];
+        onChange: (values: (string | number)[]) => void;
+      }
+    | undefined;
+
   // Vendor Context
   const vendorId = useAppSelector(
     (state) => state.auth.user?.vendor_id,
@@ -37,6 +48,13 @@ export default function StageTypeFilter({ column }: Props) {
 
   // ✅ Normalize API → Picker Options (TYPE BASED)
   const options: Option[] = useMemo(() => {
+    if (adminTaskStatusFilter && column.id === "status") {
+      return [
+        { id: "open", label: "Open" },
+        { id: "completed", label: "Completed" },
+      ];
+    }
+
     if (!data?.data?.length) return [];
 
     return data.data.map((status) => ({
@@ -50,10 +68,18 @@ export default function StageTypeFilter({ column }: Props) {
   // ✅ Read selected status types from table filter state
   // Accept both string and number as IDType
   type IDType = string | number;
-  const selectedValues: IDType[] = (column.getFilterValue() as IDType[]) ?? [];
+  const selectedValues: IDType[] = adminTaskStatusFilter
+    ? (adminTaskStatusFilter.value as IDType[])
+    : ((column.getFilterValue() as IDType[]) ?? []);
 
   // ✅ Sync picker → table state (IDType BASED)
   const handleChange = (values: IDType[]) => {
+    if (adminTaskStatusFilter) {
+      adminTaskStatusFilter.onChange(values);
+      column.setFilterValue(values);
+      return;
+    }
+
     if (!values.length) {
       column.setFilterValue([]);
       return;

@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAddFinalMeasurementDoc } from "@/hooks/final-measurement/use-final-measurement";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { FileUploadField } from "@/components/custom/file-upload";
 
 // ✅ Zod Schema
@@ -65,7 +65,7 @@ const AddSiteImageModal = ({ open, onOpenChange, data }: Props) => {
   // ✅ Submit Handler
   const onSubmit = (values: FormValues) => {
     if (!vendorId || !leadId || !accountId || !userId) {
-      toast.error("Missing required identifiers");
+      toastManager.add({ title: "Missing required identifiers", type: "error" });
       return;
     }
 
@@ -79,7 +79,7 @@ const AddSiteImageModal = ({ open, onOpenChange, data }: Props) => {
       },
       {
         onSuccess: () => {
-          toast.success("Site photos uploaded successfully");
+          toastManager.add({ title: "Site photos uploaded successfully", type: "success" });
           queryClient.invalidateQueries({
             queryKey: ["finalMeasurementLead", vendorId, leadId],
           });
@@ -88,7 +88,7 @@ const AddSiteImageModal = ({ open, onOpenChange, data }: Props) => {
           onOpenChange(false);
         },
         onError: (error) => {
-          toast.error(error?.message || "Failed to upload photos");
+          toastManager.add({ title: error?.message || "Failed to upload photos", type: "error" });
         },
       }
     );

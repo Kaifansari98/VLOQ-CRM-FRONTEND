@@ -10,6 +10,9 @@ export interface UpdateActivityStatusPayload {
   remark: string;
   createdBy: number;
   dueDate?: string;
+  applyToWholeLead?: boolean;
+  selectedGroupIds?: number[];
+  selectedItemIds?: number[];
 }
 
 export interface RevertActivityStatusPayload {
@@ -83,9 +86,17 @@ export const revertLeadToOnGoing = async (
 
 export const getActivityStatusCounts = async (
   vendorId: number,
+  franchiseId?: number | null,
+  assignTo?: number | null,
 ): Promise<UiActivityStatusCounts> => {
   const res = await apiClient.get(
     `/leads/lead-activity-status/vendorId/${vendorId}/activity-status-counts`,
+    {
+      params: {
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+        ...(assignTo ? { assign_to: assignTo } : {}),
+      },
+    },
   );
   const data: ApiActivityStatusCounts = res.data.data;
 
@@ -201,6 +212,7 @@ export interface ActivityStatusLeadResponse {
 export interface ActivityStatusFilterPayload {
   page: number;
   limit: number;
+  franchise_id?: number;
 
   // Search filters
   global_search?: string;

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UpdateInitialSiteMeasurement } from "@/api/measurment-leads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface MutationVariables {
   paymentId: number;
@@ -17,7 +17,7 @@ export const useUpdateSiteMeasurementMutation = () => {
     onSuccess: (_, variables) => {
       const hasImages = variables.formData.has("current_site_photos");
       const hasPaymentDetailsPhotos = variables.formData.has(
-        "payment_detail_photos"
+        "payment_detail_photos",
       );
       const hasPaymentInfo =
         variables.formData.has("amount") ||
@@ -26,25 +26,24 @@ export const useUpdateSiteMeasurementMutation = () => {
 
       // Show dynamic toast
       if (hasImages && hasPaymentDetailsPhotos && hasPaymentInfo) {
-        toast.success(
-          "Payment info, site photos & payment details photos updated!"
-        );
+        toastManager.add({ title: "Payment info, site photos & payment details photos updated!", type: "success" });
       } else if (hasImages && hasPaymentInfo) {
-        toast.success("Payment info & site photos updated successfully!");
+        toastManager.add({ title: "Payment info & site photos updated successfully!", type: "success" });
       } else if (hasImages) {
-        toast.success("Site photos uploaded successfully!");
+        toastManager.add({ title: "Site photos uploaded successfully!", type: "success" });
       } else if (hasPaymentDetailsPhotos) {
-        toast.success("Payment details photos uploaded successfully!");
+        toastManager.add({ title: "Payment details photos uploaded successfully!", type: "success" });
       } else if (hasPaymentInfo) {
-        toast.success("Payment information updated successfully!");
+        toastManager.add({ title: "Payment information updated successfully!", type: "success" });
       }
 
       // Refresh query
       queryClient.invalidateQueries({ queryKey: ["siteMeasurementLeads"] });
+      queryClient.invalidateQueries({ queryKey: ["csp-booking-photos"] });
     },
 
     onError: (error: any) => {
-      toast.error("Something went wrong. Please try again!");
+      toastManager.add({ title: "Something went wrong. Please try again!", type: "error" });
       console.error("Error updating site measurement:", error);
     },
   });

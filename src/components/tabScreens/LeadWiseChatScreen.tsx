@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useCreateLeadChatRoom, useLeadChatRoom } from "@/hooks/useLeadChatRoom";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,6 +8,7 @@ import LeadWiseChatNavbar from "@/components/tabScreens/LeadWiseChatNavbar";
 import LeadWiseChatEmptyState from "@/components/tabScreens/LeadWiseChatEmptyState";
 import ChatInputComponent from "@/components/tabScreens/ChatInputComponent";
 import ChatMessagesComponent from "@/components/tabScreens/ChatMessagesComponent";
+import type { LeadChatMessage } from "@/api/lead-chats";
 
 interface LeadWiseChatScreenProps {
   leadId: number;
@@ -15,6 +17,7 @@ interface LeadWiseChatScreenProps {
 export default function LeadWiseChatScreen({
   leadId,
 }: LeadWiseChatScreenProps) {
+  const [replyingTo, setReplyingTo] = useState<LeadChatMessage | null>(null);
   const { data, isLoading, isError } = useLeadChatRoom(leadId);
   const queryClient = useQueryClient();
   const createChatRoomMutation = useCreateLeadChatRoom();
@@ -72,11 +75,18 @@ export default function LeadWiseChatScreen({
             leadId={leadId}
             vendorId={vendorId ?? 0}
             userId={userId ?? 0}
+            onReply={setReplyingTo}
           />
         )}
       </div>
 
-      <ChatInputComponent leadId={leadId} disabled={!data?.exists} />
+      <ChatInputComponent
+        leadId={leadId}
+        disabled={!data?.exists}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+        onSentReply={() => setReplyingTo(null)}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { useDispatch } from "react-redux";
 import { logout } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { registerPushToken } from "@/api/notifications";
+import { BroadcastPopupModal } from "@/components/notifications/BroadcastPopupModal";
 
 export default function DashboardLayout({
   children,
@@ -37,23 +38,28 @@ export default function DashboardLayout({
       if (permission !== "granted") return;
 
       try {
-        const { getToken } = await import("firebase/messaging");
-        const { messaging } = await import("@/utils/firebase");
-
-        let serviceWorkerRegistration: ServiceWorkerRegistration | undefined;
-        if ("serviceWorker" in navigator) {
-          serviceWorkerRegistration = await navigator.serviceWorker.register(
-            "/firebase-messaging-sw.js",
-            { scope: "/" }
-          );
+        if (
+          !window.isSecureContext ||
+          !("serviceWorker" in navigator) ||
+          !("PushManager" in window)
+        ) {
+          return;
         }
+
+        const { getToken } = await import("firebase/messaging");
+        const { getFirebaseMessaging } = await import("@/utils/firebase");
+        const messaging = await getFirebaseMessaging();
+        if (!messaging) return;
+
+        const serviceWorkerRegistration = await navigator.serviceWorker.register(
+          "/firebase-messaging-sw.js",
+          { scope: "/" }
+        );
 
         const token = await getToken(messaging, {
           vapidKey:
             "BAaKtj9LxyCjpNmS2R5fOZ866cQ320T1uGICWbNyvEsn0sBp26AzaXaOzMfU_b09VmstxTTIQ-Mot1QlG6g45r4",
-          ...(serviceWorkerRegistration
-            ? { serviceWorkerRegistration }
-            : {}),
+          serviceWorkerRegistration,
         });
 
         if (!token) return;
@@ -81,6 +87,18 @@ export default function DashboardLayout({
 
         localStorage.setItem(`pushToken:${token}`, token);
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : "";
+        const name = error instanceof Error ? error.name : "";
+
+        if (
+          name === "AbortError" ||
+          message.includes("push service not available") ||
+          message.includes("messaging is not supported")
+        ) {
+          return;
+        }
+
         console.error("Failed to register push token", error);
       }
     };
@@ -98,9 +116,11 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
 
-      <SidebarInset className="w-full overflow-x-hidden flex flex-col">
-        <main className="w-full">{children}</main>
+      <SidebarInset className="w-full flex flex-col min-w-0">
+        {children}
       </SidebarInset>
+
+      <BroadcastPopupModal />
     </SidebarProvider>
   );
 }

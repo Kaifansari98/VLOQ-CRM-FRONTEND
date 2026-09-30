@@ -13,7 +13,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 import {
   DropdownMenu,
@@ -36,7 +36,14 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
+  FolderOpen,
+  Zap,
 } from "lucide-react";
+
+import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 
 import {
   AlertDialog,
@@ -52,7 +59,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -77,6 +84,13 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead, useRevokeFastProductionRequest, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { useClientApprovalDetails } from "@/api/client-approval";
+import { LeadProductStructureInstance } from "@/api/leads";
+import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
+import { Lock, LockOpen } from "lucide-react";
 import {
   useChatTabFromUrl,
   useIsChatNotification,
@@ -87,6 +101,9 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+
+
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -96,7 +113,11 @@ export default function ClientApprovalLeadDetails() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
+  );
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
   );
 
   // UI States
@@ -111,9 +132,54 @@ export default function ClientApprovalLeadDetails() {
 
   // ⭐ Activity Status — ONLY ON HOLD
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
+  const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
+  const revokeFastProductionMutation = useRevokeFastProductionRequest();
+
+  const handleCancelFastProduction = (remark: string) => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor, user, or lead info",
+        type: "error",
+      });
+      return;
+    }
+    revokeFastProductionMutation.mutate(
+      {
+        leadId: leadIdNum,
+        vendorId,
+        userId,
+        remark,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Fast production status cancelled successfully!",
+            type: "success",
+          });
+          setOpenCancelFastProduction(false);
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.response?.data?.message || err?.message || "Failed to cancel fast production",
+            type: "error",
+          });
+        },
+      }
+    );
+  };
 
   const updateStatusMutation = useUpdateActivityStatus();
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
   const queryClient = useQueryClient();
+
+
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -123,58 +189,228 @@ export default function ClientApprovalLeadDetails() {
   const accountId = Number(lead?.account_id);
 
   const [activeTab, setActiveTab] = useState(
-    userType === "sales-executive" ? "todo" : "details"
+    userType === "sales-executive" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
 
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
   const is_client_approval_submitted = lead?.is_client_approval_submitted;
+
+  const { data: structureInstancesData } =
+    useLeadProductStructureInstances(leadIdNum, vendorId);
+
+  const { data: approvalDetails } =
+    useClientApprovalDetails(vendorId!, leadIdNum);
+
+  const areAllItemGroupsUploaded = useMemo(() => {
+    if (!handlesLargeScaleProjects) return true;
+
+    const rawInstances: LeadProductStructureInstance[] =
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [];
+
+    if (rawInstances.length === 0) return false;
+
+    const uniqueProductTypeIds = new Set<number>();
+    rawInstances.forEach((inst) => {
+      const typeId = inst.product_type_id || (inst as any).product_type?.id;
+      if (typeId) {
+        uniqueProductTypeIds.add(Number(typeId));
+      }
+    });
+
+    if (uniqueProductTypeIds.size === 0) return false;
+
+    for (const productTypeId of Array.from(uniqueProductTypeIds)) {
+      const hasScreenshots = approvalDetails?.screenshots?.some(
+        (s: any) => Number(s.product_type_id) === Number(productTypeId)
+      );
+
+      const hasPayment =
+        approvalDetails?.paymentInfo &&
+        Number(approvalDetails.paymentInfo.product_type_id) === Number(productTypeId);
+
+      if (!hasScreenshots && !hasPayment) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [handlesLargeScaleProjects, structureInstancesData?.data, approvalDetails]);
+
+  const isClientApprovalComplete = handlesLargeScaleProjects
+    ? Boolean(is_client_approval_submitted && areAllItemGroupsUploaded)
+    : Boolean(is_client_approval_submitted);
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
 
   // Auto-open documentation modal
   /* ---------- DEFAULT MODAL ON MOUNT ---------- */
   useEffect(() => {
-    if (isLoading || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
 
     // Auto-open only for Sales Executive
-    if (userType === "sales-executive") {
-      if (is_client_approval_submitted) {
-        setOpenRequestToTechCheckModal(true);
+    if (userType === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
+      if (handlesLargeScaleProjects) {
+        setActiveTab("details");
       } else {
-        setOpenClientApprovalModal(true);
+        if (isClientApprovalComplete) {
+          setOpenRequestToTechCheckModal(true);
+        } else {
+          setOpenClientApprovalModal(true);
+        }
+        setActiveTab("todo");
       }
-
-      setActiveTab("todo");
     }
-  }, [isLoading, isChatNotification, userType, is_client_approval_submitted]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isClientApprovalComplete, isLeadBlocked, handlesLargeScaleProjects]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err) => toast.error(err?.message || "Failed to delete lead"),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
+      },
     );
 
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
+
+
+  if (isLoading && !lead) {
     return <p className="p-6">Loading Client Approval Lead details…</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewPayment =
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
+      : canViewPaymentTab(userType));
+  const canViewSiteHistory =
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
+      : canViewSiteHistoryTab(userType));
+  const canViewChats =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
+      : true;
+  const canViewDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
+      : true;
+  const canAccessClientApprovalForm =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+        "project.client_approval.client_approval_form.enable_disable",
+      )
+      : canUploadClientApproval(userType);
+  const isCustomUser = userType?.toLowerCase() === "custom";
+  const canRequestToTechCheckAccess = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "project.client_documentation.request_to_techcheck.enable_disable",
+      )
+    : canRequestToTeckCheck(userType);
+
+  const requestToTechCheckTooltip = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !isClientApprovalComplete
+    ? handlesLargeScaleProjects
+      ? "Submit client approval for all item groups first"
+      : "Submit client approval first"
+    : !canRequestToTechCheckAccess
+    ? "Only Sales Executive can request to Tech Check"
+    : "";
 
   return (
     <>
@@ -201,59 +437,52 @@ export default function ClientApprovalLeadDetails() {
         {/* ACTION BUTTONS */}
         <div className="flex items-center space-x-2">
           {/* Tech Check */}
-          {!is_client_approval_submitted ? (
-            <CustomeTooltip
-              truncateValue={
-                <Button
-                  className="hidden lg:block"
-                  size="sm"
-                  disabled
-                  variant="secondary"
-                >
-                  Request To Tech Check
-                </Button>
-              }
-              value="Submit approval first"
-            />
-          ) : canRequestToTeckCheck(userType) ? (
-            <Button
-              size="sm"
-              className="hidden lg:block"
-              onClick={() => setOpenRequestToTechCheckModal(true)}
-            >
-              Request To Tech Check
-            </Button>
-          ) : (
-            <CustomeTooltip
-              truncateValue={
-                <Button
-                  className="hidden lg:block"
-                  size="sm"
-                  disabled
-                  variant="secondary"
-                >
-                  Request To Tech Check
-                </Button>
-              }
-              value="Only Sales Executive can request to Tech Check"
-            />
+          {!isAuditor && (
+            canRequestToTechCheckAccess &&
+            !shouldDisableBlockedActions &&
+            isClientApprovalComplete ? (
+              <Button
+                size="sm"
+                className="hidden lg:block"
+                onClick={() => setOpenRequestToTechCheckModal(true)}
+              >
+                Request To Tech Check
+              </Button>
+            ) : isCustomUser && !canRequestToTechCheckAccess ? null : (
+              <CustomeTooltip
+                value={requestToTechCheckTooltip}
+                truncateValue={
+                  <Button
+                    className="hidden lg:block"
+                    size="sm"
+                    disabled
+                    variant="secondary"
+                  >
+                    Request To Tech Check
+                  </Button>
+                }
+              />
+            )
           )}
 
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* DROPDOWN */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -272,20 +501,82 @@ export default function ClientApprovalLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {/* ⭐ ONLY MARK ON HOLD */}
-              <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
-                <Clock className="m h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className="m h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
+                  <Clock className="m h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
+                </DropdownMenuItem>
+              )}
+
+              {userType?.toLowerCase() === "super-admin" && lead?.is_fast_production === true && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenCancelFastProduction(true)}
+                  disabled={revokeFastProductionMutation.isPending || isLeadBlocked}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Fast Production
+                </DropdownMenuItem>
+              )}
+
+              {(lead?.is_fast_production === true || lead?.has_pending_fast_production_request === true) && (
+                <DropdownMenuItem
+                  onSelect={() => setFastProductionDetailsOpen(true)}
+                >
+                  <Zap className="h-4 w-4 mr-2 text-orange-500 fill-orange-500" />
+                  Fast Production Details
+                </DropdownMenuItem>
+              )}
 
               {/* CLIENT APPROVAL */}
               {!is_client_approval_submitted ? (
-                canUploadClientApproval(userType) ? (
-                  <DropdownMenuItem
-                    onClick={() => setOpenClientApprovalModal(true)}
-                  >
-                    <FileText size={20} />
-                    Client Approval
-                  </DropdownMenuItem>
+                canAccessClientApprovalForm ? (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <FileText size={20} />
+                          Client Approval
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setOpenClientApprovalModal(true)}
+                    >
+                      <FileText size={20} />
+                      Client Approval
+                    </DropdownMenuItem>
+                  )
                 ) : (
                   <CustomeTooltip
                     truncateValue={
@@ -294,58 +585,108 @@ export default function ClientApprovalLeadDetails() {
                         Client Approval
                       </DropdownMenuItem>
                     }
-                    value="Only Sales-executive access this option"
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : "Only Sales-executive access this option"
+                    }
                   />
                 )
-              ) : canRequestToTeckCheck(userType) ? (
-                <DropdownMenuItem
-                  className="lg:hidden"
-                  onClick={() => setOpenRequestToTechCheckModal(true)}
-                >
-                  <FileText size={20} />
-                  Request To Tech Check
-                </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="lg:hidden" disabled>
-                      <FileText size={20} />
-                      Request To Tech Check
-                    </DropdownMenuItem>
-                  }
-                  value="Only Sales Executive can request to Tech Check"
-                />
+              ) : null}
+
+              {!isAuditor && (
+                canRequestToTechCheckAccess &&
+                !shouldDisableBlockedActions &&
+                isClientApprovalComplete ? (
+                  <DropdownMenuItem
+                    className="lg:hidden"
+                    onClick={() => setOpenRequestToTechCheckModal(true)}
+                  >
+                    <FileText size={20} />
+                    Request To Tech Check
+                  </DropdownMenuItem>
+                ) : isCustomUser && !canRequestToTechCheckAccess ? null : (
+                  <CustomeTooltip
+                    value={requestToTechCheckTooltip}
+                    truncateValue={
+                      <DropdownMenuItem className="lg:hidden" disabled>
+                        <FileText size={20} />
+                        Request To Tech Check
+                      </DropdownMenuItem>
+                    }
+                  />
+                )
               )}
 
               {/* EDIT */}
 
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* REASSIGN */}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* DELETE */}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -355,23 +696,25 @@ export default function ClientApprovalLeadDetails() {
         onValueChange={(val) => {
           // When user selects "todo"
           if (val === "todo") {
-            // Save previous tab (common in both functions)
             setPreviousTab(activeTab);
 
-            // First logic: access privilege + tech-check flow
-            if (canRequestToTeckCheck?.(userType)) {
-              if (!is_client_approval_submitted) {
+            if (handlesLargeScaleProjects) {
+              // Large Scale Project: Open clientApproval tab in LeadDetailsUtil directly on page (no modal)
+              setActiveTab("todo");
+              return;
+            }
+
+            // Normal Project (handlesLargeScaleProjects is false): Open modal!
+            if (canRequestToTechCheckAccess) {
+              if (!isClientApprovalComplete) {
                 setOpenClientApprovalModal(true);
               } else {
                 setOpenRequestToTechCheckModal(true);
               }
             } else {
-              // Second logic: open client document modal
               setOpenClientApprovalModal(true);
             }
 
-            // Keep tab on "todo"
-            setActiveTab("todo");
             return;
           }
 
@@ -387,16 +730,28 @@ export default function ClientApprovalLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canUploadClientApproval(userType) ? (
-              <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-            ) : (
+            {!isAuditor && canAccessClientApprovalForm ? (
+              shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <TabsTrigger value="" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                />
+              ) : (
+                <TabsTrigger value="todo">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              )
+            ) : !isAuditor && (
               <CustomeTooltip
                 truncateValue={
                   <TabsTrigger value="" disabled>
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    <PencilLine size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
                 }
@@ -406,37 +761,65 @@ export default function ClientApprovalLeadDetails() {
 
             {canViewSiteHistory && (
               <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
+                <History size={16} className="mr-1 opacity-60" />
+                History
               </TabsTrigger>
             )}
 
             {canViewPayment && (
               <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
+                <IndianRupee size={16} className="mr-1 opacity-60" />
+                Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
+
+            {canViewDocuments && (
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>
+            )}
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        <TabsContent value="details">
+        <TabsContent value="todo">
           <main className="flex-1 h-fit">
             <LeadDetailsUtil
               status={
-                is_client_approval_submitted
+                handlesLargeScaleProjects || is_client_approval_submitted
                   ? "clientApproval"
                   : "clientdocumentation"
               }
               leadId={leadIdNum}
               accountId={accountId}
               defaultTab={
-                is_client_approval_submitted
+                handlesLargeScaleProjects || is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+            />
+          </main>
+        </TabsContent>
+
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            <LeadDetailsUtil
+              status={
+                handlesLargeScaleProjects || is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultTab={
+                handlesLargeScaleProjects || is_client_approval_submitted
                   ? "clientApproval"
                   : "clientdocumentation"
               }
@@ -456,9 +839,21 @@ export default function ClientApprovalLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
+
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="clientApproval"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* MODALS */}
@@ -496,6 +891,7 @@ export default function ClientApprovalLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 
@@ -522,10 +918,16 @@ export default function ClientApprovalLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         loading={updateStatusMutation.isPending}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info missing!");
+            toastManager.add({
+              title: "Vendor or User info missing!",
+              type: "error",
+            });
             return;
           }
 
@@ -540,22 +942,79 @@ export default function ClientApprovalLeadDetails() {
                 remark,
                 createdBy: userId,
                 dueDate,
+                ...(selection ?? {}),
               },
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked On Hold");
-                setActivityModalOpen(false);
-
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
+                toastManager.add({
+                  title: "Lead marked On Hold",
+                  type: "success",
                 });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) =>
-                toast.error(err?.message || "Failed to update status"),
-            }
+                toastManager.add({
+                  title: err?.message || "Failed to update status",
+                  type: "error",
+                }),
+            },
           );
         }}
+      />
+
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable lead actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CancelFastProductionModal
+        open={openCancelFastProduction}
+        onOpenChange={setOpenCancelFastProduction}
+        onSubmit={handleCancelFastProduction}
+        loading={revokeFastProductionMutation.isPending}
+      />
+
+      <FastProductionDetailsModal
+        open={fastProductionDetailsOpen}
+        onOpenChange={setFastProductionDetailsOpen}
+        leadId={leadIdNum}
       />
     </>
   );

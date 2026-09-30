@@ -1,0 +1,307 @@
+import {
+  applyConfigurationApi,
+  assignUsersToMachineApi,
+  createMachine,
+  createTrackTraceProjectApi,
+  fetchVendorLeads,
+  getAssignedUsersByMachineApi,
+  getMachinesByVendor,
+  postVendorLeads,
+  updateMachine,
+  searchTrackTraceLeadsApi,
+  getTrackTraceProjectApi,
+  updateTrackTraceProjectApi,
+  downloadMultiLocationTemplateApi,
+  getProjectLocationsApi,
+  importProjectLocationsExcelApi,
+  saveProjectLocationsApi,
+
+} from "@/api/trackAndTrace/track-trace-master";
+import {
+  ApplyConfigurationPayload,
+  CreateMachinePayload,
+  CreateTrackTraceProjectRequest,
+  CreateTrackTraceProjectResponse,
+  MachineData,
+  VendorLeadsPostPayload,
+  VendorLeadsResponse,
+  TrackTraceLeadOption,
+  SaveProjectLocationsRequest,
+} from "@/types/track-trace";
+
+
+import { getTrackTraceVendorConfigApi } from "@/api/trackAndTrace/track-trace-master";
+import { TrackTraceVendorConfig } from "@/types/track-trace";
+
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+
+export const useSearchTrackTraceLeads = (
+  vendorId?: number,
+  search = "",
+  enabled = true
+) => {
+  return useQuery<TrackTraceLeadOption[]>({
+    queryKey: ["track-trace-leads", vendorId, search],
+    queryFn: () => searchTrackTraceLeadsApi(vendorId!, search),
+    enabled: !!vendorId && enabled,
+    staleTime: 1000 * 60,
+    retry: 1,
+  });
+};
+
+
+export const useMachinesByVendor = (vendorId: number) => {
+  return useQuery({
+    queryFn: async (): Promise<MachineData[]> => {
+      const response = await getMachinesByVendor(vendorId);
+      return response.data;
+    },
+    queryKey: ["machines", vendorId],
+    enabled: !!vendorId, // only run if vendorId exists
+    staleTime: 1000 * 60 * 5, // 5 minutes caching
+    retry: 1,
+  });
+};
+
+export const useCreateMachine = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<MachineData, Error, CreateMachinePayload>({
+    mutationFn: createMachine,
+    onSuccess: () => {
+      // invalidate machines list
+      queryClient.invalidateQueries({ queryKey: ["machines"] });
+    },
+  });
+};
+
+export const useUpdateMachine = (vendorId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMachine,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["machines", vendorId],
+      });
+    },
+  });
+};
+
+export const useConfigureVendorLeads = (token: string, projectId: string) => {
+  return useQuery({
+    queryKey: ["configure-leads", token, projectId],
+    queryFn: () => fetchVendorLeads(token, projectId),
+    enabled: !!token && !!projectId,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+    retry: 1,
+  });
+};
+
+export const useApplyConfiguration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ApplyConfigurationPayload) =>
+      applyConfigurationApi(payload),
+
+    onSuccess: () => {
+      // refresh leads list automatically
+      queryClient.invalidateQueries({
+        queryKey: ["vendor-leads"],
+      });
+    },
+
+    onError: (error: any) => {
+      console.error("Apply configuration failed:", error);
+    },
+  });
+};
+
+// api/universalstage.ts or wherever your hook is
+
+export const useVendorLeads = (
+  token: string,
+  projectId: string,
+  payload: VendorLeadsPostPayload,
+  options?: { enabled?: boolean }, // ✅ Add options parameter
+) => {
+  return useQuery<VendorLeadsResponse>({
+    queryKey: ["vendor-leads", token, projectId, payload],
+    queryFn: () => postVendorLeads(token, projectId, payload),
+    enabled: options?.enabled ?? (!!token && !!projectId), // ✅ Use options
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useCreateTrackTraceProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CreateTrackTraceProjectResponse,
+    Error,
+    CreateTrackTraceProjectRequest
+  >({
+    mutationFn: createTrackTraceProjectApi,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["track-trace-projects"] });
+    },
+
+    onError: (error: Error) => {
+      console.error("Create Project Failed:", error.message);
+    },
+  });
+};
+
+export const useAssignUsersToMachine = () => {
+  return useMutation({
+    mutationFn: assignUsersToMachineApi,
+  });
+};
+
+type AssignedUsersResponse = {
+  users: number[];
+  count: number;
+};
+
+export const useAssignedUsersByMachine = (machineId?: number) => {
+  return useQuery<AssignedUsersResponse>({
+    queryKey: ["assigned-users", machineId],
+
+    queryFn: () => getAssignedUsersByMachineApi(machineId!),
+
+    enabled: !!machineId,
+
+    staleTime: 5 * 60 * 1000,
+
+    refetchOnWindowFocus: false,
+  });
+};
+
+
+export const useTrackTraceVendorConfig = (vendorId?: number) => {
+  return useQuery<TrackTraceVendorConfig>({
+    queryKey: ["track-trace-vendor-config", vendorId],
+    queryFn: () => getTrackTraceVendorConfigApi(vendorId!),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+};
+
+export const useUpdateTrackTraceProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CreateTrackTraceProjectResponse,
+    Error,
+    {
+      uniqueProjectId: string;
+      payload: CreateTrackTraceProjectRequest;
+    }
+  >({
+    mutationFn: ({ uniqueProjectId, payload }) =>
+      updateTrackTraceProjectApi(uniqueProjectId, payload),
+
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-projects"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-project", variables.uniqueProjectId],
+      });
+    },
+
+    onError: (error: Error) => {
+      console.error("Update Project Failed:", error.message);
+    },
+  });
+};
+
+
+export const useTrackTraceProject = (uniqueProjectId?: string) => {
+  return useQuery({
+    queryKey: ["track-trace-project", uniqueProjectId],
+
+    queryFn: () => getTrackTraceProjectApi(uniqueProjectId!),
+
+    enabled: !!uniqueProjectId,
+
+    staleTime: 1000 * 60 * 2,
+
+    refetchOnMount: "always",
+
+    retry: 1,
+  });
+};
+
+export const useDownloadMultiLocationTemplate = () => {
+  return useMutation({
+    mutationFn: ({
+      uniqueProjectId,
+      vendorId,
+    }: {
+      uniqueProjectId: string;
+      vendorId: number;
+    }) => downloadMultiLocationTemplateApi(uniqueProjectId, vendorId),
+  });
+};
+
+export const useProjectLocations = (
+  uniqueProjectId?: string,
+  vendorId?: number
+) => {
+  return useQuery({
+    queryKey: ["track-trace-project-locations", uniqueProjectId, vendorId],
+    queryFn: () => getProjectLocationsApi(uniqueProjectId!, vendorId!),
+    enabled: !!uniqueProjectId && !!vendorId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useSaveProjectLocations = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uniqueProjectId,
+      payload,
+    }: {
+      uniqueProjectId: string;
+      payload: SaveProjectLocationsRequest;
+    }) => saveProjectLocationsApi(uniqueProjectId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-project-locations", variables.uniqueProjectId],
+      });
+    },
+  });
+};
+
+export const useImportProjectLocationsExcel = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uniqueProjectId,
+      vendorId,
+      file,
+    }: {
+      uniqueProjectId: string;
+      vendorId: number;
+      file: File;
+    }) => importProjectLocationsExcelApi(uniqueProjectId, vendorId, file),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-project-locations", variables.uniqueProjectId],
+      });
+    },
+  });
+};

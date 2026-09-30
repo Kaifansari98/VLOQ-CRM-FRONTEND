@@ -25,6 +25,7 @@ export interface Vendor {
   status: string;
   logo: string;
   time_zone: string;
+  is_this_vendor_is_custom_usertype_only?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -305,13 +306,29 @@ export interface Meeting {
   lead_id: number;
   account_id: number;
   vendor_id: number;
+  meeting_type_id?: number | null;
   date: string;
+  meeting_start_time?: string | null;
+  meeting_end_time?: string | null;
   desc: string;
   created_by: number;
   updated_by: number | null;
   created_at: string;
   updated_at: string | null;
+  meetingType?: {
+    id: number;
+    vendor_id: number;
+    type: string;
+    created_at: string;
+  } | null;
   designMeetingDocsMapping: DesignMeetingDocsMapping[];
+}
+
+export interface MeetingTypeMaster {
+  id: number;
+  vendor_id: number;
+  type: string;
+  created_at: string;
 }
 
 // API Response interface
@@ -351,6 +368,12 @@ export interface DesignsDocument {
   account_id: number;
   lead_id: number;
   vendor_id: number;
+  product_type_id?: number | null;
+  product_structure_instance_id?: number | null;
+  specification?: {
+    id: number;
+    name: string;
+  } | null;
   signedUrl: string;
   documentType: DocumentType;
   createdBy: User;
@@ -383,6 +406,7 @@ export interface DesignSelection {
   lead_id: number;
   account_id: number;
   vendor_id: number;
+  product_structure_instance_id?: number | null;
   type: string;
   desc: string;
   created_by: number;

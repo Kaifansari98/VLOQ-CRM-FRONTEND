@@ -8,12 +8,16 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useCheckFastProductionStatus,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +43,14 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  User2,
+  Layers3,
+  PencilLine,
+  History,
+  IndianRupee,
+  Download,
+  Loader2,
+  FolderOpen,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -55,7 +67,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -95,17 +107,48 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const effectiveUserType = userType;
+  const isAuditor = effectiveUserType?.trim().toLowerCase() === "auditor";
+
+  const canAccessTechCheckWorkflow =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.tech_check_workflow_action",
+        )
+      : canTechCheck(effectiveUserType);
+  const canAccessUploadRevisedDocs =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.upload_revised_docs_action",
+        )
+      : canUploadRevisedClientDocumentationFiles(effectiveUserType);
+  const canAccessMoveToOrderLogin =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.move_to_order_login_action",
+        )
+      : canMoveToOrderLogin(effectiveUserType);
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
     useApproveTechCheck();
@@ -131,175 +174,707 @@ export default function ClientApprovalLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
-  // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
-    if (isChatNotification) return;
-    if (
-      canTechCheck(userType) &&
-      userType?.toLowerCase() !== "admin" &&
-      userType?.toLowerCase() !== "super-admin"
-    ) {
-      setOpenRejectDocsModal(true);
+    if (instanceId) {
+      console.log("instance_id from URL:", instanceId);
     }
-  }, [isChatNotification, userType]);
+  }, [instanceId]);
 
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [openRemarkModal, setOpenRemarkModal] = useState(false);
   const [remark, setRemark] = useState("");
   const [openFinalRejectConfirm, setOpenFinalRejectConfirm] = useState(false);
   const [openApproveConfirmModal, setOpenApproveConfirmModal] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const { mutate: approveMultipleDocsMutate, isPending: approvingDocs } =
     useApproveMultipleDocuments();
 
-  const { data: clientDocsData } = useClientDocumentationDetails(
-    vendorId!,
-    leadIdNum
+  const handleDocDownload = async (e: React.MouseEvent, doc: any) => {
+    e.stopPropagation();
+    if (downloadingId === doc?.id) return;
+
+    const docUrl = doc?.signed_url ?? doc?.signedUrl;
+    const originalName = doc?.doc_og_name || "download";
+
+    if (!docUrl) {
+      toastManager.add({
+        title: "No download URL available for this document.",
+        type: "error",
+      });
+      return;
+    }
+
+    setDownloadingId(doc.id);
+    try {
+      const response = await fetch(docUrl);
+      if (!response.ok) throw new Error("Download failed");
+
+      const disposition = response.headers.get("content-disposition") || "";
+      const filenameFromHeader = (() => {
+        const match =
+          disposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+          disposition.match(/filename="?([^"]+)"?/i);
+        return match ? decodeURIComponent(match[1]) : "";
+      })();
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filenameFromHeader || originalName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+      // Fallback: try direct download without opening a new tab
+      const a = document.createElement("a");
+      a.href = docUrl;
+      a.download = originalName;
+      a.rel = "noopener noreferrer";
+      a.target = "_self";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
+
+  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
+  const franchiseId = useAppSelector((state) => state.auth.franchise_id);
+
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    (lead as any)?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId,
   );
 
-  const pptDocs = clientDocsData?.documents?.ppt ?? [];
-  const pythaDocs = clientDocsData?.documents?.pytha ?? [];
+  const largeScaleGroups = useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+
+    const rawInstances: any[] = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+
+    const map = new Map<
+      number,
+      {
+        productTypeId: number;
+        title: string;
+        subtitle: string;
+      }
+    >();
+
+    rawInstances.forEach((inst: any) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+
+      if (typeId && !map.has(Number(typeId))) {
+        const title =
+          inst.product_type?.name ||
+          inst.productType?.type ||
+          inst.productItemCode?.productStructure?.productType?.type ||
+          inst.title ||
+          "Item Group";
+
+        const subtitle =
+          inst.code ||
+          inst.productItemCode?.item_code ||
+          inst.description ||
+          title;
+
+        map.set(Number(typeId), {
+          productTypeId: Number(typeId),
+          title,
+          subtitle,
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [handlesLargeScaleProjects, structureInstancesData?.data]);
+
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    if (handlesLargeScaleProjects && largeScaleGroups.length > 0) {
+      if (
+        !selectedProductTypeId ||
+        !largeScaleGroups.some((g) => g.productTypeId === selectedProductTypeId)
+      ) {
+        setSelectedProductTypeId(largeScaleGroups[0].productTypeId);
+      }
+    }
+  }, [handlesLargeScaleProjects, largeScaleGroups, selectedProductTypeId]);
+
+  const { data: clientDocsData } = useClientDocumentationDetails(
+    vendorId!,
+    leadIdNum,
+    userId!,
+  );
+
+  const allPptDocs = clientDocsData?.documents?.ppt ?? [];
+  const allPythaDocs = clientDocsData?.documents?.pytha ?? [];
+  const allDocs = [...allPptDocs, ...allPythaDocs];
+
+  const groupedDocs = clientDocsData?.documents_by_instance ?? [];
+  const scopedGroup = validInstanceId
+    ? groupedDocs.find((group: any) => group?.instance_id === validInstanceId)
+    : null;
+
+  const instanceToProductTypeMap = useMemo(() => {
+    const map = new Map<number, number>();
+    const rawInstances: any[] = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+    rawInstances.forEach((inst) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+      if (inst.id && typeId) {
+        map.set(Number(inst.id), Number(typeId));
+      }
+    });
+    return map;
+  }, [structureInstancesData?.data]);
+
+  const pptDocs = handlesLargeScaleProjects
+    ? selectedProductTypeId
+      ? allPptDocs.filter((doc: any) => {
+          if (
+            doc.product_type_id &&
+            Number(doc.product_type_id) === Number(selectedProductTypeId)
+          ) {
+            return true;
+          }
+          if (doc.product_structure_instance_id) {
+            const instPTypeId = instanceToProductTypeMap.get(
+              Number(doc.product_structure_instance_id),
+            );
+            if (
+              instPTypeId &&
+              Number(instPTypeId) === Number(selectedProductTypeId)
+            ) {
+              return true;
+            }
+          }
+          return !doc.product_type_id && !doc.product_structure_instance_id;
+        })
+      : allPptDocs
+    : validInstanceId && scopedGroup
+      ? (scopedGroup?.documents?.ppt ?? [])
+      : validInstanceId
+        ? allPptDocs.filter(
+            (doc: any) =>
+              doc?.product_structure_instance_id === validInstanceId,
+          )
+        : allPptDocs;
+
+  const pythaDocs = handlesLargeScaleProjects
+    ? selectedProductTypeId
+      ? allPythaDocs.filter((doc: any) => {
+          if (
+            doc.product_type_id &&
+            Number(doc.product_type_id) === Number(selectedProductTypeId)
+          ) {
+            return true;
+          }
+          if (doc.product_structure_instance_id) {
+            const instPTypeId = instanceToProductTypeMap.get(
+              Number(doc.product_structure_instance_id),
+            );
+            if (
+              instPTypeId &&
+              Number(instPTypeId) === Number(selectedProductTypeId)
+            ) {
+              return true;
+            }
+          }
+          return !doc.product_type_id && !doc.product_structure_instance_id;
+        })
+      : allPythaDocs
+    : validInstanceId && scopedGroup
+      ? (scopedGroup?.documents?.pytha ?? [])
+      : validInstanceId
+        ? allPythaDocs.filter(
+            (doc: any) =>
+              doc?.product_structure_instance_id === validInstanceId,
+          )
+        : allPythaDocs;
 
   const docs = [...pptDocs, ...pythaDocs];
 
   const hasRejectedDocs = docs.some((d) => d.tech_check_status === "REJECTED");
 
-  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-  const lead = data?.data?.lead;
+  const isFastProductionLead =
+    lead?.is_fast_production === true || lead?.fast_production_request === true;
+
+  const { data: fastProductionStatusData } = useCheckFastProductionStatus(
+    vendorId,
+    leadIdNum,
+    franchiseId,
+    isFastProductionLead,
+  );
+
+  const isFastProductionApproved = fastProductionStatusData?.data === true;
 
   const no_of_client_documents_initially_submitted =
     lead?.no_of_client_documents_initially_submitted;
+  const instanceDocCount = validInstanceId
+    ? clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId,
+      )?.no_of_client_documents_initially_submitted
+    : undefined;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const totalInstanceCount =
+    clientDocsData?.product_structure_instances?.length ?? 0;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? clientDocsData?.product_structure_instances?.find(
+          (instance: any) => instance.id === validInstanceId,
+        )?.quantity_index
+      : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
+  const instanceName = validInstanceId
+    ? (clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId,
+      )?.title ?? "")
+    : "";
 
   const accountId = Number(lead?.account_id);
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isAccessControlLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending || unblockLeadMutation.isPending;
+
+  // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
+  useEffect(() => {
+    if (isLoading || isAccessControlLoading || !lead) return;
+    if (isChatNotification) return;
+    if (
+      canAccessTechCheckWorkflow &&
+      !isLeadBlocked &&
+      !lead.is_draft &&
+      effectiveUserType?.toLowerCase() !== "admin" &&
+      effectiveUserType?.toLowerCase() !== "super-admin"
+    ) {
+      setOpenRejectDocsModal(true);
+    }
+  }, [
+    isChatNotification,
+    effectiveUserType,
+    canAccessTechCheckWorkflow,
+    isLeadBlocked,
+    lead,
+    isLoading,
+    isAccessControlLoading,
+  ]);
+
+  useEffect(() => {
+    setSelectedDocs([]);
+  }, [validInstanceId]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err) => toast.error(err?.message || "Failed to delete lead"),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
+      },
     );
 
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading client approval lead details...</p>;
   }
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  if (!lead) {
+    return (
+      <p className="p-6">Lead details not found or you do not have access.</p>
+    );
+  }
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
+
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment =
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+      : canViewPaymentTab(effectiveUserType ?? ""));
+  const canViewSiteHistory =
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(effectiveUserType ?? ""));
+  const canViewChats =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
+  const canViewDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith(
+            "leads.open_leads.details_of_lead.documents_section.",
+          ),
+        )
+      : true;
+
+  const moveScope = validInstanceId
+    ? {
+        ppt: pptDocs,
+        pytha: pythaDocs,
+        docs,
+      }
+    : {
+        ppt: allPptDocs,
+        pytha: allPythaDocs,
+        docs: allDocs,
+      };
+
+  const approvedPPTCount = moveScope.ppt.filter(
+    (d) => d.tech_check_status === "APPROVED",
+  ).length;
+  const approvedPythaCount = moveScope.pytha.filter(
+    (d) => d.tech_check_status === "APPROVED",
+  ).length;
+  const approvedCount = approvedPPTCount + approvedPythaCount;
+  const hasPendingFastProductionRequest =
+    lead?.has_pending_fast_production_request === true;
+  const pendingCount = handlesLargeScaleProjects
+    ? allDocs.filter(
+        (d) =>
+          !d.tech_check_status ||
+          d.tech_check_status === "PENDING" ||
+          d.tech_check_status === "REVISED",
+      ).length
+    : moveScope.docs.filter(
+        (d) =>
+          !d.tech_check_status ||
+          d.tech_check_status === "PENDING" ||
+          d.tech_check_status === "REVISED",
+      ).length;
+
+  const rawRequiredApprovalCount = validInstanceId
+    ? (instanceDocCount ??
+      no_of_client_documents_initially_submitted ??
+      moveScope.docs.length)
+    : (no_of_client_documents_initially_submitted ?? moveScope.docs.length);
+
+  const requiredApprovalCount =
+    moveScope.docs.length > 0
+      ? Math.min(rawRequiredApprovalCount, moveScope.docs.length)
+      : rawRequiredApprovalCount;
+
+  const incompleteLargeScaleGroup = (() => {
+    if (!handlesLargeScaleProjects || largeScaleGroups.length === 0) return null;
+
+    for (const group of largeScaleGroups) {
+      const groupDocs = allDocs.filter((doc: any) => {
+        const typeId =
+          doc.product_type_id ||
+          doc.productType?.id ||
+          doc.product_type?.id;
+
+        if (typeId && Number(typeId) === Number(group.productTypeId)) {
+          return true;
+        }
+
+        const instanceId =
+          doc.product_structure_instance_id ||
+          doc.productStructureInstance?.id ||
+          doc.instance_id;
+
+        if (instanceId) {
+          const instPTypeId = instanceToProductTypeMap.get(Number(instanceId));
+          if (instPTypeId && Number(instPTypeId) === Number(group.productTypeId)) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      if (groupDocs.length > 0) {
+        const groupApprovedPPT = groupDocs.filter(
+          (d: any) =>
+            d.tech_check_status === "APPROVED" &&
+            (d.documentType?.tag === "Type 11" ||
+              allPptDocs.some((p: any) => p.id === d.id)),
+        ).length;
+
+        const groupApprovedPytha = groupDocs.filter(
+          (d: any) =>
+            d.tech_check_status === "APPROVED" &&
+            (d.documentType?.tag === "Type 12" ||
+              allPythaDocs.some((p: any) => p.id === d.id)),
+        ).length;
+
+        const groupPending = groupDocs.filter(
+          (d: any) =>
+            !d.tech_check_status ||
+            d.tech_check_status === "PENDING" ||
+            d.tech_check_status === "REVISED",
+        ).length;
+
+        if (groupPending > 0) {
+          return {
+            group,
+            reason: `Documents for group "${group.title}" are still pending review. Please review all groups before moving to Order Login.`,
+          };
+        }
+
+        if (groupApprovedPPT === 0) {
+          return {
+            group,
+            reason: `Group "${group.title}" must have at least one approved PPT file before moving to Order Login.`,
+          };
+        }
+
+        if (groupApprovedPytha === 0) {
+          return {
+            group,
+            reason: `Group "${group.title}" must have at least one approved Pytha file before moving to Order Login.`,
+          };
+        }
+      }
+    }
+
+    return null;
+  })();
+
+  const isMoveToOrderLoginDisabled =
+    hasPendingFastProductionRequest ||
+    (isFastProductionLead && !isFastProductionApproved) ||
+    (handlesLargeScaleProjects
+      ? Boolean(incompleteLargeScaleGroup)
+      : pendingCount > 0 ||
+        approvedPPTCount === 0 ||
+        approvedPythaCount === 0 ||
+        (requiredApprovalCount > 0 && approvedCount < requiredApprovalCount));
+
+  const moveToOrderLoginTooltipMsg = (() => {
+    if (hasPendingFastProductionRequest) {
+      return "Fast Production approval is pending.";
+    }
+    if (isFastProductionLead && !isFastProductionApproved) {
+      return "Please wait for the Fast Production Request to be approved or rejected before moving to Order Login.";
+    }
+    if (handlesLargeScaleProjects && incompleteLargeScaleGroup) {
+      return incompleteLargeScaleGroup.reason;
+    }
+    if (requiredApprovalCount && approvedCount < requiredApprovalCount) {
+      return effectiveUserType === "sales-executive"
+        ? "Once Tech Check is completed, then only lead can be move to Order Login."
+        : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
+    }
+    if (approvedPPTCount === 0) {
+      return "At least one PPT file must be approved before moving to Order Login.";
+    }
+    if (approvedPythaCount === 0) {
+      return "At least one Pytha file must be approved before moving to Order Login.";
+    }
+    if (pendingCount > 0) {
+      return `You still have ${pendingCount} pending document${
+        pendingCount > 1 ? "s" : ""
+      }. Please review all before proceeding.`;
+    }
+    return "";
+  })();
 
   return (
     <>
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
+      <header className="flex shrink-0 flex-col gap-2 px-4 py-2 border-b md:h-16 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {displayLeadCode ? (
+                      <>
+                        {/* Dot + Lead Code */}
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-primary">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          {displayLeadCode}
+                        </span>
+
+                        {clientName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">|</span>
+
+                            {/* Client Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-sm text-foreground">
+                              <User2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              {clientName}
+                            </span>
+                          </>
+                        )}
+
+                        {instanceName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">-</span>
+
+                            {/* Instance Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-xs text-muted-foreground">
+                              <Layers3 className="w-3 h-3" />
+                              {instanceName}
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Loading…
+                      </span>
+                    )}
+                  </div>
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
-
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
           <div className="hidden lg:flex">
-            {canMoveToOrderLogin(userType) &&
+            {canAccessMoveToOrderLogin &&
               (() => {
-                const approvedPPT = pptDocs.filter(
-                  (d) => d.tech_check_status === "APPROVED"
-                ).length;
-
-                const approvedPytha = pythaDocs.filter(
-                  (d) => d.tech_check_status === "APPROVED"
-                ).length;
-
-                const approvedCount = approvedPPT + approvedPytha;
-
-                const pendingCount = docs.filter(
-                  (d) =>
-                    !d.tech_check_status ||
-                    d.tech_check_status === "PENDING" ||
-                    d.tech_check_status === "REVISED"
-                ).length;
-
-                // Disabled if:
-                // 1. No approved docs
-                // 2. Still some pending docs
-                // 3. No PPT approved
-                // 4. No Pytha approved
-                const isDisabled =
-                  approvedCount <
-                    (no_of_client_documents_initially_submitted || 0) ||
-                  pendingCount > 0 ||
-                  approvedPPT === 0 ||
-                  approvedPytha === 0;
-
-                if (isDisabled) {
-                  let tooltipMsg = "";
-
-                  if (
-                    no_of_client_documents_initially_submitted &&
-                    approvedCount < no_of_client_documents_initially_submitted
-                  ) {
-                    tooltipMsg =
-                      userType === "sales-executive"
-                        ? `Once Tech Check is completed, then only lead can be move to Order Login.`
-                        : `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                  } else if (approvedPPT === 0) {
-                    tooltipMsg =
-                      "At least one PPT file must be approved before moving to Order Login.";
-                  } else if (approvedPytha === 0) {
-                    tooltipMsg =
-                      "At least one Pytha file must be approved before moving to Order Login.";
-                  } else if (pendingCount > 0) {
-                    tooltipMsg = `You still have ${pendingCount} pending document${
-                      pendingCount > 1 ? "s" : ""
-                    }. Please review all before proceeding.`;
-                  }
-
+                // 🔒 Lead Blocked
+                if (shouldDisableBlockedActions) {
                   return (
                     <CustomeTooltip
+                      value={blockedTooltip}
                       truncateValue={
-                        <Button
-                          disabled
-                          className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
-                        >
-                          <CircleCheckBig size={16} />
-                          Move To Order Login
-                        </Button>
+                        <span>
+                          <Button
+                            disabled
+                            className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                          >
+                            <CircleCheckBig size={16} />
+                            Move To Order Login
+                          </Button>
+                        </span>
                       }
-                      value={tooltipMsg}
+                    />
+                  );
+                }
+
+                // Existing Logic
+                if (isMoveToOrderLoginDisabled) {
+                  return (
+                    <CustomeTooltip
+                      value={moveToOrderLoginTooltipMsg}
+                      truncateValue={
+                        <span>
+                          <Button
+                            disabled
+                            className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                          >
+                            <CircleCheckBig size={16} />
+                            Move To Order Login
+                          </Button>
+                        </span>
+                      }
                     />
                   );
                 }
@@ -316,142 +891,186 @@ export default function ClientApprovalLeadDetails() {
                 );
               })()}
           </div>
-          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
+          {!isAuditor && (
+            <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
+          )}
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="md:hidden"
-                onClick={() => setAssignOpen(true)}
-              >
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="md:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
                 </DropdownMenuItem>
-              )}
 
-              {canMoveToOrderLogin(userType) &&
-                (() => {
-                  const approvedPPT = pptDocs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
+                {canEdit &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <SquarePen size={20} />
+                          Edit
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
+                    </DropdownMenuItem>
+                  ))}
 
-                  const approvedPytha = pythaDocs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
+                {canAccessMoveToOrderLogin &&
+                  (() => {
+                    // Lead block handling added for DropdownMenu action
+                    if (shouldDisableBlockedActions) {
+                      return (
+                        <CustomeTooltip
+                          value={blockedTooltip}
+                          truncateValue={
+                            <DropdownMenuItem disabled>
+                              <CircleCheckBig size={16} />
+                              Move To Order Login
+                            </DropdownMenuItem>
+                          }
+                        />
+                      );
+                    }
 
-                  const approvedCount = approvedPPT + approvedPytha;
-
-                  const pendingCount = docs.filter(
-                    (d) =>
-                      !d.tech_check_status ||
-                      d.tech_check_status === "PENDING" ||
-                      d.tech_check_status === "REVISED"
-                  ).length;
-
-                  // Disabled if:
-                  // 1. No approved docs
-                  // 2. Still some pending docs
-                  // 3. No PPT approved
-                  // 4. No Pytha approved
-                  const isDisabled =
-                    approvedCount <
-                      (no_of_client_documents_initially_submitted || 0) ||
-                    pendingCount > 0 ||
-                    approvedPPT === 0 ||
-                    approvedPytha === 0;
-
-                  if (isDisabled) {
-                    let tooltipMsg = "";
-
-                    if (
-                      no_of_client_documents_initially_submitted &&
-                      approvedCount < no_of_client_documents_initially_submitted
-                    ) {
-                      tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                    } else if (approvedPPT === 0) {
-                      tooltipMsg =
-                        "At least one PPT file must be approved before moving to Order Login.";
-                    } else if (approvedPytha === 0) {
-                      tooltipMsg =
-                        "At least one Pytha file must be approved before moving to Order Login.";
-                    } else if (pendingCount > 0) {
-                      tooltipMsg = `You still have ${pendingCount} pending document${
-                        pendingCount > 1 ? "s" : ""
-                      }. Please review all before proceeding.`;
+                    if (isMoveToOrderLoginDisabled) {
+                      return (
+                        <CustomeTooltip
+                          truncateValue={
+                            <DropdownMenuItem disabled>
+                              <CircleCheckBig size={16} />
+                              Move To Order Login
+                            </DropdownMenuItem>
+                          }
+                          value={moveToOrderLoginTooltipMsg}
+                        />
+                      );
                     }
 
                     return (
+                      <DropdownMenuItem
+                        onClick={() => setOpenOrderLoginModal(true)}
+                      >
+                        <CircleCheckBig size={16} />
+                        Move To Order Login
+                      </DropdownMenuItem>
+                    );
+                  })()}
+
+                {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
+                {canViewThreeVerticalDocsOptionInTechCheck(effectiveUserType) &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Clock className=" h-4 w-4" />
+                          Mark On Hold
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("onHold");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <Clock className=" h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  ))}
+
+                {userType?.toLowerCase() === "super-admin" && (
+                  <DropdownMenuItem
+                    onSelect={() => setOpenBlockConfirm(true)}
+                    disabled={isBlockActionPending}
+                  >
+                    {isLeadBlocked ? (
+                      <LockOpen className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+
+                    {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
+                  </DropdownMenuItem>
+                )}
+                {canReassign &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  ))}
+
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
                       <CustomeTooltip
+                        value={blockedTooltip}
                         truncateValue={
                           <DropdownMenuItem disabled>
-                            <CircleCheckBig size={16} />
-                            Move To Order Login
+                            <XCircle size={20} className="text-red-500" />
+                            Delete
                           </DropdownMenuItem>
                         }
-                        value={tooltipMsg}
                       />
-                    );
-                  }
-
-                  return (
-                    <DropdownMenuItem
-                      onClick={() => setOpenOrderLoginModal(true)}
-                    >
-                      <CircleCheckBig size={16} />
-                      Move To Order Login
-                    </DropdownMenuItem>
-                  );
-                })()}
-
-              {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
-              {canViewThreeVerticalDocsOptionInTechCheck(userType) && (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
-                >
-                  <Clock className=" h-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
-              )}
-
-              {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-              )}
-
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    ) : (
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
       {/* Tabs */}
@@ -459,8 +1078,11 @@ export default function ClientApprovalLeadDetails() {
         value={activeTab}
         onValueChange={(val) => {
           if (val === "todo") {
-            if (!canTechCheck(userType)) {
-              toast.error("You don’t have permission to access To-Do Tasks");
+            if (!canAccessTechCheckWorkflow) {
+              toastManager.add({
+                title: "You don’t have permission to access To-Do Tasks",
+                type: "error",
+              });
               return; // 🚫 block unauthorized users
             }
 
@@ -473,89 +1095,144 @@ export default function ClientApprovalLeadDetails() {
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-3">
           {/* ---------------- Tabs (Scrollable on mobile only) ---------------- */}
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="flex h-auto gap-2 mb-3 px-1.5 py-1.5">
               <TabsTrigger value="details">
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
 
-              {canTechCheck(userType) ? (
-                <TabsTrigger value="todo">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <TabsTrigger value="" disabled>
-                      <PanelsTopLeftIcon size={16} />
+              {!isAuditor &&
+                (canAccessTechCheckWorkflow ? (
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <TabsTrigger value="" disabled>
+                          <PencilLine size={16} className="mr-1 opacity-60" />
+                          To-Do Task
+                        </TabsTrigger>
+                      }
+                    />
+                  ) : (
+                    <TabsTrigger value="todo">
+                      <PencilLine size={16} className="mr-1 opacity-60" />
                       To-Do Task
                     </TabsTrigger>
-                  }
-                  value="You don’t have permission to access To-Do Tasks."
-                />
-              )}
+                  )
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <TabsTrigger value="" disabled>
+                        <PencilLine size={16} />
+                        To-Do Task
+                      </TabsTrigger>
+                    }
+                    value="You don’t have permission to access To-Do Tasks."
+                  />
+                ))}
 
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
+                  <History size={16} className="mr-1 opacity-60" />
+                  History
                 </TabsTrigger>
               )}
 
               {canViewPayment && (
                 <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                  Payment Information
+                  <IndianRupee size={16} className="mr-1 opacity-60" />
+                  Payment
                 </TabsTrigger>
               )}
-              <TabsTrigger value="chats">
-                <MessageSquare size={16} className="mr-1 opacity-60" />
-                Chats
-              </TabsTrigger>
+              {canViewChats && (
+                <TabsTrigger value="chats">
+                  <MessageSquare size={16} className="mr-1 opacity-60" />
+                  Chats
+                </TabsTrigger>
+              )}
+              {canViewDocuments && (
+                <TabsTrigger value="documents">
+                  <FolderOpen size={16} className="mr-1 opacity-60" />
+                  Documents
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Scrollbar ONLY for tabs */}
-            <ScrollBar orientation="horizontal" className="lg:hidden" />
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
           {/* ---------------- Actions ---------------- */}
-          <div className="flex sm:flex-row gap-2">
-            {canTechCheck(userType) && (
-              <Button
-                variant="outline"
-                onClick={() => setOpenRejectDocsModal(true)}
-                className="w-max"
-              >
-                <Settings2 className="mr-1" size={16} />
-                Tech-Check Workflow
-              </Button>
-            )}
+          <div className="flex sm:flex-row gap-2 shrink-0">
+            {/* Tech Check Workflow */}
+            {!isAuditor &&
+              (shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <span>
+                      <Button disabled>Tech Check Workflow</Button>
+                    </span>
+                  }
+                />
+              ) : canAccessTechCheckWorkflow ? (
+                <Button onClick={() => setOpenRejectDocsModal(true)}>
+                  Tech Check Workflow
+                </Button>
+              ) : (
+                <CustomeTooltip
+                  value="You don’t have permission to access Tech-Check Workflow."
+                  truncateValue={
+                    <span>
+                      <Button disabled variant="outline">
+                        <Settings2 className="mr-1" size={16} />
+                        Tech-Check Workflow
+                      </Button>
+                    </span>
+                  }
+                />
+              ))}
 
-            {(() => {
-              const canUpload =
-                canUploadRevisedClientDocumentationFiles(userType);
-
-              if (!canUpload || !hasRejectedDocs) {
-                return (
-                  <CustomeTooltip
-                    truncateValue={
+            {/* Upload Revised Docs */}
+            {!isAuditor &&
+              (shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <span>
                       <Button disabled className="w-max">
                         <UploadIcon size={16} />
                         Upload Revised Docs
                       </Button>
-                    }
-                    value={
-                      !canUpload
-                        ? "You don’t have permission to upload revised client documentation."
-                        : "No rejected client documentation found."
-                    }
-                  />
-                );
-              }
-
-              return (
+                    </span>
+                  }
+                />
+              ) : !canAccessUploadRevisedDocs ? (
+                <CustomeTooltip
+                  value="You don’t have permission to upload revised docs."
+                  truncateValue={
+                    <span>
+                      <Button disabled className="w-max">
+                        <UploadIcon size={16} />
+                        Upload Revised Docs
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : !hasRejectedDocs ? (
+                <CustomeTooltip
+                  value="No rejected client documentation found."
+                  truncateValue={
+                    <span>
+                      <Button disabled className="w-max">
+                        <UploadIcon size={16} />
+                        Upload Revised Docs
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : (
                 <Button
                   onClick={() => setOpenUploadDocsModal(true)}
                   variant="outline"
@@ -564,8 +1241,7 @@ export default function ClientApprovalLeadDetails() {
                   <UploadIcon size={16} />
                   Upload Revised Docs
                 </Button>
-              );
-            })()}
+              ))}
           </div>
         </div>
 
@@ -576,6 +1252,13 @@ export default function ClientApprovalLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            techCheckInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
+            selectedProductTypeId={selectedProductTypeId}
+            onProductTypeChange={setSelectedProductTypeId}
           />
         </TabsContent>
 
@@ -591,9 +1274,21 @@ export default function ClientApprovalLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
+
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="techCheck"
+            />
+          </TabsContent>
+        )}
       </Tabs>
       {/* Modals */}
       <AssignLeadModal
@@ -847,7 +1542,7 @@ export default function ClientApprovalLeadDetails() {
                       (d) =>
                         !d.tech_check_status ||
                         d.tech_check_status === "PENDING" ||
-                        d.tech_check_status === "REVISED"
+                        d.tech_check_status === "REVISED",
                     )
                     .sort((a, b) => {
                       const dateA = new Date(a.created_at).getTime();
@@ -938,46 +1633,56 @@ export default function ClientApprovalLeadDetails() {
                             isRejected
                               ? ""
                               : isApproved
-                              ? ""
-                              : isSelected
-                              ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
-                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700"
+                                ? ""
+                                : isSelected
+                                  ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700",
                           )}
                           onClick={() => {
                             if (isDisabled) return;
                             setSelectedDocs((prev) =>
                               prev.includes(doc.id)
                                 ? prev.filter((d) => d !== doc.id)
-                                : [...prev, doc.id]
+                                : [...prev, doc.id],
                             );
                           }}
                         >
-                          {/* File Icon */}
-                          <div className="flex gap-2   items-center">
+                          {/* File Icon or Preview */}
+                          <div className="flex gap-2 items-center">
                             <div
                               className={cn(
-                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
                                 isRejected
                                   ? "bg-red-100 dark:bg-red-900/50"
                                   : isApproved
-                                  ? "bg-green-100 dark:bg-green-900/50"
-                                  : isSelected
-                                  ? "bg-amber-100 dark:bg-amber-900/50"
-                                  : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50"
+                                    ? "bg-green-100 dark:bg-green-900/50"
+                                    : isSelected
+                                      ? "bg-amber-100 dark:bg-amber-900/50"
+                                      : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50",
                               )}
                             >
-                              <FileText
-                                className={
-                                  isRejected
-                                    ? "text-red-500 dark:text-red-400"
-                                    : isApproved
-                                    ? "text-green-500 dark:text-green-400"
-                                    : isSelected
-                                    ? "text-amber-600 dark:text-amber-400"
-                                    : "text-blue-500 dark:text-blue-400"
-                                }
-                                size={24}
-                              />
+                              {doc.doc_og_name?.match(
+                                /\.(jpeg|jpg|gif|png|webp|bmp)$/i,
+                              ) && doc.signed_url ? (
+                                <img
+                                  src={doc.signed_url}
+                                  alt={doc.doc_og_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <FileText
+                                  className={
+                                    isRejected
+                                      ? "text-red-500 dark:text-red-400"
+                                      : isApproved
+                                        ? "text-green-500 dark:text-green-400"
+                                        : isSelected
+                                          ? "text-amber-600 dark:text-amber-400"
+                                          : "text-blue-500 dark:text-blue-400"
+                                  }
+                                  size={24}
+                                />
+                              )}
                             </div>
 
                             {/* Document Info */}
@@ -987,7 +1692,7 @@ export default function ClientApprovalLeadDetails() {
                                   "font-semibold text-sm line-clamp-2",
                                   isDisabled
                                     ? "text-gray-500 dark:text-gray-400"
-                                    : "text-gray-900 dark:text-white"
+                                    : "text-gray-900 dark:text-white",
                                 )}
                               >
                                 {doc.doc_og_name}
@@ -1000,6 +1705,27 @@ export default function ClientApprovalLeadDetails() {
 
                           {/* Status Badge */}
                           <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => handleDocDownload(e, doc)}
+                              disabled={downloadingId === doc.id}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition",
+                                "bg-muted/40 text-gray-700 hover:bg-muted",
+                                "dark:bg-neutral-800/40 dark:text-gray-200 dark:hover:bg-neutral-700",
+                                "disabled:opacity-60 disabled:cursor-not-allowed",
+                              )}
+                            >
+                              {downloadingId === doc.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Download className="h-3.5 w-3.5" />
+                              )}
+                              {downloadingId === doc.id
+                                ? "Downloading..."
+                                : "Download"}
+                            </button>
+
                             {isApproved && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
                                 <CheckCircle2 size={14} />
@@ -1059,7 +1785,10 @@ export default function ClientApprovalLeadDetails() {
                 disabled={selectedDocs.length === 0}
                 onClick={() => {
                   if (selectedDocs.length === 0) {
-                    toast.error("Please select at least one document.");
+                    toastManager.add({
+                      title: "Please select at least one document.",
+                      type: "error",
+                    });
                     return;
                   }
                   setOpenRejectDocsModal(false);
@@ -1074,7 +1803,10 @@ export default function ClientApprovalLeadDetails() {
                 disabled={selectedDocs.length === 0}
                 onClick={() => {
                   if (selectedDocs.length === 0) {
-                    toast.error("Please select at least one document.");
+                    toastManager.add({
+                      title: "Please select at least one document.",
+                      type: "error",
+                    });
                     return;
                   }
                   setOpenRejectDocsModal(false);
@@ -1164,7 +1896,10 @@ export default function ClientApprovalLeadDetails() {
                 variant="default"
                 onClick={() => {
                   if (!remark.trim()) {
-                    toast.error("Remark is required.");
+                    toastManager.add({
+                      title: "Remark is required.",
+                      type: "error",
+                    });
                     return;
                   }
                   setOpenRemarkModal(false);
@@ -1197,6 +1932,7 @@ export default function ClientApprovalLeadDetails() {
                   vendorId: vendorId!,
                   leadId: leadIdNum,
                   userId: userId!,
+                  instanceId: instanceIdNum!,
                   payload: { rejectedDocs: selectedDocs, remark },
                 });
 
@@ -1241,9 +1977,9 @@ export default function ClientApprovalLeadDetails() {
                   vendorId: vendorId!,
                   leadId: leadIdNum,
                   userId: userId!,
+                  instanceId: instanceIdNum!,
                   approvedDocs: selectedDocs,
                 });
-
                 setOpenApproveConfirmModal(false);
                 setSelectedDocs([]);
               }}
@@ -1261,9 +1997,15 @@ export default function ClientApprovalLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark, dueDate) => {
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -1276,24 +2018,35 @@ export default function ClientApprovalLeadDetails() {
                 status: activityType,
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
-
-                setActivityModalOpen(false);
-
-                // Invalidate related queries to refresh UI
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
+              onSuccess: (res: any) => {
+                const finalStatus =
+                  res?.data?.activity_status ??
+                  res?.data?.lead?.activity_status;
+                toastManager.add({
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
+                  type: "success",
                 });
+                window.location.assign(
+                  "/dashboard/leads/leadstable?tab=onHold",
+                );
               },
               onError: (err) => {
-                toast.error(err?.message || "Failed to update lead status");
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}
@@ -1305,6 +2058,7 @@ export default function ClientApprovalLeadDetails() {
         data={{
           leadId: leadIdNum,
           accountId: accountId,
+          selectedInstanceId: validInstanceId,
         }}
       />
 
@@ -1312,6 +2066,7 @@ export default function ClientApprovalLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 
@@ -1321,8 +2076,42 @@ export default function ClientApprovalLeadDetails() {
         data={{
           id: leadIdNum,
           accountId: accountId,
+          instanceId: validInstanceId,
         }}
       />
+
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable lead actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

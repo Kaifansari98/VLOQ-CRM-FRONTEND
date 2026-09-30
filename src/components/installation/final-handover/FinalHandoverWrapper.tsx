@@ -1,9 +1,15 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
-import { ClipboardCheck, FileText } from "lucide-react";
+import { ClipboardCheck, FileText, AlertCircle } from "lucide-react";
 import FinalHandover from "./FinalHandoverDetails";
 import PendingWorkTab from "./PendingWorkTab";
+import SmallOrderRequestsTable from "../small-order/SmallOrderRequestsTable";
+import { useAppSelector } from "@/redux/store";
+import { useSmallOrderRequestsByLead } from "@/hooks/useLeadsQueries";
+import InstallationMiscellaneous from "../under-installation/InstallationMiscellaneous";
+import { useMiscellaneousResolutionStatus } from "@/api/installation/useUnderInstallationStageLeads";
 
 export default function FinalHandoverWrapper({
   leadId,
@@ -11,7 +17,54 @@ export default function FinalHandoverWrapper({
 }: {
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
 }) {
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams.get("taskId");
+  const taskId =
+    taskIdParam && !Number.isNaN(Number(taskIdParam))
+      ? Number(taskIdParam)
+      : undefined;
+  const miscIdParam = searchParams.get("miscId");
+  const miscId =
+    miscIdParam && !Number.isNaN(Number(miscIdParam))
+      ? Number(miscIdParam)
+      : undefined;
+  const miscTabParam =
+    searchParams.get("miscTab") || searchParams.get("subTab") || undefined;
+  const preferredTabId = searchParams.get("tab");
+  const isMiscRequested =
+    preferredTabId === "misc" ||
+    preferredTabId === "miscellaneousWork" ||
+    Boolean(miscId) ||
+    Boolean(taskId);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+  const { data: smallOrderRequestsData } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadId,
+  );
+  const hasFinalHandoverSmallOrderRequests =
+    (smallOrderRequestsData?.data ?? []).some(
+      (request) => request.request_source === "final_handover",
+    );
+
+  const { data: miscStatus } = useMiscellaneousResolutionStatus(
+    vendorId,
+    leadId,
+  );
+  const hasPendingMisc = miscStatus?.all_resolved === false;
+
+  const canViewPendingWorkTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.final_handover.pending_work.enable_disable_action",
+        )
+      : true;
+
   const TAB_ITEMS = [
     {
       id: "finalHandover",
@@ -45,12 +98,63 @@ export default function FinalHandoverWrapper({
         </div>
       ),
     },
-  ];
+    {
+      id: "smallOrderRequest",
+      title: (
+        <div className="flex items-center gap-1">
+          <FileText className="w-3 h-3" />
+          Partial Order Request
+        </div>
+      ),
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      cardContent: (
+        <div>
+          <SmallOrderRequestsTable
+            vendorId={vendorId}
+            leadId={leadId}
+            requestSource="final_handover"
+          />
+        </div>
+      ),
+    },
+    {
+      id: "miscellaneousWork",
+      title: (
+        <div className="flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          Miscellaneous Work
+        </div>
+      ),
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      cardContent: (
+        <div>
+          <InstallationMiscellaneous
+            vendorId={vendorId}
+            leadId={leadId}
+            accountId={accountId}
+            initialTaskId={taskId}
+            initialMiscId={miscId}
+            initialSubTab={miscTabParam}
+            hideAddButton={true}
+          />
+        </div>
+      ),
+    },
+  ].filter((tab) => {
+    if (tab.id === "pendingWork") return canViewPendingWorkTab;
+    if (tab.id === "smallOrderRequest")
+      return hasFinalHandoverSmallOrderRequests;
+    if (tab.id === "miscellaneousWork") return hasPendingMisc || isMiscRequested;
+    return true;
+  });
+
+  const resolvedDefaultTabId = isMiscRequested ? "miscellaneousWork" : "finalHandover";
 
   return (
     <SmoothTab
+      key={resolvedDefaultTabId}
       items={TAB_ITEMS}
-      defaultTabId="finalHandover"
+      defaultTabId={resolvedDefaultTabId}
       className="w-fit"
     />
   );

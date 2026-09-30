@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { FolderOpen, Upload, Loader2, Paperclip } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import {
@@ -29,74 +30,167 @@ import { useDeleteDocument } from "@/api/leads";
 
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
+
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 export default function HardwarePackingDetailsSection({
   leadId,
   accountId,
+  instanceId,
 }: {
   leadId: number;
   accountId: number | null;
+  instanceId?: number | null;
 }) {
+  const searchParams = useSearchParams();
+  const instanceFromUrl = searchParams.get("instance_id");
+  const instanceIdFromUrl = instanceFromUrl ? Number(instanceFromUrl) : null;
+  const effectiveInstanceId =
+    typeof instanceId !== "undefined"
+      ? instanceId
+      : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
+        ? instanceIdFromUrl
+        : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+
+  
   const queryClient = useQueryClient();
 
   const { data: packingDetails, isLoading } = useGetHardwarePackingDetails(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
   const { mutateAsync: uploadPackingDetails, isPending } =
-    useUploadHardwarePackingDetails(vendorId, leadId);
+    useUploadHardwarePackingDetails(
+      vendorId,
+      leadId,
+      effectiveInstanceId ?? undefined,
+    );
 
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined,
   );
 
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [remark, setRemark] = useState(packingDetails?.remark || "");
+  const normalizedRemark =
+    packingDetails?.remark ?? packingDetails?.data?.remark ?? "";
+  const normalizedDocs =
+    packingDetails?.data ?? packingDetails?.documents ?? [];
+  const [remark, setRemark] = useState(normalizedRemark);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
+  const isPreProd = userType?.toLowerCase() === "pre-prod";
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
+  const canViewAndWork =
+    !isPreProd &&
+    !isAuditor &&
+    canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
   const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "production-stage");
+    !isPreProd &&
+    !isAuditor &&
+    (userType === "super-admin" ||
+      (userType === "factory" &&
+        (leadStatusIns ?? leadStatus) === "production-stage"));
+
+
+
+  const canUploadHardwarePackingDetails =
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.upload",
+        )
+        : canViewAndWork
+    );
+
+
+
+  const canDeleteHardwarePackingDetails =
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.delete",
+        )
+        : canDelete
+    );
 
   useEffect(() => {
-    if (packingDetails?.remark) setRemark(packingDetails.remark);
-  }, [packingDetails?.remark]);
+    if (normalizedRemark) setRemark(normalizedRemark);
+  }, [normalizedRemark]);
 
-  const hasFiles =
-    Array.isArray(packingDetails?.data) && packingDetails.data.length > 0;
+  const hasFiles = Array.isArray(normalizedDocs) && normalizedDocs.length > 0;
 
   const imageExt = ["jpg", "jpeg", "png"];
   const docExt = ["pdf", "zip"];
 
   const images =
-    packingDetails?.data?.filter((file: any) =>
-      imageExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+    normalizedDocs?.filter((file: any) =>
+      imageExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   const Documents =
-    packingDetails?.data?.filter((file: any) =>
-      docExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+    normalizedDocs?.filter((file: any) =>
+      docExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   // Upload handler
   const handleUpload = async () => {
     if (selectedFiles.length === 0 && remark.trim() === "") {
-      toast.error("Add a remark or upload a file.");
+      toastManager.add({
+        title: "Add a remark or upload a file.",
+        type: "error",
+      });
       return;
     }
 
@@ -108,23 +202,40 @@ export default function HardwarePackingDetailsSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadPackingDetails(formData);
-      toast.success("Hardware packing details updated!");
+      toastManager.add({
+        title: "Hardware packing details updated!",
+        type: "success",
+      });
 
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: ["hardwarePackingDetails", vendorId, leadId],
+        queryKey: [
+          "hardwarePackingDetails",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
       });
 
       await refetchCompleteness();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Upload failed.");
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Upload failed.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
   const handleRemarkUpdate = async () => {
     if (!remark.trim()) {
-      toast.error("Remark cannot be empty.");
+      toastManager.add({ title: "Remark cannot be empty.", type: "error" });
       return;
     }
 
@@ -135,13 +246,31 @@ export default function HardwarePackingDetailsSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadPackingDetails(formData);
-      toast.success("Remark updated!");
+      toastManager.add({ title: "Remark updated!", type: "success" });
 
       queryClient.invalidateQueries({
-        queryKey: ["hardwarePackingDetails", vendorId, leadId],
+        queryKey: [
+          "hardwarePackingDetails",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
       });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to update remark.");
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update remark.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -174,58 +303,99 @@ export default function HardwarePackingDetailsSection({
 
       {/* ---------- UPLOAD AREA ---------- */}
       <div className="p-6 border-b space-y-6">
-        {canViewAndWork && (
+        {shouldDisableBlockedActions ? (
           <div className="space-y-3">
-            <FileUploadField
-              value={selectedFiles}
-              onChange={setSelectedFiles}
-              accept=".pdf,.jpg,.jpeg,.png,.zip"
-              multiple
+
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <FileUploadField
+                    value={[]}
+                    onChange={() => { }}
+                    accept=".pdf,.jpg,.jpeg,.png,.zip"
+                    multiple
+                    disabled
+                  />
+                </div>
+              }
             />
 
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={handleUpload}
-                disabled={isPending || selectedFiles.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="animate-spin size-4" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} />
-                    Upload Files
-                  </>
-                )}
-              </Button>
-            </div>
+
+
           </div>
+        ) : (
+          canUploadHardwarePackingDetails && (
+            <div className="space-y-3">
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".pdf,.jpg,.jpeg,.png,.zip"
+                multiple
+              />
+
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleUpload}
+                  disabled={isPending || selectedFiles.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )
         )}
 
         {/* Remark Section */}
         <div className="space-y-2">
           <p className="text-sm font-semibold tracking-tight">Remark</p>
-          <TextAreaInput
-            value={remark}
-            onChange={setRemark}
-            maxLength={500}
-            placeholder="Add any notes related to hardware packing..."
-            className="h-[130px] bg-muted/20 rounded-lg"
-            disabled={!canViewAndWork}
-          />
+          {shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <TextAreaInput
+                    value={remark}
+                    onChange={() => { }}
+                    maxLength={500}
+                    disabled
+                    placeholder="Add any notes related to hardware packing..."
+                    className="h-[130px] bg-muted/20 rounded-lg"
+                  />
+                </div>
+              }
+            />
+          ) : (
+            <TextAreaInput
+              value={remark}
+              onChange={setRemark}
+              maxLength={500}
+              disabled={!canUploadHardwarePackingDetails}
+              placeholder="Add any notes related to hardware packing..."
+              className="h-[130px] bg-muted/20 rounded-lg"
+            />
+          )}
           <div className="flex justify-end">
             <Button
               size="sm"
               onClick={handleRemarkUpdate}
-              disabled={!remark.trim() || !canViewAndWork}
+              disabled={!remark.trim() || !canUploadHardwarePackingDetails}
               className="flex items-center gap-2"
             >
               <Paperclip size={16} />
-              {packingDetails?.remark ? "Update Remark" : "Add Remark"}
+              {normalizedRemark ? "Update Remark" : "Add Remark"}
             </Button>
           </div>
         </div>
@@ -237,8 +407,8 @@ export default function HardwarePackingDetailsSection({
           <h4 className="text-sm font-semibold">Uploaded Documents</h4>
           {hasFiles && (
             <span className="text-xs text-muted-foreground">
-              {packingDetails.data.length} file
-              {packingDetails.data.length > 1 && "s"}
+              {normalizedDocs.length} file
+              {normalizedDocs.length > 1 && "s"}
             </span>
           )}
         </div>
@@ -268,7 +438,7 @@ export default function HardwarePackingDetailsSection({
                     created_at: doc.created_at,
                   }}
                   index={index}
-                  canDelete={canDelete}
+                  canDelete={canDeleteHardwarePackingDetails}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -282,7 +452,7 @@ export default function HardwarePackingDetailsSection({
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
                   }}
-                  canDelete={canDelete}
+                  canDelete={canDeleteHardwarePackingDetails}
                   onDelete={(id) => setConfirmDelete(id)}
                 />
               ))}

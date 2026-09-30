@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,10 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -47,7 +51,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -70,6 +74,8 @@ import {
   useMoveLeadToDispatchPlanning,
 } from "@/api/installation/useSiteReadinessLeads";
 import { useQueryClient } from "@tanstack/react-query";
+import { getActiveLeadTasks } from "@/hooks/useTasksQueries";
+import { CompletedUpdateTheTaskIsmAndFollowUp } from "@/api/measurment-leads";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
@@ -78,25 +84,37 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceIdParam = searchParams.get("instance_id");
+  const validInstanceId = instanceIdParam && !Number.isNaN(Number(instanceIdParam)) ? Number(instanceIdParam) : null;
   const queryClient = useQueryClient();
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const effectiveUserType = userType;
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    userType?.toLowerCase() === "site-supervisor" ? "todo" : "details"
+    userType?.toLowerCase() === "site-supervisor" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
@@ -115,12 +133,33 @@ export default function ReadyToDispatchLeadDetails() {
 
   const deleteLeadMutation = useDeleteLead();
 
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
   useEffect(() => {
-    if (isChatNotification) return;
-    if (userType?.toLowerCase() === "site-supervisor") {
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
+    if (userType?.toLowerCase() === "site-supervisor" && !isLeadBlocked && !lead.is_draft) {
       setActiveTab("todo");
     }
-  }, [isChatNotification, userType]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
   const { data: readinessStatus, isLoading: checkingStatus } =
     useCheckSiteReadinessCompletion(vendorId, leadIdNum);
@@ -130,12 +169,52 @@ export default function ReadyToDispatchLeadDetails() {
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
   const isCompleted = readinessStatus?.is_site_readiness_completed ?? false;
+  const canMoveToDispatchPlanning =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+        "installation.site_readiness.move_to_dispatch_planning.enable_disable",
+      )
+      : true;
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment =
+    isAuditor || (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+        : canViewPaymentTab(effectiveUserType ?? "")
+    );
+  const canViewSiteHistory =
+    isAuditor || (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+        : canViewSiteHistoryTab(effectiveUserType ?? "")
+    );
+  const canViewChats =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
+      : true;
+  const canViewDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
+      : true;
+  const canShowTodoTab =
+    !isAuditor && (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.site_readiness."),
+        )
+        : canDoSR(effectiveUserType ?? "")
+    );
 
   const handleMoveToDispatch = async () => {
     try {
@@ -144,7 +223,31 @@ export default function ReadyToDispatchLeadDetails() {
         leadId: leadIdNum,
         updated_by: userId!,
       });
-      toast.success("Lead moved to Dispatch Planning successfully!");
+
+      // Auto-complete any open or in_progress tasks for this lead
+      try {
+        const tasks = await getActiveLeadTasks(vendorId!, leadIdNum);
+        const pendingTasks = (tasks as any[]).filter(
+          (t) => t.status === "open" || t.status === "in_progress",
+        );
+        await Promise.all(
+          pendingTasks.map((t) =>
+            CompletedUpdateTheTaskIsmAndFollowUp(leadIdNum, t.id, {
+              status: "completed",
+              updated_by: userId!,
+              closed_at: new Date().toISOString(),
+              closed_by: userId!,
+            }),
+          ),
+        );
+      } catch {
+        // silently ignore — task completion is best-effort
+      }
+
+      toastManager.add({
+        title: "Lead moved to Dispatch Planning successfully!",
+        type: "success",
+      });
       router.push("/dashboard/installation/dispatch-planning/");
       queryClient.invalidateQueries({
         queryKey: ["leadStats"],
@@ -154,11 +257,20 @@ export default function ReadyToDispatchLeadDetails() {
         queryKey: ["universal-stage-leads"],
         exact: false,
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserTasks"],
+        exact: false,
+      });
+
       queryClient.invalidateQueries({
         queryKey: ["vendorOverallLeads"],
       });
     } catch (error: any) {
-      toast.error(error?.message || "Failed to move lead");
+      toastManager.add({
+        title: error?.message || "Failed to move lead",
+        type: "error",
+      });
     } finally {
       setOpenMoveConfirm(false);
     }
@@ -166,23 +278,71 @@ export default function ReadyToDispatchLeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err) => toast.error("Failed to delete lead"),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({ title: "Failed to delete lead", type: "error" }),
+      },
     );
 
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadById", leadIdNum],
+          });
+        },
+      },
+    );
+  };
+  if (isLoading && !lead) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   return (
@@ -207,117 +367,232 @@ export default function ReadyToDispatchLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* ✅ Move to Dispatch Planning Button */}
-          {isCompleted ? (
-            <Button
-              size="sm"
-              variant="default"
-              className="hidden sm:flex"
-              onClick={() => setOpenMoveConfirm(true)}
-              disabled={moveToDispatchMutation.isPending}
-            >
-              <Truck size={16} />
-              Move to Dispatch Planning
-            </Button>
-          ) : (
-            <CustomeTooltip
-              truncateValue={
-                <Button
-                  size="sm"
-                  disabled
-                  variant="outline"
-                  className="hidden sm:flex"
-                >
-                  Move to Dispatch Planning
-                </Button>
-              }
-              value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
-            />
+          {!isAuditor && (
+            shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                value={blockedTooltip}
+                truncateValue={
+                  <span>
+                    <Button
+                      size="sm"
+                      disabled
+                      className="hidden sm:flex"
+                    >
+                      <Truck size={16} />
+                      Move to Dispatch Planning
+                    </Button>
+                  </span>
+                }
+              />
+            ) : isCompleted && canMoveToDispatchPlanning ? (
+              <Button
+                size="sm"
+                variant="default"
+                className="hidden sm:flex"
+                onClick={() => setOpenMoveConfirm(true)}
+                disabled={moveToDispatchMutation.isPending}
+              >
+                <Truck size={16} />
+                Move to Dispatch Planning
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    size="sm"
+                    disabled
+                    variant="outline"
+                    className="hidden sm:flex"
+                  >
+                    Move to Dispatch Planning
+                  </Button>
+                }
+                value={
+                  !isCompleted
+                    ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                    : "You do not have permission to move this lead to Dispatch Planning."
+                }
+              />
+            )
           )}
 
           {/* Assign Task Button */}
-          <Button
-            size="sm"
-            className="hidden lg:flex"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden lg:flex"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
-          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+        
+            <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
+      
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="lg:hidden">
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-
-              {isCompleted ? (
-                <DropdownMenuItem
-                  className="sm:hidden"
-                  onClick={() => setOpenMoveConfirm(true)}
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
                 >
-                  <Truck size={16} />
-                  Move to Dispatch Planning
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="lg:hidden">
+                  <UserPlus size={20} />
+                  Assign Task
                 </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Truck size={16} />
-                      Move to Dispatch Planning
-                    </DropdownMenuItem>
-                  }
-                  value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
-                />
-              )}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityType("onHold");
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className=" h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
 
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
-              )}
-
-              {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-              )}
-
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
+                {shouldDisableBlockedActions ? (
+                  // Lead block handling added for DropdownMenu action
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Truck size={16} />
+                        Move to Dispatch Planning
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : isCompleted && canMoveToDispatchPlanning ? (
+                  <DropdownMenuItem
+                    className="sm:hidden"
+                    onClick={() => setOpenMoveConfirm(true)}
+                  >
+                    <Truck size={16} />
+                    Move to Dispatch Planning
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Truck size={16} />
+                        Move to Dispatch Planning
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      !isCompleted
+                        ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                        : "You do not have permission to move this lead to Dispatch Planning."
+                    }
+                  />
+                )}
+                {/* Lead block handling added for DropdownMenu action */}
+                {shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Clock className=" h-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className=" h-4 w-4" />
+                    Mark On Hold
+                  </DropdownMenuItem>
+                )}
+
+                {canEdit && (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <SquarePen size={20} />
+                          Edit
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
+                    </DropdownMenuItem>
+                  )
+                )}
+
+                {canReassign && (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  )
+                )}
+
+
+                {userType === "super-admin" && (
+                  <>
+
+                    <DropdownMenuItem
+                      onClick={() => setOpenBlockConfirm(true)}
+                    >
+                      {isLeadBlocked ? (
+                        <>
+                          <LockOpen size={16} />
+                          Unblock Lead
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} />
+                          Block Lead
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <XCircle size={20} className="text-red-500" />
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -331,47 +606,61 @@ export default function ReadyToDispatchLeadDetails() {
           <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
             {/* ✅ Site Readiness Details */}
             <TabsTrigger value="details">
-              <Truck size={16} className="mr-1 opacity-60" />
+              <PencilLine size={16} className="mr-1 opacity-60" />
               Site Readiness Details
             </TabsTrigger>
 
             {/* ✅ To-Do Task (Conditional Access) */}
-            {canDoSR(userType) ? (
-              <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <TabsTrigger value="todo" disabled>
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                }
-                value="Only Admin or Site Supervisor can access this tab"
-              />
+            {!isAuditor && (
+              canShowTodoTab ? (
+                <TabsTrigger value="todo">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="todo" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value={
+                    effectiveUserType?.toLowerCase() === "custom"
+                      ? "You don’t have permission to access To-Do Tasks."
+                      : "Only Admin or Site Supervisor can access this tab"
+                  }
+                />
+              )
             )}
 
             {/* ✅ Site History */}
             {canViewSiteHistory && (
               <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
+                <History size={16} className="mr-1 opacity-60" />
+                History
               </TabsTrigger>
             )}
 
             {/* ✅ Payment Info */}
             {canViewPayment && (
               <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
+                <IndianRupee size={16} className="mr-1 opacity-60" />
+                Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
+            {canViewDocuments && (
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <ScrollBar orientation="horizontal" />
@@ -384,11 +673,12 @@ export default function ReadyToDispatchLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             maxVisibleStage="siteReadiness"
+            siteReadinessInstanceId={validInstanceId}
           />
         </TabsContent>
 
         {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
-        {canDoSR(userType) && (
+        {canShowTodoTab && (
           <TabsContent value="todo">
             <LeadDetailsGrouped
               status="siteReadiness"
@@ -412,9 +702,21 @@ export default function ReadyToDispatchLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
+
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="siteReadiness"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}
@@ -484,9 +786,15 @@ export default function ReadyToDispatchLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark, dueDate) => {
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -499,28 +807,75 @@ export default function ReadyToDispatchLeadDetails() {
                 status: activityType,
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
-
-                setActivityModalOpen(false);
-
-                // Invalidate related queries to refresh UI
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
+                toastManager.add({
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
+                  type: "success",
                 });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) => {
-                toast.error(err || "Failed to update lead status");
+                toastManager.add({
+                  title: err || "Failed to update lead status",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}
       />
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable all actions except Assign Task."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock Lead"
+                  : "Block Lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

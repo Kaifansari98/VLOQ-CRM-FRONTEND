@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
@@ -21,12 +21,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useGetFinalHandoverDocuments,
+  useUpdateAmcOptedStatus,
   useUploadFinalHandoverDocuments,
 } from "@/api/installation/useFinalHandoverStageLeads";
+import {
+  useGetServicingDocuments,
+  useUploadServicingDocuments,
+} from "@/api/installation/useServicingStageLeads";
 import { useDeleteDocument } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,11 +42,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 import { canViewAndWorkFinalHandoverStage } from "@/components/utils/privileges";
 import BaseModal from "@/components/utils/baseModal";
+
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 interface FinalHandoverProps {
   leadId: number;
@@ -49,7 +60,13 @@ interface FinalHandoverProps {
 }
 
 interface DocumentSection {
-  id: string;
+  id:
+    | "final_site_photos"
+    | "warranty_card"
+    | "handover_booklet"
+    | "final_handover_form"
+    | "qc_documents"
+    | "amc_contract_documents";
   title: string;
   icon: React.ReactNode;
   description: string;
@@ -66,29 +83,156 @@ export default function FinalHandover({
 }: FinalHandoverProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const queryClient = useQueryClient();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeSection, setActiveSection] = useState<DocumentSection | null>(
-    null
+    null,
   );
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const isSmallOrderLead = !!leadResponse?.data?.lead?.productMappings?.some(
+    (mapping: any) => mapping.productType?.tag === "Type 7",
+  );
 
   const { data: documents, isLoading } = useGetFinalHandoverDocuments(
     vendorId,
-    leadId
+    leadId,
   );
   const uploadMutation = useUploadFinalHandoverDocuments();
+  const uploadServicingMutation = useUploadServicingDocuments();
+  const updateAmcOptedMutation = useUpdateAmcOptedStatus();
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  const canWork = canViewAndWorkFinalHandoverStage(userType, leadStatus);
 
-  const sections: DocumentSection[] = [
+
+    const {
+  shouldDisableBlockedActions,
+  blockedTooltip,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+});
+
+const blockedReason = shouldDisableBlockedActions
+  ? blockedTooltip
+  : "";
+
+  const canWork = canViewAndWorkFinalHandoverStage(
+    effectiveUserType ?? "",
+    leadStatus,
+  );
+  const isCustomUser = userType === "custom";
+  const canViewFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_site_photos.view",
+      )
+    : true;
+  const canUploadFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_site_photos.upload",
+      )
+    : canWork;
+  const canDeleteFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_site_photos.delete",
+      )
+    : canWork;
+  const canViewWarrantyCard = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.warranty_card_photos.view",
+      )
+    : true;
+  const canUploadWarrantyCard = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.warranty_card_photos.upload",
+      )
+    : canWork;
+  const canDeleteWarrantyCard = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.warranty_card_photos.delete",
+      )
+    : canWork;
+  const canViewHandoverBooklet = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.handover_booklet.view",
+      )
+    : true;
+  const canUploadHandoverBooklet = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.handover_booklet.upload",
+      )
+    : canWork;
+  const canDeleteHandoverBooklet = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.handover_booklet.delete",
+      )
+    : canWork;
+  const canViewFinalHandoverForm = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_handover_form.view",
+      )
+    : true;
+  const canUploadFinalHandoverForm = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_handover_form.upload",
+      )
+    : canWork;
+  const canDeleteFinalHandoverForm = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_handover_form.delete",
+      )
+    : canWork;
+  const canViewQcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.qc_documents.view",
+      )
+    : true;
+  const canUploadQcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.qc_documents.upload",
+      )
+    : canWork;
+  const canDeleteQcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.qc_documents.delete",
+      )
+    : canWork;
+  const canToggleAmcOptIn = isCustomUser
+    ? customPrivilegeCodes.includes("installation.final_handover.amc.opt_in")
+    : null;
+  const canViewAmcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.amc_documents.view",
+      )
+    : true;
+  const canUploadAmcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.amc_documents.upload",
+      )
+    : canWork;
+  const canDeleteAmcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.amc_documents.delete",
+      )
+    : canWork;
+  const [localDocuments, setLocalDocuments] = useState<any[]>([]);
+  const [confirmAmcStatus, setConfirmAmcStatus] = useState<boolean | null>(null);
+  const isAmcOpted = !!leadData?.is_amc_opted;
+  const {
+    data: servicingDocuments,
+    isLoading: isServicingLoading,
+  } = useGetServicingDocuments(vendorId, leadId, isAmcOpted);
+  const sections = [
     {
       id: "final_site_photos",
       title: "Final Site Photos",
@@ -144,28 +288,82 @@ export default function FinalHandover({
       bgColor: "bg-orange-50 dark:bg-orange-950",
       iconBg: "bg-orange-100 dark:bg-orange-900",
     },
-  ];
+  ] satisfies DocumentSection[];
+
+  const finalSections = React.useMemo(
+    (): DocumentSection[] =>
+      isAmcOpted
+        ? [
+            ...sections,
+            {
+              id: "amc_contract_documents",
+              title: "AMC Contract Documents",
+              icon: <FileText className="w-6 h-6" />,
+              description: "Upload AMC contract documents",
+              fieldName: "amc_contract_documents",
+              accept: ".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip",
+              color: "text-emerald-600",
+              bgColor: "bg-emerald-50 dark:bg-emerald-950",
+              iconBg: "bg-emerald-100 dark:bg-emerald-900",
+            },
+          ]
+        : sections,
+    [isAmcOpted, sections],
+  );
+
+  const visibleSections = React.useMemo(
+    () =>
+      finalSections.filter((section) => {
+        if (section.id === "final_site_photos") return canViewFinalSitePhotos;
+        if (section.id === "warranty_card") return canViewWarrantyCard;
+        if (section.id === "handover_booklet") return canViewHandoverBooklet;
+        if (section.id === "final_handover_form")
+          return canViewFinalHandoverForm;
+        if (section.id === "qc_documents") return canViewQcDocuments;
+        if (section.id === "amc_contract_documents") return canViewAmcDocuments;
+        return true;
+      }),
+    [
+      finalSections,
+      canViewFinalSitePhotos,
+      canViewWarrantyCard,
+      canViewHandoverBooklet,
+      canViewFinalHandoverForm,
+      canViewQcDocuments,
+      canViewAmcDocuments,
+    ],
+  );
+
+  useEffect(() => {
+    if (activeSection) {
+      setLocalDocuments(getDocumentsForSection(activeSection.id));
+    }
+  }, [activeSection, documents, servicingDocuments]);
 
   const docsByType = React.useMemo(() => {
     if (!documents) return {};
     return {
       final_site_photos: documents.filter(
-        (d: any) => d.doc_type_tag === "Type 27"
+        (d: any) => d.doc_type_tag === "Type 27",
       ),
       warranty_card: documents.filter((d: any) => d.doc_type_tag === "Type 28"),
       handover_booklet: documents.filter(
-        (d: any) => d.doc_type_tag === "Type 29"
+        (d: any) => d.doc_type_tag === "Type 29",
       ),
       final_handover_form: documents.filter(
-        (d: any) => d.doc_type_tag === "Type 30"
+        (d: any) => d.doc_type_tag === "Type 30",
       ),
       qc_documents: documents.filter((d: any) => d.doc_type_tag === "Type 31"),
+      amc_contract_documents: servicingDocuments || [],
     };
-  }, [documents]);
+  }, [documents, servicingDocuments]);
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !activeSection) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({
+        title: "Please select at least one file to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -179,28 +377,86 @@ export default function FinalHandover({
       formData.append(activeSection.fieldName, file);
     });
 
-    await uploadMutation.mutateAsync(formData);
-    setSelectedFiles([]);
+    try {
+      if (activeSection.id === "amc_contract_documents") {
+        await uploadServicingMutation.mutateAsync(formData);
+      } else {
+        await uploadMutation.mutateAsync(formData);
+      }
+      setSelectedFiles([]);
 
-    queryClient.invalidateQueries({
-      queryKey: ["finalHandoverDocuments", vendorId, leadId],
-    });
+      queryClient.invalidateQueries({
+        queryKey: ["finalHandoverDocuments", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["servicingDocuments", vendorId, leadId],
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload documents.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    }
   };
 
   const handleConfirmDelete = () => {
-    if (confirmDelete) {
-      deleteDocument({
-        vendorId: vendorId,
+    if (!confirmDelete) return;
+
+    deleteDocument(
+      {
+        vendorId,
         documentId: confirmDelete,
         deleted_by: userId,
-      });
-      setConfirmDelete(null);
-    }
+      },
+      {
+        onSuccess: () => {
+          // 🔥 instant UI update inside modal
+          setLocalDocuments((prev) =>
+            prev.filter((doc) => doc.id !== confirmDelete),
+          );
+
+          setConfirmDelete(null);
+        },
+      },
+    );
   };
 
   const getDocumentsForSection = (sectionId: string) => {
     return (docsByType[sectionId as keyof typeof docsByType] || []) as any[];
   };
+
+  const normalizedUserType = userType?.toLowerCase() ?? "";
+  const amcOptedAt = leadData?.amc_opted_at as string | undefined;
+  const canSetAmcYes = ["site-supervisor", "admin", "super-admin"].includes(
+    normalizedUserType,
+  );
+  const canSetAmcNo = ["admin", "super-admin"].includes(normalizedUserType);
+  const canToggleAmc =
+    !updateAmcOptedMutation.isPending &&
+    (isCustomUser
+      ? !!canToggleAmcOptIn
+      : ((!isAmcOpted && canSetAmcYes) || (isAmcOpted && canSetAmcNo)));
+  const amcDisabledReason = !["site-supervisor", "admin", "super-admin"].includes(
+    normalizedUserType,
+  )
+    ? "Only site-supervisor, admin, and super-admin can update AMC status."
+    : isCustomUser && !canToggleAmcOptIn
+      ? "You do not have permission to update AMC status."
+    : isAmcOpted && !canSetAmcNo
+      ? "Only admin and super-admin can mark AMC back to No."
+      : undefined;
+
+  const isUploading =
+    uploadMutation.isPending || uploadServicingMutation.isPending;
 
   const separateImageAndDocs = (docs: any[]) => {
     const imageExtensions = ["jpg", "jpeg", "png", "webp"];
@@ -215,7 +471,45 @@ export default function FinalHandover({
     return { images, nonImages };
   };
 
-  if (isLoading) {
+  const canUploadSection = (sectionId: DocumentSection["id"]) => {
+    switch (sectionId) {
+      case "final_site_photos":
+        return canUploadFinalSitePhotos;
+      case "warranty_card":
+        return canUploadWarrantyCard;
+      case "handover_booklet":
+        return canUploadHandoverBooklet;
+      case "final_handover_form":
+        return canUploadFinalHandoverForm;
+      case "qc_documents":
+        return canUploadQcDocuments;
+      case "amc_contract_documents":
+        return canUploadAmcDocuments;
+      default:
+        return canWork;
+    }
+  };
+
+  const canDeleteSection = (sectionId: DocumentSection["id"]) => {
+    switch (sectionId) {
+      case "final_site_photos":
+        return canDeleteFinalSitePhotos;
+      case "warranty_card":
+        return canDeleteWarrantyCard;
+      case "handover_booklet":
+        return canDeleteHandoverBooklet;
+      case "final_handover_form":
+        return canDeleteFinalHandoverForm;
+      case "qc_documents":
+        return canDeleteQcDocuments;
+      case "amc_contract_documents":
+        return canDeleteAmcDocuments;
+      default:
+        return canWork;
+    }
+  };
+
+  if (isLoading || (isAmcOpted && isServicingLoading)) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="animate-spin mr-2 size-5" />
@@ -226,18 +520,84 @@ export default function FinalHandover({
     );
   }
 
+  const formatAmcDateTime = (dateString?: string) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    const time = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+    const fullDate = date.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return `${time} - ${dayName}, ${fullDate}`;
+  };
+
   return (
     <div className="space-y-6 pb-6 bg-[#fff] dark:bg-[#0a0a0a]">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Final Handover</h2>
-        <p className="text-sm text-muted-foreground">
-          Upload and manage all final handover documents and photos
-        </p>
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Final Handover</h2>
+          <p className="text-sm text-muted-foreground">
+            Upload and manage all final handover documents and photos
+          </p>
+        </div>
+
+        {!isSmallOrderLead && (
+          <div className="flex items-center gap-3 px-4 py-3 ">
+           <CustomeTooltip
+  value={blockedReason}
+  truncateValue={
+    <Checkbox
+      checked={isAmcOpted}
+      disabled={
+        shouldDisableBlockedActions ||
+        !canToggleAmc
+      }
+      onCheckedChange={() => {
+        if (shouldDisableBlockedActions) return;
+
+        if (!canToggleAmc) return;
+        setConfirmAmcStatus(!isAmcOpted);
+      }}
+    />
+  }
+/>
+            <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
+              <label
+  htmlFor="is-amc-opted"
+  className={`text-sm font-bold whitespace-nowrap ${
+    canToggleAmc
+      ? "cursor-pointer"
+      : "cursor-not-allowed opacity-70"
+  }`}
+>
+  Is AMC Opted in ?
+</label>
+              {isAmcOpted && amcOptedAt && (
+                <p className="text-xs text-muted-foreground">
+                  {formatAmcDateTime(amcOptedAt)}
+                </p>
+              )}
+              {!canToggleAmc && amcDisabledReason && (
+                <p className="text-xs text-muted-foreground">
+                  {amcDisabledReason}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {sections.map((section, index) => {
+        {visibleSections.map((section, index) => {
           const docs = getDocumentsForSection(section.id);
 
           return (
@@ -295,7 +655,7 @@ export default function FinalHandover({
                           setSelectedFiles([]); // allow adding new files
                         }}
                       >
-                        Upload
+                        {canUploadSection(section.id) ? "Upload" : "View"}
                       </Button>
                     ) : (
                       <Button
@@ -393,7 +753,7 @@ export default function FinalHandover({
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4"
               >
-                {canWork && (
+                {canUploadSection(activeSection.id) && (
                   <>
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-semibold">
@@ -405,15 +765,29 @@ export default function FinalHandover({
                         </Badge>
                       )}
                     </div>
-                    <FileUploadField
-                      value={selectedFiles}
-                      onChange={setSelectedFiles}
-                      accept={activeSection.accept}
-                      multiple
-                    />
+                 <CustomeTooltip
+  value={blockedReason}
+  truncateValue={
+    <div
+      className={
+        shouldDisableBlockedActions
+          ? "pointer-events-none opacity-60"
+          : ""
+      }
+    >
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept={activeSection.accept}
+        multiple
+      />
+    </div>
+  }
+/>
                   </>
                 )}
-                {selectedFiles.length > 0 && (
+                {selectedFiles.length > 0 &&
+                  canUploadSection(activeSection.id) && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -421,10 +795,10 @@ export default function FinalHandover({
                   >
                     <Button
                       onClick={handleUpload}
-                      disabled={uploadMutation.isPending}
+                      disabled={isUploading}
                       className="gap-2"
                     >
-                      {uploadMutation.isPending ? (
+                      {isUploading ? (
                         <>
                           <Loader2 className="animate-spin w-4 h-4" />
                           Uploading...
@@ -451,7 +825,7 @@ export default function FinalHandover({
                 </div>
 
                 {(() => {
-                  const docs = getDocumentsForSection(activeSection.id);
+                  const docs = localDocuments;
                   const { images, nonImages } = separateImageAndDocs(docs);
 
                   if (docs.length === 0) {
@@ -490,7 +864,7 @@ export default function FinalHandover({
                                 created_at: doc.created_at,
                               }}
                               index={index}
-                              canDelete={canWork}
+                              canDelete={canDeleteSection(activeSection.id)}
                               onDelete={(id) => setConfirmDelete(Number(id))}
                             />
                           </motion.div>
@@ -512,7 +886,7 @@ export default function FinalHandover({
                                 signedUrl: doc.signed_url,
                                 created_at: doc.created_at,
                               }}
-                              canDelete={canWork}
+                              canDelete={canDeleteSection(activeSection.id)}
                               onDelete={(id) => setConfirmDelete(id)}
                             />
                           </motion.div>
@@ -547,6 +921,57 @@ export default function FinalHandover({
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmAmcStatus !== null}
+        onOpenChange={() => setConfirmAmcStatus(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAmcStatus ? "Mark AMC as opted?" : "Mark AMC as not opted?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAmcStatus
+                ? "This will set AMC opted status to Yes and store the current date and time."
+                : "This will set AMC opted status to No and clear the stored AMC date and time."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateAmcOptedMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateAmcOptedMutation.isPending}
+              onClick={() => {
+                if (confirmAmcStatus === null || !userId) return;
+
+                updateAmcOptedMutation.mutate(
+                  {
+                    vendorId,
+                    leadId,
+                    updated_by: userId,
+                    is_amc_opted: confirmAmcStatus,
+                  },
+                  {
+                    onSuccess: () => {
+                      toastManager.add({
+                        title: confirmAmcStatus
+                          ? "AMC opted status marked as Yes."
+                          : "AMC opted status marked as No.",
+                        type: "success",
+                      });
+                      setConfirmAmcStatus(null);
+                    },
+                  },
+                );
+              }}
+            >
+              {updateAmcOptedMutation.isPending ? "Updating..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   useCurrentSitePhotos,
   useUploadCurrentSitePhotos,
@@ -30,6 +30,11 @@ import DocumentCard from "@/components/utils/documentCard";
 import { canUploadReadyToDispatchDocuments } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+
+
 export default function CurrentSitePhotosSection({
   leadId,
   accountId,
@@ -40,6 +45,9 @@ export default function CurrentSitePhotosSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
@@ -49,6 +57,23 @@ export default function CurrentSitePhotosSection({
     vendorId,
     leadId
   );
+
+  const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
 
   const { mutateAsync: uploadPhotos, isPending } = useUploadCurrentSitePhotos(
     vendorId,
@@ -67,7 +92,33 @@ export default function CurrentSitePhotosSection({
     (userType === "sales-executive" &&
       leadStatus === "ready-to-dispatch-stage");
 
-  const canUploadDocuments = canUploadReadyToDispatchDocuments(userType);
+  const canViewDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.ready_to_dispatch.current_site_photos.view",
+        )
+      : true;
+const canUploadDocuments =
+  !shouldDisableBlockedActions &&
+  (
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.ready_to_dispatch.current_site_photos.upload",
+        )
+      : canUploadReadyToDispatchDocuments(userType)
+  );
+
+
+const canDeleteDocuments =
+  !shouldDisableBlockedActions &&
+  (
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.ready_to_dispatch.current_site_photos.delete",
+        )
+      : canDelete
+  );
+
 
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;
 
@@ -91,7 +142,7 @@ export default function CurrentSitePhotosSection({
   // Upload handler
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one photo to upload.");
+      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
       return;
     }
 
@@ -102,7 +153,7 @@ export default function CurrentSitePhotosSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadPhotos(formData);
-      toast.success("Current Site Photos uploaded successfully!");
+      toastManager.add({ title: "Current Site Photos uploaded successfully!", type: "success" });
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
@@ -113,7 +164,16 @@ export default function CurrentSitePhotosSection({
         queryKey: ["currentSitePhotosCount", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to upload photos.");
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload photos.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -128,6 +188,32 @@ export default function CurrentSitePhotosSection({
 
     setConfirmDelete(null);
   };
+
+  if (!canViewDocuments) {
+    return (
+      <div className="border h-full rounded-xl bg-background">
+        <div className="flex flex-col space-y-2 px-6 py-4 border-b bg-muted/30 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-0">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold tracking-tight">
+                Current Site Photos
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground ml-7">
+              Upload and manage photos for Ready-To-Dispatch stage.
+            </p>
+          </div>
+        </div>
+        <div className="p-10 border border-dashed rounded-xl m-6 flex flex-col items-center justify-center text-center bg-muted/40">
+          <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">
+            You don’t have permission to view Current Site Photos.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border h-full rounded-xl bg-background">
@@ -146,44 +232,65 @@ export default function CurrentSitePhotosSection({
         </div>
 
         {hasFiles && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-3">
             {sitePhotos.length} File{sitePhotos.length > 1 && "s"}
           </span>
         )}
       </div>
 
       {/* ---------- UPLOAD AREA ---------- */}
-      {canUploadDocuments && (
-        <div className="p-6 border-b space-y-4">
+    {shouldDisableBlockedActions ? (
+  <div className="p-6 border-b space-y-4">
+
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <div>
           <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
+            value={[]}
+            onChange={() => {}}
             accept=".jpg,.jpeg,.png,.pdf,.zip"
             multiple
+            disabled
           />
-
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUpload}
-              disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Photos
-                </>
-              )}
-            </Button>
-          </div>
         </div>
-      )}
+      }
+    />
+
+  </div>
+) : (
+  canUploadDocuments && (
+    <div className="p-6 border-b space-y-4">
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept=".jpg,.jpeg,.png,.pdf,.zip"
+        multiple
+      />
+
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={handleUpload}
+          disabled={isPending || selectedFiles.length === 0}
+          className="flex items-center gap-2"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin size-4" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload size={16} />
+              Upload Photos
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+)}
 
       {/* ---------- FILE LIST ---------- */}
       <div className="p-6">
@@ -225,7 +332,7 @@ export default function CurrentSitePhotosSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -239,7 +346,7 @@ export default function CurrentSitePhotosSection({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

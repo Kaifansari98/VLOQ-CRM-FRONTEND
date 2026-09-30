@@ -35,10 +35,12 @@ export default function CustomTabs({
   return (
     <div
       className={clsx(
-        "relative flex items-center bg-muted rounded-lg p-1 w-fit min-h-[35px]",
+        "relative flex items-center bg-muted rounded-lg p-1 w-full sm:w-fit min-h-[35px]",
+        "overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden",
         "transition-colors",
         className,
       )}
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
     >
       {tabs.map((tab) => {
         const isActive = active === tab.value;
@@ -49,6 +51,7 @@ export default function CustomTabs({
             onClick={() => handleChange(tab.value)}
             className={clsx(
               "relative px-3 py-1.5 flex items-center gap-2 text-xs rounded-md font-medium transition-all",
+              "flex-shrink-0 whitespace-nowrap"
             )}
           >
             {/* ACTIVE INDICATOR */}

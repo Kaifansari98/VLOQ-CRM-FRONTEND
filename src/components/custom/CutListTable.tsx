@@ -1,0 +1,655 @@
+// components/custom/CutListTable.tsx
+"use client";
+
+import React, { useMemo, useState } from "react";
+import {
+  getCoreRowModel,
+  useReactTable,
+  getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  ColumnFiltersState,
+} from "@tanstack/react-table";
+
+import { DataTable } from "@/components/data-table/data-table";
+import { getCutListColumns } from "./cutlist-columns";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MachineAssignmentDialog } from "./machine-assignment-dialog";
+import { toastManager } from "@/components/ui/toast";
+import {
+  Download,
+  Printer,
+  Maximize2,
+  Minimize2,
+  ChevronDown,
+  FileSpreadsheet,
+  UploadCloudIcon,
+} from "lucide-react";
+import { useUploadMachineExcel } from "@/hooks/track-trace/useProjectCutList";
+import { useParams } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
+import { apiClient } from "@/lib/apiClient";
+
+export type CutListRow = Record<string, any>;
+
+interface Props {
+  data: CutListRow[];
+  machineColumns: string[];
+  className?: string;
+  isAssignmentDisabled?: boolean;
+  onMachineAssign?: (
+    cutListIds: number[],
+    machineId: number,
+    machineName: string,
+    assigned: boolean,
+  ) => Promise<void>;
+  onDownloadLabels?: (
+    cutListIds?: number[],
+    options?: {
+      selectedMachines?: string[];
+      includeMachineSequence?: boolean;
+      targetMachine?: string;
+    },
+  ) => Promise<string>;
+  onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
+  onDownloadBasicExcel?: (cutListIds?: number[]) => Promise<string>; // ✅ New prop
+}
+
+export default function CutListTable({
+  data,
+  machineColumns,
+  className,
+  isAssignmentDisabled = false,
+  onMachineAssign,
+  onDownloadLabels,
+  onDownloadExcel,
+  onDownloadBasicExcel, // ✅ New prop
+}: Props) {
+  const { project_id } = useParams();
+  const projectId = String(project_id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const [rowSelection, setRowSelection] = useState({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedMachine, setSelectedMachine] = useState<{
+    name: string;
+    id: number;
+  } | null>(null);
+
+  const uploadMachineExcelMutation = useUploadMachineExcel(projectId);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const resolveFileUrl = (url?: string) => {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) {
+      if (
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:"
+      ) {
+        return url.replace(/^http:\/\//i, "https://");
+      }
+      return url;
+    }
+    const base = apiClient.defaults.baseURL ?? "";
+    const origin = base.replace(/\/api\/?$/i, "");
+    if (!origin) return url;
+    const resolved = url.startsWith("/")
+      ? `${origin}${url}`
+      : `${origin}/${url}`;
+    if (
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:"
+    ) {
+      return resolved.replace(/^http:\/\//i, "https://");
+    }
+    return resolved;
+  };
+  const handleDownloadLabels = async (options?: {
+    cutListIds?: number[];
+    selectedMachines?: string[];
+    includeMachineSequence?: boolean;
+    targetMachine?: string;
+  }) => {
+    if (!onDownloadLabels) return;
+
+    try {
+      setIsDownloading(true);
+
+      const selectedRowIds =
+        options?.cutListIds ??
+        (selectedRows.length > 0
+          ? selectedRows.map((row) => row.original.id)
+          : undefined);
+
+      const rawPdfUrl = await onDownloadLabels(selectedRowIds, options);
+      console.log("[CutList] labels download raw url", rawPdfUrl);
+      const pdfUrl = resolveFileUrl(rawPdfUrl);
+      console.log("[CutList] labels download resolved url", pdfUrl);
+
+      if (!pdfUrl) {
+        throw new Error("No PDF URL received");
+      }
+
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
+      toastManager.add({
+        title: "Labels downloaded successfully",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error downloading labels:", error);
+      toastManager.add({ title: "Failed to download labels", type: "error" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ✅ Advanced Excel download
+  const handleDownloadAdvancedExcel = async () => {
+    if (!onDownloadExcel) return;
+
+    try {
+      setIsDownloading(true);
+
+      const selectedRowIds =
+        selectedRows.length > 0
+          ? selectedRows.map((row) => row.original.id)
+          : undefined;
+
+      const rawFileUrl = await onDownloadExcel(selectedRowIds);
+      console.log("[CutList] advanced excel raw url", rawFileUrl);
+      const fileUrl = resolveFileUrl(rawFileUrl);
+      console.log("[CutList] advanced excel resolved url", fileUrl);
+
+      if (!fileUrl) {
+        throw new Error("No file URL received");
+      }
+
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+      toastManager.add({
+        title: "Advanced cut list downloaded successfully",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error downloading advanced excel:", error);
+      toastManager.add({
+        title: "Failed to download advanced cut list",
+        type: "error",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ✅ Basic Excel download
+  const handleDownloadBasicExcel = async () => {
+    if (!onDownloadBasicExcel) return;
+
+    try {
+      setIsDownloading(true);
+
+      const selectedRowIds =
+        selectedRows.length > 0
+          ? selectedRows.map((row) => row.original.id)
+          : undefined;
+
+      const rawFileUrl = await onDownloadBasicExcel(selectedRowIds);
+      console.log("[CutList] basic excel raw url", rawFileUrl);
+      const fileUrl = resolveFileUrl(rawFileUrl);
+      console.log("[CutList] basic excel resolved url", fileUrl);
+
+      if (!fileUrl) {
+        throw new Error("No file URL received");
+      }
+
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+      toastManager.add({
+        title: "Basic cut list downloaded successfully",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error downloading basic excel:", error);
+      toastManager.add({
+        title: "Failed to download basic cut list",
+        type: "error",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleMachineCellClick = async (
+    cutListId: number,
+    machineId: number,
+    machineName: string,
+    currentlyAssigned: boolean,
+  ) => {
+    if (isAssignmentDisabled) {
+      toastManager.add({
+        title:
+          "Project Started: You cannot assign. Only Super Admin can do this.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!onMachineAssign) return;
+
+    try {
+      await onMachineAssign(
+        [cutListId],
+        machineId,
+        machineName,
+        !currentlyAssigned,
+      );
+
+      toastManager.add({
+        title: `${machineName} ${!currentlyAssigned ? "assigned to" : "unassigned from"} item`,
+        type: "success",
+      });
+    } catch (error) {
+      toastManager.add({
+        title: "Failed to update machine assignment",
+        type: "error",
+      });
+      console.error(error);
+    }
+  };
+
+  function handleMachineHeaderClick(machineName: string) {
+    if (isAssignmentDisabled) {
+      toastManager.add({
+        title:
+          "Project Started: You cannot assign. Only Super Admin can do this.",
+        type: "error",
+      });
+      return;
+    }
+
+    const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
+
+    if (currentSelectedRows.length === 0) {
+      toastManager.add({
+        title: "Please select at least one row before assigning machines",
+        type: "error",
+      });
+      return;
+    }
+
+    let machineId: number | null = null;
+
+    for (const row of data) {
+      const machineData = row[machineName];
+      if (machineData?.machineId) {
+        machineId = machineData.machineId;
+        break;
+      }
+    }
+
+    if (!machineId) {
+      toastManager.add({
+        title: "Machine ID not found. Please contact support.",
+        type: "error",
+      });
+      console.error(`Machine ID not found for: ${machineName}`);
+      return;
+    }
+
+    setSelectedMachine({
+      name: machineName,
+      id: machineId,
+    });
+    setDialogOpen(true);
+  }
+
+  const columns = useMemo(
+    () =>
+      getCutListColumns(
+        machineColumns,
+        handleMachineHeaderClick,
+        handleMachineCellClick,
+        data, // ✅ pass data here
+        isAssignmentDisabled,
+      ),
+    [machineColumns, data, onMachineAssign, isAssignmentDisabled],
+  );
+
+  const table = useReactTable({
+    data: data ?? [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getRowId: (row: any) => String(row.id ?? row.unique_code ?? Math.random()),
+    onRowSelectionChange: setRowSelection,
+    onColumnFiltersChange: setColumnFilters,
+    state: {
+      rowSelection,
+      columnFilters,
+      columnPinning: {
+        left: ["select", "id", "group_name"],
+      },
+    },
+    enableRowSelection: true,
+    enableColumnPinning: true,
+  });
+
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+
+  const handleAssign = async (
+    machineId: number,
+    machineName: string,
+    assigned: boolean,
+  ) => {
+    const rowsToUpdate = selectedRows.map((row) => row.original.id);
+
+    if (onMachineAssign) {
+      try {
+        await onMachineAssign(rowsToUpdate, machineId, machineName, assigned);
+        toastManager.add({
+          title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
+          type: "success",
+        });
+      } catch (error) {
+        toastManager.add({
+          title: "Failed to update machine assignment",
+          type: "error",
+        });
+        console.error(error);
+      }
+    }
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  // ✅ Reusable toolbar — rendered in both normal and fullscreen views
+  const ToolbarButtons = () => (
+    <div className="flex gap-2">
+      {/* Download Labels button */}
+      <>
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleMachineExcelUpload}
+        />
+
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-2"
+          disabled={
+            uploadMachineExcelMutation.isPending || isAssignmentDisabled
+          }
+          title={
+            isAssignmentDisabled
+              ? "Project Started: You cannot assign. Only Super Admin can do this."
+              : "Upload Cutlist"
+          }
+          onClick={() => {
+            if (isAssignmentDisabled) {
+              toastManager.add({
+                title:
+                  "Project Started: You cannot assign. Only Super Admin can do this.",
+                type: "error",
+              });
+              return;
+            }
+            fileInputRef.current?.click();
+          }}
+        >
+          {uploadMachineExcelMutation.isPending ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              Uploading...
+            </>
+          ) : (
+            <>
+              <UploadCloudIcon className="h-4 w-4" />
+              Upload Cutlist
+            </>
+          )}
+        </Button>
+      </>
+      {/* ✅ Download Cut List split button with Basic / Advanced options */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="default"
+            size="sm"
+            disabled={isDownloading}
+            className="gap-2"
+          >
+            {isDownloading ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4" />
+                Download Cut List
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+            Choose format
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleDownloadBasicExcel}
+            disabled={isDownloading || !onDownloadBasicExcel}
+            className="gap-2 cursor-pointer"
+          >
+            <Download className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Basic</div>
+              <div className="text-xs text-muted-foreground">
+                Standard cut list format
+              </div>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handleDownloadAdvancedExcel}
+            disabled={isDownloading || !onDownloadExcel}
+            className="gap-2 cursor-pointer"
+          >
+            <Download className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Advanced</div>
+              <div className="text-xs text-muted-foreground">
+                Full details with machine data
+              </div>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Download Labels button */}
+      <Button
+        variant="default"
+        size="sm"
+        onClick={() => handleDownloadLabels()}
+        disabled={isDownloading}
+        className="gap-2"
+      >
+        {isDownloading ? (
+          <>
+            <span className="animate-spin">⏳</span>
+            Generating...
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4" />
+            Download Labels
+            {selectedRows.length > 0 && ` (${selectedRows.length})`}
+          </>
+        )}
+      </Button>
+
+      {selectedRows.length > 0 && (
+        <Button variant="outline" size="sm" onClick={() => setRowSelection({})}>
+          Clear Selection ({selectedRows.length})
+        </Button>
+      )}
+    </div>
+  );
+
+  const handleMachineExcelUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    try {
+      await uploadMachineExcelMutation.mutateAsync({
+        vendorId: vendorId!,
+        projectToken: projectId,
+        file,
+        userId: userId!,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return (
+    <>
+      {/* Fullscreen overlay */}
+      {isFullscreen && (
+        <div
+          className="fixed inset-0 z-50 bg-background"
+          style={{ padding: "1rem" }}
+        >
+          <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center mb-3">
+              <div className="text-sm text-muted-foreground">
+                {columnFilters.length > 0 && (
+                  <span>
+                    {columnFilters.length} filter
+                    {columnFilters.length > 1 ? "s" : ""} active
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setColumnFilters([])}
+                      className="ml-2 h-auto p-0 text-primary"
+                    >
+                      Clear all filters
+                    </Button>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <ToolbarButtons />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleFullscreen}
+                  className="gap-2"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                  Exit Fullscreen
+                </Button>
+              </div>
+            </div>
+
+            <div className="cutlist-table-container-fullscreen flex-1">
+              <DataTable
+                table={table}
+                showPagination={false}
+                actionBar={
+                  selectedRows.length > 0 ? (
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                      <span className="text-sm font-medium">
+                        {selectedRows.length} row(s) selected
+                      </span>
+                    </div>
+                  ) : undefined
+                }
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Normal view */}
+      <div className={className}>
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-sm text-muted-foreground">
+            {columnFilters.length > 0 && (
+              <span>
+                {columnFilters.length} filter
+                {columnFilters.length > 1 ? "s" : ""} active
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setColumnFilters([])}
+                  className="ml-2 h-auto p-0 text-primary"
+                >
+                  Clear all filters
+                </Button>
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <ToolbarButtons />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFullscreen}
+              className="gap-2"
+            >
+              <Maximize2 className="h-4 w-4" />
+              Fullscreen
+            </Button>
+          </div>
+        </div>
+
+        <div className="cutlist-table-container">
+          <DataTable
+            table={table}
+            showPagination={false}
+            actionBar={
+              selectedRows.length > 0 ? (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                  <span className="text-sm font-medium">
+                    {selectedRows.length} row(s) selected
+                  </span>
+                </div>
+              ) : undefined
+            }
+          />
+        </div>
+
+        {selectedMachine && (
+          <MachineAssignmentDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            machineName={selectedMachine.name}
+            machineId={selectedMachine.id}
+            selectedRows={selectedRows.map((r) => r.original)}
+            onAssign={handleAssign}
+          />
+        )}
+      </div>
+    </>
+  );
+}

@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import type { AxiosError } from "axios";
 
 interface ApiErrorResponse {
@@ -24,21 +24,24 @@ export const getClientApprovalLeads = async (
 
 export const getClientApprovalDetails = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  productTypeId?: number,
 ) => {
-  const { data } = await apiClient.get(
-    `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}`
-  );
+  const url = productTypeId
+    ? `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}?product_type_id=${productTypeId}`
+    : `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}`;
+  const { data } = await apiClient.get(url);
   return data.data;
 };
 
 export const useClientApprovalDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  productTypeId?: number,
 ) => {
   return useQuery({
-    queryKey: ["clientApprovalDetails", vendorId, leadId],
-    queryFn: () => getClientApprovalDetails(vendorId!, leadId!),
+    queryKey: ["clientApprovalDetails", vendorId, leadId, productTypeId],
+    queryFn: () => getClientApprovalDetails(vendorId!, leadId!, productTypeId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -48,6 +51,7 @@ export interface UploadApprovalDocPayload {
   accountId: number;
   vendorId: number;
   createdBy: number;
+  productTypeId?: number;
   documents: File[];
 }
 
@@ -59,6 +63,9 @@ export const uploadMoreClientApprovalDocs = async (
   formData.append("account_id", payload.accountId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productTypeId) {
+    formData.append("product_type_id", payload.productTypeId.toString());
+  }
 
   payload.documents.forEach((file) => {
     formData.append("documents", file);
@@ -103,12 +110,12 @@ export const useSubmitClientApproval = () => {
     },
 
     onSuccess: () => {
-      toast.success("Client Approval submitted successfully!");
+      toastManager.add({ title: "Client Approval submitted successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["clientApprovalDetails"] });
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(extractAxiosError(err));
+      toastManager.add({ title: extractAxiosError(err), type: "error" });
     },
   });
 };
@@ -121,14 +128,12 @@ export const useRequestToTechCheck = () => {
       accountId,
       assign_to_user_id,
       created_by,
-      client_required_order_login_complition_date,
     }: {
       vendorId: number;
       leadId: number;
       accountId: number;
       assign_to_user_id: number;
       created_by: number;
-      client_required_order_login_complition_date: string;
     }) => {
       const { data } = await apiClient.post(
         `/leads/client-approval/vendorId/${vendorId}/leadId/${leadId}/request-to-tech-check`,
@@ -136,17 +141,16 @@ export const useRequestToTechCheck = () => {
           account_id: accountId,
           assign_to_user_id,
           created_by,
-          client_required_order_login_complition_date,
         }
       );
       return data;
     },
 
     onSuccess: () =>
-      toast.success("Request to Tech Check submitted successfully!"),
+      toastManager.add({ title: "Request to Tech Check submitted successfully!", type: "success" }),
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(extractAxiosError(err));
+      toastManager.add({ title: extractAxiosError(err), type: "error" });
     },
   });
 };

@@ -15,7 +15,7 @@ import {
   FileUploadTrigger,
 } from "@/components/ui/file-upload";
 import { Upload, X } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface DocumentsFieldProps {
   value: File[];
@@ -64,7 +64,7 @@ export function DocumentsUploader({
   const onFileReject = React.useCallback((file: File, message: string) => {
     const fileName =
       file.name.length > 20 ? file.name.slice(0, 20) + "..." : file.name;
-    toast.error(`${message}: "${fileName}" has been rejected`);
+    toastManager.add({ title: `${message}: "${fileName}" has been rejected`, type: "error" });
   }, []);
 
   return (
@@ -76,7 +76,7 @@ export function DocumentsUploader({
       multiple
       accept={
         accept ??
-        ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+        ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.jpg"
       }
       className="w-full"
     >

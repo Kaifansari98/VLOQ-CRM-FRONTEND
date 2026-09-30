@@ -22,6 +22,9 @@ import {
   CheckCircle2,
   Package,
   Pencil,
+  CalendarDays,
+  ArrowUpDown,
+  UserRound,
 } from "lucide-react";
 import {
   useRequiredDateForDispatch,
@@ -31,8 +34,13 @@ import {
   useUploadDispatchDocuments,
   usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
+import { useDispatchPlanningInfo } from "@/api/installation/useDispatchPlanning";
 import { useAppSelector } from "@/redux/store";
-import { useUpdateNoOfBoxes } from "@/api/production/production-api";
+import {
+  updateNoOfBoxes,
+  useUpdateNoOfBoxes,
+} from "@/api/production/production-api";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -42,7 +50,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,19 +60,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { z } from "zod";
 import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
 import { useDeleteDocument } from "@/api/leads";
-import DocumentCard from "@/components/utils/documentCard";
-import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  canUploadDispatchDocument,
+  canViewAndWorkDispatchStage,
+} from "@/components/utils/privileges";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import {
   Form,
   FormField,
@@ -77,6 +83,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
 import UploadDispatchDocument from "./UploadDispatchDocument";
+import { Card, CardContent } from "@/components/ui/card";
+import RemarkTooltip from "@/components/origin-tooltip";
+import FollowUpModal from "@/components/follow-up-modal";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -86,32 +98,17 @@ const DispatchDetailsSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine(
-      (val) => {
-        if (!val) return true;
-
-        const digits = val.replace(/\D/g, "");
-
-        // Reject repeated digits like 0000000000, 1111111111, etc.
-        const isRepeated =
-          /^(\d)\1{9}$/.test(digits) ||
-          (digits.length === 12 && /^(\d)\1{9}$/.test(digits.slice(2)));
-
-        if (isRepeated) return false;
-
-        // CASE 1 → Exactly 10 digits
-        if (digits.length === 10) return true;
-
-        // CASE 2 → Country code + 10 digits
-        if (digits.length === 12 && digits.startsWith("91")) return true;
-
-        return false;
-      },
-      {
-        message: "Enter a valid 10-digit mobile number",
-      }
-    ),
-
+    .refine((val) => {
+      if (!val) return true;
+      const digits = val.replace(/\D/g, "");
+      const isRepeated =
+        /^(\d)\1{9}$/.test(digits) ||
+        (digits.length === 12 && /^(\d)\1{9}$/.test(digits.slice(2)));
+      if (isRepeated) return false;
+      if (digits.length === 10) return true;
+      if (digits.length === 12 && digits.startsWith("91")) return true;
+      return false;
+    }),
   dispatch_remark: z.string().optional(),
   updated_by: z.number(),
 });
@@ -131,8 +128,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+
+  const [openTaskModal, setOpenTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [openPlanningRemarkModal, setOpenPlanningRemarkModal] = useState(false);
 
   const form = useForm<DispatchDetailsForm>({
     resolver: zodResolver(DispatchDetailsSchema),
@@ -148,35 +152,49 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   console.log("parent", Number(accountId));
 
-  // API Hooks
+  // ── API Hooks ──────────────────────────────────────────────────────────────
   const { data: requiredDateData, isLoading: loadingRequiredDate } =
     useRequiredDateForDispatch(vendorId, leadId);
   const { data: dispatchDetails, isLoading: loadingDispatchDetails } =
     useDispatchDetails(vendorId, leadId);
+  const { data: dispatchPlanningInfo } = useDispatchPlanningInfo(vendorId, leadId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
-
   const { data: tasks = [], isLoading } = usePendingMaterialTasks(
     vendorId,
-    leadId
+    leadId,
   );
-
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
   const addDispatchMutation = useAddDispatchDetails();
 
-  // File Upload State
+  // ── Lead block access control ──────────────────────────────────────────────
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const lead = leadResponse?.data?.lead;
+  const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
 
-  // 🧩 For Edit No. of Boxes Modal
+  // ── Edit No. of Boxes Modal state ──────────────────────────────────────────
   const [openBoxesModal, setOpenBoxesModal] = useState(false);
   const [noOfBoxesInput, setNoOfBoxesInput] = useState(
-    requiredDateData?.no_of_boxes?.toString() || ""
+    requiredDateData?.no_of_boxes?.toString() || "",
   );
+  const [instanceBoxes, setInstanceBoxes] = useState<
+    { id: number; title: string; value: string }[]
+  >([]);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const queryClient = useQueryClient();
   const { mutateAsync: updateNoBoxes, isPending: updatingBoxes } =
     useUpdateNoOfBoxes(vendorId, leadId);
+
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
 
   React.useEffect(() => {
     if (dispatchDetails) {
@@ -193,15 +211,28 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     }
   }, [dispatchDetails]);
 
-  const onSubmit = form.handleSubmit((values) => {
-    addDispatchMutation.mutate({
-      vendorId,
-      leadId,
-      payload: values,
-    });
-  });
+  console.log("dispatch details data>>>>>: ", requiredDateData);
 
-  // updload documents
+  React.useEffect(() => {
+    const instances = Array.isArray(instancesResponse?.data)
+      ? instancesResponse?.data
+      : instancesResponse?.data?.data || [];
+
+    if (instances.length > 0) {
+      setInstanceBoxes(
+        instances.map((instance: any) => ({
+          id: Number(instance.id),
+          title: instance.title || `Instance ${instance.id}`,
+          value:
+            instance.no_of_boxes != null ? String(instance.no_of_boxes) : "",
+        })),
+      );
+    }
+  }, [instancesResponse]);
+
+  const onSubmit = form.handleSubmit((values) => {
+    addDispatchMutation.mutate({ vendorId, leadId, payload: values });
+  });
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -235,92 +266,328 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     }
   };
 
-  // const canDelete = userType === "admin" || userType === "super-admin";
-  const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
+  const isCustomUser = userType === "custom";
+  const canEditDispatchSnapshotBoxes = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.dispatch.dispatch_snapshot.view_edit_no_of_boxes",
+    )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canManageDispatchDetails = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.dispatch.dispatch_details.enable_disable_action",
+    )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canViewDispatchDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.dispatch.dispatch_documents.view",
+    )
+    : true;
+  const canUploadDispatchDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.dispatch.dispatch_documents.upload",
+    )
+    : canUploadDispatchDocument(userType, leadStatus);
+  const canManagePendingMaterial = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.dispatch.add_pending_material.enable_disable_action",
+    )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+
+  const leadLevelBoxes = Number(requiredDateData?.no_of_boxes || 0);
+  const useLeadLevelBoxes = leadLevelBoxes > 0;
+  const totalInstanceBoxes = instanceBoxes.reduce((sum, item) => {
+    const val = Number(item.value || 0);
+    return sum + (Number.isFinite(val) ? val : 0);
+  }, 0);
+
+  // ✅ Effective permission flags — blocked overrides all
+  const effectiveCanManageDispatchDetails =
+    canManageDispatchDetails && !shouldDisableBlockedActions;
+  const effectiveCanEditBoxes =
+    canEditDispatchSnapshotBoxes && !shouldDisableBlockedActions;
+  const effectiveCanManagePendingMaterial =
+    canManagePendingMaterial && !shouldDisableBlockedActions;
+  const dispatchPlanningRemark =
+    dispatchPlanningInfo?.dispatch_planning_remark?.trim() || "";
 
   return (
     <div className="space-y-4 sm:space-y-6 bg-[#fff] dark:bg-[#0a0a0a] p-2 sm:p-4 md:p-0">
-      {/* Required Date & Boxes Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {/* ---- Required Delivery Date Card ---- */}
-        <div className="border rounded-xl bg-background transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-center gap-3 sm:gap-4">
-            {/* Icon */}
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0">
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+
+      {/* ── Dispatch Snapshot ─────────────────────────────────────────────────── */}
+      <div className="rounded-2xl border bg-muted/20 p-3 sm:p-5">
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Truck className="h-4 w-4 text-primary" />
             </div>
-
-            {/* Content */}
-            <div className="flex flex-col min-w-0">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide">
-                Required OnSite Delivery Date
+            <div>
+              <h3 className="text-sm sm:text-base font-semibold tracking-tight leading-none">
+                Dispatch Snapshot
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Key delivery and site details at a glance
               </p>
+            </div>
+          </div>
+          {dispatchPlanningRemark && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpenPlanningRemarkModal(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              View Remark
+            </Button>
+          )}
+        </div>
 
-              {loadingRequiredDate ? (
-                <div className="h-5 sm:h-6 w-32 sm:w-40 bg-muted animate-pulse rounded-md mt-1 sm:mt-2" />
-              ) : (
-                <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground mt-1 break-words">
-                  {requiredDateData?.required_date_for_dispatch
-                    ? format(
-                        new Date(requiredDateData.required_date_for_dispatch),
-                        "EEEE dd MMMM yyyy"
-                      )
-                    : "Not set"}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+
+          {/* Required Delivery Date Card */}
+          <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+            <div className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                  Delivery Date
                 </p>
+              </div>
+              {loadingRequiredDate ? (
+                <div className="space-y-1.5 mt-1">
+                  <div className="h-5 w-36 bg-muted animate-pulse rounded-md" />
+                  <div className="h-3.5 w-24 bg-muted/60 animate-pulse rounded-md" />
+                </div>
+              ) : requiredDateData?.required_date_for_dispatch ? (
+                <div>
+                  <p className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                    {format(
+                      new Date(requiredDateData.required_date_for_dispatch),
+                      "dd MMM yyyy",
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
+                    {format(
+                      new Date(requiredDateData.required_date_for_dispatch),
+                      "EEEE",
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                  <span className="text-sm text-muted-foreground/60 italic">
+                    Not set
+                  </span>
+                </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* ---- Number of Boxes Card ---- */}
-        <div className="border rounded-xl bg-background transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-center gap-3 sm:gap-4">
-            {/* Icon */}
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0">
-              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
+          {/* ── Number of Boxes Card ── */}
+          <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+            <div className="p-3 sm:p-4">
+              {/* ✅ FIX: flex row stays intact — pencil stays right side always */}
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Package className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                    No. of Boxes
+                  </p>
+                </div>
 
-            {/* Content */}
-            <div className="flex flex-col w-full min-w-0">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide">
-                Number of Boxes
-              </p>
+                {/* ✅ Pencil — always on right, tooltip only when blocked */}
+                {canEditDispatchSnapshotBoxes && !loadingRequiredDate && (
+                  <div className="shrink-0 w-fit">
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        // ✅ inline-block prevents layout shift
+                        <span className="inline-block">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 rounded-lg hover:bg-accent transition-colors disabled:cursor-not-allowed"
+                            disabled={shouldDisableBlockedActions}
+                            onClick={
+                              shouldDisableBlockedActions
+                                ? undefined
+                                : () => {
+                                  setNoOfBoxesInput(
+                                    requiredDateData?.no_of_boxes?.toString() || "",
+                                  );
+                                  setOpenBoxesModal(true);
+                                }
+                            }
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                        </span>
+                      }
+                    />
+                  </div>
+                )}
+              </div>
 
               {loadingRequiredDate ? (
-                <div className="h-5 sm:h-6 w-20 sm:w-24 bg-muted animate-pulse rounded-md mt-1 sm:mt-2" />
+                <div className="h-8 w-16 bg-muted animate-pulse rounded-md mt-1" />
               ) : (
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
-                    {requiredDateData?.no_of_boxes || 0}
+                <div className="flex items-end gap-1.5">
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground leading-none">
+                    {useLeadLevelBoxes
+                      ? requiredDateData?.no_of_boxes || 0
+                      : totalInstanceBoxes}
                   </p>
+                  <p className="text-[11px] text-muted-foreground mb-0.5 font-medium">
+                    boxes
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
 
-                  {canViewAndWork && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-full hover:bg-accent"
-                      onClick={() => {
-                        setNoOfBoxesInput(
-                          requiredDateData?.no_of_boxes?.toString() || ""
-                        );
-                        setOpenBoxesModal(true);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground hover:text-foreground" />
-                    </Button>
+          {/* OnSite Contact Person Card */}
+          <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+            <div className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <UserRound className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                  Site Contact
+                </p>
+              </div>
+              {loadingRequiredDate ? (
+                <div className="space-y-1.5 mt-1">
+                  <div className="h-5 w-28 bg-muted animate-pulse rounded-md" />
+                  <div className="h-3.5 w-20 bg-muted/60 animate-pulse rounded-md" />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm sm:text-base font-bold text-foreground capitalize leading-tight truncate">
+                    {requiredDateData?.onsite_contact_person_name || (
+                      <span className="text-muted-foreground/60 font-normal italic text-sm">
+                        No name
+                      </span>
+                    )}
+                  </p>
+                  {requiredDateData?.onsite_contact_person_number ? (
+                    <div className="flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                      <p className="text-[11px] font-semibold text-muted-foreground tracking-wide">
+                        {requiredDateData.onsite_contact_person_number}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                      <span className="text-[11px] text-muted-foreground/60 italic">
+                        No contact
+                      </span>
+                    </div>
                   )}
                 </div>
               )}
             </div>
           </div>
+
+          {/* Material Lift & Vehicle Approachability Card */}
+          {(() => {
+            const isAvailable =
+              requiredDateData?.material_lift_availability === true ||
+              requiredDateData?.material_lift_availability === "true";
+            const isUnavailable =
+              requiredDateData?.material_lift_availability === false ||
+              requiredDateData?.material_lift_availability === "false";
+            const liftSet = isAvailable || isUnavailable;
+            const approachability =
+              requiredDateData?.vehicle_approachability_for_dispatch;
+            const approachabilityLabel =
+              approachability === true
+                ? "Yes"
+                : approachability === false
+                  ? "No"
+                  : "-";
+
+            return (
+              <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+                <div className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                      Site Access
+                    </p>
+                  </div>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[11px] text-muted-foreground font-medium leading-none">
+                        Material Lift
+                      </p>
+                      {loadingRequiredDate ? (
+                        <div className="h-3.5 w-16 bg-muted animate-pulse rounded" />
+                      ) : liftSet ? (
+                        <p className={`text-[11px] font-semibold leading-none ${isAvailable ? "text-foreground" : "text-destructive"}`}>
+                          {isAvailable ? `Available ${requiredDateData?.material_lift_size ? `(${requiredDateData.material_lift_size} ft)` : ""}` : "Not Available"}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground/50 italic leading-none">—</p>
+                      )}
+                    </div>
+                    <div className="h-px bg-border/50" />
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[11px] text-muted-foreground font-medium leading-none">
+                        Vehicle Approachability
+                      </p>
+                      {loadingRequiredDate ? (
+                        <div className="h-3.5 w-8 bg-muted animate-pulse rounded" />
+                      ) : (
+                        <p className={`text-[11px] font-semibold leading-none ${approachabilityLabel === "Yes" ? "text-foreground" : approachabilityLabel === "No" ? "text-destructive" : "text-muted-foreground/50 italic"}`}>
+                          {approachabilityLabel}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
-      <Separator />
+      <Dialog
+        open={openPlanningRemarkModal}
+        onOpenChange={setOpenPlanningRemarkModal}
+      >
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Dispatch Planning Remark</DialogTitle>
+            <DialogDescription>
+              Additional remarks added during dispatch planning.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
+            {dispatchPlanningRemark}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setOpenPlanningRemarkModal(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Dispatch Details Form */}
+      {/* ── Dispatch Details Form ──────────────────────────────────────────────── */}
       <div className="border rounded-lg bg-background overflow-hidden">
-        {/* ---------- HEADER ---------- */}
+        {/* Header */}
         <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-0">
             <div className="flex items-center gap-2">
@@ -334,28 +601,37 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </p>
           </div>
 
-          {/* Save Button – stays in header but triggers form */}
-          {canViewAndWork && (
-            <Button
-              type="submit"
-              form="dispatch-form"
-              disabled={addDispatchMutation.isPending}
-              className="hidden sm:flex"
-              size="sm"
-            >
-              {addDispatchMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>Save Dispatch Details</>
-              )}
-            </Button>
+          {/* ✅ Save button desktop — inline-block fixes alignment */}
+          {canManageDispatchDetails && (
+            <div className="shrink-0 w-fit">
+              <CustomeTooltip
+                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                truncateValue={
+                  <span className="inline-block">
+                    <Button
+                      type="submit"
+                      form="dispatch-form"
+                      disabled={addDispatchMutation.isPending || shouldDisableBlockedActions}
+                      className="hidden sm:flex"
+                      size="sm"
+                    >
+                      {addDispatchMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>Save Dispatch Details</>
+                      )}
+                    </Button>
+                  </span>
+                }
+              />
+            </div>
           )}
         </div>
 
-        {/* ---------- CONTENT ---------- */}
+        {/* Content */}
         <div className="p-3 sm:p-4 md:p-6">
           {loadingDispatchDetails ? (
             <div className="space-y-4">
@@ -367,11 +643,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             <Form {...form}>
               <form
                 id="dispatch-form"
-                onSubmit={onSubmit}
+                onSubmit={
+                  shouldDisableBlockedActions
+                    ? (e) => e.preventDefault()
+                    : onSubmit
+                }
                 className="space-y-4 sm:space-y-6"
               >
-                {/* Form Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+
                   {/* Dispatch Date */}
                   <FormField
                     control={form.control}
@@ -379,23 +659,23 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">Dispatch Date</FormLabel>
-
-                        <div
-                          className={
-                            !canViewAndWork
-                              ? "opacity-50 pointer-events-none"
-                              : ""
+                        {/* ✅ Tooltip on hover when blocked */}
+                        <CustomeTooltip
+                          value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                          truncateValue={
+                            <span className="block">
+                              <div className={!effectiveCanManageDispatchDetails ? "opacity-50 pointer-events-none" : ""}>
+                                <FormControl>
+                                  <CustomeDatePicker
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    restriction="futureOnly"
+                                  />
+                                </FormControl>
+                              </div>
+                            </span>
                           }
-                        >
-                          <FormControl>
-                            <CustomeDatePicker
-                              value={field.value}
-                              onChange={field.onChange}
-                              restriction="futureOnly"
-                            />
-                          </FormControl>
-                        </div>
-
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -407,20 +687,22 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     name="vehicle_no"
                     render={({ field }) => (
                       <FormItem>
-                        <div
-                          className={
-                            !canViewAndWork
-                              ? "opacity-50 pointer-events-none"
-                              : ""
+                        {/* ✅ Tooltip on hover when blocked */}
+                        <CustomeTooltip
+                          value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                          truncateValue={
+                            <span className="block">
+                              <div className={!effectiveCanManageDispatchDetails ? "opacity-50 pointer-events-none" : ""}>
+                                <FormControl>
+                                  <VehicleNumberInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </div>
+                            </span>
                           }
-                        >
-                          <FormControl>
-                            <VehicleNumberInput
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                        </div>
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -433,21 +715,23 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">Driver Name</FormLabel>
-                        <div
-                          className={
-                            !canViewAndWork
-                              ? "opacity-50 pointer-events-none"
-                              : ""
+                        {/* ✅ Tooltip on hover when blocked */}
+                        <CustomeTooltip
+                          value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                          truncateValue={
+                            <span className="block">
+                              <div className={!effectiveCanManageDispatchDetails ? "opacity-50 pointer-events-none" : ""}>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter driver name"
+                                    {...field}
+                                    className="text-sm"
+                                  />
+                                </FormControl>
+                              </div>
+                            </span>
                           }
-                        >
-                          <FormControl>
-                            <Input
-                              placeholder="Enter driver name"
-                              {...field}
-                              className="text-sm"
-                            />
-                          </FormControl>
-                        </div>
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -459,26 +743,25 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     name="driver_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm">
-                          Driver Contact Number
-                        </FormLabel>
-
-                        <div
-                          className={
-                            !canViewAndWork
-                              ? "opacity-50 pointer-events-none"
-                              : ""
+                        <FormLabel className="text-sm">Driver Contact Number</FormLabel>
+                        {/* ✅ Tooltip on hover when blocked */}
+                        <CustomeTooltip
+                          value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                          truncateValue={
+                            <span className="block">
+                              <div className={!effectiveCanManageDispatchDetails ? "opacity-50 pointer-events-none" : ""}>
+                                <FormControl>
+                                  <PhoneInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    defaultCountry="IN"
+                                    validateIndianNumber={true}
+                                  />
+                                </FormControl>
+                              </div>
+                            </span>
                           }
-                        >
-                          <FormControl>
-                            <PhoneInput
-                              value={field.value}
-                              onChange={field.onChange}
-                              defaultCountry="IN"
-                            />
-                          </FormControl>
-                        </div>
-
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -486,47 +769,62 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 </div>
 
                 {/* Dispatch Remark */}
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="dispatch_remark"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">
-                          Dispatch Remark
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Add any remarks..."
-                            rows={3}
-                            {...field}
-                            disabled={!canViewAndWork}
-                            className="text-sm"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="dispatch_remark"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Dispatch Remark</FormLabel>
+                      {/* ✅ Tooltip on hover when blocked */}
+                      <CustomeTooltip
+                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                        truncateValue={
+                          <span className="block">
+                            <FormControl>
+                              <Textarea
+                                placeholder="Add any remarks..."
+                                rows={3}
+                                {...field}
+                                disabled={!effectiveCanManageDispatchDetails}
+                                className="text-sm"
+                              />
+                            </FormControl>
+                          </span>
+                        }
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* ✅ Save button mobile — inline-block fixes alignment */}
                 <div className="flex justify-end">
-                  {canViewAndWork && (
-                    <Button
-                      type="submit"
-                      form="dispatch-form"
-                      disabled={addDispatchMutation.isPending}
-                      className="sm:hidden"
-                      size="sm"
-                    >
-                      {addDispatchMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>Save Dispatch Details</>
-                      )}
-                    </Button>
+                  {canManageDispatchDetails && (
+                    <div className="shrink-0 w-fit">
+                      <CustomeTooltip
+                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                        truncateValue={
+                          <span className="inline-block">
+                            <Button
+                              type="submit"
+                              form="dispatch-form"
+                              disabled={addDispatchMutation.isPending || shouldDisableBlockedActions}
+                              className="sm:hidden"
+                              size="sm"
+                            >
+                              {addDispatchMutation.isPending ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>Save Dispatch Details</>
+                              )}
+                            </Button>
+                          </span>
+                        }
+                      />
+                    </div>
                   )}
                 </div>
               </form>
@@ -535,35 +833,49 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </div>
       </div>
 
-      <Separator />
-
+      {/* ── Upload + Pending Material side by side ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="h-full">
-          <UploadDispatchDocument
-            leadId={leadId}
-            accountId={accountId}
-            disabled={canViewAndWork}
-          />
+          {canViewDispatchDocuments && (
+            // ✅ Tooltip wrapper for UploadDispatchDocument
+            <CustomeTooltip
+              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              truncateValue={
+                <span className="block h-full">
+                  <UploadDispatchDocument
+                    leadId={leadId}
+                    accountId={accountId}
+                    disabled={canUploadDispatchDocuments && !shouldDisableBlockedActions}
+                  />
+                </span>
+              }
+            />
+          )}
         </div>
-
         <div className="h-full">
-          <PendingMaterialDetails
-            leadId={leadId}
-            accountId={accountId}
-            disabled={canViewAndWork}
+          {/* ✅ Tooltip wrapper for PendingMaterialDetails */}
+          <CustomeTooltip
+            value={shouldDisableBlockedActions ? blockedTooltip : ""}
+            truncateValue={
+              <span className="block h-full">
+                <PendingMaterialDetails
+                  leadId={leadId}
+                  accountId={accountId}
+                  disabled={effectiveCanManagePendingMaterial}
+                />
+              </span>
+            }
           />
         </div>
       </div>
 
-      {/* Pending Materials List */}
+      {/* ── Pending Materials List ─────────────────────────────────────────────── */}
       <div className="border rounded-lg bg-background">
-        {/* ---------- HEADER ---------- */}
         <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
               <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-
             <div>
               <h2 className="text-base sm:text-lg font-semibold tracking-tight">
                 Pending Materials
@@ -573,97 +885,127 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </p>
             </div>
           </div>
-
           <Badge variant="secondary" className="gap-1 text-xs">
             <Package className="h-3 w-3" />
             {tasks.length} {tasks.length === 1 ? "Item" : "Items"}
           </Badge>
         </div>
 
-        {/* ---------- CONTENT ---------- */}
         <div className="p-3 sm:p-4 md:p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : tasks.length === 0 ? (
-            <div className="p-6 sm:p-10 border border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/40">
-              <div className="p-3 sm:p-4 bg-muted rounded-full">
-                <Package className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+          {tasks.length === 0 ? (
+            <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/30">
+              <div className="flex flex-col items-center gap-3">
+                <div className="p-4 bg-muted/60 rounded-full shadow-inner">
+                  <Package className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  No materials pending
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Add tasks using the form above
+                </p>
               </div>
-              <p className="text-sm font-medium text-muted-foreground mt-3 text-center">
-                No pending materials yet
-              </p>
-              <p className="text-xs text-muted-foreground text-center">
-                Add materials using the form above
-              </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[460px] overflow-y-auto pr-1 sm:pr-2">
-              <AnimatePresence mode="popLayout">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <AnimatePresence>
                 {tasks.map((task: any, idx: number) => {
-                  const [taskTitle, ...descParts] = (task.remark || "").split(
-                    "—"
-                  );
+                  const [taskTitle, ...descParts] = (task.remark || "").split("—");
                   const description = descParts.join("—").trim();
+                  const isLong = description.length > 200;
+                  const shortDesc = isLong
+                    ? description.slice(0, 200) + "..."
+                    : description;
+
+                  const isCardClickable =
+                    effectiveCanManagePendingMaterial &&
+                    task.status !== "completed" &&
+                    task.status !== "cancelled";
 
                   return (
                     <motion.div
-                      key={task.id || idx}
-                      initial={{ opacity: 0, y: 20, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.3, delay: idx * 0.05 }}
-                      layout
+                      key={task.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: idx * 0.05 }}
                     >
-                      {/* ---------- ITEM CARD ---------- */}
-                      <div className="border rounded-xl px-3 sm:px-4 py-3 sm:py-4 bg-background/60 backdrop-blur-sm transition-all duration-300">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          {/* Left Icon */}
-                          <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-                            <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-                          </div>
-
-                          {/* Text Block */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-foreground break-words">
-                              {taskTitle || "Untitled Material"}
-                            </h4>
-
-                            {description && (
-                              <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
-                                {description}
-                              </p>
-                            )}
-
-                            {/* Meta Row */}
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
-                                <span className="whitespace-nowrap">
+                      {/* ✅ Block tooltip on pending material cards */}
+                      <CustomeTooltip
+                        value={
+                          shouldDisableBlockedActions &&
+                            task.status !== "completed" &&
+                            task.status !== "cancelled"
+                            ? blockedTooltip
+                            : ""
+                        }
+                        truncateValue={
+                          <Card
+                            onClick={() => {
+                              if (!isCardClickable) return;
+                              setSelectedTask({
+                                id: task.id,
+                                leadId,
+                                accountId,
+                                remark: task.remark,
+                                dueDate: task.due_date,
+                              });
+                              setOpenTaskModal(true);
+                            }}
+                            className={`group h-full rounded-xl border bg-background/80 hover:border-primary/40 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)] transition-all duration-300 ${isCardClickable
+                                ? "cursor-pointer"
+                                : "cursor-not-allowed opacity-70"
+                              }`}
+                          >
+                            <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
+                              <div>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="p-2.5 rounded-lg border bg-primary/10 border-primary/20">
+                                    <Package className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] h-5 px-2 rounded-md ${getStatusColor(task.status)}`}
+                                  >
+                                    {task.status === "completed" && (
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    )}
+                                    {task.status}
+                                  </Badge>
+                                </div>
+                                <h4 className="font-semibold text-sm line-clamp-1 mt-4">
+                                  {taskTitle || "Untitled Material"}
+                                </h4>
+                                {description && (
+                                  <p className="w-full text-xs text-muted-foreground leading-relaxed mt-1">
+                                    {isLong ? (
+                                      <RemarkTooltip
+                                        title="Additional Note"
+                                        remark={
+                                          <span className="block text-left line-clamp-3">
+                                            {shortDesc}
+                                          </span>
+                                        }
+                                        remarkFull={description}
+                                      />
+                                    ) : (
+                                      <span className="block text-left line-clamp-3">
+                                        {shortDesc}
+                                      </span>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span>
                                   Due:{" "}
-                                  {format(
-                                    new Date(task.due_date),
-                                    "dd MMM yyyy"
-                                  )}
+                                  {format(new Date(task.due_date), "dd MMM yyyy")}
                                 </span>
                               </div>
-
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ${getStatusColor(
-                                  task.status
-                                )} capitalize`}
-                              >
-                                {task.status === "completed" && (
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                )}
-                                {task.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                            </CardContent>
+                          </Card>
+                        }
+                      />
                     </motion.div>
                   );
                 })}
@@ -673,7 +1015,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </div>
       </div>
 
-      {/* ✨ Edit No. of Boxes Modal */}
+      {/* ── Edit No. of Boxes Modal ────────────────────────────────────────────── */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>
         <DialogContent className="sm:max-w-[420px] max-w-[calc(100%-2rem)] p-4 sm:p-6 rounded-2xl border shadow-lg bg-card">
           <DialogHeader>
@@ -681,24 +1023,64 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Update Number of Boxes
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-1">
-              Enter the total number of boxes ready for dispatch.
+            <DialogDescription className="text-sm text-muted-foreground">
+              {useLeadLevelBoxes
+                ? "Enter the total number of boxes ready for dispatch."
+                : "Update boxes per instance to match the total."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-3 sm:py-4 space-y-3">
-            <Label className="text-sm font-medium text-foreground">
-              Number of Boxes
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              value={noOfBoxesInput}
-              onChange={(e) => setNoOfBoxesInput(e.target.value)}
-              placeholder="e.g. 12"
-              className="border rounded-md text-sm"
-            />
-          </div>
+          {useLeadLevelBoxes ? (
+            <div className="py-3 sm:py-4 space-y-3">
+              <Label className="text-sm font-medium text-foreground">
+                Number of Boxes
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={noOfBoxesInput}
+                onChange={(e) => setNoOfBoxesInput(e.target.value)}
+                placeholder="e.g. 12"
+                className="border rounded-md text-sm"
+              />
+            </div>
+          ) : (
+            <div className="py-3 sm:py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-foreground">
+                  Total No. of Boxes
+                </Label>
+                <Badge variant="secondary" className="text-xs">
+                  {totalInstanceBoxes}
+                </Badge>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                {instanceBoxes.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <div className="flex-1 text-sm text-muted-foreground">
+                      {item.title}
+                    </div>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.value}
+                      onChange={(e) =>
+                        setInstanceBoxes((prev) =>
+                          prev.map((box) =>
+                            box.id === item.id
+                              ? { ...box, value: e.target.value }
+                              : box,
+                          ),
+                        )
+                      }
+                      placeholder="e.g. 12"
+                      className="w-24 border rounded-md text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-2">
             <Button
@@ -710,51 +1092,95 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              onClick={async () => {
-                if (!noOfBoxesInput || Number(noOfBoxesInput) <= 0) {
-                  toast.error("Please enter a valid positive number");
-                  return;
-                }
-                const formData = new FormData();
-                formData.append("user_id", String(userId || 0));
-                formData.append("account_id", String(accountId || 0));
-                formData.append("no_of_boxes", String(noOfBoxesInput));
 
-                try {
-                  await updateNoBoxes(formData);
-                  toast.success("No. of Boxes updated successfully!");
-                  queryClient.invalidateQueries({
-                    queryKey: ["requiredDateForDispatch"],
-                  });
-                  setOpenBoxesModal(false);
-                } catch (err: any) {
-                  toast.error(
-                    err?.response?.data?.message ||
-                      "Failed to update No. of Boxes"
-                  );
-                }
-              }}
-              disabled={updatingBoxes}
-              className="w-full sm:w-auto"
-              size="sm"
-            >
-              {updatingBoxes ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
-            </Button>
+            {/* ✅ Save Changes — inline-block fixes layout, tooltip when blocked */}
+            <CustomeTooltip
+              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              truncateValue={
+                <span className="inline-block w-full sm:w-auto">
+                  <Button
+                    onClick={
+                      shouldDisableBlockedActions
+                        ? undefined
+                        : async () => {
+                          try {
+                            if (useLeadLevelBoxes) {
+                              if (!noOfBoxesInput || Number(noOfBoxesInput) <= 0) {
+                                toastManager.add({
+                                  title: "Please enter a valid positive number",
+                                  type: "error",
+                                });
+                                return;
+                              }
+                              const formData = new FormData();
+                              formData.append("user_id", String(userId || 0));
+                              formData.append("account_id", String(accountId || 0));
+                              formData.append("no_of_boxes", String(noOfBoxesInput));
+                              await updateNoBoxes(formData);
+                            } else {
+                              const invalid = instanceBoxes.find(
+                                (item) => !item.value || Number(item.value) <= 0,
+                              );
+                              if (invalid) {
+                                toastManager.add({
+                                  title: "Please enter boxes for all instances",
+                                  type: "error",
+                                });
+                                return;
+                              }
+                              for (const item of instanceBoxes) {
+                                const formData = new FormData();
+                                formData.append("user_id", String(userId || 0));
+                                formData.append("account_id", String(accountId || 0));
+                                formData.append("no_of_boxes", String(item.value));
+                                await updateNoOfBoxes(vendorId, leadId, formData, item.id);
+                              }
+                            }
+                            toastManager.add({
+                              title: "No. of Boxes updated successfully!",
+                              type: "success",
+                            });
+                            queryClient.invalidateQueries({
+                              queryKey: ["requiredDateForDispatch"],
+                            });
+                            queryClient.invalidateQueries({
+                              queryKey: ["lead-product-structure-instances", leadId, vendorId],
+                            });
+                            setOpenBoxesModal(false);
+                          } catch (err: any) {
+                            toastManager.add({
+                              title:
+                                err?.response?.data?.message ||
+                                "Failed to update No. of Boxes",
+                              type: "error",
+                            });
+                          }
+                        }
+                    }
+                    disabled={updatingBoxes || shouldDisableBlockedActions}
+                    className="w-full sm:w-auto"
+                    size="sm"
+                  >
+                    {updatingBoxes ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </span>
+              }
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── Delete Confirmation ────────────────────────────────────────────────── */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
@@ -783,6 +1209,21 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedTask && (
+        <FollowUpModal
+          open={openTaskModal}
+          onOpenChange={setOpenTaskModal}
+          variant="Pending Work"
+          data={{
+            id: selectedTask.leadId,
+            accountId: selectedTask.accountId,
+            taskId: selectedTask.id,
+            remark: selectedTask.remark,
+            dueDate: selectedTask.dueDate,
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -17,7 +17,7 @@ import { FileUploadField } from "../../custom/file-upload";
 import { Button } from "../../ui/button";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
@@ -37,24 +37,15 @@ interface LeadViewModalProps {
   };
 }
 
-const documentMimeTypes = [
-  "application/pdf",
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-];
-const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
-
 const formSchema = z
   .object({
     current_site_photos: z.any().optional(),
 
     upload_pdf: z
-      .instanceof(File, { message: "Please upload a document" })
-      .refine((file) => documentMimeTypes.includes(file.type), {
-        message: "Only PDF or image files are allowed",
-      }),
+      .array(
+        z.instanceof(File),
+      )
+      .min(1, { message: "Please upload at least one document" }),
 
     amount: z.number().optional(),
     payment_date: z.string().optional(),
@@ -119,7 +110,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       current_site_photos: [],
-      upload_pdf: undefined,
+      upload_pdf: [],
       payment_image: [],
     },
   });
@@ -136,7 +127,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
   const handleReset = () => {
     form.reset({
       current_site_photos: [],
-      upload_pdf: undefined,
+      upload_pdf: [],
       amount: undefined,
       payment_date: undefined,
       payment_image: [],
@@ -145,7 +136,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
   };
 
   const handleSuccess = () => {
-    toast.success("Booking Done ISM Upload Successfully!");
+    toastManager.add({ title: "Booking Done ISM Upload Successfully!", type: "success" });
     queryClient.invalidateQueries({
       queryKey: ["leadStats", vendorId, userId],
     });
@@ -159,11 +150,9 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
     router.push("/dashboard/leads/designing-stage");
   };
 
-  const clientId = 1;
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!leadId || !accountId) {
-      toast.error("Lead or account data is missing!");
+      toastManager.add({ title: "Lead or account data is missing!", type: "error" });
       return;
     }
 
@@ -172,14 +161,15 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
     formData.append("account_id", accountId?.toString() || "");
     formData.append("vendor_id", vendorId?.toString() || "");
     formData.append("created_by", userId?.toString() || "");
-    formData.append("client_id", clientId.toString() || "");
     formData.append("user_id", userId?.toString() || "");
 
     values.current_site_photos?.forEach((file: File) => {
       formData.append("current_site_photos", file);
     });
 
-    formData.append("upload_pdf", values.upload_pdf);
+    values.upload_pdf.forEach((file: File) => {
+      formData.append("upload_pdf", file);
+    });
 
     if (values.amount) {
       formData.append("amount", values.amount.toString());
@@ -246,11 +236,13 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
                     <SinglePdfUploadField
                       value={field.value}
                       onChange={field.onChange}
-                      allowedMimeTypes={documentMimeTypes}
-                      accept={documentAccept}
+                      allowedMimeTypes={[]}
+                      accept="*/*"
                       title="Upload Booking Document"
-                      description="PDF or image allowed. Upload one file."
+                      description="Any file type allowed. Upload one or more files."
                       buttonLabel="Select File"
+                      multiple
+                      maxFiles={10}
                     />
                   </FormControl>
                   <FormMessage />

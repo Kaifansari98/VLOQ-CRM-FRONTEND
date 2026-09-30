@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { validateIndianMobileRisk } from "@/utils/phoneRiskValidator";
 
 type PhoneInputProps = Omit<
   React.ComponentProps<"input">,
@@ -27,32 +28,92 @@ type PhoneInputProps = Omit<
 > &
   Omit<RPNInput.Props<typeof RPNInput.default>, "onChange"> & {
     onChange?: (value: RPNInput.Value) => void;
+    validateIndianNumber?: boolean; // ✅ NEW PROP
+    onValidationChange?: (isValid: boolean) => void;
+    showError?: boolean;
   };
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
   React.forwardRef<React.ElementRef<typeof RPNInput.default>, PhoneInputProps>(
-    ({ className, onChange, value, ...props }, ref) => {
+    (
+      {
+        className,
+        onChange,
+        value,
+        validateIndianNumber = false,
+        onValidationChange,
+        showError = true,
+        international,
+        ...props
+      },
+      ref,
+    ) => {
+      const [error, setError] = React.useState<string>("");
+
+      const handleChange = (val: RPNInput.Value | undefined) => {
+        let finalVal = val || ("" as RPNInput.Value);
+
+        // Strip leading 0 from Indian numbers (+910... -> +91...)
+        if (finalVal.startsWith("+910")) {
+          finalVal = ("+91" + finalVal.slice(4)) as RPNInput.Value;
+        }
+
+        if (validateIndianNumber) {
+          const digitsOnly = finalVal.replace(/\D/g, "");
+          const nationalNumber = digitsOnly.replace(/^91/, "");
+          const totalDigits = nationalNumber.length;
+
+          if (totalDigits === 0) {
+            setError("");
+            onValidationChange?.(false);
+          } else if (!/^[6-9]/.test(nationalNumber)) {
+            setError("Mobile number must start with 6, 7, 8 or 9");
+            onValidationChange?.(false);
+          } else if (totalDigits !== 10) {
+            setError("Enter a 10 digit mobile number");
+            onValidationChange?.(false);
+          } else {
+            const riskResult = validateIndianMobileRisk(nationalNumber);
+            if (!riskResult.isValid) {
+              setError(riskResult.reason || "Invalid or fake phone number");
+              onValidationChange?.(false);
+            } else {
+              setError("");
+              onValidationChange?.(true);
+            }
+          }
+        }
+
+        onChange?.(finalVal);
+      };
+
+      const formattedValue = React.useMemo(() => {
+        if (!value) return undefined;
+        const strVal = String(value).trim();
+        if (!strVal) return undefined;
+        if (strVal.startsWith("+")) return strVal as RPNInput.Value;
+        const digits = strVal.replace(/\D/g, "");
+        if (!digits) return undefined;
+        return `+91${digits}` as RPNInput.Value;
+      }, [value]);
+
       return (
-        <RPNInput.default
-          ref={ref}
-          className={cn("flex", className)}
-          flagComponent={FlagComponent}
-          countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent}
-          smartCaret={false}
-          value={value || undefined}
-          /**
-           * Handles the onChange event.
-           *
-           * react-phone-number-input might trigger the onChange event as undefined
-           * when a valid phone number is not entered. To prevent this,
-           * the value is coerced to an empty string.
-           *
-           * @param {E164Number | undefined} value - The entered value
-           */
-          onChange={(value) => onChange?.(value || ("" as RPNInput.Value))}
-          {...props}
-        />
+        <div className="flex flex-col gap-1">
+          <RPNInput.default
+            ref={ref}
+            className={cn("flex", className)}
+            flagComponent={FlagComponent}
+            countrySelectComponent={CountrySelect}
+            inputComponent={InputComponent}
+            smartCaret={true}
+            value={formattedValue}
+            onChange={handleChange}
+            international={international}
+            {...props}
+          />
+          {/* ✅ Error message yahan dikhega */}
+          {showError && error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
       );
     },
   );
@@ -61,13 +122,77 @@ PhoneInput.displayName = "PhoneInput";
 const InputComponent = React.forwardRef<
   HTMLInputElement,
   React.ComponentProps<"input">
->(({ className, ...props }, ref) => (
-  <Input
-    className={cn("rounded-e-lg rounded-s-none", className)}
-    {...props}
-    ref={ref}
-  />
-));
+>(({ className, onKeyDown, onPaste, ...props }, ref) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+
+    // Count only digits (ignore spaces)
+    const digitsOnly = input.value.replace(/\D/g, "");
+
+    const allowedKeys = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Tab",
+      "Home",
+      "End",
+    ];
+
+    if (e.ctrlKey || e.metaKey) {
+      onKeyDown?.(e);
+      return;
+    }
+
+    if (allowedKeys.includes(e.key)) {
+      onKeyDown?.(e);
+      return;
+    }
+
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      onKeyDown?.(e);
+      return;
+    }
+
+    // Block typing if already 10 digits
+    if (digitsOnly.length >= 10) {
+      e.preventDefault();
+    }
+
+    onKeyDown?.(e);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("Text");
+    const trimmed = pasted.trim();
+    const currentDigits = e.currentTarget.value.replace(/\D/g, "");
+
+    if (!/^\d+$/.test(trimmed)) {
+      e.preventDefault();
+      onPaste?.(e);
+      return;
+    }
+
+    if (currentDigits.length + trimmed.length > 10) {
+      e.preventDefault();
+    }
+
+    onPaste?.(e);
+  };
+
+  return (
+    <Input
+      type="tel"
+      inputMode="numeric"
+      className={cn("rounded-e-lg rounded-s-none", className)}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      {...props}
+      ref={ref}
+    />
+  );
+});
 InputComponent.displayName = "InputComponent";
 
 type CountryEntry = { label: string; value: RPNInput.Country | undefined };
@@ -103,7 +228,7 @@ const CountrySelect = ({
           type="button"
           variant="outline"
           className="flex gap-1 rounded-e-none rounded-s-lg border-r-0 px-3 focus:z-10"
-          disabled={disabled}
+          disabled={true}
         >
           <FlagComponent
             country={selectedCountry}

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import {
   getClientApprovalLeads,
@@ -26,10 +26,14 @@ export const useClientApprovalLeads = () => {
 };
 
 // ✅ Get details
-export const useClientApprovalDetails = (vendorId: number, leadId: number) => {
+export const useClientApprovalDetails = (
+  vendorId: number,
+  leadId: number,
+  productTypeId?: number,
+) => {
   return useQuery({
-    queryKey: ["clientApprovalDetails", vendorId, leadId],
-    queryFn: () => getClientApprovalDetails(vendorId, leadId),
+    queryKey: ["clientApprovalDetails", vendorId, leadId, productTypeId],
+    queryFn: () => getClientApprovalDetails(vendorId, leadId, productTypeId),
     enabled: !!vendorId && !!leadId,
     staleTime: 5 * 60 * 1000,
   });
@@ -42,7 +46,7 @@ export const useUploadMoreClientApprovalDocs = () => {
     mutationFn: (payload: UploadApprovalDocPayload) =>
       uploadMoreClientApprovalDocs(payload),
     onSuccess: async (data, variables) => {
-      toast.success("Approval documents uploaded successfully!");
+      toastManager.add({ title: "Approval documents uploaded successfully!", type: "success" });
       await queryClient.refetchQueries({
         queryKey: ["clientApprovalDetails", variables.vendorId, variables.leadId],
       });
@@ -50,7 +54,7 @@ export const useUploadMoreClientApprovalDocs = () => {
     onError: (error: any) => {
       const message =
         error?.response?.data?.message || error?.message || "Upload failed";
-      toast.error(message);
+      toastManager.add({ title: message, type: "error" });
     },
   });
 };

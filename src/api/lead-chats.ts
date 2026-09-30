@@ -37,11 +37,22 @@ export interface LeadChatMessage {
   id: number;
   chat_room_id: number;
   sender_id: number;
+  reply_to_message_id?: number | null;
   message_type: "text" | "attachment";
   message_text: string | null;
   created_at: string;
   attachments?: LeadChatAttachment[];
   mentions?: LeadChatMention[];
+  reply_to?: LeadChatReplyPreview | null;
+}
+
+export interface LeadChatReplyPreview {
+  id: number;
+  sender_id: number;
+  sender_name: string;
+  message_text: string | null;
+  attachment_name: string | null;
+  attachment_count: number;
 }
 
 export interface SendLeadChatMessageResponse {
@@ -105,8 +116,17 @@ export const sendLeadChatMessage = async (params: {
   messageText?: string;
   files?: File[];
   mentionUserIds?: number[];
+  replyToMessageId?: number;
 }): Promise<SendLeadChatMessageResponse> => {
-  const { leadId, vendorId, userId, messageText, files, mentionUserIds } =
+  const {
+    leadId,
+    vendorId,
+    userId,
+    messageText,
+    files,
+    mentionUserIds,
+    replyToMessageId,
+  } =
     params;
   const formData = new FormData();
   formData.append("lead_id", String(leadId));
@@ -121,6 +141,9 @@ export const sendLeadChatMessage = async (params: {
         formData.append("mention_user_ids", String(id));
       }
     });
+  }
+  if (replyToMessageId) {
+    formData.append("reply_to_message_id", String(replyToMessageId));
   }
   (files ?? []).forEach((file) => {
     formData.append("attachments", file);

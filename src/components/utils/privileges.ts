@@ -1,48 +1,48 @@
 export const canReassingLead = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowRoles = ["super_admin", "admin"];
+  const allowRoles = ["super-admin", "admin"];
   return allowRoles.includes(userType);
 };
 
 export const canDeleteLead = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowDeleteRoles = ["super_admin", "admin"];
+  const allowDeleteRoles = ["super-admin", "admin"];
   return allowDeleteRoles.includes(userType);
 };
 
 export const canCreateLead = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canAssignISM = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canAssignFM = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canUploadISM = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canAccessDessingTodoTab = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canMoveToBookingStage = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
@@ -60,7 +60,7 @@ export const formatDateTime = (dateString?: string) => {
 
 export const canTechCheck = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "tech-check"];
+  const allowedRoles = ["super-admin", "tech-check", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -73,13 +73,13 @@ export const canMoveToOrderLogin = (userType: string | undefined) => {
 
 export const canUploadFinalMeasurements = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  const allowedRoles = ["super-admin", "site-supervisor", "head-site-supervisor", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canUploadClientDocumentation = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -87,7 +87,7 @@ export const canUploadMoreClientDocumentationFiles = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin"];
+  const allowedRoles = ["super-admin", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -95,19 +95,19 @@ export const canUploadRevisedClientDocumentationFiles = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canUploadClientApproval = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canRequestToTeckCheck = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -115,31 +115,24 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = [
-    "super_admin",
-    "admin",
-    "backend",
-    "tech-check",
-    "factory",
-  ];
-  return allowedRoles.includes(userType.toLowerCase());
+  return ["super-admin", "backend"].includes(userType.toLowerCase());
 };
 
 export const canAssignSR = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canDoSR = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  const allowedRoles = ["super-admin", "admin", "site-supervisor", "head-site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -150,7 +143,7 @@ export function canUploadOrDeleteBookingDone(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "sales-executive" && stage === "booking-stage")
   );
 }
@@ -168,26 +161,19 @@ export function canUploadOrDeleteOrderLogin(
 
 export const canDoDispatchPlanning = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canMoveToProduction = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "backend"];
+  const allowedRoles = ["super-admin", "admin", "backend"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canViewToOrderLoginDetails = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = [
-    "super_admin",
-    "admin",
-    "backend",
-    "tech-check",
-    "factory",
-  ];
-  return allowedRoles.includes(userType.toLowerCase());
+  return ["super-admin", "backend"].includes(userType.toLowerCase());
 };
 
 export const canWorkTodoTaskOrderLoginStage = (role: string | undefined) => {
@@ -207,13 +193,15 @@ export const canViewAndWorkProductionDetails = (
 ) => {
   if (!userType) return false;
   const allowedRoles = [
-    "super_admin",
+    "super-admin",
     "admin",
     "backend",
     "tech-check",
     "factory",
+    "pre-prod",
     "sales-executive",
     "site-supervisor",
+    "head-site-supervisor",
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };
@@ -221,20 +209,22 @@ export const canViewAndWorkProductionDetails = (
 export const handledproductionDefaultTab = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = [
-    "super_admin",
+    "super-admin",
     "admin",
     "backend",
     "tech-check",
     "factory",
+    "pre-prod",
     "sales-executive",
     "site-supervisor",
+    "head-site-supervisor",
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canMoveToReadyToDispatch = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "factory"];
+  const allowedRoles = ["super-admin", "admin", "factory"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -242,7 +232,7 @@ export const canUploadReadyToDispatchDocuments = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -250,7 +240,7 @@ export function canAccessAddNewSectionButton(
   role: string,
   stage: string,
 ): boolean {
-  const allowedRoles = ["super_admin", "admin", "backend"];
+  const allowedRoles = ["super-admin", "admin", "backend"];
   return (
     stage === "production-stage" ||
     (stage === "order-login-stage" && allowedRoles.includes(role))
@@ -293,8 +283,8 @@ export function canViewAndWorkProductionStage(
   // 1. Admins always have access
   if (role === "admin" || role === "super-admin") return true;
 
-  // 2. Factory has access only in production stage
-  if (role === "factory") return stage === "production-stage";
+  // 2. Pre-prod has access only in production stage
+  if (role === "pre-prod") return stage === "production-stage";
 
   // 3. Backend and Tech-check never have access "can view only"
   if (
@@ -311,7 +301,7 @@ export function canViewAndWorkProductionStage(
 
 export function canAccessTodoTaskTabProductionStage(role: string): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "factory")
+  if (role === "admin" || role === "super-admin" || role === "factory" || role === "pre-prod")
     return true;
 
   // 4. Everyone else has access by default
@@ -319,25 +309,11 @@ export function canAccessTodoTaskTabProductionStage(role: string): boolean {
 }
 
 export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
-  // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "factory")
-    return true;
-
-  // 3. "can view only"
-  if (
-    role === "backend" ||
-    role === "tech-check" ||
-    role === "sales-executive" ||
-    role === "site-supervisor"
-  )
-    return false;
-
-  // 4. Everyone else has access by default
-  return true;
+  return role === "super-admin" || role === "factory";
 }
 
 export const canViewDefaultSubTabProductionStage = (role: string) => {
-  if (role === "sales-executive" || role === "site-supervisor") return false;
+  if (role === "sales-executive" || role === "site-supervisor" || role === "head-site-supervisor") return false;
   return true;
 };
 
@@ -346,9 +322,8 @@ export function canViewAndWorkSiteRedinessStage(
   stage: string,
 ): boolean {
   return (
-    role === "admin" ||
-    role === "super_admin" ||
-    (role === "site-supervisor" && stage === "site-readiness-stage")
+    role === "super-admin" ||
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "site-readiness-stage")
   );
 }
 
@@ -358,7 +333,7 @@ export function canViewAndWorkDispatchPlanningStage(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "sales-executive" && stage === "dispatch-planning-stage")
   );
 }
@@ -369,36 +344,47 @@ export function canViewAndWorkDispatchStage(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "factory" && stage === "dispatch-stage")
   );
 }
 
+export function canUploadDispatchDocument(
+  role: string,
+  stage: string,
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "factory" &&
+      (stage === "dispatch-stage" || stage === "under-installation-stage"))
+  );
+}
 export function canDoMoveToUnderInstallation(role: string): boolean {
-  return role === "admin" || role === "super_admin" || role === "factory";
+  return role === "admin" || role === "super-admin" || role === "factory";
 }
 export function canEditLeadForSalesExecutiveButton(role: string): boolean {
   return (
-    role === "admin" || role === "super_admin" || role === "sales-executive"
+    role === "admin" || role === "super-admin" || role === "sales-executive"
   );
 }
 
 export function canDeleteLedForSalesExecutiveButton(role: string): boolean {
   return (
-    role === "admin" || role === "super_admin" || role === "sales-executive"
+    role === "admin" || role === "super-admin" || role === "sales-executive"
   );
 }
 
 export function canEditLeadButton(role: string): boolean {
-  return role === "admin" || role === "super_admin";
+  return role === "admin" || role === "super-admin";
 }
 
 export function canDeleteLeadButton(role: string): boolean {
-  return role === "admin" || role === "super_admin";
+  return role === "admin" || role === "super-admin";
 }
 
 export function canReassignLeadButton(role: string): boolean {
-  return role === "admin" || role === "super_admin";
+  return role === "admin" || role === "super-admin";
 }
 
 export function canViewAndWorkUnderInstallationStage(
@@ -407,9 +393,10 @@ export function canViewAndWorkUnderInstallationStage(
 ): boolean {
   // can work and view both and site suprvisor work only under-installation stage.
   return (
-    role === "admin" ||
     role === "super-admin" ||
-    (role === "site-supervisor" && stage === "under-installation-stage")
+    role === "admin" ||
+    role === "miscellaneous" ||
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
   );
 }
 
@@ -417,7 +404,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
   role: string,
 ): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor" || role === "miscellaneous")
     return true;
 
   return false;
@@ -426,8 +413,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
 export function canAccessTodoTaskTabUnderFinalHandoverStage(
   role: string,
 ): boolean {
-  // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+  if (role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor" || role === "miscellaneous")
     return true;
 
   return false;
@@ -441,7 +427,8 @@ export function canViewAndWorkFinalHandoverStage(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "site-supervisor" && stage === "final-handover-stage")
+    role === "miscellaneous" ||
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "final-handover-stage")
   );
 }
 
@@ -449,23 +436,22 @@ export function canDoERDMiscellaneousDate(
   role: string,
   stage: string,
 ): boolean {
-  // can work and view both and factory work only final-handover-stage.
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "factory" && stage === "under-installation-stage")
+    role === "factory"
   );
 }
 
 export function canMiscellaneousMarkAsResolved(
   role: string,
-  stage: string,
+  stage?: string,
 ): boolean {
-  // can work and view both and factory work only final-handover-stage.
+  const normalizedRole = role?.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
   return (
-    role === "admin" ||
-    role === "super-admin" ||
-    (role === "site-supervisor" && stage === "under-installation-stage")
+    normalizedRole === "super-admin" ||
+    normalizedRole === "site-supervisor" ||
+    normalizedRole === "head-site-supervisor"
   );
 }
 
@@ -476,7 +462,23 @@ export function canViewPaymentTab(role: string): boolean {
 }
 
 export function canViewSiteHistoryTab(role: string): boolean {
-  return role === "admin" || role === "super-admin";
+  const normalizedRole = role?.trim().toLowerCase();
+
+  return [
+    "super-admin",
+    "custom",
+    "admin",
+    "sales-executive",
+    "site-supervisor",
+    "head-site-supervisor",
+    "tech-check",
+    "backend",
+    "factory",
+    "pre-prod",
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
+  ].includes(normalizedRole);
 }
 
 export function canUpdateDessingStageSelectionInputs(
@@ -487,6 +489,122 @@ export function canUpdateDessingStageSelectionInputs(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "sales-executive" && stage === "designing-stage")
+    role === "custom" ||
+    (role === "sales-executive" && stage === "client-documentation-stage")
   );
+}
+
+export function canDeletePODocument(
+  role: string | undefined,
+  stage: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+
+  if (normalizedRole === "custom") {
+    return customPrivilegeCodes.includes("production.order_login.po_file.delete");
+  }
+
+  return (
+    normalizedRole === "admin" ||
+    normalizedRole === "super-admin" ||
+    (normalizedRole === "backend" && (stage === "order-login-stage" || stage === "production-stage"))
+  );
+}
+
+export function canUploadPODocument(
+  role: string | undefined,
+  stage: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+
+  if (normalizedRole === "custom") {
+    return customPrivilegeCodes.includes("production.order_login.po_file.upload");
+  }
+
+  return (
+    normalizedRole === "admin" ||
+    normalizedRole === "super-admin" ||
+    (normalizedRole === "backend" && (stage === "order-login-stage" || stage === "production-stage"))
+  );
+}
+
+export function canEditBasicAndGstAmount(
+  userType: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!userType) return false;
+  const role = userType.toLowerCase();
+  if (role === "super-admin") return true;
+  if (role === "custom") {
+    return (
+      customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.basic_amount.edit",
+      ) ||
+      customPrivilegeCodes.includes("payment_information.basic_amount.edit")
+    );
+  }
+  return false;
+}
+
+export function canEditGstAmount(
+  userType: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!userType) return false;
+  const role = userType.toLowerCase();
+  if (role === "super-admin") return true;
+  if (role === "custom") {
+    return (
+      customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.gst_amount.edit",
+      ) ||
+      customPrivilegeCodes.includes("payment_information.gst_amount.edit")
+    );
+  }
+  return false;
+}
+
+export function canAddAdditionalPayment(
+  userType: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!userType) return false;
+  const role = userType.toLowerCase();
+  if (role === "auditor") return false;
+  if (role === "super-admin" || role === "admin" || role === "sales-executive") return true;
+  if (role === "custom") {
+    return (
+      customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.add_payment",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.add_payment",
+      ) ||
+      customPrivilegeCodes.includes("payment_information.add_payment") ||
+      customPrivilegeCodes.includes("details_of_lead.payment_information.add_payment")
+    );
+  }
+  return true;
 }

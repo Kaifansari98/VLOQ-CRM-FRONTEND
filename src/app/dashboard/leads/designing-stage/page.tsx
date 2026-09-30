@@ -1,6 +1,5 @@
 "use client";
 
-
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,9 +9,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
-import {
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Suspense } from "react";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";

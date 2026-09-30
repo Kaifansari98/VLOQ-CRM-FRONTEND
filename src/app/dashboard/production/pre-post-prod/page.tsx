@@ -11,6 +11,7 @@ import {
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -19,9 +20,14 @@ import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Row Navigation
 const navigateProductionStage = (row: any) =>
-  `/dashboard/production/pre-post-prod/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/production/pre-post-prod/details/${row.id}?accountId=${row.accountId}${
+    row.instanceId ? `&instance_id=${row.instanceId}` : ""
+  }`;
 
 export default function ProductionPage() {
+  const searchParams = useSearchParams();
+  const productionStatusFilter = searchParams.get("productionStatus") ?? "all";
+
   return (
     <>
       {/* ---------------- HEADER ---------------- */}
@@ -59,10 +65,12 @@ export default function ProductionPage() {
         >
           <UniversalTable
             title="Production Stage"
-            description="Monitor, validate, and manage all pre- and post-production workflow activities efficiently."
+            description="Monitor, validate, and manage all pre and post production workflow activities efficiently."
             type="Type 10"
-            enableAdminTabs={true}
+            enableAdminTabs={false}
+            enableOverallData={false}
             onRowNavigate={navigateProductionStage}
+            initialProductionStatusFilter={productionStatusFilter}
           />
         </Suspense>
       </main>

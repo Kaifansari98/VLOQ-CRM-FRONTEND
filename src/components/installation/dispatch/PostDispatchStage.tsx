@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   usePostDispatchDocuments,
   useUploadPostDispatchDocuments,
@@ -27,7 +27,10 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
+import { canUploadDispatchDocument, canViewAndWorkDispatchStage } from "@/components/utils/privileges";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import CustomeTooltip from "@/components/custom-tooltip";
 interface PostDispatchStageProps {
   leadId: number;
   accountId: number | null;
@@ -39,6 +42,11 @@ export default function PostDispatchStage({
 }: PostDispatchStageProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const normalizedUserType = userType?.toLowerCase() ?? "";
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+
 
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
@@ -51,6 +59,27 @@ export default function PostDispatchStage({
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -81,7 +110,7 @@ export default function PostDispatchStage({
   // ✅ Upload Handler
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 
@@ -96,17 +125,23 @@ export default function PostDispatchStage({
         },
       });
 
-      toast.success("Post Dispatch documents uploaded successfully!");
+
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
         queryKey: ["postDispatchDocuments", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(
+      const errorMessage =
+        error?.response?.data?.error ||
         error?.response?.data?.message ||
-          "Failed to upload Post Dispatch documents."
-      );
+        error?.message ||
+        "Failed to upload Post Dispatch documents.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -121,12 +156,31 @@ export default function PostDispatchStage({
     }
   };
 
-  const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "dispatch-stage");
+  const isCustomUser = normalizedUserType === "custom";
+  const canViewPostDispatch = isCustomUser
+    ? customPrivilegeCodes.includes("installation.dispatch.post_dispatch.view")
+    : true;
+  const canUploadPostDispatch =
+    !shouldDisableBlockedActions &&
+    (
+      isCustomUser
+        ? customPrivilegeCodes.includes(
+          "installation.dispatch.post_dispatch.upload",
+        )
+        : canUploadDispatchDocument(normalizedUserType, leadStatus)
+    );
+  const canDeletePostDispatch = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.dispatch.post_dispatch.delete",
+    )
+    : normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    (normalizedUserType === "factory" && leadStatus === "dispatch-stage");
 
-  const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
+  if (!canViewPostDispatch) {
+    return null;
+  }
+
   return (
     <div className="border rounded-lg  bg-background">
       {/* Header */}
@@ -142,37 +196,48 @@ export default function PostDispatchStage({
 
       {/* Upload Section */}
 
-      {canViewAndWork && (
-        <div className="p-6 border-b space-y-4">
-          <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
-            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip"
-            multiple
-          />
-
+      <div className="p-6 border-b space-y-4">
+        <CustomeTooltip
+          value={
+            shouldDisableBlockedActions
+              ? blockedTooltip
+              : undefined
+          }
+          truncateValue={
+            <div
+              className={
+                shouldDisableBlockedActions
+                  ? "pointer-events-none opacity-60"
+                  : ""
+              }
+            >
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip"
+                multiple
+                disabled={!canUploadPostDispatch}
+              />
+            </div>
+          }
+        />
+        {canUploadPostDispatch && (
           <div className="flex justify-end">
             <Button
-              size="sm"
               onClick={handleUpload}
               disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
             >
               {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Files
-                </>
+                <Upload className="mr-2 h-4 w-4" />
               )}
+              Upload Documents
             </Button>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
 
       {/* Files List */}
       <div className="p-6">
@@ -212,7 +277,7 @@ export default function PostDispatchStage({
                 }}
                 key={index}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeletePostDispatch}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -226,7 +291,7 @@ export default function PostDispatchStage({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeletePostDispatch}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

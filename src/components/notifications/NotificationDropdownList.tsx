@@ -3,7 +3,7 @@
 import { NotificationItem } from "@/types/notifications";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Bell, Briefcase, MessageCircle, Target, Circle } from "lucide-react";
+import { Bell, Briefcase, CheckSquare, MessageCircle, Target, Circle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const TYPE_STYLES: Record<
@@ -39,6 +39,12 @@ const TYPE_STYLES: Record<
     bg: "bg-sky-50 dark:bg-sky-950",
     text: "text-sky-500 dark:text-sky-500",
     Icon: Bell,
+  },
+  APPROVAL: {
+    label: "Approval",
+    bg: "bg-teal-50 dark:bg-teal-950",
+    text: "text-teal-500 dark:text-teal-500",
+    Icon: CheckSquare,
   },
 };
 
@@ -155,9 +161,11 @@ export const NotificationDropdownList = ({
                 </div>
 
                 {/* Message */}
-                <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                  {notification.message}
-                </p>
+                {notification.message && (
+                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed break-words">
+                    {notification.message}
+                  </p>
+                )}
 
                 {/* Meta Info */}
                 <div className="flex items-center gap-2 mt-0.5">

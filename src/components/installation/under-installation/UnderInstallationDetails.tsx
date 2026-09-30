@@ -15,7 +15,7 @@ import {
 import CustomeDatePicker from "@/components/date-picker";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
@@ -31,6 +31,8 @@ import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privile
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 export default function UnderInstallationDetails({
   leadId,
@@ -43,6 +45,9 @@ export default function UnderInstallationDetails({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   // 🔹 Fetch installation data
   const { data: details } = useUnderInstallationDetails(vendorId, leadId);
@@ -68,16 +73,64 @@ export default function UnderInstallationDetails({
   const installationStarted = !!details?.actual_installation_start_date;
 
   // 🔹 Privileges & Permissions
+  const isCustomUser = userType === "custom";
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const canUpdateExpectedCompletionDate = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.under_installation.expected_installation_completion_date.update_edit",
+    )
+    : canWork;
+  const canAssignInstallers = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.under_installation.assign_installers.update",
+    )
+    : canWork;
+  const canManageDayWiseReports = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.under_installation.installation_day_wise_update.add_edit_delete",
+    )
+    : canWork;
+  const canToggleCarcassCompletion = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.under_installation.installation_completion.carcass_completion_date.check_uncheck",
+    )
+    : canWork;
+  const canToggleShutterCompletion = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "installation.under_installation.installation_completion.shutter_completion_date.check_uncheck",
+    )
+    : canWork;
+  const canSaveInstallationDetails =
+    canUpdateExpectedCompletionDate || canAssignInstallers;
   const isSupervisor = userType === "site-supervisor";
   const hasAssignedData = mappedInstallers?.length > 0;
 
-  const isDateLocked = canWork && hasAssignedData && isSupervisor;
-  const isInstallersLocked = canWork && hasAssignedData && isSupervisor;
+  const isDateLocked =
+    canUpdateExpectedCompletionDate && hasAssignedData && isSupervisor;
+  const isInstallersLocked =
+    canAssignInstallers && hasAssignedData && isSupervisor;
   const isInstallationDetailsComplete =
     !!details?.expected_installation_end_date && hasAssignedData;
   const installationDetailsDisabledReason =
     "Complete Expected Installation Completion Date and assign installers to enable this section.";
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
 
   // 🔹 Convert installers to options
   const installerOptions: Option[] =
@@ -93,7 +146,7 @@ export default function UnderInstallationDetails({
         mappedInstallers.map((i: any) => ({
           value: String(i.installer_id),
           label: i.installer_name,
-        }))
+        })),
       );
     }
 
@@ -103,7 +156,7 @@ export default function UnderInstallationDetails({
     if (details?.actual_installation_start_date) {
       console.log(
         "Installation start date",
-        details?.actual_installation_start_date
+        details?.actual_installation_start_date,
       );
     }
   }, [mappedInstallers, details]);
@@ -111,11 +164,11 @@ export default function UnderInstallationDetails({
   // 🔹 Save handler
   const onSave = () => {
     if (!endDate) {
-      toast.error("Please select expected end date");
+      toastManager.add({ title: "Please select expected end date", type: "error" });
       return;
     }
     if (installerSelections.length === 0) {
-      toast.error("Please select at least one installer");
+      toastManager.add({ title: "Please select at least one installer", type: "error" });
       return;
     }
 
@@ -136,12 +189,15 @@ export default function UnderInstallationDetails({
         },
         {
           onSuccess: () => {
-            toast.success("Installation details updated."),
+            (toastManager.add({ title: "Installation details updated.", type: "success" }),
               queryClient.invalidateQueries({
                 queryKey: ["usableHandoverReady"],
-              });
+              }));
+            queryClient.invalidateQueries({
+              queryKey: ["finalHandoverReady"],
+            });
           },
-        }
+        },
       );
     } else {
       postMutation.mutate(
@@ -152,12 +208,12 @@ export default function UnderInstallationDetails({
         },
         {
           onSuccess: () => {
-            toast.success("Installers added successfully.");
+            toastManager.add({ title: "Installers added successfully.", type: "success" });
             queryClient.invalidateQueries({
               queryKey: ["usableHandoverReady"],
             });
           },
-        }
+        },
       );
     }
   };
@@ -180,11 +236,22 @@ export default function UnderInstallationDetails({
 
   // 🔹 Reusable Date Picker Component
   const renderDatePicker = () => {
-    if (!canWork) {
+    if (shouldDisableBlockedActions) {
       return (
         <CustomeDatePicker
           value={endDate}
-          onChange={() => {}}
+          onChange={() => { }}
+          restriction="futureOnly"
+          disabledReason={blockedTooltip}
+        />
+      );
+    }
+
+    if (!canUpdateExpectedCompletionDate) {
+      return (
+        <CustomeDatePicker
+          value={endDate}
+          onChange={() => { }}
           restriction="futureOnly"
           disabledReason="You do not have permission to modify installation details."
         />
@@ -195,9 +262,9 @@ export default function UnderInstallationDetails({
       return (
         <CustomeDatePicker
           value={endDate}
-          onChange={() => {}}
+          onChange={() => { }}
           restriction="futureOnly"
-          disabledReason="Site Supervisor modify the expected installation date once it has been set."
+          disabledReason="Site Supervisor cannot modify the expected installation date once it has been set."
         />
       );
     }
@@ -214,8 +281,28 @@ export default function UnderInstallationDetails({
 
   // 🔹 Reusable Multi-Selector Component
   const renderMultiSelector = () => {
-    const isDisabled = !canWork || isInstallersLocked;
-    const tooltipMessage = !canWork
+    if (shouldDisableBlockedActions) {
+      return (
+        <CustomeTooltip
+          truncateValue={
+            <div className="w-full opacity-70 pointer-events-none">
+              <MultipleSelector
+                value={installerSelections}
+                onChange={() => { }}
+                options={installerOptions}
+                placeholder="Installers assigned"
+                hidePlaceholderWhenSelected
+                disabled={true}
+              />
+            </div>
+          }
+          value={blockedTooltip}
+        />
+      );
+    }
+
+    const isDisabled = !canAssignInstallers || isInstallersLocked;
+    const tooltipMessage = !canAssignInstallers
       ? "You do not have permission to modify installers."
       : "Site Supervisor cannot modify installers once assigned.";
 
@@ -226,7 +313,7 @@ export default function UnderInstallationDetails({
             <div className="w-full opacity-70 cursor-not-allowed">
               <MultipleSelector
                 value={installerSelections}
-                onChange={() => {}}
+                onChange={() => { }}
                 options={installerOptions}
                 placeholder={!canWork ? "No permission" : "Installers assigned"}
                 hidePlaceholderWhenSelected
@@ -257,17 +344,24 @@ export default function UnderInstallationDetails({
     label: string,
     isChecked: boolean,
     completionDate: string | null,
-    type: "carcass" | "shutter"
+    type: "carcass" | "shutter",
   ) => {
+    const canToggle =
+      type === "carcass"
+        ? canToggleCarcassCompletion
+        : canToggleShutterCompletion;
     // Check if THIS specific checkbox has data (completion date exists)
     const hasCompletionData = !!completionDate;
 
     // Checkbox is locked only if:
     // 1. User doesn't have permission (!canWork), OR
     // 2. User is supervisor AND this specific checkbox already has completion data
-    const isCheckboxLocked = !canWork || (isSupervisor && hasCompletionData);
+    // 3. Lead is blocked
+    const isCheckboxLocked = shouldDisableBlockedActions || !canToggle || (isSupervisor && hasCompletionData);
 
-    const tooltipMessage = !canWork
+    const tooltipMessage = shouldDisableBlockedActions
+      ? blockedTooltip
+      : !canToggle
       ? "You do not have permission to modify completion status."
       : "Site Supervisor cannot modify completion status once it has been marked.";
 
@@ -288,11 +382,10 @@ export default function UnderInstallationDetails({
         <div className="flex flex-col">
           <label
             htmlFor={id}
-            className={`font-medium text-sm ${
-              isCheckboxLocked
+            className={`font-medium text-sm ${isCheckboxLocked
                 ? "cursor-not-allowed opacity-70"
                 : "cursor-pointer"
-            }`}
+              }`}
           >
             {label}
           </label>
@@ -319,6 +412,17 @@ export default function UnderInstallationDetails({
   };
 
   const renderInstallationLockedSection = (content: React.ReactNode) => {
+    if (shouldDisableBlockedActions) {
+      return (
+        <CustomeTooltip
+          truncateValue={
+            <div className="opacity-60 pointer-events-none">{content}</div>
+          }
+          value={blockedTooltip}
+        />
+      );
+    }
+
     if (isInstallationDetailsComplete) return <>{content}</>;
 
     return (
@@ -360,10 +464,27 @@ export default function UnderInstallationDetails({
                 Assign installers & set expected installation completion date.
               </p>
             </div>
-            {canWork && (
-              <Button onClick={onSave} size="sm">
-                {hasAssignedData ? "Update" : "Save"}
-              </Button>
+            {canSaveInstallationDetails && (
+              <div className="shrink-0 w-fit">
+                <CustomeTooltip
+                  value={
+                    shouldDisableBlockedActions
+                      ? blockedTooltip
+                      : undefined
+                  }
+                  truncateValue={
+                    <div className={shouldDisableBlockedActions ? "pointer-events-none opacity-60" : ""}>
+                      <Button
+                        onClick={onSave}
+                        size="sm"
+                        disabled={shouldDisableBlockedActions}
+                      >
+                        {hasAssignedData ? "Update" : "Save"}
+                      </Button>
+                    </div>
+                  }
+                />
+              </div>
             )}
           </div>
 
@@ -388,18 +509,17 @@ export default function UnderInstallationDetails({
 
       {/* Day-wise Reports */}
       {installationStarted && (
-        renderInstallationLockedSection(
-          <InstallationDayWiseReports
-            vendorId={vendorId}
-            leadId={leadId}
-            accountId={accountId}
-            accessBtn={canWork}
-          />
-        )
+        <InstallationDayWiseReports
+          vendorId={vendorId}
+          leadId={leadId}
+          accountId={accountId}
+          accessBtn={canManageDayWiseReports}
+          disabledReason={!isInstallationDetailsComplete ? installationDetailsDisabledReason : undefined}
+        />
       )}
 
       {/* Installation Completion */}
-      {installationStarted && (
+      {installationStarted &&
         renderInstallationLockedSection(
           <div className="mt-10 border-t pt-6 pb-20">
             <h3 className="text-lg font-semibold">Installation Completion</h3>
@@ -414,7 +534,7 @@ export default function UnderInstallationDetails({
                 "Carcass Installation Completed",
                 details?.is_carcass_installation_completed || false,
                 details?.carcass_installation_completion_date || null,
-                "carcass"
+                "carcass",
               )}
 
               {/* Shutter Checkbox */}
@@ -423,12 +543,11 @@ export default function UnderInstallationDetails({
                 "Shutter Installation Completed",
                 details?.is_shutter_installation_completed || false,
                 details?.shutter_installation_completion_date || null,
-                "shutter"
+                "shutter",
               )}
             </div>
-          </div>
-        )
-      )}
+          </div>,
+        )}
 
       {/* Confirmation Dialog */}
       <AlertDialog

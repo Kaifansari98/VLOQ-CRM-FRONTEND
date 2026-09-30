@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import BaseModal from "../utils/baseModal";
 import { useAppSelector } from "@/redux/store";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Download } from "lucide-react";
+import { Download, Link2, FileText } from "lucide-react";
 import { urlToFile } from "@/utils/file.utils";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
@@ -18,6 +18,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadId: number;
+  activeProductTypeId?: number | null;
+  activeInstanceIds?: number[];
   onSelectDocs?: (files: File[]) => void; // 👈 callback to booking modal
 }
 
@@ -27,15 +29,78 @@ export interface DocItem {
   signedUrl: string;
   type: "quotation" | "design";
   created_at?: string;
+  product_type_id?: number | null;
+  product_structure_instance_id?: number | null;
 }
+
+export interface LinkedDocMeta {
+  docId: number;
+  docType: "quotation" | "design";
+}
+
+interface LinkedDocGroup {
+  key: string;
+  quotation?: DocItem;
+  design?: DocItem;
+  latestTimestamp: number;
+}
+
+const getDocKey = (doc: DocItem) => `${doc.type}-${doc.id}`;
+
+const stripDocPrefix = (fileName: string) =>
+  fileName.replace(/\.[^/.]+$/, "").replace(/^\[.*?\]\s*/, "");
+
+const getLinkedRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
+  const parsedName = stripDocPrefix(fileName);
+
+  const underscoreMatch = parsedName.match(
+    new RegExp(
+      `^${prefix}(\\d+)_(?:(2D|3D)_)?(.+)_\\d{4}-\\d{2}-\\d{2}$`,
+      "i",
+    ),
+  );
+
+  if (underscoreMatch) {
+    const [, revision, , baseSegment] = underscoreMatch;
+    return `${revision}-${baseSegment.toLowerCase()}`;
+  }
+
+  const hyphenMatch = parsedName.match(
+    new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
+  );
+
+  if (!hyphenMatch) return null;
+
+  return `${hyphenMatch[1]}-${hyphenMatch[2].toLowerCase()}`;
+};
+
+const getDesignRevisionKey = (fileName: string) =>
+  getLinkedRevisionKey(fileName, "D") ?? getLinkedRevisionKey(fileName, "R");
+
+const getTimestamp = (value?: string) => (value ? new Date(value).getTime() : 0);
+
+const sortLatestFirst = (docs: DocItem[]) =>
+  [...docs].sort((a, b) => {
+    const timeDiff = getTimestamp(b.created_at) - getTimestamp(a.created_at);
+    if (timeDiff !== 0) return timeDiff;
+    return b.id - a.id;
+  });
 
 const SelectDocumentModal: React.FC<Props> = ({
   open,
   onOpenChange,
   leadId,
+  activeProductTypeId,
+  activeInstanceIds,
   onSelectDocs,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only
+  );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const { data: quotationData } = useQuotationDoc(vendorId!, leadId);
   const { data: designData } = useDesignsDoc(vendorId!, leadId);
@@ -50,6 +115,8 @@ const SelectDocumentModal: React.FC<Props> = ({
       signedUrl: doc.signedUrl,
       type: "quotation" as const,
       created_at: doc.created_at,
+      product_type_id: doc.product_type_id ?? null,
+      product_structure_instance_id: doc.product_structure_instance_id ?? null,
     })) || [];
 
   const designs: DocItem[] =
@@ -59,17 +126,152 @@ const SelectDocumentModal: React.FC<Props> = ({
       signedUrl: doc.signedUrl,
       type: "design" as const,
       created_at: doc.created_at,
+      product_type_id: doc.product_type_id ?? null,
+      product_structure_instance_id: doc.product_structure_instance_id ?? null,
     })) || [];
 
+  const activeInstanceIdSet = useMemo(
+    () => new Set((activeInstanceIds || []).map((id) => Number(id))),
+    [activeInstanceIds],
+  );
+
+  const isDocMatchingActiveGroup = React.useCallback(
+    (doc: DocItem) => {
+      // 1. If doc is linked to a product structure instance, check if it matches activeInstanceIds
+      if (doc.product_structure_instance_id != null) {
+        if (activeInstanceIdSet.has(Number(doc.product_structure_instance_id))) {
+          return true;
+        }
+      }
+
+      // 2. If doc is linked to a product type, check if it matches activeProductTypeId
+      if (doc.product_type_id != null && activeProductTypeId != null) {
+        if (Number(doc.product_type_id) === Number(activeProductTypeId)) {
+          return true;
+        }
+      }
+
+      // 3. If doc has neither instance ID nor product_type_id, it is a general/unassigned lead document available for selection
+      if (doc.product_structure_instance_id == null && doc.product_type_id == null) {
+        return true;
+      }
+
+      return false;
+    },
+    [activeInstanceIdSet, activeProductTypeId],
+  );
+
+  const filteredQuotations = useMemo(
+    () =>
+      handlesLargeScaleProjects && (activeInstanceIdSet.size > 0 || activeProductTypeId != null)
+        ? quotations.filter(isDocMatchingActiveGroup)
+        : quotations,
+    [activeInstanceIdSet.size, activeProductTypeId, handlesLargeScaleProjects, isDocMatchingActiveGroup, quotations],
+  );
+
+  const filteredDesigns = useMemo(
+    () =>
+      handlesLargeScaleProjects && (activeInstanceIdSet.size > 0 || activeProductTypeId != null)
+        ? designs.filter(isDocMatchingActiveGroup)
+        : designs,
+    [activeInstanceIdSet.size, activeProductTypeId, handlesLargeScaleProjects, isDocMatchingActiveGroup, designs],
+  );
+
+  const sortedQuotations = useMemo(
+    () => sortLatestFirst(filteredQuotations),
+    [filteredQuotations],
+  );
+  const sortedDesigns = useMemo(
+    () => sortLatestFirst(filteredDesigns),
+    [filteredDesigns],
+  );
+
+  React.useEffect(() => {
+    setSelectedDocs([]);
+  }, [activeProductTypeId, open]);
+
+  const linkedDocGroups = useMemo<LinkedDocGroup[]>(() => {
+    const grouped = new Map<string, LinkedDocGroup>();
+
+    sortedQuotations.forEach((doc) => {
+      const key =
+        getLinkedRevisionKey(doc.doc_og_name, "Q") ??
+        `quotation-${doc.id}`;
+      const existing = grouped.get(key);
+      grouped.set(key, {
+        key,
+        quotation: doc,
+        design: existing?.design,
+        latestTimestamp: Math.max(
+          getTimestamp(doc.created_at),
+          existing?.latestTimestamp ?? 0,
+        ),
+      });
+    });
+
+    sortedDesigns.forEach((doc) => {
+      const key = getDesignRevisionKey(doc.doc_og_name) ?? `design-${doc.id}`;
+      const existing = grouped.get(key);
+      grouped.set(key, {
+        key,
+        quotation: existing?.quotation,
+        design: doc,
+        latestTimestamp: Math.max(
+          getTimestamp(doc.created_at),
+          existing?.latestTimestamp ?? 0,
+        ),
+      });
+    });
+
+    return [...grouped.values()].sort((a, b) => {
+      if (b.latestTimestamp !== a.latestTimestamp) {
+        return b.latestTimestamp - a.latestTimestamp;
+      }
+      return b.key.localeCompare(a.key);
+    });
+  }, [sortedDesigns, sortedQuotations]);
+
   const toggleSelect = (doc: DocItem) => {
-    setSelectedDocs((prev) =>
-      prev.find((d) => d.id === doc.id)
-        ? prev.filter((d) => d.id !== doc.id)
-        : [...prev, doc]
-    );
+    const revisionKey =
+      doc.type === "quotation"
+        ? getLinkedRevisionKey(doc.doc_og_name, "Q")
+        : getDesignRevisionKey(doc.doc_og_name);
+
+    setSelectedDocs((prev) => {
+      const selectedMap = new Map(prev.map((item) => [getDocKey(item), item]));
+      const currentKey = getDocKey(doc);
+      const isCurrentlySelected = selectedMap.has(currentKey);
+
+      const linkedPair = revisionKey
+        ? [
+            ...(doc.type === "quotation"
+              ? sortedDesigns.filter(
+                  (item) => getDesignRevisionKey(item.doc_og_name) === revisionKey,
+                )
+              : sortedQuotations.filter(
+                  (item) => getLinkedRevisionKey(item.doc_og_name, "Q") === revisionKey,
+                )),
+          ]
+        : [];
+
+      if (isCurrentlySelected) {
+        selectedMap.delete(currentKey);
+        linkedPair.forEach((item) => selectedMap.delete(getDocKey(item)));
+      } else {
+        if (vendorCustomUserTypeMode === true) {
+          selectedMap.clear();
+        }
+
+        selectedMap.set(currentKey, doc);
+        linkedPair.forEach((item) => selectedMap.set(getDocKey(item), item));
+      }
+
+      return [...selectedMap.values()];
+    });
   };
 
-  const isSelected = (id: number) => selectedDocs.some((d) => d.id === id);
+  const isSelected = (doc: DocItem) =>
+    selectedDocs.some((item) => getDocKey(item) === getDocKey(doc));
 
   // const handleSelect = () => {
   //   onSelectDocs(selectedDocs);
@@ -81,115 +283,256 @@ const SelectDocumentModal: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title="Select Documents"
-      description="Choose documents for the lead"
-      size="md"
+      description={
+        handlesLargeScaleProjects && activeProductTypeId
+          ? "Choose documents for the selected item group"
+          : "Choose documents for the lead"
+      }
+      size={vendorCustomUserTypeMode === true ? "xl" : "md"}
     >
       <div className="p-5 space-y-6">
-        {/* Quotations */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold">Select Quotations</h3>
-            <span className="text-xs text-muted-foreground">
-              {selectedDocs.filter((d) => d.type === "quotation").length}{" "}
-              selected
-            </span>
-          </div>
-          <div className="space-y-2">
-            {quotations.length > 0 ? (
-              quotations.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between border rounded-md px-3 py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={isSelected(doc.id)}
-                      onCheckedChange={() => toggleSelect(doc)}
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-sm">{doc.doc_og_name}</span>
-                      {doc.created_at && (
-                        <span className="text-xs text-gray-500">
-                          Uploaded at{" "}
-                          {format(
-                            new Date(doc.created_at),
-                            "HH:mm, dd MMM yyyy"
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <a
-                    href={doc.signedUrl}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Download className="h-4 w-4 text-gray-600 hover:text-black" />
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No quotation documents available
+        {vendorCustomUserTypeMode === true ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Link2 className="h-4 w-4" />
+                Quotation - Design linkage
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Matching files are linked by revision name like `D1` and `Q1`.
+                Selecting one will select its linked pair automatically. Only one quotation-design pair can be selected at a time.
               </p>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Separator */}
-        <hr />
+            <div className="space-y-3">
+              {linkedDocGroups.length > 0 ? (
+                linkedDocGroups.map((group, index) => {
+                  const quotationSelected = group.quotation
+                    ? isSelected(group.quotation)
+                    : false;
+                  const designSelected = group.design ? isSelected(group.design) : false;
+                  const isGroupLatest = index === 0;
 
-        {/* Designs */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold">Select Designs</h3>
-            <span className="text-xs text-muted-foreground">
-              {selectedDocs.filter((d) => d.type === "design").length} selected
-            </span>
-          </div>
-          <div className="space-y-2">
-            {designs.length > 0 ? (
-              designs.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between border rounded-md px-3 py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={isSelected(doc.id)}
-                      onCheckedChange={() => toggleSelect(doc)}
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-sm">{doc.doc_og_name}</span>
-                      {doc.created_at && (
-                        <span className="text-xs text-gray-500">
-                          Uploaded at{" "}
-                          {format(
-                            new Date(doc.created_at),
-                            "HH:mm, dd MMM yyyy"
+                  return (
+                    <div
+                      key={group.key}
+                      className={`rounded-2xl border p-4 ${
+                        isGroupLatest
+                          ? "border-emerald-400 ring-1 ring-emerald-200"
+                          : "border-border"
+                      }`}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {group.key.startsWith("quotation-") ||
+                            group.key.startsWith("design-")
+                              ? "Unlinked"
+                              : group.key}
+                          </span>
+                          {group.quotation && group.design && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                              Linked Pair
+                            </span>
                           )}
+                          {isGroupLatest && (
+                            <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-foreground">
+                              Latest
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {(quotationSelected ? 1 : 0) + (designSelected ? 1 : 0)} selected
                         </span>
-                      )}
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {[group.quotation, group.design].map((doc, docIndex) => {
+                          if (!doc) {
+                            return (
+                              <div
+                                key={`${group.key}-${docIndex}-empty`}
+                                className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground"
+                              >
+                                No {docIndex === 0 ? "quotation" : "design"} file
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={getDocKey(doc)}
+                              onClick={() => toggleSelect(doc)}
+                              className={`flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                                isSelected(doc)
+                                  ? "border-emerald-400 bg-emerald-50/60"
+                                  : "border-border hover:bg-muted/40"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <Checkbox
+                                  checked={isSelected(doc)}
+                                  onCheckedChange={() => toggleSelect(doc)}
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="mt-0.5"
+                                />
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                      {doc.type}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm font-medium leading-5">
+                                    {doc.doc_og_name}
+                                  </p>
+                                  {doc.created_at && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Uploaded at{" "}
+                                      {format(
+                                        new Date(doc.created_at),
+                                        "HH:mm, dd MMM yyyy"
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <a
+                                href={doc.signedUrl}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                                className="rounded-md border border-border p-2 text-muted-foreground hover:text-foreground"
+                              >
+                                <Download className="h-4 w-4" />
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <a
-                    href={doc.signedUrl}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Download className="h-4 w-4 text-gray-600 hover:text-black" />
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No design documents available
-              </p>
-            )}
+                  );
+                })
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {handlesLargeScaleProjects && activeProductTypeId
+                    ? "No quotation or design documents available for this item group"
+                    : "No quotation or design documents available"}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Select Quotations</h3>
+                <span className="text-xs text-muted-foreground">
+                  {selectedDocs.filter((d) => d.type === "quotation").length}{" "}
+                  selected
+                </span>
+              </div>
+              <div className="space-y-2">
+                {sortedQuotations.length > 0 ? (
+                  sortedQuotations.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between border rounded-md px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isSelected(doc)}
+                          onCheckedChange={() => toggleSelect(doc)}
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-sm">{doc.doc_og_name}</span>
+                          {doc.created_at && (
+                            <span className="text-xs text-gray-500">
+                              Uploaded at{" "}
+                              {format(
+                                new Date(doc.created_at),
+                                "HH:mm, dd MMM yyyy"
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <a
+                        href={doc.signedUrl}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Download className="h-4 w-4 text-gray-600 hover:text-black" />
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {handlesLargeScaleProjects && activeProductTypeId
+                      ? "No quotation documents available for this item group"
+                      : "No quotation documents available"}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <hr />
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Select Designs</h3>
+                <span className="text-xs text-muted-foreground">
+                  {selectedDocs.filter((d) => d.type === "design").length} selected
+                </span>
+              </div>
+              <div className="space-y-2">
+                {sortedDesigns.length > 0 ? (
+                  sortedDesigns.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between border rounded-md px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isSelected(doc)}
+                          onCheckedChange={() => toggleSelect(doc)}
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-sm">{doc.doc_og_name}</span>
+                          {doc.created_at && (
+                            <span className="text-xs text-gray-500">
+                              Uploaded at{" "}
+                              {format(
+                                new Date(doc.created_at),
+                                "HH:mm, dd MMM yyyy"
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <a
+                        href={doc.signedUrl}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Download className="h-4 w-4 text-gray-600 hover:text-black" />
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {handlesLargeScaleProjects && activeProductTypeId
+                      ? "No design documents available for this item group"
+                      : "No design documents available"}
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer */}
@@ -222,6 +565,12 @@ const SelectDocumentModal: React.FC<Props> = ({
                   doc.doc_og_name,
                   mime
                 );
+                Object.assign(file, {
+                  __linkedDocMeta: {
+                    docId: doc.id,
+                    docType: doc.type,
+                  } satisfies LinkedDocMeta,
+                });
                 convertedFiles.push(file);
               }
 

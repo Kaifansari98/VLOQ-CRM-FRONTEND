@@ -22,21 +22,23 @@ export default function SalesExecutiveDashboard() {
   const user = useAppSelector((s) => s.auth.user);
   const vendorId = user?.vendor_id ?? 0;
   const userId = user?.id ?? 0;
+  const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
 
   const [performanceData, setPerformanceData] =
     useState<UiPerformanceSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { data } = usePerformanceSnapshot(vendorId, userId);
+  const { data } = usePerformanceSnapshot(vendorId, userId, franchiseId);
 
   const { data: avgBookingData, isLoading: isLoadingAvg } = useAvgDaysToBooking(
     vendorId,
-    userId
+    userId,
+    franchiseId
   );
 
   const { data: stageCounts, isLoading: isLoadingStageCounts } =
-    useSalesExecutiveStageCounts(vendorId, userId);
+    useSalesExecutiveStageCounts(vendorId, userId, franchiseId);
 
   const [leadFilter, setLeadFilter] = useState<"week" | "month" | "year">(
     "month"
@@ -52,7 +54,7 @@ export default function SalesExecutiveDashboard() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await getPerformanceSnapshot(vendorId, userId);
+        const data = await getPerformanceSnapshot(vendorId, userId, franchiseId);
         setPerformanceData(data);
         console.log(data);
       } catch (err: any) {
@@ -64,7 +66,7 @@ export default function SalesExecutiveDashboard() {
     };
 
     fetchPerformanceData();
-  }, [vendorId, userId]);
+  }, [vendorId, userId, franchiseId]);
 
   return (
     <div className="flex flex-col gap-4 p-4 px-6">

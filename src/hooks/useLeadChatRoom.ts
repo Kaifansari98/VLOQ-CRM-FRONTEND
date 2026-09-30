@@ -42,6 +42,7 @@ export const useSendLeadChatMessage = () => {
       messageText,
       files,
       mentionUserIds,
+      replyToMessageId,
     }: {
       leadId: number;
       vendorId: number;
@@ -49,6 +50,7 @@ export const useSendLeadChatMessage = () => {
       messageText?: string;
       files?: File[];
       mentionUserIds?: number[];
+      replyToMessageId?: number;
     }) =>
       sendLeadChatMessage({
         leadId,
@@ -57,6 +59,7 @@ export const useSendLeadChatMessage = () => {
         messageText,
         files,
         mentionUserIds,
+        replyToMessageId,
       }),
     onError: (error: unknown) => {
       toastError(error);

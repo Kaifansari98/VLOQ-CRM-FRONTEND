@@ -21,6 +21,7 @@ interface OrderLoginCardProps {
   desc: string;
   companyVendorName?: string;
   companyVendorContact?: string;
+  currentCompanyVendorId?: number | null;
   vendorId: number;
   leadId: number;
   factory_user_vendor_selection_remark?: string;
@@ -34,6 +35,7 @@ export default function OrderLoginCard({
   orderLoginId,
   companyVendorName,
   companyVendorContact,
+  currentCompanyVendorId,
   vendorId,
   leadId,
   factory_user_vendor_selection_remark,
@@ -223,6 +225,7 @@ export default function OrderLoginCard({
         leadId={leadId}
         vendorId={vendorId}
         orderLoginId={orderLoginId}
+        currentCompanyVendorId={currentCompanyVendorId}
         userId={userId || 0}
         changedVendorRemark={factory_user_vendor_selection_remark}
         productionDate={estimated_completion_date}

@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { toast } from "react-toastify"
+import axios from "axios";
+import { toastManager } from "@/components/ui/toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { fetchNotifications } from "@/api/notifications"
 import { useAppSelector } from "@/redux/store"
 import { useDispatch } from "react-redux"
@@ -11,13 +13,14 @@ import {
 } from "@/redux/slices/notificationsSlice"
 import { NotificationItem } from "@/types/notifications"
 
-const POLL_INTERVAL_MS = 30000
+const POLL_INTERVAL_MS = 15000
 
 const getUnreadIds = (items: NotificationItem[]) =>
   items.filter((item) => !item.is_read).map((item) => item.id)
 
 export const useNotifications = () => {
   const dispatch = useDispatch()
+  const queryClient = useQueryClient()
   const user = useAppSelector((state) => state.auth.user)
   const notifications = useAppSelector((state) => state.notifications.items)
   const unreadCount = useAppSelector((state) => state.notifications.unreadCount)
@@ -26,10 +29,18 @@ export const useNotifications = () => {
   const hasInitializedRef = useRef(false)
   const previousUnreadRef = useRef<Set<number>>(new Set())
   const notificationsRef = useRef<NotificationItem[]>([])
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const refresh = useCallback(
     async (options: { silent?: boolean } = {}) => {
       if (!user?.id || !user?.vendor_id) return
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      const abortController = new AbortController()
+      abortControllerRef.current = abortController
+
       if (!options.silent) {
         setIsLoading(true)
       }
@@ -37,7 +48,8 @@ export const useNotifications = () => {
       try {
         const { notifications, unreadCount } = await fetchNotifications(
           user.vendor_id,
-          user.id
+          user.id,
+          { signal: abortController.signal }
         )
         const sortedItems = [...notifications].sort(
           (a, b) =>
@@ -50,6 +62,7 @@ export const useNotifications = () => {
             unreadCount,
           })
         )
+        queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
 
         if (typeof window !== "undefined") {
           const nextUnreadIds = new Set(getUnreadIds(sortedItems))
@@ -65,7 +78,7 @@ export const useNotifications = () => {
                   !item.is_read && !previousUnreadRef.current.has(item.id)
               )
               .forEach((item) => {
-                toast.info(item.title || "New notification")
+                toastManager.add({ title: item.title || "New notification", type: "info" })
               })
           }
 
@@ -73,12 +86,15 @@ export const useNotifications = () => {
           hasInitializedRef.current = true
         }
       } catch (error) {
+        if (axios.isCancel(error)) {
+          return
+        }
         if (!options.silent) {
-          toast.error("Failed to load notifications")
+          toastManager.add({ title: "Failed to load notifications", type: "error" })
         }
         console.error(error)
       } finally {
-        if (!options.silent) {
+        if (abortControllerRef.current === abortController) {
           setIsLoading(false)
         }
       }
@@ -109,7 +125,9 @@ export const useNotifications = () => {
     const setupForegroundListener = async () => {
       try {
         const { onMessage } = await import("firebase/messaging")
-        const { messaging } = await import("@/utils/firebase")
+        const { getFirebaseMessaging } = await import("@/utils/firebase")
+        const messaging = await getFirebaseMessaging()
+        if (!messaging) return
 
         unsubscribe = onMessage(messaging, (payload) => {
           const notificationId = Number(payload.data?.notification_id)
@@ -139,7 +157,7 @@ export const useNotifications = () => {
           if (exists) return
 
           dispatch(addNotification(nextItem))
-          toast.info(nextItem.title || "New notification")
+          toastManager.add({ title: nextItem.title || "New notification", type: "info" })
 
           if (
             "Notification" in window &&
@@ -167,6 +185,18 @@ export const useNotifications = () => {
           }
         })
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : ""
+        const name = error instanceof Error ? error.name : ""
+
+        if (
+          name === "AbortError" ||
+          message.includes("push service not available") ||
+          message.includes("messaging is not supported")
+        ) {
+          return
+        }
+
         console.error("Failed to setup notifications listener", error)
       }
     }

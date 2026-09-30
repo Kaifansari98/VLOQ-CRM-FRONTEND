@@ -49,14 +49,26 @@ export interface DataTableRowAction<TData> {
     | "booking"
     | "move"
     | "measurement-modal"
+    | "initialsitemeasurementtask"
+    | "finalmeasurementtask"
     | "uploadmeasurement"
     | "uploadfinalmeasurement"
     | "Follow Up"
     | "Pending Materials"
     | "Pending Work"
+    | "Miscellaneous Followup"
+    | "selfassigntask"
     | "sitereadinessstage"
     | "productionready"
-    | "bookingdoneism";
+    | "bookingdoneism"
+    | "bookingdoneapproval"
+    | "orderloginapproval"
+    | "orderlogincompleted"
+    | "preprodcompleted"
+    | "dispatchplanningapproval"
+    | "Dispatch"
+    | "miscellaneous"
+    | "smallorderrequest"
 }
 
 export interface DataTableRowActionOpen<TData> {

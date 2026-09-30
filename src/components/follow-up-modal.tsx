@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import BaseModal from "./utils/baseModal";
 import { Button } from "@/components/ui/button"; // ⬅️ shadcn button
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,11 +21,12 @@ import {
 } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import RescheduleModal from "./sales-executive/siteMeasurement/reschedule-modal";
+import TextAreaInput from "./origin-text-area";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  variant?: "Follow Up" | "Pending Materials" | "Pending Work";
+  variant?: "Follow Up" | "Pending Materials" | "Pending Work" | "Miscellaneous Followup";
   data?: {
     id: number;
     accountId: number;
@@ -51,6 +52,7 @@ const FollowUpModal: React.FC<Props> = ({
   const [openCancelModal, setOpenCancelModal] = useState<boolean>(false);
   const [openRescheduleModal, setOpenRescheduleModal] =
     useState<boolean>(false);
+  const [completionRemark, setCompletionRemark] = useState("");
   const completedUpdateMutation = useCompletedUpdateTask();
   const cancelledUpdateMutation = useCancelledUpdateTask();
   const queryClient = useQueryClient();
@@ -58,6 +60,15 @@ const FollowUpModal: React.FC<Props> = ({
   console.log("Reschedule Remark :- ", data?.remark);
   console.log("Reschedule DueDate :- ", data?.dueDate);
   const handleMarkCompleted = () => {
+    const trimmedRemark = completionRemark.trim();
+    if (variant === "Follow Up" && !trimmedRemark) {
+      toastManager.add({
+        title: "Remark is required to complete this follow up task.",
+        type: "error",
+      });
+      return;
+    }
+
     completedUpdateMutation.mutate(
       {
         leadId: leadId || 0,
@@ -67,12 +78,16 @@ const FollowUpModal: React.FC<Props> = ({
           updated_by: userId || 0,
           closed_at: new Date().toISOString(),
           closed_by: userId || 0,
+          ...(variant === "Follow Up" || (variant === "Miscellaneous Followup" && trimmedRemark)
+            ? { remark: trimmedRemark }
+            : {}),
         },
       },
       {
         onSuccess: () => {
-          toast.success("Lead marked as completed!");
+          toastManager.add({ title: "Lead marked as completed!", type: "success" });
           setOpenCompletedModal(false);
+          setCompletionRemark("");
 
           // Invalidate query to refresh data
           if (vendorId) {
@@ -88,12 +103,20 @@ const FollowUpModal: React.FC<Props> = ({
             queryClient.invalidateQueries({
               queryKey: ["finalHandoverReadiness"],
             });
+
+            queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+            queryClient.invalidateQueries({
+              queryKey: ["pendingMaterialTasks"],
+            });
+
+            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["miscFollowupTasks"] });
           }
         },
         onError: (err) => {
-          toast.error(err?.message || "❌ Failed to update lead");
+          toastManager.add({ title: err?.message || "❌ Failed to update lead", type: "error" });
         },
-      }
+      },
     );
     setOpenCompletedModal(false);
     onOpenChange(false);
@@ -113,7 +136,7 @@ const FollowUpModal: React.FC<Props> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Lead cancelled successfully!");
+          toastManager.add({ title: "Lead cancelled successfully!", type: "success" });
           setOpenCancelModal(false);
 
           // Invalidate query to refresh data
@@ -124,12 +147,15 @@ const FollowUpModal: React.FC<Props> = ({
             queryClient.invalidateQueries({
               queryKey: ["vendorUserTasks", vendorId, userId],
             });
+            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+            queryClient.invalidateQueries({ queryKey: ["miscFollowupTasks"] });
           }
         },
         onError: (err) => {
-          toast.error(err?.message || "Failed to cancel lead");
+          toastManager.add({ title: err?.message || "Failed to cancel lead", type: "error" });
         },
-      }
+      },
     );
     setOpenCancelModal(false);
     onOpenChange(false);
@@ -143,15 +169,19 @@ const FollowUpModal: React.FC<Props> = ({
           variant === "Pending Work"
             ? "Pending Work Task"
             : variant === "Pending Materials"
-            ? "Pending Material Task"
-            : "Follow Up"
+              ? "Pending Material Task"
+              : variant === "Miscellaneous Followup"
+                ? "Miscellaneous Followup Task"
+                : "Follow Up"
         }
         description={
           variant === "Pending Work"
             ? "Update or manage this pending work task for the lead."
             : variant === "Pending Materials"
-            ? "Update the pending material task status for this lead."
-            : "Update the follow-up status for this lead."
+              ? "Update the pending material task status for this lead."
+              : variant === "Miscellaneous Followup"
+                ? "Update or manage this miscellaneous follow-up task."
+                : "Update the follow-up status for this lead."
         }
         size="md"
       >
@@ -164,8 +194,10 @@ const FollowUpModal: React.FC<Props> = ({
                 {variant === "Pending Work"
                   ? "If this pending work has been completed, you can mark it as done."
                   : variant === "Pending Materials"
-                  ? "If this pending material has been dispatched or received, mark it as completed."
-                  : "If your follow up is completed, you can mark it as completed."}
+                    ? "If this pending material has been dispatched or received, mark it as completed."
+                    : variant === "Miscellaneous Followup"
+                      ? "If this miscellaneous follow-up has been completed, you can mark it as done."
+                      : "If your follow up is completed, you can mark it as completed."}
               </p>
             </div>
             <Button
@@ -184,8 +216,10 @@ const FollowUpModal: React.FC<Props> = ({
                 {variant === "Pending Work"
                   ? "If the work schedule has changed or delayed, you can reschedule it."
                   : variant === "Pending Materials"
-                  ? "If the material dispatch date has changed or delayed, you can reschedule it."
-                  : "If the client has pushed the meeting date, you can reschedule it."}
+                    ? "If the material dispatch date has changed or delayed, you can reschedule it."
+                    : variant === "Miscellaneous Followup"
+                      ? "If the follow-up schedule has changed or delayed, you can reschedule it."
+                      : "If the client has pushed the meeting date, you can reschedule it."}
               </p>
             </div>
             <Button
@@ -197,54 +231,78 @@ const FollowUpModal: React.FC<Props> = ({
           </div>
 
           {/* Mark as Cancel */}
-          <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold ">Mark as Cancel</span>
-              <p className="text-sm text-muted-foreground">
-                {variant === "Pending Work"
-                  ? "If this pending work is no longer relevant, you can cancel this task."
-                  : variant === "Pending Materials"
-                  ? "If this pending material task is no longer relevant, you can cancel it."
-                  : "If this follow up is cancelled, you can mark it as cancelled."}
-              </p>
+          {variant !== "Miscellaneous Followup" && (
+            <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold ">Mark as Cancel</span>
+                <p className="text-sm text-muted-foreground">
+                  {variant === "Pending Work"
+                    ? "If this pending work is no longer relevant, you can cancel this task."
+                    : variant === "Pending Materials"
+                      ? "If this pending material task is no longer relevant, you can cancel it."
+                      : "If this follow up is cancelled, you can mark it as cancelled."}
+                </p>
+              </div>
+              <Button className="w-28" onClick={() => setOpenCancelModal(true)}>
+                Cancel
+              </Button>
             </div>
-            <Button className="w-28" onClick={() => setOpenCancelModal(true)}>
-              Cancel
-            </Button>
-          </div>
+          )}
         </div>
       </BaseModal>
       {/* Completed Modal */}
       <AlertDialog
         open={openCompletedModal}
-        onOpenChange={setOpenCompletedModal}
+        onOpenChange={(nextOpen) => {
+          setOpenCompletedModal(nextOpen);
+          if (!nextOpen) setCompletionRemark("");
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Mark{" "}
               {variant === "Pending Work"
                 ? "Mark Pending Work Task as Completed?"
                 : variant === "Pending Materials"
-                ? "Mark Pending Material Task as Completed?"
-                : "Mark Follow Up as Completed?"}
-              as Completed?
+                  ? "Mark Pending Material Task as Completed?"
+                  : variant === "Miscellaneous Followup"
+                    ? "Mark Miscellaneous Followup as Completed?"
+                    : "Mark Follow Up as Completed?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to mark this
               {variant === "Pending Work"
                 ? " pending work task "
                 : variant === "Pending Materials"
-                ? " pending material task "
-                : " follow up "}
+                  ? " pending material task "
+                  : variant === "Miscellaneous Followup"
+                    ? " miscellaneous follow-up task "
+                    : " follow up "}
               as completed? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {(variant === "Follow Up" || variant === "Miscellaneous Followup") && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Remark {variant === "Miscellaneous Followup" ? "(Optional)" : ""}
+              </p>
+              <TextAreaInput
+                value={completionRemark}
+                onChange={setCompletionRemark}
+                maxLength={500}
+                placeholder="Enter the completion remark..."
+                className="min-h-[120px]"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleMarkCompleted}
-              disabled={completedUpdateMutation.isPending}
+              disabled={
+                completedUpdateMutation.isPending ||
+                (variant === "Follow Up" && !completionRemark.trim())
+              }
             >
               {completedUpdateMutation.isPending ? "Processing..." : "Confirm"}
             </AlertDialogAction>
@@ -257,21 +315,23 @@ const FollowUpModal: React.FC<Props> = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Cancel{" "}
               {variant === "Pending Work"
                 ? "Cancel Pending Work Task?"
                 : variant === "Pending Materials"
-                ? "Cancel Pending Material Task?"
-                : "Cancel Follow Up?"}
-              ?
+                  ? "Cancel Pending Material Task?"
+                  : variant === "Miscellaneous Followup"
+                    ? "Cancel Miscellaneous Followup?"
+                    : "Cancel Follow Up?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to cancel this
               {variant === "Pending Work"
                 ? " pending work task "
                 : variant === "Pending Materials"
-                ? " pending material task "
-                : " follow up "}
+                  ? " pending material task "
+                  : variant === "Miscellaneous Followup"
+                    ? " miscellaneous follow-up task "
+                    : " follow up "}
               ? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -292,6 +352,20 @@ const FollowUpModal: React.FC<Props> = ({
       <RescheduleModal
         open={openRescheduleModal}
         onOpenChange={setOpenRescheduleModal}
+        title={
+          variant === "Miscellaneous Followup"
+            ? "Reschedule Miscellaneous Followup"
+            : variant === "Pending Work"
+              ? "Reschedule Pending Work"
+              : variant === "Pending Materials"
+                ? "Reschedule Pending Material"
+                : "Reschedule Lead"
+        }
+        description={
+          variant === "Miscellaneous Followup"
+            ? "Set a new date and remark for this miscellaneous follow-up."
+            : "Set a new date and time for this lead follow-up."
+        }
         onRescheduleSuccess={() => onOpenChange(false)}
         data={{
           id: leadId!,

@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadStatusNotification } from "@/hooks/designing-stage/designing-leads-hooks";
 import { Loader2 } from "lucide-react";
 
 const STAGE_ROUTE_BY_TYPE: Record<string, string> = {
@@ -25,6 +25,14 @@ const STAGE_ROUTE_BY_TYPE: Record<string, string> = {
   "Type 16": "/dashboard/installation/final-handover/details",
 };
 
+const WORKFLOW_STAGE_ROUTE: Record<string, string> = {
+  "tech-check-stage": "/dashboard/production/tech-check/details",
+  "order-login-stage": "/dashboard/production/order-login/details",
+  "production-stage": "/dashboard/production/pre-post-prod/details",
+};
+
+
+
 const buildQueryString = (searchParams: URLSearchParams) => {
   const query = searchParams.toString();
   return query.length > 0 ? `?${query}` : "";
@@ -34,31 +42,72 @@ export default function LeadDetailsRedirectPage() {
   const router = useRouter();
   const { leadId } = useParams();
   const searchParams = useSearchParams();
-  const accountId = searchParams.get("accountId");
+
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : undefined;
+
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const leadIdNum = Number(leadId);
 
-  const { data: leadStatus, isLoading } = useLeadStatus(
-    Number.isFinite(leadIdNum) ? leadIdNum : undefined,
-    vendorId
+  const { data: leadStatus, isLoading } = useLeadStatusNotification(
+    leadIdNum!,
+    vendorId!,
+    instanceIdNum,
   );
+const targetUrl = useMemo(() => {
+  if (!Number.isFinite(leadIdNum) || !leadStatus) return null;
 
-  const targetUrl = useMemo(() => {
-    if (!Number.isFinite(leadIdNum)) return null;
+  let routeBase: string | undefined;
 
-    const routeBase =
-      (leadStatus?.status_tag && STAGE_ROUTE_BY_TYPE[leadStatus.status_tag]) ||
-      STAGE_ROUTE_BY_TYPE["Type 1"];
+  // Prefer the latest persisted lead status tag first.
+  if (leadStatus.lead_status_tag) {
+    routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
+  }
 
-    return `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
-  }, [accountId, leadIdNum, leadStatus?.status_tag, searchParams]);
+  // Fallback to workflow-stage only when a tag route is unavailable.
+  if (!routeBase && leadStatus.workflow_stage) {
+    routeBase = WORKFLOW_STAGE_ROUTE[leadStatus.workflow_stage];
+  }
 
-  useEffect(() => {
-    if (!vendorId || isLoading) return;
-    if (!targetUrl) return;
+  if (!routeBase) {
+    routeBase = STAGE_ROUTE_BY_TYPE["Type 1"];
+  }
 
-    router.replace(targetUrl);
-  }, [isLoading, router, targetUrl, vendorId]);
+  const finalUrl = `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
+
+  // ✅ LOG BEFORE NAVIGATION (Decision Layer)
+  console.log("🚀 [Redirect Decision]", {
+    leadId: leadIdNum,
+    workflow_stage: leadStatus.workflow_stage,
+    lead_status_tag: leadStatus.lead_status_tag,
+    resolvedRouteBase: routeBase,
+    finalUrl,
+  });
+
+  return finalUrl;
+}, [leadIdNum, leadStatus, searchParams]);
+
+
+useEffect(() => {
+  if (!vendorId || isLoading) return;
+  if (!targetUrl) return;
+
+  // ✅ BEFORE NAVIGATION
+  console.log("➡️ [Before Navigation]", {
+    from: window.location.pathname + window.location.search,
+    to: targetUrl,
+  });
+
+  router.replace(targetUrl);
+
+  // ✅ AFTER NAVIGATION (approximation)
+  setTimeout(() => {
+    console.log("✅ [After Navigation Triggered]", {
+      navigatedTo: targetUrl,
+    });
+  }, 0);
+
+}, [isLoading, router, targetUrl, vendorId]);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4">

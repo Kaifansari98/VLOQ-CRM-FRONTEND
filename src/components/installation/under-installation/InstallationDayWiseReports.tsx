@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
@@ -41,12 +41,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import VideoCard from "@/components/utils/VideoCard";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface InstallationDayWiseReportsProps {
   vendorId: number;
   leadId: number;
   accountId?: number;
   accessBtn?: boolean;
+  disabledReason?: string;
 }
 
 interface ReportDocument {
@@ -69,7 +74,9 @@ export default function InstallationDayWiseReports({
   leadId,
   accountId,
   accessBtn,
+  disabledReason,
 }: InstallationDayWiseReportsProps) {
+  const MAX_REPORT_FILES = 20;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
@@ -90,10 +97,19 @@ export default function InstallationDayWiseReports({
   const uploadMutation = useUploadInstallationUpdate();
   const { data: reports, refetch } = useInstallationUpdates(vendorId, leadId);
 
-  const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
-
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const lead = leadResponse?.data?.lead;
+  const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
+  const effectiveDisabledReason = shouldDisableBlockedActions ? blockedTooltip : disabledReason;
+  const isActionDisabled = shouldDisableBlockedActions || !!disabledReason;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -101,26 +117,38 @@ export default function InstallationDayWiseReports({
     if (!reports) return new Set<string>();
     return new Set<string>(
       reports.map((r: any) =>
-        new Date(r.update_date).toISOString().slice(0, 10)
-      )
+        new Date(r.update_date).toISOString().slice(0, 10),
+      ),
     );
   }, [reports]);
 
   const handleAddReport = () => {
     if (!selectedDate) {
-      toast.error("Please select a date");
+      toastManager.add({ title: "Please select a date", type: "error" });
       return;
     }
 
     // duplicate check
     if (usedDates.has(selectedDate)) {
-      toast.error(
-        "An update for this date already exists. Choose another date."
-      );
+      toastManager.add({
+        title: "An update for this date already exists. Choose another date.",
+        type: "error",
+      });
       return;
     }
     if (files.length === 0) {
-      toast.error("Please upload at least one document");
+      toastManager.add({
+        title: "Please upload at least one document",
+        type: "error",
+      });
+      return;
+    }
+    if (files.length > MAX_REPORT_FILES) {
+      toastManager.add({
+        title: `You can upload up to ${MAX_REPORT_FILES} files only`,
+        type: "error",
+      });
+      setFiles((prev) => prev.slice(0, MAX_REPORT_FILES));
       return;
     }
 
@@ -136,17 +164,26 @@ export default function InstallationDayWiseReports({
       },
       {
         onSuccess: () => {
-          toast.success("Day-wise report uploaded successfully");
-          setIsAddModalOpen(false);
-          setSelectedDate(undefined);
-          setRemark("");
-          setFiles([]);
+          toastManager.add({
+            title: "Day-wise report uploaded successfully",
+            type: "success",
+          });
+          handleAddModalChange(false);
           refetch();
         },
-        onError: (error) => {
-          toast.error(error?.message || "Failed to upload report");
+        onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to upload report";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
         },
-      }
+      },
     );
   };
 
@@ -164,11 +201,6 @@ export default function InstallationDayWiseReports({
     return filename.split(".").pop()?.toLowerCase() || "";
   };
 
-  const isImageFile = (filename: string) => {
-    const ext = getFileExtension(filename);
-    return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-  };
-
   function formatInstallationDate(dateString: string) {
     const date = new Date(dateString);
 
@@ -184,7 +216,7 @@ export default function InstallationDayWiseReports({
   }
 
   const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
-
+  const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "webm"];
   const DOCUMENT_EXTENSIONS = [
     "pdf",
     "doc",
@@ -203,30 +235,85 @@ export default function InstallationDayWiseReports({
     fileName.split(".").pop()?.toLowerCase() ?? "";
   const imageDocuments =
     viewModal.data?.documents.filter((doc) =>
-      IMAGE_EXTENSIONS.includes(getExtension(doc.original_name))
+      IMAGE_EXTENSIONS.includes(getExtension(doc.original_name)),
     ) ?? [];
 
   const otherDocuments =
     viewModal.data?.documents.filter((doc) =>
-      DOCUMENT_EXTENSIONS.includes(getExtension(doc.original_name))
+      DOCUMENT_EXTENSIONS.includes(getExtension(doc.original_name)),
+    ) ?? [];
+
+  const videoDocuments =
+    viewModal.data?.documents.filter((doc) =>
+      VIDEO_EXTENSIONS.includes(getExtension(doc.original_name)),
     ) ?? [];
 
   const handleConfirmDelete = () => {
-    if (confirmDelete && userId) {
-      deleteDocument({
-        vendorId: vendorId,
+    if (!confirmDelete || !userId || !viewModal.data) return;
+
+    deleteDocument(
+      {
+        vendorId,
         documentId: confirmDelete,
         deleted_by: userId,
-      });
-      setConfirmDelete(null);
-    }
+      },
+      {
+        onSuccess: () => {
+          // 🔥 remove document from modal state
+          setViewModal((prev) => {
+            if (!prev.data) return prev;
+
+            return {
+              ...prev,
+              data: {
+                ...prev.data,
+                documents: prev.data.documents.filter(
+                  (doc) => doc.document_id !== confirmDelete,
+                ),
+              },
+            };
+          });
+
+          setConfirmDelete(null);
+          refetch(); // keep main list in sync
+        },
+      },
+    );
   };
 
-  const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "site-supervisor" &&
-      leadStatus === "under-installation-stage");
+  const canDelete = !!accessBtn && !isActionDisabled;
+
+  const resetAddReportForm = React.useCallback(() => {
+    setSelectedDate(undefined);
+    setRemark("");
+    setFiles([]);
+  }, []);
+
+  const handleAddModalChange = React.useCallback(
+    (open: boolean) => {
+      setIsAddModalOpen(open);
+      if (!open) {
+        resetAddReportForm();
+      }
+    },
+    [resetAddReportForm],
+  );
+
+  const handleFilesChange = React.useCallback(
+    (nextFiles: File[]) => {
+      if (nextFiles.length > MAX_REPORT_FILES) {
+        toastManager.add({
+          title: `You can upload up to ${MAX_REPORT_FILES} files only`,
+          type: "error",
+        });
+        setFiles(nextFiles.slice(0, MAX_REPORT_FILES));
+        return;
+      }
+
+      setFiles(nextFiles);
+    },
+    [MAX_REPORT_FILES],
+  );
 
   return (
     <div className="mt-10 border-t pt-6">
@@ -243,10 +330,19 @@ export default function InstallationDayWiseReports({
 
         <div className="w-full sm:w-auto flex justify-end">
           {accessBtn && (
-            <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-              <Plus className="w-4 h-4" />
-              Add Day Wise Update
-            </Button>
+            <div className="shrink-0 w-fit">
+              <CustomeTooltip
+                value={effectiveDisabledReason}
+                truncateValue={
+                  <div className={isActionDisabled ? "pointer-events-none opacity-60" : ""}>
+                    <Button onClick={() => setIsAddModalOpen(true)} size="sm" disabled={isActionDisabled}>
+                      <Plus className="w-4 h-4" />
+                      Add Day Wise Update
+                    </Button>
+                  </div>
+                }
+              />
+            </div>
           )}
         </div>
       </div>
@@ -365,7 +461,7 @@ export default function InstallationDayWiseReports({
       {/* Add Report Modal */}
       <BaseModal
         open={isAddModalOpen}
-        onOpenChange={setIsAddModalOpen}
+        onOpenChange={handleAddModalChange}
         title="Add Day-Wise Installation Report"
         description="Track installation progress with daily updates and documentation"
         size="lg"
@@ -377,9 +473,7 @@ export default function InstallationDayWiseReports({
             <CustomeDatePicker
               value={selectedDate}
               onChange={setSelectedDate}
-              restriction="installationInterval"
-              intervalStartDate={underDetails?.actual_installation_start_date}
-              intervalEndDate={underDetails?.expected_installation_end_date}
+              restriction="lastThreeDays"
               disabledDates={Array.from(usedDates)}
               disabledDatesReason="A report has already been uploaded for this date."
             />
@@ -402,9 +496,10 @@ export default function InstallationDayWiseReports({
             <label className="text-sm font-medium">Upload Documents *</label>
             <FileUploadField
               value={files}
-              onChange={setFiles}
+              onChange={handleFilesChange}
               accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.avi,.mkv,.webm"
               multiple
+              maxFiles={MAX_REPORT_FILES}
             />
           </div>
 
@@ -412,7 +507,7 @@ export default function InstallationDayWiseReports({
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={() => handleAddModalChange(false)}
               disabled={uploadMutation.isPending}
             >
               Cancel
@@ -484,6 +579,20 @@ export default function InstallationDayWiseReports({
               {/* 📄 DOCUMENT FILES */}
               {otherDocuments.map((doc) => (
                 <DocumentCard
+                  key={doc.document_id}
+                  doc={{
+                    id: doc.document_id,
+                    originalName: doc.original_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.uploaded_at,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
+
+              {videoDocuments.map((doc) => (
+                <VideoCard
                   key={doc.document_id}
                   doc={{
                     id: doc.document_id,

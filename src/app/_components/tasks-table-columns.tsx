@@ -9,12 +9,20 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useRouter } from "next/navigation";
 import RemarkTooltip from "@/components/origin-tooltip";
-import { MapPin } from "lucide-react";
+import { MapPin, Zap, Ban } from "lucide-react";
 import {
+  sanitizeRemark,
   siteMapLinkSort,
   tableMultiValueFilter,
   tableSingleValueMultiSelectFilter,
 } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
@@ -28,7 +36,7 @@ export type ProcessedTask = {
   leadStage?: string; // leadMaster.lead_status
   siteType: string; // leadMaster.site_type
   furnitureType: string; // joined string from array
-  furnitueStructures: string; // joined string from array
+  furnitueStructures: string[]; // joined string from array
   taskType: string; // userLeadTask.task_type
   dueDate: string; // userLeadTask.due_date
   assignedBy: number; // userLeadTask.created_by
@@ -37,6 +45,11 @@ export type ProcessedTask = {
   assignedToName?: string | null;
   remark?: string;
   site_map_link: string;
+  instance_id: number;
+  is_blocked?: boolean;
+  lead_blocked_at?: string | null;
+  isFastProductionRequestTask?: boolean;
+  isOnlineLead?: boolean;
 };
 
 export function getVendorLeadsTableColumns({
@@ -107,15 +120,44 @@ export function getVendorLeadsTableColumns({
     //   enableHiding: false,
     //   size: 40,
     // },
-    // Sr No
+    // Lead Code
     {
       accessorKey: "lead_code",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Lead Code" />
       ),
-      cell: ({ row }) => (
-        <div className=" font-medium">{row.getValue("lead_code")}</div>
-      ),
+      cell: ({ row }) => {
+        const isBlocked = row.original.is_blocked === true;
+        const isFastProduction =
+          row.original.isFastProductionRequestTask === true;
+
+        return (
+          <div className="flex items-center gap-2 font-medium">
+            {isBlocked ? (
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-300/90 bg-gradient-to-br from-red-200 via-red-300 to-red-500 text-red-950 shadow-[0_0_0_3px_rgba(239,68,68,0.18),0_10px_24px_-16px_rgba(220,38,38,0.55)] transition-transform duration-300 hover:scale-110 dark:border-red-400/60 dark:bg-gradient-to-br dark:from-red-500 dark:via-red-600 dark:to-rose-700 dark:text-white dark:shadow-[0_0_0_3px_rgba(239,68,68,0.18),0_14px_28px_-18px_rgba(239,68,68,0.7)]">
+                <Ban className="h-4 w-4 stroke-[2.5]" />
+              </span>
+            ) : isFastProduction ? (
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-orange-300/90 bg-gradient-to-br from-orange-200 via-orange-300 to-orange-500 text-orange-950 shadow-[0_0_0_3px_rgba(251,146,60,0.18),0_10px_24px_-16px_rgba(234,88,12,0.55)] transition-transform duration-300 hover:scale-110 dark:border-orange-400/60 dark:bg-gradient-to-br dark:from-orange-400 dark:via-orange-500 dark:to-red-500 dark:text-white dark:shadow-[0_0_0_3px_rgba(249,115,22,0.18),0_14px_28px_-18px_rgba(249,115,22,0.7)]">
+                <Zap className="h-4 w-4 fill-current animate-pulse motion-reduce:animate-none" />
+              </span>
+            ) : null}
+            <div className="flex flex-col">
+              <span>{row.getValue("lead_code")}</span>
+              {isBlocked && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700 dark:text-red-400">
+                  Blocked
+                </span>
+              )}
+              {!isBlocked && isFastProduction && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-300">
+                  Fast Production
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      },
       meta: {
         label: "Lead Code",
       },
@@ -162,19 +204,40 @@ export function getVendorLeadsTableColumns({
       },
     },
 
-    // Task type
+    // Status
+    {
+      accessorKey: "leadStage",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const status = (row.getValue("leadStage") as string) || "-";
+        return <span className="capitalize font-medium">{status}</span>;
+      },
+      meta: {
+        label: "Status",
+      },
+      enableSorting: true,
+      enableColumnFilter: true,
+      enableHiding: true,
+      filterFn: tableMultiValueFilter,
+    },
+
     {
       accessorKey: "taskType",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Task Type" />
       ),
+      cell: ({ row }) => {
+        const taskType = (row.getValue("taskType") as string) || "—";
+        return <span className="font-medium">{taskType}</span>;
+      },
       meta: {
         label: "Task Type",
       },
-
       enableSorting: false,
-      enableColumnFilter: true,
       enableHiding: true,
+      enableColumnFilter: true,
       filterFn: tableMultiValueFilter,
     },
 
@@ -190,19 +253,33 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const remark = row.getValue("remark") as string;
+        const rawRemark = row.getValue("remark") as string;
+
+        // 🔹 Step 1: Remove system markers like ||OL:37||
+        const remark = sanitizeRemark(rawRemark);
+
         const maxLength = 20;
 
+        // 🔹 Step 2: If short → no tooltip needed
         if (remark.length <= maxLength) {
           return <span>{remark}</span>;
         }
 
+        // 🔹 Step 3: Truncate for display
         const truncateValue = remark.slice(0, maxLength) + "...";
 
-        return <RemarkTooltip remark={truncateValue} remarkFull={remark} />;
+        // 🔹 Step 4: Use your CustomeTooltip
+        return (
+          <CustomeTooltip
+            truncateValue={<span>{truncateValue}</span>}
+            value={remark}
+            side="top"
+            align="center"
+            contentClassName="w-100 break-words"
+          />
+        );
       },
     },
-
     {
       accessorKey: "dueDate",
       header: ({ column }) => (
@@ -299,14 +376,66 @@ export function getVendorLeadsTableColumns({
     {
       accessorKey: "furnitueStructures",
       filterFn: tableMultiValueFilter,
+
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Furniture Structures" />
       ),
-      enableSorting: false,
-      enableColumnFilter: true,
-      enableHiding: true,
+
       meta: {
         label: "Furniture Structures",
+      },
+
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+
+      cell: ({ row }) => {
+        const structures: string[] = row.original.furnitueStructures ?? [];
+
+        if (!structures.length) return "—";
+
+        const visible = structures.slice(0, 2);
+        const remaining = structures.slice(2);
+
+        return (
+          <div className="space-x-1">
+            {visible.map((name: string, index: number) => (
+              <Badge
+                key={index}
+                variant="secondary"
+                className="text-xs px-2 capitalize"
+              >
+                {name}
+              </Badge>
+            ))}
+
+            {remaining.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="text-xs px-2 cursor-pointer hover:bg-muted transition-colors"
+                    >
+                      +{remaining.length}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[220px] p-2 space-y-1"
+                  >
+                    {remaining.map((name: string, index: number) => (
+                      <p key={index} className="text-xs capitalize">
+                        • {name}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        );
       },
     },
 

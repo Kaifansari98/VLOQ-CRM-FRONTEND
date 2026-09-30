@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 const avatarColors = [
@@ -75,6 +75,9 @@ interface SalesExecutiveData {
   id: number;
   user_name: string;
   user_email: string;
+  user_type?: {
+    user_type: string;
+  } | null;
 }
 
 interface ApiResponse {
@@ -90,6 +93,9 @@ const AssignLeadModal = ({
   leadData,
 }: AssignLeadModalProps) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [openConfirmation, setOpenConfirmation] = useState<boolean>(false);
   const queryClient = useQueryClient();
@@ -102,8 +108,9 @@ const AssignLeadModal = ({
 
   // Fetch sales executives
   const { data, isLoading, isError } = useQuery<ApiResponse>({
-    queryKey: ["vendor-sales-executive", vendorId],
-    queryFn: () => getVendorSalesExecutiveUsers(vendorId!),
+    queryKey: ["vendor-sales-executive", vendorId, franchiseId],
+    queryFn: () => getVendorSalesExecutiveUsers(vendorId!, franchiseId ?? undefined),
+    enabled: !!vendorId,
   });
 
   // Helper: get initials for avatar
@@ -128,15 +135,24 @@ const AssignLeadModal = ({
     mutationFn: (payload: AssignToPayload) =>
       assignLeadToAnotherSalesExecutive(vendorId!, leadData!.id, payload),
     onSuccess: () => {
-      toast.success("Assign Lead Successfully.");
+      toastManager.add({ title: "Assign Lead Successfully.", type: "success" });
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, userId],
+        queryKey: ["vendorUserLeads"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadData?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadDetails"],
       });
       onOpenChange(false);
     },
     onError: (error: any) => {
       console.error("Failed to assign lead", error.response?.data || error);
-      toast.error("Something went wrong!");
+      toastManager.add({ title: "Something went wrong!", type: "error" });
     },
   });
 
@@ -157,7 +173,7 @@ const AssignLeadModal = ({
   // 2) onSelect: block clicking the already-assigned user
   const handleAssignLead = (salesExecutiveId: number) => {
     if (salesExecutiveId === currentAssignedId) {
-      toast.info("This lead is already assigned to this user.");
+      toastManager.add({ title: "This lead is already assigned to this user.", type: "info" });
       return; // do nothing
     }
     setSelectedId(salesExecutiveId);
@@ -172,7 +188,7 @@ const AssignLeadModal = ({
           <Command className="rounded-lg border shadow-md">
             <CommandInput placeholder="Search user to assign..." />
             <CommandList>
-              <CommandGroup heading="Sales-executive">
+              <CommandGroup heading="Eligible Users">
                 {isLoading && (
                   <div className="p-4 text-sm text-gray-500">Loading...</div>
                 )}
@@ -203,8 +219,10 @@ const AssignLeadModal = ({
                             {getInitials(user.user_name)}
                           </div>
                           <div className="flex flex-col flex-1">
-                            <span className="text-sm font-medium">{user.user_name}</span>
-                            <span className="text-xs text-gray-500">{user.user_email}</span>
+                            <span className="text-sm font-medium">
+                              {user.user_name} - {user.user_type?.user_type || "sales-executive"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{user.user_email || "No email available"}</span>
                           </div>
                   
                           {isAssigned && (
