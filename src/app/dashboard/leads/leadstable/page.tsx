@@ -142,7 +142,17 @@ export default function LeadsGenerationPage() {
   };
   const [openPopover, setOpenPopover] = useState(false);
 
-  const isFilterByUser = normalizedUserType === "sales-executive";
+  const isCaller = [
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
+    "caller",
+    "store-caller",
+    "store caller",
+  ].includes(normalizedUserType || "");
+
+  const isFilterByUser =
+    normalizedUserType === "sales-executive" || isCaller;
 
   const { data: counts } = useActivityStatusCounts(
     vendorId,
