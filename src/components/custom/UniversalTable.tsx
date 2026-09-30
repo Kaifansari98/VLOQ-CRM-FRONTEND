@@ -21,6 +21,13 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableMonthFilter } from "@/components/data-table/data-table-month-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -566,6 +573,22 @@ export function UniversalTable({
     (normalizedType === "type 8" && normalizedUserType === "sales-executive");
   const shouldShowLeadCodeFranchiseFilter = false;
 
+  const isCaller =
+    [
+      "telecaller",
+      "telecaller-team-lead",
+      "caller",
+      "store-caller",
+    ].includes(normalizedUserType || "") ||
+    /^(telecaller|caller|store[-_\s]*caller)/i.test(normalizedUserType || "");
+
+  const callerStores = useMemo(() => {
+    return (franchisesForB2b || []).filter((s: any) => {
+      const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+      return name !== "b2b";
+    });
+  }, [franchisesForB2b]);
+
   // -------------------- LOCAL UI STATE --------------------
 
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
@@ -725,6 +748,22 @@ export function UniversalTable({
     }
   };
 
+  const selectedStoreId =
+    activeFranchisesFilter.length > 0
+      ? String(activeFranchisesFilter[0])
+      : "ALL_STORES";
+
+  const handleStoreFilterChange = (val: string) => {
+    const filterVal = val === "ALL_STORES" ? [] : [Number(val)];
+    setMyFranchisesFilter(filterVal);
+    setOverallFranchisesFilter(filterVal);
+    if (effectiveViewType === "my") {
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
+
   const showFranchiseFilter = useMemo(() => {
     if (ignoreFranchiseScope) return false;
     if (isHOUser) return true;
@@ -789,12 +828,15 @@ export function UniversalTable({
         : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : [];
 
+    const callerSelectedFranchiseId =
+      isCaller && myFranchisesFilter.length > 0 ? myFranchisesFilter[0] : undefined;
+
     return {
       userId: userId!,
       franchise_id:
         !ignoreFranchiseScope && shouldIncludeFranchise
           ? franchiseId!
-          : undefined,
+          : callerSelectedFranchiseId,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
@@ -839,6 +881,7 @@ export function UniversalTable({
   }, [
     userId,
     userType,
+    isCaller,
     shouldIncludeFranchise,
     ignoreFranchiseScope,
     type,
@@ -872,12 +915,15 @@ export function UniversalTable({
     const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
     const overallUserId = isAdmin || allVendorLeads ? undefined : userId;
 
+    const callerSelectedFranchiseId =
+      isCaller && overallFranchisesFilter.length > 0 ? overallFranchisesFilter[0] : undefined;
+
     return {
       userId: overallUserId,
       franchise_id:
         !ignoreFranchiseScope && shouldIncludeFranchise
           ? franchiseId!
-          : undefined,
+          : callerSelectedFranchiseId,
       tag: type,
       strict_status_tag: strictStatusTag || undefined,
       material_issue_ready_only: materialIssueReadyOnly || undefined,
@@ -928,6 +974,7 @@ export function UniversalTable({
     userId,
     userType,
     isAdmin,
+    isCaller,
     allVendorLeads,
     shouldIncludeFranchise,
     ignoreFranchiseScope,
@@ -1837,6 +1884,24 @@ export function UniversalTable({
               onChange={handleProductionStatusFilterChange}
             />
           )}
+          {isCaller && (
+            <Select
+              value={selectedStoreId}
+              onValueChange={handleStoreFilterChange}
+            >
+              <SelectTrigger className="h-8 w-[140px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                <SelectValue placeholder="All Stores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                {callerStores.map((s: any) => (
+                  <SelectItem key={s.id} value={s.id.toString()}>
+                    {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {/* <DataTableSortList table={table} />
           <DataTableFilterList table={table} /> */}
           <DataTableViewOptions table={table} />
@@ -1890,6 +1955,25 @@ export function UniversalTable({
               placeholder="Search..."
               className="h-8 w-64"
             />
+
+            {isCaller && (
+              <Select
+                value={selectedStoreId}
+                onValueChange={handleStoreFilterChange}
+              >
+                <SelectTrigger className="h-8 w-[160px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                  <SelectValue placeholder="All Stores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                  {callerStores.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {showServicingColumn && pendingServicesOnly ? (
               <DataTableMonthFilter
