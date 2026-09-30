@@ -937,7 +937,8 @@ export default function MachineScannerPage() {
       isBoxSelectorOpen ||
       isLocationSelectorOpen ||
       isCreateBoxOpen ||
-      isManualScanOpen
+      isManualScanOpen ||
+      isHardwareModalOpen
     ) {
       return;
     }
@@ -971,6 +972,7 @@ export default function MachineScannerPage() {
     isCreateBoxOpen,
     isManualScanOpen,
     isLocationSelectorOpen,
+    isHardwareModalOpen,
     isQueueHydrated,
     scannerReady,
   ]);
@@ -1369,7 +1371,21 @@ export default function MachineScannerPage() {
                               disabled={!isQueueHydrated || !scannerReady}
                             >
                               <Keyboard className="size-4 text-muted-foreground" />
-                              <span>Manual Scan</span>
+                              <span className="hidden sm:inline">Manual Scan</span>
+                            </Button>
+                          )}
+
+                          {isPackagingMachine && isCustomGroupPacking && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-12 sm:h-13 gap-2 px-3.5 sm:px-4 font-medium shadow-2xs hover:bg-accent border-primary/30 text-primary shrink-0"
+                              onClick={() => setIsHardwareModalOpen(true)}
+                              disabled={!scannerReady}
+                              title="Pack hardware items"
+                            >
+                              <Wrench className="size-4 text-primary" />
+                              <span className="hidden sm:inline">Hardware</span>
                             </Button>
                           )}
                         </div>
@@ -2277,7 +2293,7 @@ export default function MachineScannerPage() {
         </DialogContent>
       </Dialog>
 
-      {isDefaultOrGroupwisePacking && (
+      {(isDefaultOrGroupwisePacking || isCustomGroupPacking) && (
         <HardwarePackingModal
           isOpen={isHardwareModalOpen}
           onClose={() => setIsHardwareModalOpen(false)}
@@ -2287,7 +2303,10 @@ export default function MachineScannerPage() {
           userId={userId}
           packingType={packagingContext?.packing_type}
           projectName={packagingContext?.project_name}
+          projectDetailsId={packagingContext?.project_details_id}
+          leadId={packagingContext?.lead_id}
           onItemPacked={() => void refetchBoxes()}
+          onBoxPackedAndClosed={(boxId) => void renderAutomaticBoxPrint(boxId)}
         />
       )}
     </>
