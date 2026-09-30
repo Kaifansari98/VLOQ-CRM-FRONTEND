@@ -25,6 +25,7 @@ export interface User {
     eligible_booking_days?: number | null
     is_self_assign_task_type_master_enabed?: boolean | null
     is_broadcast_enabled?: boolean | null
+    is_hrms_master_enabled?: boolean | null
     logoUrl?: string
     iconUrl?: string
     ["vendor-report-code"]?: string | null

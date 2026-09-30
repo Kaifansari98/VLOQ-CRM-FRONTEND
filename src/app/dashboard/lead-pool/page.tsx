@@ -155,12 +155,26 @@ export default function LeadPoolPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
+  const isCaller =
+    userType === "telecaller" ||
+    userType === "telecaller-team-lead" ||
+    userType === "telecaller team lead" ||
+    userType === "caller" ||
+    userType === "store caller" ||
+    userType === "store-caller";
   const userFranchiseId = user?.franchise_id;
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
 
-  const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
-  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive";
+  const canAssign = !isCaller && (userType === "super-admin" || userType === "admin");
+  const canAddWalkIn =
+    !isCaller &&
+    (userType === "store-manager" ||
+      userType === "store manager" ||
+      userType === "super-admin" ||
+      userType === "admin" ||
+      userType === "sales-executive" ||
+      userType === "sales executive");
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
   const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
@@ -178,17 +192,34 @@ export default function LeadPoolPage() {
     });
   }, [rawLeads, statusTab]);
 
-  const activeCount = useMemo(() => {
-    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() !== "lost").length;
-  }, [rawLeads]);
-
-  const pendingCount = useMemo(() => {
-    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "pending").length;
-  }, [rawLeads]);
 
   const lostCount = useMemo(() => {
     return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "lost").length;
   }, [rawLeads]);
+
+  const [tabCounts, setTabCounts] = useState<{ pool: number; overall: number; my: number }>({
+    pool: 0,
+    overall: 0,
+    my: 0,
+  });
+
+  const fetchTabCountsData = async () => {
+    if (!vendorId) return;
+    try {
+      let url = `/online-leads/tab-counts?vendor_id=${vendorId}`;
+      if (userId) url += `&userId=${userId}`;
+      const res = await apiClient.get(url);
+      if (res.data?.success && res.data?.data) {
+        setTabCounts(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch tab counts:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTabCountsData();
+  }, [vendorId, userId]);
 
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -514,6 +545,10 @@ export default function LeadPoolPage() {
           }
         }
 
+        if (!canAssign && !isSuperAdminOrAdmin) {
+          return <span className="text-xs text-muted-foreground italic flex justify-center">—</span>;
+        }
+
         return (
           <div className="flex items-center justify-center gap-2">
             {canAssign && (
@@ -548,7 +583,7 @@ export default function LeadPoolPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
+  ], [canAssign, isSuperAdminOrAdmin, isCaller, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
 
   const table = useReactTable({
     data: leads,
@@ -638,6 +673,9 @@ export default function LeadPoolPage() {
       const res = await apiClient.get(url);
       if (currentRequestId === requestIdRef.current && res.data?.success) {
         setRawLeads(res.data.data);
+        if (res.data.counts) {
+          setTabCounts(res.data.counts);
+        }
       }
     } catch (err) {
       if (currentRequestId === requestIdRef.current) {
@@ -675,6 +713,7 @@ export default function LeadPoolPage() {
         setAssigneeId("");
         setAssignRemark("");
         fetchLeadsData();
+        fetchTabCountsData();
         setIsSuccessOpen(true);
       }
     } catch (err) {
@@ -694,6 +733,7 @@ export default function LeadPoolPage() {
         setIsDeleteOpen(false);
         setSelectedLeadId(null);
         fetchLeadsData();
+        fetchTabCountsData();
       } else {
         toastManager.add({ title: res.data?.error || "Failed to delete lead.", type: "error" });
       }
@@ -722,6 +762,7 @@ export default function LeadPoolPage() {
         });
         setIsDeleteAllOpen(false);
         fetchLeadsData();
+        fetchTabCountsData();
         queryClient.invalidateQueries({ queryKey: ["lead-stats"] });
       } else {
         toastManager.add({
@@ -786,27 +827,7 @@ export default function LeadPoolPage() {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2">
             <button
-              onClick={() => setStatusTab("active")}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
-                statusTab === "active" ? "bg-muted font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full shrink-0 bg-blue-500" />
-              <span>Active Leads</span>
-              <span className="text-[10px] opacity-70">{activeCount}</span>
-            </button>
-            <button
-              onClick={() => setStatusTab("pending")}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
-                statusTab === "pending" ? "bg-muted font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
-              <span>Pending Leads</span>
-              <span className="text-[10px] opacity-70">{pendingCount}</span>
-            </button>
-            <button
-              onClick={() => setStatusTab("lost")}
+              onClick={() => setStatusTab((prev) => (prev === "lost" ? "active" : "lost"))}
               className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
                 statusTab === "lost" ? "bg-muted font-semibold" : "text-muted-foreground"
               }`}
@@ -864,13 +885,22 @@ export default function LeadPoolPage() {
               setActiveTab("pool");
               setPagination((prev) => ({ ...prev, pageIndex: 0 }));
             }}
-            className={`pb-2.5 px-4 text-sm font-semibold border-b-2 -mb-px transition duration-155 ${
+            className={`pb-2.5 px-4 text-sm font-semibold border-b-2 -mb-px transition duration-155 inline-flex items-center gap-2 ${
               activeTab === "pool"
                 ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100 font-bold"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Lead Pool
+            <span>Lead Pool</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums transition ${
+                activeTab === "pool"
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              {tabCounts.pool}
+            </span>
           </button>
           {!isSuperAdminOrAdmin && (
             <button
@@ -878,13 +908,22 @@ export default function LeadPoolPage() {
                 setActiveTab("my");
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
-              className={`pb-2.5 px-4 text-sm font-semibold border-b-2 -mb-px transition duration-155 ${
+              className={`pb-2.5 px-4 text-sm font-semibold border-b-2 -mb-px transition duration-155 inline-flex items-center gap-2 ${
                 activeTab === "my"
                   ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100 font-bold"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              My Leads
+              <span>My Leads</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums transition ${
+                  activeTab === "my"
+                    ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                }`}
+              >
+                {tabCounts.my}
+              </span>
             </button>
           )}
           <button
@@ -892,13 +931,22 @@ export default function LeadPoolPage() {
               setActiveTab("overall");
               setPagination((prev) => ({ ...prev, pageIndex: 0 }));
             }}
-            className={`pb-2.5 px-4 text-sm font-semibold border-b-2 -mb-px transition duration-155 ${
+            className={`pb-2.5 px-4 text-sm font-semibold border-b-2 -mb-px transition duration-155 inline-flex items-center gap-2 ${
               activeTab === "overall"
                 ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100 font-bold"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Overall Leads
+            <span>Overall Leads</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums transition ${
+                activeTab === "overall"
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              {tabCounts.overall}
+            </span>
           </button>
         </div>
 
@@ -1086,7 +1134,10 @@ export default function LeadPoolPage() {
       <BulkUploadModal
         open={isBulkUploadOpen}
         onOpenChange={setIsBulkUploadOpen}
-        onSuccess={fetchLeadsData}
+        onSuccess={() => {
+          fetchLeadsData();
+          fetchTabCountsData();
+        }}
       />
 
       {/* Delete Lead Confirmation Dialog */}

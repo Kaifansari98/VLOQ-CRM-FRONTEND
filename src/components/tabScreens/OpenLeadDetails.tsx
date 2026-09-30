@@ -456,12 +456,36 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     // Deduplicate questionnaire blocks so that questions are only shown once (latest update wins)
     const deduplicatedBlocks: string[] = [];
     const questionMap = new Map<string, string>();
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
     const getQuestionKey = (header: string) => {
       const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
-      if (norm.includes("whereisyourproject") || norm.includes("projectlocated")) return "project_location";
-      if (norm.includes("modularsolution") || norm.includes("whatmodular")) return "modular_solution";
-      if (norm.includes("whenneedready") || norm.includes("whendoyouneed") || norm.includes("kitchenwardrobe")) return "when_need_ready";
-      if (norm.includes("showroom") || norm.includes("shambhala")) return "preferred_showroom";
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
       return norm;
     };
 
@@ -471,7 +495,23 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       const isQuestion = headerLine.includes("•") || headerLine.endsWith("?") || headerLine.startsWith("**");
       if (isQuestion) {
         const key = getQuestionKey(headerLine);
-        questionMap.set(key, block);
+        const existingBlock = questionMap.get(key);
+        if (existingBlock) {
+          const existingLines = existingBlock.split("\n").map((l) => l.trim()).filter(Boolean);
+          const existingHeader = existingLines[0] || "";
+          const cleanHeader = getCleanHeader(headerLine);
+          const cleanExisting = getCleanHeader(existingHeader);
+          const isCurrentBetterHeader =
+            (cleanHeader.includes(" ") || cleanHeader.endsWith("?")) &&
+            (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+          const currentAnswer = lines.slice(1).join("\n").trim();
+          const existingAnswer = existingLines.slice(1).join("\n").trim();
+          const chosenAnswer = currentAnswer || existingAnswer;
+          const chosenHeader = isCurrentBetterHeader ? headerLine : existingHeader;
+          questionMap.set(key, chosenAnswer ? `${chosenHeader}\n${chosenAnswer}` : chosenHeader);
+        } else {
+          questionMap.set(key, block);
+        }
       } else {
         deduplicatedBlocks.push(block);
       }

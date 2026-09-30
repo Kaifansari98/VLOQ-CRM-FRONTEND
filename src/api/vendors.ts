@@ -19,6 +19,7 @@ export interface VendorListItem {
   is_tracktrace_enabled: boolean | null;
   cutlist_configuration?: string | null;
   is_scanpack_enabled: boolean | null;
+  is_hrms_master_enabled: boolean | null;
   is_available_unique_code: boolean | null;
   push_lead_to_cadbid: boolean | null;
   is_this_vendor_is_custom_usertype_only: boolean | null;

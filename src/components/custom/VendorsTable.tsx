@@ -66,6 +66,7 @@ type VendorRow = {
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
   is_scanpack_enabled: boolean;
+  is_hrms_master_enabled: boolean;
   push_lead_to_cadbid?: boolean | null;
   createdAt: string;
   logoUrl?: string;
@@ -152,6 +153,7 @@ export default function VendorsTable({
       is_inventory_enabled: item.is_inventory_enabled === true,
       is_tracktrace_enabled: item.is_tracktrace_enabled === true,
       is_scanpack_enabled: item.is_scanpack_enabled === true,
+      is_hrms_master_enabled: item.is_hrms_master_enabled === true,
       push_lead_to_cadbid: item.push_lead_to_cadbid,
       createdAt: item.createdAt ?? "",
       logoUrl: item.logoUrl ?? "",
@@ -316,6 +318,29 @@ export default function VendorsTable({
                 "text-xs",
                 enabled
                   ? "bg-violet-500/10 text-violet-600 border border-violet-200 hover:bg-violet-500/10"
+                  : "",
+              )}
+            >
+              {enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "is_hrms_master_enabled",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="HRMS Master" />
+        ),
+        cell: ({ row }) => {
+          const enabled = row.getValue("is_hrms_master_enabled") as boolean;
+          return (
+            <Badge
+              variant={enabled ? "default" : "secondary"}
+              className={cn(
+                "text-xs",
+                enabled
+                  ? "bg-amber-500/10 text-amber-600 border border-amber-200 hover:bg-amber-500/10 dark:text-amber-400 dark:border-amber-800"
                   : "",
               )}
             >

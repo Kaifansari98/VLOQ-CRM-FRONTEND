@@ -69,6 +69,7 @@ const createVendorSchema = z.object({
   is_tracktrace_enabled: z.boolean(),
   cutlist_configuration: z.string().optional().default("default"),
   is_scanpack_enabled: z.boolean(),
+  is_hrms_master_enabled: z.boolean(),
   is_available_unique_code: z.boolean(),
   status: z.enum(["active", "inactive"]),
   gst_no: z
@@ -129,6 +130,7 @@ function OnboardVendorFormContent() {
     is_tracktrace_enabled: false,
     cutlist_configuration: "default",
     is_scanpack_enabled: false,
+    is_hrms_master_enabled: false,
     is_available_unique_code: false,
     status: "active",
     gst_no: "",
@@ -166,6 +168,7 @@ function OnboardVendorFormContent() {
         is_tracktrace_enabled: v.is_tracktrace_enabled === true,
         cutlist_configuration: v.cutlist_configuration || "default",
         is_scanpack_enabled: v.is_scanpack_enabled === true,
+        is_hrms_master_enabled: (v as any).is_hrms_master_enabled === true,
         is_available_unique_code: v.is_available_unique_code === true,
         status: (v.status || "active").toLowerCase() as "active" | "inactive",
         gst_no: v.gst_no || "",
@@ -224,6 +227,7 @@ function OnboardVendorFormContent() {
         | "is_inventory_enabled"
         | "is_tracktrace_enabled"
         | "is_scanpack_enabled"
+        | "is_hrms_master_enabled"
         | "is_available_unique_code",
       value: boolean,
     ) =>
@@ -291,6 +295,7 @@ function OnboardVendorFormContent() {
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
         formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
+        formData.append("is_hrms_master_enabled", String(validatedForm.data.is_hrms_master_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
@@ -336,6 +341,7 @@ function OnboardVendorFormContent() {
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
         formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
+        formData.append("is_hrms_master_enabled", String(validatedForm.data.is_hrms_master_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
@@ -853,6 +859,32 @@ function OnboardVendorFormContent() {
                           checked={form.is_scanpack_enabled === option.value}
                           onCheckedChange={handleBooleanFieldChange(
                             "is_scanpack_enabled",
+                            option.value,
+                          )}
+                        />
+                        <span className="text-sm font-medium">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 border p-4 rounded-xl bg-background">
+                  <Label className="font-semibold text-xs text-foreground">HRMS Master Enabled</Label>
+                  <div className="flex items-center gap-6 pt-1">
+                    {[
+                      { label: "Yes", value: true },
+                      { label: "No", value: false },
+                    ].map((option) => (
+                      <label
+                        key={`hrms-master-${String(option.value)}`}
+                        className="flex items-center gap-2 cursor-pointer"
+                        htmlFor={`hrms-master-${String(option.value)}`}
+                      >
+                        <Checkbox
+                          id={`hrms-master-${String(option.value)}`}
+                          checked={form.is_hrms_master_enabled === option.value}
+                          onCheckedChange={handleBooleanFieldChange(
+                            "is_hrms_master_enabled",
                             option.value,
                           )}
                         />

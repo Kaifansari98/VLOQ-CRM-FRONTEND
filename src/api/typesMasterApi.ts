@@ -99,6 +99,7 @@ export interface UserMasterEntry {
   vendor_id: number;
   franchise_id?: number | null;
   user_name: string;
+  designation?: string | null;
   user_contact: string;
   user_email: string;
   user_timezone: string;
@@ -1234,7 +1235,14 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number, isInventory
 
 export const fetchUsersForMaster = async (
   vendorId: number,
-  params: { page: number; limit: number; search?: string; franchise_id?: number },
+  params: {
+    page: number;
+    limit: number;
+    search?: string;
+    franchise_id?: number;
+    user_type?: string;
+    exclude_user_type?: string;
+  },
 ) => {
   const res = await apiClient.get<UserMasterResponse>(`/users/vendor/${vendorId}`, {
     params: {
@@ -1242,6 +1250,8 @@ export const fetchUsersForMaster = async (
       limit: params.limit,
       search: params.search ?? "",
       ...(params.franchise_id ? { franchise_id: params.franchise_id } : {}),
+      ...(params.user_type ? { user_type: params.user_type } : {}),
+      ...(params.exclude_user_type ? { exclude_user_type: params.exclude_user_type } : {}),
     },
   });
   return {
@@ -1469,6 +1479,7 @@ export interface CreateUserMasterPayload {
   vendor_id: number;
   franchise_id: number;
   user_name: string;
+  designation?: string | null;
   user_contact: string;
   user_email: string;
   user_timezone: string;
@@ -1524,6 +1535,7 @@ export interface UpdateUserMasterPayload {
   confirm_additional_supervisor?: boolean;
   franchise_ids?: number[];
   user_name?: string;
+  designation?: string | null;
   user_contact?: string;
   user_email?: string;
   user_timezone?: string;
