@@ -221,7 +221,7 @@ export default function OnlineLeadDetailsPage() {
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
-  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
+  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller" || userType === "store caller" || userType === "store-caller";
   const isSalesExecutive = userType === "sales-executive" || userType === "sales executive" || userType === "salesexecutive";
   const isSuperAdmin = userType === "super-admin";
   const [lead, setLead] = useState<OnlineLead | null>(null);
@@ -1547,8 +1547,8 @@ export default function OnlineLeadDetailsPage() {
   }, [lead]);
 
   const canMoveToDraft = useMemo(() => {
-    return (isAdmin || isSalesExecutive || isSuperAdmin || userType === "telecaller") && !isLost;
-  }, [isAdmin, isSalesExecutive, isSuperAdmin, isLost, userType]);
+    return (isAdmin || isSalesExecutive || isSuperAdmin || isCaller) && !isLost;
+  }, [isAdmin, isSalesExecutive, isSuperAdmin, isLost, isCaller]);
 
   if (loading) {
     return (
@@ -2053,22 +2053,20 @@ export default function OnlineLeadDetailsPage() {
                   <div className="w-full">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
-                      {true && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const text = lead?.remark || "";
-                            setRemarkOnlyText(text);
-                            setParsedQuestionnaire(parseQuestionnaireItems(text));
-                            setIsRemarkEditOpen(true);
-                          }}
-                          className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
-                        >
-                          <Pencil className="w-3 h-3 text-muted-foreground" />
-                          Edit
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const text = lead?.remark || "";
+                          setRemarkOnlyText(text);
+                          setParsedQuestionnaire(parseQuestionnaireItems(text));
+                          setIsRemarkEditOpen(true);
+                        }}
+                        className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                        Edit
+                      </Button>
                     </div>
                     <div className="p-4 rounded-lg border bg-muted/10 min-h-[60px]">
                       {renderRemarkContent(lead?.remark ?? null)}

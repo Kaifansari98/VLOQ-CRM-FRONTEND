@@ -155,12 +155,26 @@ export default function LeadPoolPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
+  const isCaller =
+    userType === "telecaller" ||
+    userType === "telecaller-team-lead" ||
+    userType === "telecaller team lead" ||
+    userType === "caller" ||
+    userType === "store caller" ||
+    userType === "store-caller";
   const userFranchiseId = user?.franchise_id;
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
 
-  const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
-  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive";
+  const canAssign = !isCaller && (userType === "super-admin" || userType === "admin");
+  const canAddWalkIn =
+    !isCaller &&
+    (userType === "store-manager" ||
+      userType === "store manager" ||
+      userType === "super-admin" ||
+      userType === "admin" ||
+      userType === "sales-executive" ||
+      userType === "sales executive");
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
   const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
@@ -531,6 +545,10 @@ export default function LeadPoolPage() {
           }
         }
 
+        if (!canAssign && !isSuperAdminOrAdmin) {
+          return <span className="text-xs text-muted-foreground italic flex justify-center">—</span>;
+        }
+
         return (
           <div className="flex items-center justify-center gap-2">
             {canAssign && (
@@ -565,7 +583,7 @@ export default function LeadPoolPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
+  ], [canAssign, isSuperAdminOrAdmin, isCaller, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
 
   const table = useReactTable({
     data: leads,

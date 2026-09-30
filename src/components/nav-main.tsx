@@ -197,21 +197,26 @@ export function NavMain({
     "pre-prod",
     "factory",
   ].includes(normalizedUserType ?? "");
+  const isCaller = [
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
+    "caller",
+    "store-caller",
+    "store caller",
+  ].includes(normalizedUserType ?? "");
+  const statsFranchiseId = isCaller ? undefined : franchiseId;
   const { data: leadStats, isLoading } = useLeadStats(
     vendorId,
     userId,
-    franchiseId
+    statsFranchiseId
   );
-  const isFilterByUser =
-    normalizedUserType === "sales-executive" ||
-    normalizedUserType === "telecaller" ||
-    normalizedUserType === "telecaller-team-lead" ||
-    normalizedUserType === "telecaller team lead";
+  const isFilterByUser = normalizedUserType === "sales-executive";
 
   const { data: activityStatusCounts, isLoading: isActivityStatusCountsLoading } =
     useActivityStatusCounts(
       vendorId,
-      franchiseId,
+      statsFranchiseId,
       isFilterByUser ? userId : undefined,
     );
   const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
