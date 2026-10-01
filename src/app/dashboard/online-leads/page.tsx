@@ -163,25 +163,33 @@ export default function OnlineLeadsPage() {
   const canAddWalkIn = (userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive") && !(isCaller && isOnlineLeadFeatureEnabled);
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
-  const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
+  const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost" | "on_hold">("active");
 
   const leads = useMemo(() => {
     return rawLeads.filter((lead) => {
       const statusName = lead.followupStatus?.status_name.toLowerCase() || "";
+      const isHold = statusName === "on hold" || statusName === "mark on hold" || statusName.includes("hold");
       if (statusTab === "pending") {
         return statusName === "pending";
       }
       if (statusTab === "lost") {
         return statusName === "lost";
       }
-      // default: "active" (excludes lost leads)
-      return statusName !== "lost";
+      if (statusTab === "on_hold") {
+        return isHold;
+      }
+      // default: "active" (excludes lost and on hold leads)
+      return statusName !== "lost" && (!isOnlineLeadFeatureEnabled || !isHold);
     });
-  }, [rawLeads, statusTab]);
+  }, [rawLeads, statusTab, isOnlineLeadFeatureEnabled]);
 
   const activeCount = useMemo(() => {
-    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() !== "lost").length;
-  }, [rawLeads]);
+    return rawLeads.filter((l) => {
+      const name = l.followupStatus?.status_name.toLowerCase() || "";
+      const isHold = name === "on hold" || name === "mark on hold" || name.includes("hold");
+      return name !== "lost" && (!isOnlineLeadFeatureEnabled || !isHold);
+    }).length;
+  }, [rawLeads, isOnlineLeadFeatureEnabled]);
 
   const pendingCount = useMemo(() => {
     return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "pending").length;
@@ -189,6 +197,13 @@ export default function OnlineLeadsPage() {
 
   const lostCount = useMemo(() => {
     return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "lost").length;
+  }, [rawLeads]);
+
+  const onHoldCount = useMemo(() => {
+    return rawLeads.filter((l) => {
+      const name = l.followupStatus?.status_name.toLowerCase() || "";
+      return name === "on hold" || name === "mark on hold" || name.includes("hold");
+    }).length;
   }, [rawLeads]);
 
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
@@ -415,10 +430,24 @@ export default function OnlineLeadsPage() {
       ),
       cell: ({ row }) => {
         const currentStatus = row.original.followupStatus;
+        const statusNameLower = currentStatus?.status_name?.toLowerCase() || "";
+        const isHold = statusNameLower === "on hold" || statusNameLower === "mark on hold" || statusNameLower.includes("hold");
+        const isLost = statusNameLower === "lost";
+
+        let badgeClass = "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200/50";
+        let iconClass = "text-blue-600 dark:text-blue-400";
+        if (isLost) {
+          badgeClass = "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-200/50";
+          iconClass = "text-red-600 dark:text-red-400";
+        } else if (isHold) {
+          badgeClass = "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200/50";
+          iconClass = "text-amber-600 dark:text-amber-400";
+        }
+
         return (
           <div>
-            <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
-              <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+            <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full border inline-flex items-center gap-1 ${badgeClass}`}>
+              <Activity className={`w-3 h-3 ${iconClass}`} />
               {currentStatus?.status_name || "New Lead"}
             </span>
           </div>
@@ -916,8 +945,20 @@ export default function OnlineLeadsPage() {
               <span>Pending Leads</span>
               <span className="text-[10px] opacity-70">{pendingCount}</span>
             </button>
+            {isOnlineLeadFeatureEnabled && (
+              <button
+                onClick={() => setStatusTab((prev) => (prev === "on_hold" ? "active" : "on_hold"))}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
+                  statusTab === "on_hold" ? "bg-muted font-semibold" : "text-muted-foreground"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+                <span>On Hold</span>
+                <span className="text-[10px] opacity-70">{onHoldCount}</span>
+              </button>
+            )}
             <button
-              onClick={() => setStatusTab("lost")}
+              onClick={() => setStatusTab((prev) => (prev === "lost" ? "active" : "lost"))}
               className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
                 statusTab === "lost" ? "bg-muted font-semibold" : "text-muted-foreground"
               }`}
@@ -1199,6 +1240,7 @@ export default function OnlineLeadsPage() {
       <BulkUploadModal
         open={isBulkUploadOpen}
         onOpenChange={setIsBulkUploadOpen}
+        isOnlineLeadFeatureEnabled={isOnlineLeadFeatureEnabled}
         onSuccess={fetchLeadsData}
       />
 

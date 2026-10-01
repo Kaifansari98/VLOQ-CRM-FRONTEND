@@ -23,6 +23,7 @@ export interface VendorListItem {
   is_available_unique_code: boolean | null;
   push_lead_to_cadbid: boolean | null;
   is_this_vendor_is_custom_usertype_only: boolean | null;
+  is_online_lead_feature_enabled?: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl?: string;
@@ -87,6 +88,7 @@ export interface OnboardVendorPayload {
   is_tracktrace_enabled: boolean;
   is_available_unique_code?: boolean;
   push_lead_to_cadbid?: boolean;
+  is_online_lead_feature_enabled?: boolean;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
@@ -116,6 +118,7 @@ export interface UpdateVendorPayload {
   is_tracktrace_enabled: boolean;
   is_available_unique_code: boolean;
   push_lead_to_cadbid?: boolean;
+  is_online_lead_feature_enabled?: boolean;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
