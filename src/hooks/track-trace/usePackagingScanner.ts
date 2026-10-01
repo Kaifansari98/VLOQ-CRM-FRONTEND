@@ -4,6 +4,9 @@ import {
   CreatePackagingBoxPayload,
   getPackagingBoxes,
   getPackagingProjectContext,
+  getManualPackingItems,
+  addManualPackingItem,
+  AddManualPackingItemPayload,
 } from "@/api/track-trace/packaging-scanner.api";
 
 export const usePackagingProjectContext = (
@@ -44,3 +47,37 @@ export const useCreatePackagingBox = (
     },
   });
 };
+
+export const useManualPackingItems = (
+  vendorId?: number,
+  projectId?: number,
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: ["manual-packing-items", vendorId, projectId],
+    queryFn: () => getManualPackingItems(vendorId!, projectId!),
+    enabled: Boolean(enabled && vendorId && projectId),
+  });
+
+export const useAddManualPackingItem = (
+  vendorId?: number,
+  projectId?: number,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: AddManualPackingItemPayload) =>
+      addManualPackingItem(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["manual-packing-items", vendorId, projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["packaging-boxes", vendorId, projectId],
+        }),
+      ]);
+    },
+  });
+};
+
