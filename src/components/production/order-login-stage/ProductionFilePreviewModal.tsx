@@ -13,7 +13,7 @@ import {
   type InventoryProduct, type ProductionPreview, type ProductionPreviewRow,
 } from "./production-file-preview";
 
-import { useFreezeProductionMaterials, useIssueProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
+import { useOutsourceProductionMaterials, useFreezeProductionMaterials, useIssueProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import ProductionMaterialsTable from "./ProductionMaterialsTable";
@@ -51,6 +51,8 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const [tab, setTab] = useState<"products" | "logs">("products");
   // Tie the result to the exact selection and vendor; an old preview can never approve new files.
   const [checkedSelection, setCheckedSelection] = useState<{ files: File[]; vendorId: number } | null>(null);
+  const [outsourceKeys, setOutsourceKeys] = useState<string[] | null>(null);
+  const outsourceMutation = useOutsourceProductionMaterials(vendorId, leadId, instanceId);
   const [freezeKeys, setFreezeKeys] = useState<string[] | null>(null);
   const [issueKeys, setIssueKeys] = useState<string[] | null>(null);
   const [reuploadOpen, setReuploadOpen] = useState(false);
@@ -108,10 +110,15 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
       return { key: String(material.id), source: "", type: material.type, category: material.category,
         qty: Number(material.qty), unit: material.unit, name: material.name, articleCode: material.article_code,
         frozenQty: Number(material.frozen_item_qty) || 0, issuedQty: Number(material.issued_item_qty) || 0,
+        orderLoginId: material.order_login_id,
         errors: [], status: "unmatched" };
     }) };
     return applyInventoryMatches(savedPreview, matches).rows;
   }, [savedMaterials]);
+  // Outsourced materials are fulfilled through Order Login, so they are not issued from inventory.
+  const tableRows = useMemo(() => isMaterialIssueView ? savedRows.filter((row) => !row.orderLoginId) : savedRows, [savedRows, isMaterialIssueView]);
+  const outsourceRows = savedRows.filter((row) => outsourceKeys?.includes(row.key) && !row.orderLoginId);
+  const canOutsource = embedded && !isMaterialIssueView && canUpload && !!leadId && !uploading;
   const freezeRows = useMemo(() => savedRows.filter((row) => freezeKeys?.includes(row.key)), [savedRows, freezeKeys]);
   const issueRows = useMemo(() => savedRows.filter((row) => issueKeys?.includes(row.key)), [savedRows, issueKeys]);
   const rows = preview?.rows ?? [];
@@ -131,7 +138,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx or .csv · Required headers in the first row · Additional columns allowed</p></div>
           <Button variant="outline" size="sm" onClick={onDownloadTemplate}>Download template</Button>
         </div>
-        <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple disabled={uploading || !canUpload} />
+        <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple={!embedded} disabled={uploading || !canUpload} />
         <div className="mt-3 flex flex-wrap gap-1.5">{REQUIRED_PRODUCTION_HEADERS.map((header) => <Badge key={header} variant="secondary">{header}</Badge>)}</div>
       </div>
 
@@ -198,12 +205,14 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           {materialsError && <p role="alert" className="text-destructive">Could not load saved materials. Reload this page to retry.</p>}
           {!!savedMaterials.length && <div className="space-y-3">
             <ProductionMaterialsTable
-              rows={savedRows}
-              enableRowSelection={isMaterialIssueView && !isIssuedItemsView}
+              rows={tableRows}
+              enableRowSelection={(isMaterialIssueView && !isIssuedItemsView) || canOutsource}
+              busy={outsourceMutation.isPending}
               isMaterialIssueView={isMaterialIssueView}
-              onFreezeSelected={(selected) => setFreezeKeys(selected.map((row) => row.key))}
-              onIssueSelected={(selected) => setIssueKeys(selected.map((row) => row.key))}
-              hideSelectionBar={freezeKeys !== null || issueKeys !== null}
+              onFreezeSelected={isMaterialIssueView ? (selected) => setFreezeKeys(selected.map((row) => row.key)) : undefined}
+              onIssueSelected={isMaterialIssueView ? (selected) => setIssueKeys(selected.map((row) => row.key)) : undefined}
+              onOutsourceSelected={canOutsource ? (selected) => setOutsourceKeys(selected.map((row) => row.key)) : undefined}
+              hideSelectionBar={freezeKeys !== null || issueKeys !== null || outsourceKeys !== null}
             />
           </div>}
 
@@ -214,6 +223,31 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Replace saved materials?</AlertDialogTitle>
             <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>
           </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(saveableRows, true); }}>Replace and upload</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={outsourceKeys !== null} onOpenChange={(next) => { if (!next && !outsourceMutation.isPending) setOutsourceKeys(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Outsource selected items?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will create Order Login cards titled with the selected item names and mark these material rows as outsourced. Items with the same name share a card.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <ul className="max-h-60 list-disc space-y-1 overflow-y-auto pl-5 text-sm">
+              {outsourceRows.map((row) => <li key={row.key}>{row.name} <span className="text-muted-foreground">({row.articleCode})</span></li>)}
+            </ul>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={outsourceMutation.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={!canOutsource || !outsourceRows.length || outsourceMutation.isPending} onClick={async (event) => {
+                event.preventDefault();
+                try {
+                  await outsourceMutation.mutateAsync(outsourceRows.map((row) => Number(row.key)));
+                  setOutsourceKeys(null);
+                } catch { /* The mutation displays the error and keeps the selection for retry. */ }
+              }}>
+                {outsourceMutation.isPending ? "Outsourcing…" : "Confirm Outsource"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
         <FreezeMaterialsModal
           open={freezeKeys !== null}

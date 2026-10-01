@@ -45,6 +45,7 @@ interface OrderLoginTabProps {
   leadId: number;
   accountId: number;
   instanceId?: number | null;
+  hideSections?: boolean;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
 }
@@ -56,6 +57,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   leadId,
   accountId,
   instanceId,
+  hideSections = false,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
 }) => {
@@ -291,11 +293,13 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     () =>
       (orderLoginData || []).filter(
         (i: any) =>
-          isSmallOrderRequestLead
+          hideSections
+            ? i.outsourcedMaterials?.length > 0
+            : isSmallOrderRequestLead
             ? !legacyDefaultTitles.includes(i.item_type)
             : !defaultTitles.includes(i.item_type),
       ),
-    [defaultTitles, isSmallOrderRequestLead, orderLoginData],
+    [defaultTitles, hideSections, isSmallOrderRequestLead, orderLoginData],
   );
 
   console.log("order login data: ", orderLoginData)
@@ -565,6 +569,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         return next;
       });
 
+      queryClient.invalidateQueries({ queryKey: ["requiredProductionMaterials", vendorId, leadId] });
       toastManager.add({ title: "Section deleted successfully", type: "success" });
       setConfirmDelete(null);
 
@@ -585,10 +590,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       <div className="flex flex-col md:flex-row space-y-2 items-start justify-between">
         <div className="space-y-0">
           <h2 className="text-xl font-semibold tracking-tight">Order Login</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+          {!hideSections && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
             Fill out item-level breakups and assign responsibilities before
             order login is finalized.
-          </p>
+          </p>}
         </div>
 
    {isOrderLoginMarked ? (
@@ -653,9 +658,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       </div>
 
       {/* Grid of Breakups */}
+      {(!hideSections || extraFromApi.length > 0) && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* Default Cards */}
-        {defaultCards.map(({ title, existingData }) => {
+        {!hideSections && defaultCards.map(({ title, existingData }) => {
           const perms = getItemEditPermissions(existingData);
           return (
             <FileBreakUpField
@@ -729,7 +735,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         })}
 
         {/* Add New Section Card */}
-        {canAccessButtons && canAddCustomSection && (
+        {!hideSections && canAccessButtons && canAddCustomSection && (
           shouldDisableActions ? (
             <CustomeTooltip
               value={effectiveBlockedTooltip}
@@ -797,6 +803,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           )
         )}
       </div>
+      )}
 
       {/* ✅ Order Login Complete — Confirmation Dialog */}
       <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
