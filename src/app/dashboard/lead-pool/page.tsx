@@ -54,6 +54,7 @@ import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-g
 import { BulkUploadModal } from "@/components/sales-executive/Lead/bulk-upload-modal";
 import { toastManager } from "@/components/ui/toast";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { useVendorById } from "@/api/vendors";
 
 interface OnlineLead {
   id: number;
@@ -97,6 +98,16 @@ interface OnlineLead {
   franchise?: {
     id: number;
     franchise_name: string;
+  } | null;
+  vendor?: {
+    id: number;
+    vendor_name?: string;
+    is_online_lead_feature_enabled?: boolean;
+  } | null;
+  VendorMaster?: {
+    id: number;
+    vendor_name?: string;
+    is_online_lead_feature_enabled?: boolean;
   } | null;
   followupStatus?: {
     id: number;
@@ -155,46 +166,75 @@ export default function LeadPoolPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
+  const normalizedUserType = userType.replace(/_/g, "-").replace(/\s+/g, "-");
   const isCaller =
-    userType === "telecaller" ||
-    userType === "telecaller-team-lead" ||
-    userType === "telecaller team lead" ||
-    userType === "caller" ||
-    userType === "store caller" ||
-    userType === "store-caller";
+    normalizedUserType === "telecaller" ||
+    normalizedUserType === "telecaller-team-lead" ||
+    normalizedUserType === "caller" ||
+    normalizedUserType === "store-caller";
+  const isSuperAdmin =
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "superadmin" ||
+    userType === "super admin";
+  const isAdmin =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "sales-admin" ||
+    normalizedUserType === "salesadmin" ||
+    userType === "sales admin";
+  const isSuperAdminOrAdmin = isSuperAdmin || isAdmin;
   const userFranchiseId = user?.franchise_id;
-  const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
-  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
 
-  const canAssign = !isCaller && (userType === "super-admin" || userType === "admin");
-  const canAddWalkIn =
-    !isCaller &&
-    (userType === "store-manager" ||
-      userType === "store manager" ||
-      userType === "super-admin" ||
-      userType === "admin" ||
-      userType === "sales-executive" ||
-      userType === "sales executive");
+  const { data: vendorDetail } = useVendorById(vendorId ? Number(vendorId) : undefined);
+  const vendorInfo = vendorDetail?.data;
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
-  const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
+
+  const isOnlineLeadFeatureEnabled = Boolean(
+    vendorInfo?.is_online_lead_feature_enabled === true ||
+    user?.vendor?.is_online_lead_feature_enabled === true ||
+    (user as any)?.vendorMaster?.is_online_lead_feature_enabled === true ||
+    rawLeads.find((l: any) => l.vendor?.is_online_lead_feature_enabled != null)?.vendor?.is_online_lead_feature_enabled === true ||
+    rawLeads.find((l: any) => l.VendorMaster?.is_online_lead_feature_enabled != null)?.VendorMaster?.is_online_lead_feature_enabled === true
+  );
+
+  const canAssign = !isCaller && isSuperAdminOrAdmin;
+  const canAddWalkIn =
+    (!isCaller &&
+      (normalizedUserType === "store-manager" ||
+        isSuperAdmin ||
+        isAdmin ||
+        normalizedUserType === "sales-executive")) ||
+    (isCaller && isOnlineLeadFeatureEnabled);
+
+  const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost" | "on_hold">("active");
 
   const leads = useMemo(() => {
     return rawLeads.filter((lead) => {
       const statusName = lead.followupStatus?.status_name.toLowerCase() || "";
+      const isHold = statusName === "on hold" || statusName === "mark on hold" || statusName.includes("hold");
       if (statusTab === "pending") {
         return statusName === "pending";
       }
       if (statusTab === "lost") {
         return statusName === "lost";
       }
-      return statusName !== "lost";
+      if (statusTab === "on_hold") {
+        return isHold;
+      }
+      return statusName !== "lost" && (!isOnlineLeadFeatureEnabled || !isHold);
     });
-  }, [rawLeads, statusTab]);
+  }, [rawLeads, statusTab, isOnlineLeadFeatureEnabled]);
 
 
   const lostCount = useMemo(() => {
     return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "lost").length;
+  }, [rawLeads]);
+
+  const onHoldCount = useMemo(() => {
+    return rawLeads.filter((l) => {
+      const name = l.followupStatus?.status_name.toLowerCase() || "";
+      return name === "on hold" || name === "mark on hold" || name.includes("hold");
+    }).length;
   }, [rawLeads]);
 
   const [tabCounts, setTabCounts] = useState<{ pool: number; overall: number; my: number }>({
@@ -460,10 +500,24 @@ export default function LeadPoolPage() {
       ),
       cell: ({ row }) => {
         const currentStatus = row.original.followupStatus;
+        const statusNameLower = currentStatus?.status_name?.toLowerCase() || "";
+        const isHold = statusNameLower === "on hold" || statusNameLower === "mark on hold" || statusNameLower.includes("hold");
+        const isLost = statusNameLower === "lost";
+
+        let badgeClass = "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200/50";
+        let iconClass = "text-blue-600 dark:text-blue-400";
+        if (isLost) {
+          badgeClass = "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-200/50";
+          iconClass = "text-red-600 dark:text-red-400";
+        } else if (isHold) {
+          badgeClass = "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200/50";
+          iconClass = "text-amber-600 dark:text-amber-400";
+        }
+
         return (
           <div>
-            <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
-              <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+            <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full border inline-flex items-center gap-1 ${badgeClass}`}>
+              <Activity className={`w-3 h-3 ${iconClass}`} />
               {currentStatus?.status_name || "New Lead"}
             </span>
           </div>
@@ -826,15 +880,29 @@ export default function LeadPoolPage() {
 
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2">
+            {isOnlineLeadFeatureEnabled && (
+              <button
+                type="button"
+                onClick={() => setStatusTab((prev) => (prev === "on_hold" ? "active" : "on_hold"))}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
+                  statusTab === "on_hold" ? "bg-muted font-semibold border-amber-500/50 shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+                <span>On Hold</span>
+                <span className="text-[10px] opacity-70 font-semibold">{onHoldCount}</span>
+              </button>
+            )}
             <button
+              type="button"
               onClick={() => setStatusTab((prev) => (prev === "lost" ? "active" : "lost"))}
               className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
-                statusTab === "lost" ? "bg-muted font-semibold" : "text-muted-foreground"
+                statusTab === "lost" ? "bg-muted font-semibold border-red-500/50 shadow-sm" : "text-muted-foreground"
               }`}
             >
               <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
               <span>Lost Leads</span>
-              <span className="text-[10px] opacity-70">{lostCount}</span>
+              <span className="text-[10px] opacity-70 font-semibold">{lostCount}</span>
             </button>
           </div>
 
@@ -846,7 +914,7 @@ export default function LeadPoolPage() {
               >
                 <PlusCircle className="w-4 h-4" /> Add Lead
               </Button>
-              {userType !== "telecaller" && userType !== "telecaller-team-lead" && userType !== "telecaller team lead" && userType !== "sales-executive" && userType !== "sales executive" && (
+              {!isCaller && userType !== "sales-executive" && userType !== "sales executive" && (
                 <Button
                   onClick={() => setIsBulkUploadOpen(true)}
                   className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
@@ -1134,6 +1202,7 @@ export default function LeadPoolPage() {
       <BulkUploadModal
         open={isBulkUploadOpen}
         onOpenChange={setIsBulkUploadOpen}
+        isOnlineLeadFeatureEnabled={isOnlineLeadFeatureEnabled}
         onSuccess={() => {
           fetchLeadsData();
           fetchTabCountsData();

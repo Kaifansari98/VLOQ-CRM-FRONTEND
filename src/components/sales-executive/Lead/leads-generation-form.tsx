@@ -953,9 +953,15 @@ export default function LeadsGenerationForm({
         form.reset();
         setFiles([]);
         onClose();
-        router.push("/dashboard/online-leads");
         if (typeof window !== "undefined") {
-          window.location.reload();
+          if (window.location.pathname.includes("/dashboard/lead-pool")) {
+            window.location.reload();
+          } else if (window.location.pathname.includes("/dashboard/online-leads")) {
+            window.location.reload();
+          } else {
+            router.push("/dashboard/lead-pool");
+            window.location.reload();
+          }
         }
         return;
       }

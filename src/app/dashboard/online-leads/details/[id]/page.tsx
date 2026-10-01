@@ -104,6 +104,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { generateOnlineLeadHistoryReport } from "@/lib/reports/onlineLeadHistoryReport";
+import { useVendorById } from "@/api/vendors";
 import {
   Table,
   TableBody,
@@ -248,15 +249,44 @@ export default function OnlineLeadDetailsPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
-  const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
-  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
-  const isSuperAdmin = userType === "super-admin";
+  const normalizedUserType = userType.replace(/_/g, "-").replace(/\s+/g, "-");
+  const isSuperAdmin =
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "superadmin" ||
+    userType === "super admin";
+  const isAdmin =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "sales-admin" ||
+    normalizedUserType === "salesadmin" ||
+    userType === "sales admin" ||
+    isSuperAdmin;
+  const isCaller =
+    normalizedUserType === "telecaller" ||
+    normalizedUserType === "telecaller-team-lead" ||
+    normalizedUserType === "caller" ||
+    normalizedUserType === "store-caller";
+  const isSiteSupervisor =
+    normalizedUserType === "site-supervisor" ||
+    normalizedUserType === "head-site-supervisor";
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+
+  const { data: vendorDetail } = useVendorById(vendorId ? Number(vendorId) : undefined);
+  const vendorInfo = vendorDetail?.data;
+
   const isOnlineLeadFeatureEnabled =
     lead?.vendor?.is_online_lead_feature_enabled !== undefined
       ? Boolean(lead.vendor.is_online_lead_feature_enabled)
-      : Boolean(user?.vendor?.is_online_lead_feature_enabled === true);
+      : vendorInfo?.is_online_lead_feature_enabled !== undefined
+      ? Boolean(vendorInfo.is_online_lead_feature_enabled)
+      : Boolean(
+          user?.vendor?.is_online_lead_feature_enabled === true ||
+          (user as any)?.vendorMaster?.is_online_lead_feature_enabled === true
+        );
+
+  const canMarkOnHold =
+    isOnlineLeadFeatureEnabled &&
+    (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller);
   const isVendorOnlineLeadEnabled = isOnlineLeadFeatureEnabled;
   const userFranchiseId = user?.franchise_id;
   const isPendingApproval = lead?.approval_status === "PENDING";
@@ -2453,15 +2483,19 @@ export default function OnlineLeadDetailsPage() {
                     {statuses
                       .filter((st) => {
                         const name = st.status_name.toLowerCase();
-                        return name === "follow up done" || name === "lost";
+                        const isDefault = name === "follow up done" || name === "lost";
+                        const isOnHold = name === "mark on hold" || name === "on hold" || name.includes("hold");
+                        return isDefault || (canMarkOnHold && isOnHold);
                       })
                       .map((st) => {
+                        const name = st.status_name.toLowerCase();
+                        const isOnHold = name === "mark on hold" || name === "on hold" || name.includes("hold");
                         return (
                           <SelectItem
                             key={st.id}
                             value={st.id.toString()}
                           >
-                            {st.status_name}
+                            {isOnHold ? "Mark on hold" : st.status_name}
                           </SelectItem>
                         );
                       })}

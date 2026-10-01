@@ -17,6 +17,7 @@ export interface User {
     vendor_code?: string
     handlesLargeScaleProjects?: boolean | null
     is_crm_enabled?: boolean | null
+    is_online_lead_feature_enabled?: boolean | null
     is_custom_doc_nomenclature_enabled?: boolean | null
     is_this_vendor_is_custom_usertype_only?: boolean | null
     is_year_wise_lead_code_enabled?: boolean | null
@@ -114,9 +115,32 @@ const authSlice = createSlice({
         }
       }
     },
+    updateVendorData: (state, action: PayloadAction<Partial<User["vendor"]>>) => {
+      if (state.user) {
+        state.user.vendor = {
+          ...(state.user.vendor || {}),
+          ...action.payload,
+        }
+        if (typeof window !== "undefined") {
+          const user = localStorage.getItem("user")
+          if (user) {
+            try {
+              const parsed = JSON.parse(user)
+              parsed.vendor = {
+                ...(parsed.vendor || {}),
+                ...action.payload,
+              }
+              localStorage.setItem("user", JSON.stringify(parsed))
+            } catch {
+              // ignore storage parse failures
+            }
+          }
+        }
+      }
+    },
   },
 })
 
-export const { setCredentials, logout, loadSession, setFranchiseId } =
+export const { setCredentials, logout, loadSession, setFranchiseId, updateVendorData } =
   authSlice.actions
 export default authSlice.reducer
