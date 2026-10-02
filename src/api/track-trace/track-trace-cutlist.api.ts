@@ -654,12 +654,14 @@ export const updateTrackTraceBoxStatus = async (
   status: TrackTraceBoxStatus,
   userId: number,
   reason?: string,
+  locationName?: string,
 ) => {
   const { data } = await apiClient.put(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
       reason,
+      ...(locationName ? { location_name: locationName } : {}),
     },
   );
 
