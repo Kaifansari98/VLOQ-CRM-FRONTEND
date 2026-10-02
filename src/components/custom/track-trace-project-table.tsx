@@ -657,6 +657,16 @@ export default function TrackTraceProjectTable({
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: (updater) => {
+      if (typeof updater === "function") {
+        const newState = updater({ pageIndex: page - 1, pageSize: limit });
+        if (newState.pageIndex !== page - 1) onPageChange?.(newState.pageIndex + 1);
+        if (newState.pageSize !== limit) onLimitChange?.(newState.pageSize);
+      } else {
+        if (updater.pageIndex !== page - 1) onPageChange?.(updater.pageIndex + 1);
+        if (updater.pageSize !== limit) onLimitChange?.(updater.pageSize);
+      }
+    },
     getRowId: (row) => String(row.unique_project_id ?? row.id),
   });
 
