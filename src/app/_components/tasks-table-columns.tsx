@@ -134,7 +134,7 @@ export function getVendorLeadsTableColumns({
         return (
           <div className="flex items-center gap-2 font-medium">
             {isBlocked ? (
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-300/90 bg-gradient-to-br from-red-200 via-red-300 to-red-500 text-red-950 shadow-[0_0_0_3px_rgba(239,68,68,0.18),0_10px_24px_-16px_rgba(220,38,38,0.55)] transition-transform duration-300 hover:scale-110 dark:border-red-400/60 dark:bg-gradient-to-br dark:from-red-500 dark:via-red-600 dark:to-rose-700 dark:text-white dark:shadow-[0_0_0_3px_rgba(239,68,68,0.18),0_14px_28px_-18px_rgba(239,68,68,0.7)]">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-600 bg-gradient-to-br from-red-500 via-red-600 to-red-700 text-white shadow-[0_0_0_3px_rgba(239,68,68,0.25),0_10px_24px_-16px_rgba(220,38,38,0.75)] transition-transform duration-300 hover:scale-110 dark:border-red-500 dark:bg-gradient-to-br dark:from-red-600 dark:via-red-700 dark:to-red-800 dark:text-white dark:shadow-[0_0_0_3px_rgba(239,68,68,0.25),0_14px_28px_-18px_rgba(239,68,68,0.8)]">
                 <Ban className="h-4 w-4 stroke-[2.5]" />
               </span>
             ) : isFastProduction ? (
@@ -145,7 +145,7 @@ export function getVendorLeadsTableColumns({
             <div className="flex flex-col">
               <span>{row.getValue("lead_code")}</span>
               {isBlocked && (
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700 dark:text-red-400">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-red-600 dark:text-red-400">
                   Blocked
                 </span>
               )}
