@@ -262,6 +262,9 @@ export default function OnlineLeadDetailsPage() {
   const canMarkOnHold =
     isOnlineLeadFeatureEnabled &&
     (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller);
+  const canMarkLostActive =
+    isOnlineLeadFeatureEnabled &&
+    (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller || isSalesExecutive);
   const userFranchiseId = useAppSelector((state) => state.auth.franchise_id ?? state.auth.user?.franchise_id);
 
   const reduxModuledForB2b = useAppSelector(
@@ -1200,8 +1203,10 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
+  const [markingActive, setMarkingActive] = useState(false);
+
   const handleMarkAsActive = async () => {
-    if (!lead) return;
+    if (!lead || markingActive) return;
     const pendingStatus = statuses.find(
       (s) => s.status_name.toLowerCase() === "pending"
     );
@@ -1213,6 +1218,7 @@ export default function OnlineLeadDetailsPage() {
       return;
     }
 
+    setMarkingActive(true);
     try {
       const res = await apiClient.patch(`/online-leads/${id}`, {
         status: pendingStatus.id,
@@ -1220,6 +1226,11 @@ export default function OnlineLeadDetailsPage() {
       });
 
       if (res.data?.success) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-lead-tab-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-lead-stats"] }),
+        ]);
         fetchLeadDetails();
         toastManager.add({
           title: "Lead marked as active successfully",
@@ -1232,6 +1243,8 @@ export default function OnlineLeadDetailsPage() {
         title: err.response?.data?.error || "Failed to mark lead as active.",
         type: "error",
       });
+    } finally {
+      setMarkingActive(false);
     }
   };
 
@@ -1578,6 +1591,14 @@ export default function OnlineLeadDetailsPage() {
     return name === "lost";
   }, [lead]);
 
+  // Check if lead is marked as on hold
+  const isOnHold = useMemo(() => {
+    if (!lead) return false;
+    const statusObj = lead.followupStatus || statuses.find((s) => s.id === lead.status);
+    const name = (statusObj?.status_name || "").toLowerCase().trim();
+    return name === "mark on hold" || name === "on hold" || name.includes("hold");
+  }, [lead, statuses]);
+
   const canMoveToDraft = useMemo(() => {
     return (isAdmin || isSalesExecutive || isSuperAdmin || isCaller) && !isLost;
   }, [isAdmin, isSalesExecutive, isSuperAdmin, isLost, isCaller]);
@@ -1733,7 +1754,7 @@ export default function OnlineLeadDetailsPage() {
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {!isLost && (
+          {(!isLost || canMarkLostActive) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1775,6 +1796,20 @@ export default function OnlineLeadDetailsPage() {
                         <PencilLine className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                     )}
+                    {isOnlineLeadFeatureEnabled && isOnHold && (
+                      <DropdownMenuItem
+                        onClick={handleMarkAsActive}
+                        disabled={markingActive}
+                        className="cursor-pointer"
+                      >
+                        {markingActive ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        Mark as Active
+                      </DropdownMenuItem>
+                    )}
                     {canAssign && (
                       <DropdownMenuItem
                         onClick={() => {
@@ -1790,9 +1825,20 @@ export default function OnlineLeadDetailsPage() {
                     )}
                   </>
                 ) : (
-                  <DropdownMenuItem onClick={handleMarkAsActive}>
-                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
-                  </DropdownMenuItem>
+                  canMarkLostActive && (
+                    <DropdownMenuItem
+                      onClick={handleMarkAsActive}
+                      disabled={markingActive}
+                      className="cursor-pointer"
+                    >
+                      {markingActive ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      )}
+                      Mark as Active
+                    </DropdownMenuItem>
+                  )
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

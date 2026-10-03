@@ -284,9 +284,16 @@ export default function OnlineLeadDetailsPage() {
           (user as any)?.vendorMaster?.is_online_lead_feature_enabled === true
         );
 
+  const isSalesExecutive =
+    normalizedUserType === "sales-executive" ||
+    normalizedUserType === "salesexecutive";
+
   const canMarkOnHold =
     isOnlineLeadFeatureEnabled &&
     (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller);
+  const canMarkLostActive =
+    isOnlineLeadFeatureEnabled &&
+    (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller || isSalesExecutive);
   const isVendorOnlineLeadEnabled = isOnlineLeadFeatureEnabled;
   const userFranchiseId = user?.franchise_id;
   const isPendingApproval = lead?.approval_status === "PENDING";
@@ -1297,8 +1304,10 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
+  const [markingActive, setMarkingActive] = useState(false);
+
   const handleMarkAsActive = async () => {
-    if (!lead) return;
+    if (!lead || markingActive) return;
     const pendingStatus = statuses.find(
       (s) => s.status_name.toLowerCase() === "pending"
     );
@@ -1310,6 +1319,7 @@ export default function OnlineLeadDetailsPage() {
       return;
     }
 
+    setMarkingActive(true);
     try {
       const res = await apiClient.patch(`/online-leads/${id}`, {
         status: pendingStatus.id,
@@ -1329,6 +1339,8 @@ export default function OnlineLeadDetailsPage() {
         title: err.response?.data?.error || "Failed to mark lead as active.",
         type: "error",
       });
+    } finally {
+      setMarkingActive(false);
     }
   };
 
@@ -1675,6 +1687,14 @@ export default function OnlineLeadDetailsPage() {
     return name === "lost";
   }, [lead]);
 
+  // Check if lead is marked as on hold
+  const isOnHold = useMemo(() => {
+    if (!lead) return false;
+    const statusObj = lead.followupStatus || statuses.find((s) => s.id === lead.status);
+    const name = (statusObj?.status_name || "").toLowerCase().trim();
+    return name === "mark on hold" || name === "on hold" || name.includes("hold");
+  }, [lead, statuses]);
+
   const canMoveToDraft = useMemo(() => {
     return (isAdmin || isCaller) && !isLost;
   }, [isAdmin, isCaller, isLost]);
@@ -1793,7 +1813,7 @@ export default function OnlineLeadDetailsPage() {
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {((!isLost && (!isCaller || canAssign)) || (isLost && !isCaller)) && (
+          {((!isLost && (!isCaller || canAssign)) || (isLost && canMarkLostActive)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1835,6 +1855,20 @@ export default function OnlineLeadDetailsPage() {
                         <PencilLine className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                     )}
+                    {isOnlineLeadFeatureEnabled && isOnHold && (
+                      <DropdownMenuItem
+                        onClick={handleMarkAsActive}
+                        disabled={markingActive}
+                        className="cursor-pointer"
+                      >
+                        {markingActive ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        Mark as Active
+                      </DropdownMenuItem>
+                    )}
                     {canAssign && isOnlineLeadFeatureEnabled && (
                       <DropdownMenuItem
                         onClick={() => {
@@ -1851,9 +1885,20 @@ export default function OnlineLeadDetailsPage() {
                     )}
                   </>
                 ) : (
-                  <DropdownMenuItem onClick={handleMarkAsActive}>
-                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
-                  </DropdownMenuItem>
+                  canMarkLostActive && (
+                    <DropdownMenuItem
+                      onClick={handleMarkAsActive}
+                      disabled={markingActive}
+                      className="cursor-pointer"
+                    >
+                      {markingActive ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      )}
+                      Mark as Active
+                    </DropdownMenuItem>
+                  )
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
