@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   createCompanyVendor,
   createProductItemCode,
+  updateProductItemCode,
   createProductSubStructure,
   createProductStructure,
   createProductType,
@@ -473,6 +474,25 @@ export const useCreateProductItemCode = (vendorIdOverride?: number) => {
       toastManager.add({
         title:
           error?.response?.data?.error || "Failed to create product item code.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateProductItemCode = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: updateProductItemCode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({ title: "Product item code updated successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update product item code.",
         type: "error",
       });
     },
