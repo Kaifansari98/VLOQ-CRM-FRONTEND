@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Upload, CheckCircle2, AlertCircle, RefreshCw, UserCheck } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, AlertCircle, RefreshCw, UserCheck, FileSpreadsheet, X } from "lucide-react";
 import { useVendorById } from "@/api/vendors";
 
 interface BulkUploadModalProps {
@@ -75,27 +75,59 @@ export function BulkUploadModal({
   const [result, setResult] = useState<UploadResult | null>(null);
   const [telecallers, setTelecallers] = useState<{ id: number; user_name: string }[]>([]);
   const [selectedCallerId, setSelectedCallerId] = useState<string>("NONE");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open && vendorId && !isOnlineLeadFeatureEnabled) {
-      apiClient
-        .get(`/online-leads/telecallers?vendor_id=${vendorId}`)
-        .then((res) => {
-          if (res.data?.success && Array.isArray(res.data.data)) {
-            setTelecallers(res.data.data);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to load telecallers for bulk upload:", err);
-        });
+  const validateAndSetFile = (selectedFile: File) => {
+    const validExtensions = [".xlsx", ".xls", ".csv"];
+    const fileName = selectedFile.name.toLowerCase();
+    const isValid = validExtensions.some((ext) => fileName.endsWith(ext));
+
+    if (!isValid) {
+      toastManager.add({
+        title: "Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.",
+        type: "error",
+      });
+      return false;
     }
-  }, [open, vendorId, isOnlineLeadFeatureEnabled]);
+
+    setFile(selectedFile);
+    setResult(null);
+    return true;
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-      setResult(null);
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      validateAndSetFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -244,6 +276,7 @@ export function BulkUploadModal({
   const handleReset = () => {
     setFile(null);
     setResult(null);
+    setIsDragging(false);
     setSelectedCallerId("NONE");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -314,10 +347,16 @@ export function BulkUploadModal({
           {!result && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-lg p-7 flex flex-col items-center justify-center cursor-pointer transition duration-150 hover:border-slate-400 dark:hover:border-slate-700 ${
-                file
-                  ? "border-emerald-400 bg-emerald-50/20 dark:border-emerald-950 dark:bg-emerald-950/10"
-                  : "border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50"
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`relative border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none ${
+                isDragging
+                  ? "border-blue-500 bg-blue-50/70 dark:border-blue-400 dark:bg-blue-950/30 scale-[1.01] shadow-lg shadow-blue-500/10"
+                  : file
+                  ? "border-emerald-400 bg-emerald-50/20 dark:border-emerald-950 dark:bg-emerald-950/10 hover:border-emerald-500"
+                  : "border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:border-slate-400 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/80"
               }`}
             >
               <input
@@ -327,27 +366,51 @@ export function BulkUploadModal({
                 accept=".xlsx, .xls, .csv"
                 className="hidden"
               />
-              <Upload
-                className={`w-9 h-9 mb-2.5 ${
-                  file ? "text-emerald-500 animate-pulse" : "text-slate-400"
-                }`}
-              />
-              {file ? (
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+
+              {isDragging ? (
+                <div className="flex flex-col items-center justify-center text-center pointer-events-none py-2 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-2.5 shadow-sm">
+                    <Upload className="w-6 h-6 animate-bounce" />
+                  </div>
+                  <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    Drop your Excel or CSV file here
+                  </p>
+                  <p className="text-xs text-blue-500/80 dark:text-blue-400/80 mt-1">
+                    Release to select this file for import
+                  </p>
+                </div>
+              ) : file ? (
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-2.5">
+                    <FileSpreadsheet className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 max-w-sm truncate">
                     Selected File: {file.name}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {(file.size / 1024).toFixed(1)} KB — Click to change file
+                    {(file.size / 1024).toFixed(1)} KB — Click or drop another file to replace
                   </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReset();
+                    }}
+                    className="text-xs text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 font-medium mt-2.5 inline-flex items-center gap-1 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" /> Remove file
+                  </button>
                 </div>
               ) : (
-                <div className="text-center">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-2.5">
+                    <Upload className="w-6 h-6" />
+                  </div>
                   <p className="text-sm font-semibold text-foreground">
-                    Click to browse and select Excel or CSV file
+                    Drag and drop your Excel or CSV file here, or <span className="text-blue-600 dark:text-blue-400 underline underline-offset-2">browse</span>
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Directly accepts the Telecaller Excel format (No., Date, Name, Contact Number, Telecaller Name, etc.)
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                    Directly accepts the Telecaller Excel format (.xlsx, .xls, .csv with Name, Contact Number, Telecaller Name, etc.)
                   </p>
                   <button
                     type="button"
@@ -355,7 +418,7 @@ export function BulkUploadModal({
                       e.stopPropagation();
                       handleDownloadTemplate();
                     }}
-                    className="text-xs text-blue-600 dark:text-blue-400 underline hover:text-blue-500 font-semibold mt-2.5 inline-flex items-center gap-1"
+                    className="text-xs text-blue-600 dark:text-blue-400 underline hover:text-blue-500 font-semibold mt-3 inline-flex items-center gap-1 transition-colors"
                   >
                     Download matching CSV template
                   </button>
