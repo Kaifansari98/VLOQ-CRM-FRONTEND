@@ -1445,6 +1445,13 @@ export const createProductItemCode = async (
   return res.data;
 }
 
+export const updateProductItemCode = async (
+  { id, ...payload }: CreateProductItemCodeMasterPayload & { id: number },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-item-code/${id}`, payload);
+  return res.data;
+}
+
 export const fetchSmallOrderRequestTypes = async (vendorId: number) => {
   const res = await apiClient.get(
     `/leads/get-all-small-order-request-types/${vendorId}`,

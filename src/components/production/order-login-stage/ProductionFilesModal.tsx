@@ -58,6 +58,7 @@ interface ProductionFilesSectionProps {
   accountId: number | null;
   readOnly?: boolean;
   showRequiredMaterials?: boolean;
+  documentsOnly?: boolean;
   instanceId?: number | null;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
@@ -102,6 +103,7 @@ export default function ProductionFilesSection({
   accountId,
   readOnly = false,
   showRequiredMaterials = false,
+  documentsOnly = false,
   instanceId,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
@@ -125,7 +127,7 @@ export default function ProductionFilesSection({
   );
   // Vendors that both run large-scale projects and have inventory switched on
   // must upload a spreadsheet whose columns match the template.
-  const strictExcelMode = showRequiredMaterials || (handlesLargeScaleProjects && isInventoryEnabled);
+  const strictExcelMode = !documentsOnly && (showRequiredMaterials || (handlesLargeScaleProjects && isInventoryEnabled));
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
@@ -144,6 +146,7 @@ export default function ProductionFilesSection({
     vendorId,
     leadId,
     resolvedInstanceId,
+    documentsOnly,
   );
   const { mutateAsync: uploadFiles, isPending } = useUploadProductionFiles(
     vendorId,
@@ -153,10 +156,10 @@ export default function ProductionFilesSection({
 
   const { data: savedMaterials = [], isLoading: materialsLoading, isError: materialsError } = useRequiredProductionMaterials(vendorId, leadId, resolvedInstanceId, strictExcelMode);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  useEffect(() => { setSelectedFiles([]); setPreviewModalOpen(false); }, [vendorId, leadId, resolvedInstanceId]);
+  useEffect(() => { setSelectedFiles([]); setPreviewModalOpen(false); }, [vendorId, leadId, resolvedInstanceId, documentsOnly]);
   const hasFiles = Array.isArray(productionFiles) && productionFiles.length > 0;
   const allowedLargeScaleExtensions = [".xlsx", ".csv"];
-  const productionFileAccept = handlesLargeScaleProjects
+  const productionFileAccept = !documentsOnly && handlesLargeScaleProjects
     ? allowedLargeScaleExtensions.join(",")
     : ".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip";
 
@@ -227,7 +230,7 @@ export default function ProductionFilesSection({
       return;
     }
 
-    if (handlesLargeScaleProjects) {
+    if (!documentsOnly && handlesLargeScaleProjects) {
       const invalidFiles = selectedFiles.filter((file) => {
         const fileName = file.name.toLowerCase();
         return !allowedLargeScaleExtensions.some((ext) => fileName.endsWith(ext));
@@ -246,6 +249,7 @@ export default function ProductionFilesSection({
 
     try {
       const formData = new FormData();
+      if (documentsOnly) formData.append("documents_only", "true");
       selectedFiles.forEach((file) => formData.append("files", file));
       formData.append("created_by", String(userId || 0));
       if (accountId) formData.append("account_id", String(accountId));
@@ -412,7 +416,7 @@ export default function ProductionFilesSection({
           </div>
 
           <div className="flex items-center gap-2">
-            {!readOnly && handlesLargeScaleProjects && (
+            {!readOnly && !documentsOnly && handlesLargeScaleProjects && (
               <Button
                 type="button"
                 variant="default"

@@ -15,6 +15,7 @@ import {
   Eye,
   PackageSearch,
   Search,
+  Truck,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -276,22 +277,44 @@ export default function PackagingProjectSelectionPage() {
                               </p>
                             )}
                           </div>
-                          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <Button
-                              asChild
-                              variant="outline"
-                              className="gap-2"
-                            >
-                              <Link
-                                href={`/dashboard/track-trace/manage-project/${project.unique_project_id}/details`}
+                          <div className="mt-5 flex flex-col gap-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 text-xs"
                               >
-                                <Eye className="size-4" />
-                                View all boxes
-                              </Link>
-                            </Button>
+                                <Link
+                                  href={`/dashboard/track-trace/manage-project/${project.unique_project_id}/details`}
+                                >
+                                  <Eye className="size-3.5" />
+                                  View all boxes
+                                </Link>
+                              </Button>
+                              <Button
+                                asChild={!isInactive}
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 text-xs border-primary/25 hover:bg-primary/5 hover:text-primary"
+                                disabled={isInactive}
+                              >
+                                {isInactive ? (
+                                  <span>Unavailable</span>
+                                ) : (
+                                  <Link
+                                    href={`/dashboard/track-trace/machines/${machine.id}/dispatch?projectId=${project.id}`}
+                                  >
+                                    <Truck className="size-3.5 text-primary" />
+                                    Dispatch box
+                                  </Link>
+                                )}
+                              </Button>
+                            </div>
                             <Button
                               asChild={!isInactive}
-                              className="gap-2"
+                              size="sm"
+                              className="gap-2 text-xs w-full"
                               disabled={isInactive}
                             >
                               {isInactive ? (
@@ -301,7 +324,7 @@ export default function PackagingProjectSelectionPage() {
                                   href={`/dashboard/track-trace/machines/${machine.id}?projectId=${project.id}`}
                                 >
                                   Start packaging
-                                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                                 </Link>
                               )}
                             </Button>

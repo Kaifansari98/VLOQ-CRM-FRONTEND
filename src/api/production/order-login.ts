@@ -226,12 +226,16 @@ export const getProductionFiles = async (
   vendorId: number,
   leadId: number,
   instanceId?: number | null,
+  documentsOnly = false,
 ) => {
   try {
     const { data } = await apiClient.get(
       `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`,
       {
-        params: instanceId != null ? { instance_id: instanceId } : undefined,
+        params: {
+          ...(instanceId != null ? { instance_id: instanceId } : {}),
+          ...(documentsOnly ? { documents_only: true } : {}),
+        },
       },
     );
     return data?.data ?? [];
@@ -246,10 +250,11 @@ export const useProductionFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
   instanceId?: number | null,
+  documentsOnly = false,
 ) =>
   useQuery({
-    queryKey: ["productionFiles", vendorId, leadId, instanceId ?? "all"],
-    queryFn: () => getProductionFiles(vendorId!, leadId!, instanceId),
+    queryKey: ["productionFiles", vendorId, leadId, instanceId ?? "all", ...(documentsOnly ? ["documents"] : [])],
+    queryFn: () => getProductionFiles(vendorId!, leadId!, instanceId, documentsOnly),
     enabled: !!vendorId && !!leadId,
   });
 
@@ -713,6 +718,7 @@ export interface RequiredProductionMaterial {
   id: number; article_code: string; type: string; category: string;
   qty: string | number; unit: string; name: string;
   frozen_item_qty: string | number; issued_item_qty: string | number;
+  order_login_id: number | null;
   product: import("@/components/production/order-login-stage/production-file-preview").InventoryProduct;
 }
 export const useRequiredProductionMaterials = (vendorId?: number, leadId?: number, instanceId?: number | null, enabled = true) =>
@@ -769,6 +775,30 @@ export const useIssueProductionMaterials = (vendorId?: number, leadId?: number, 
         title: error?.response?.data?.message || error?.message || "Failed to issue selected materials.",
         type: "error",
       });
+    },
+  });
+};
+
+export const useOutsourceProductionMaterials = (vendorId?: number, leadId?: number, instanceId?: number | null) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (materialIds: number[]) => {
+      const { data } = await apiClient.post(
+        `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/outsource-materials`,
+        { material_ids: materialIds, instance_id: instanceId ?? null },
+      );
+      return data.data;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["requiredProductionMaterials", vendorId, leadId] }),
+        queryClient.invalidateQueries({ queryKey: ["orderLoginByLead", vendorId, leadId] }),
+        queryClient.invalidateQueries({ queryKey: ["leadProductionReadiness", vendorId, leadId] }),
+      ]);
+      toastManager.add({ title: "Selected items outsourced. Their cards are available in Order Login.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({ title: error?.response?.data?.message || "Failed to outsource selected materials.", type: "error" });
     },
   });
 };

@@ -24,6 +24,7 @@ export type ProductionPreviewRow = {
   // frozenQty: reserved via Freeze (already deducted from stock at freeze time).
   // issuedQty: handed off via Issue — the final, consumed state.
   frozenQty?: number; issuedQty?: number;
+  orderLoginId?: number | null;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
