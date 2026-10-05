@@ -190,16 +190,44 @@ function sendLeadToCRM(e) {
       return;
     }
 
-    // 8. Payload construction - dynamically sends all sheet columns
-    // CRM automatically excludes static columns from Design Remarks and stores all dynamic questions!
+    // 8. Dynamic Spreadsheet Title extraction (NO HARDCODING & NO "Google Sheet" FALLBACK)
+    var spreadsheetName = "";
+    if (e && e.source && typeof e.source.getName === "function") {
+      spreadsheetName = e.source.getName();
+    } else if (sheet && typeof sheet.getParent === "function" && sheet.getParent().getName) {
+      spreadsheetName = sheet.getParent().getName();
+    } else if (typeof SpreadsheetApp !== "undefined" && SpreadsheetApp.getActiveSpreadsheet) {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      if (ss && ss.getName) spreadsheetName = ss.getName();
+    }
+
+    spreadsheetName = spreadsheetName ? String(spreadsheetName).trim() : "";
+
+    // If spreadsheet name cannot be resolved, log clear error and abort (do not silently fallback)
+    if (!spreadsheetName) {
+      Logger.log("CRITICAL ERROR: Failed to resolve spreadsheet document title!");
+      throw new Error("Spreadsheet title could not be determined. Aborting dispatch.");
+    }
+
+    // Remove any column named 'source' or 'Source' from rowData so sheet columns NEVER override the document title
+    delete rowData["source"];
+    delete rowData["Source"];
+    delete rowData["SOURCE"];
+    delete rowData["lead_source"];
+    delete rowData["Lead Source"];
+
+    // 9. Payload construction - sends dynamic spreadsheet title as source
     const payload = Object.assign({}, rowData, {
       name: finalName,
       contact: finalPhone,
       email: email || rowData["email"] || rowData["Email"] || "",
       city: city || rowData["city"] || rowData["where_is_your_project_located?"] || "",
-      source: "Google Sheet",
+      source: spreadsheetName,
       remark: remark || ""
     });
+    payload.source = spreadsheetName;
+
+    Logger.log("Sending lead to CRM: " + finalName + " (" + finalPhone + ") | Source: " + spreadsheetName);
 
     // 9. HTTP Options
     const options = {
@@ -421,10 +449,10 @@ function sendLeadToCRM(e) {
       badge: "Step 10 of 10",
       image: "/images/google-sheets-step10.png",
       description:
-        "Go to the 'Lead Pool' page in Furnix CRM. Your test lead will appear immediately with the source 'Google Sheet'. Setup and verification are complete!",
+        "Go to the 'Lead Pool' page in Furnix CRM. Your test lead will appear immediately with the source showing your spreadsheet title. Setup and verification are complete!",
       details: [
         "Go to CRM Dashboard -> Lead Pool",
-        "Verify new lead with source 'Google Sheet'",
+        "Verify new lead with source showing your spreadsheet title",
         "Full vendor isolation is enforced by your vendor_token",
       ],
     },

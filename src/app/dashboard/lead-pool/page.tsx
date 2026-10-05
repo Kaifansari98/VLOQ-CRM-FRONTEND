@@ -118,6 +118,7 @@ interface OnlineLead {
   pending_store_id?: number | null;
   pending_status_id?: number | null;
   pending_follow_up_date?: string | null;
+  lead_master_id?: number | null;
   online_lead_history?: {
     id: number;
     remark: string | null;
@@ -210,7 +211,19 @@ export default function LeadPoolPage() {
 
   const leads = useMemo(() => {
     return rawLeads.filter((lead) => {
+      // Exclude leads that moved forward to Online Lead or Store stage
+      if (
+        lead.approval_status != null ||
+        lead.lead_master_id != null ||
+        lead.store_id != null ||
+        lead.pending_store_id != null
+      ) {
+        return false;
+      }
       const statusName = lead.followupStatus?.status_name.toLowerCase() || "";
+      if (statusName === "store assigned" || statusName === "store visit done") {
+        return false;
+      }
       const isHold = statusName === "on hold" || statusName === "mark on hold" || statusName.includes("hold");
       if (statusTab === "pending") {
         return statusName === "pending";
@@ -227,11 +240,15 @@ export default function LeadPoolPage() {
 
 
   const lostCount = useMemo(() => {
-    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "lost").length;
+    return rawLeads.filter((l) => {
+      if (l.approval_status != null || l.lead_master_id != null || l.store_id != null || l.pending_store_id != null) return false;
+      return l.followupStatus?.status_name.toLowerCase() === "lost";
+    }).length;
   }, [rawLeads]);
 
   const onHoldCount = useMemo(() => {
     return rawLeads.filter((l) => {
+      if (l.approval_status != null || l.lead_master_id != null || l.store_id != null || l.pending_store_id != null) return false;
       const name = l.followupStatus?.status_name.toLowerCase() || "";
       return name === "on hold" || name === "mark on hold" || name.includes("hold");
     }).length;
