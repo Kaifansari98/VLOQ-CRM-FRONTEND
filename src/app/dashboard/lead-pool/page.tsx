@@ -215,7 +215,6 @@ export default function LeadPoolPage() {
       if (
         lead.approval_status != null ||
         lead.lead_master_id != null ||
-        lead.store_id != null ||
         lead.pending_store_id != null
       ) {
         return false;
@@ -241,14 +240,14 @@ export default function LeadPoolPage() {
 
   const lostCount = useMemo(() => {
     return rawLeads.filter((l) => {
-      if (l.approval_status != null || l.lead_master_id != null || l.store_id != null || l.pending_store_id != null) return false;
+      if (l.approval_status != null || l.lead_master_id != null || l.pending_store_id != null) return false;
       return l.followupStatus?.status_name.toLowerCase() === "lost";
     }).length;
   }, [rawLeads]);
 
   const onHoldCount = useMemo(() => {
     return rawLeads.filter((l) => {
-      if (l.approval_status != null || l.lead_master_id != null || l.store_id != null || l.pending_store_id != null) return false;
+      if (l.approval_status != null || l.lead_master_id != null || l.pending_store_id != null) return false;
       const name = l.followupStatus?.status_name.toLowerCase() || "";
       return name === "on hold" || name === "mark on hold" || name.includes("hold");
     }).length;
