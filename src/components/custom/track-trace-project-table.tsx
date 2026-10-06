@@ -53,6 +53,7 @@ import {
   Trash2,
   XCircle,
   RotateCcw,
+  Truck,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -74,6 +75,7 @@ interface TrackTraceProjectTableProps {
   onPackagingClick?: (row: TrackTraceProjectListRow) => void;
   isPackagingDisabled?: boolean;
   onEditClick?: (row: TrackTraceProjectListRow) => void;
+  onDispatchClick?: (row: TrackTraceProjectListRow) => void;
   onDeleteClick?: (row: TrackTraceProjectListRow) => void;
   isDeleting?: boolean;
   className?: string;
@@ -327,6 +329,7 @@ export default function TrackTraceProjectTable({
   onPackagingClick,
   isPackagingDisabled = false,
   onEditClick,
+  onDispatchClick,
   onDeleteClick,
   isDeleting = false,
   className,
@@ -590,6 +593,17 @@ export default function TrackTraceProjectTable({
                   >
                     <PackageCheck size={14} />
                     Packaging
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDispatchClick?.(row.original);
+                    }}
+                  >
+                    <Truck size={14} />
+                    Dispatch
                   </DropdownMenuItem>
 
                   {canDelete && (
