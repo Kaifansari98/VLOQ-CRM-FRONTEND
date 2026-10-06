@@ -1055,7 +1055,11 @@ export default function TrackTraceProjectForm({
           type: "success",
         });
 
-        router.push("/dashboard/track-trace/manage-project");
+        if (payload.is_multi_location && response.unique_project_id) {
+          router.push(`/dashboard/track-trace/manage-project/${response.unique_project_id}/locations`);
+        } else {
+          router.push("/dashboard/track-trace/manage-project");
+        }
       },
 
       onError: (error: any) => {

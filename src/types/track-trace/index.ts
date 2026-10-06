@@ -358,6 +358,7 @@ remove_box_ids?: number[];
 export interface CreateTrackTraceProjectResponse {
   success: boolean;
   project_id: number;
+  unique_project_id: string;
   excel_url: string;
   storage_key: string;
   message?: string;

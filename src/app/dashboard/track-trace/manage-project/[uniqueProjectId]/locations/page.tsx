@@ -293,6 +293,7 @@ export default function ProjectLocationsPage() {
             title: response?.message || "Locations saved successfully",
             type: "success",
           });
+          router.push("/dashboard/track-trace/manage-project");
         },
         onError: (saveError: any) => {
           toastManager.add({

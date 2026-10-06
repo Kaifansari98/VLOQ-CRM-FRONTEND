@@ -2307,6 +2307,8 @@ export default function MachineScannerPage() {
           leadId={packagingContext?.lead_id}
           onItemPacked={() => void refetchBoxes()}
           onBoxPackedAndClosed={(boxId) => void renderAutomaticBoxPrint(boxId)}
+          isMultiLocation={packagingContext?.is_multi_location === true}
+          locations={packagingLocations}
         />
       )}
     </>
