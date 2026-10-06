@@ -1,5 +1,6 @@
 "use client";
 
+import { buildGoogleSheetsLeadScript } from "@/lib/googleSheetsLeadScript";
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,149 +109,7 @@ export function GoogleSheetsGuideSection({
     return `${baseUrl}/webhook?vendor_token=${resolvedToken}`;
   }, [resolvedToken, webhookUrl]);
 
-  const googleAppsScriptCode = `/**
- * Furnix CRM - Google Sheets Automated Lead Ingestion
- * Trigger: On edit
- */
-function sendLeadToCRM(e) {
-  // 1. Webhook URL with dynamic vendor token & environment
-  const WEBHOOK_URL = "${activeWebhookUrl}";
-
-  try {
-    // 2. Event and range validation
-    if (!e || !e.range) {
-      Logger.log("No event or range object found. Ensure this function is triggered On edit.");
-      return;
-    }
-
-    const range = e.range;
-    const sheet = range.getSheet();
-    const editedRow = range.getRow();
-
-    // Skip header row (Row 1)
-    if (editedRow <= 1) {
-      Logger.log("Edit occurred in header row (Row 1). Skipping.");
-      return;
-    }
-
-    // 3. Header and row reading via getDisplayValues()
-    const lastCol = sheet.getLastColumn();
-    if (lastCol === 0) {
-      Logger.log("No columns found in the active sheet.");
-      return;
-    }
-
-    const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
-    const rowValues = sheet.getRange(editedRow, 1, 1, lastCol).getDisplayValues()[0];
-
-    // 4. normalizeHeader() helper function
-    function normalizeHeader(header) {
-      if (!header) return "";
-      return header.toString().toLowerCase().replace(/[\\s_\\/|\\-?]+/g, "").trim();
-    }
-
-    // 5. Collect ALL sheet row columns dynamically
-    var rowData = {};
-    for (var i = 0; i < headers.length; i++) {
-      var headerKey = headers[i] ? headers[i].toString().trim() : "";
-      if (headerKey) {
-        var cellVal = rowValues[i];
-        rowData[headerKey] = cellVal !== null && cellVal !== undefined ? String(cellVal).trim() : "";
-      }
-    }
-
-    // 6. getValue() helper function (exact normalized matching)
-    function getValue(possibleMatches) {
-      for (var i = 0; i < headers.length; i++) {
-        var normalizedColHeader = normalizeHeader(headers[i]);
-        for (var j = 0; j < possibleMatches.length; j++) {
-          var target = normalizeHeader(possibleMatches[j]);
-          if (normalizedColHeader === target) {
-            var cellValue = rowValues[i];
-            return cellValue !== null && cellValue !== undefined ? String(cellValue).trim() : "";
-          }
-        }
-      }
-      return "";
-    }
-
-    // 7. Extract lead fields with fallbacks
-    const name = getValue(["Customer Name", "Full Name", "full_name", "Lead Name", "Name", "Client Name"]);
-    const phone = getValue(["Phone Number", "phone_number", "Mobile Number", "Contact Number", "Phone", "Mobile", "Contact"]);
-    const email = getValue(["Email ID", "Email Address", "Email", "Mail"]);
-    const city = getValue(["City", "Project City", "Location", "Town"]);
-    const remark = getValue(["Design Remarks", "Remarks", "Remark", "Notes", "Comments", "Requirement Details", "Description"]);
-
-    const finalName = name || rowData["full_name"] || rowData["Full Name"] || rowData["name"] || rowData["Name"];
-    const finalPhone = phone || rowData["phone_number"] || rowData["Phone Number"] || rowData["contact"] || rowData["Contact"];
-
-    // Validation: Name + Phone required
-    if (!finalName || !finalPhone) {
-      Logger.log("Row " + editedRow + " is missing required Name or Phone. Skipping dispatch.");
-      return;
-    }
-
-    // 8. Dynamic Spreadsheet Title extraction (NO HARDCODING & NO "Google Sheet" FALLBACK)
-    var spreadsheetName = "";
-    if (e && e.source && typeof e.source.getName === "function") {
-      spreadsheetName = e.source.getName();
-    } else if (sheet && typeof sheet.getParent === "function" && sheet.getParent().getName) {
-      spreadsheetName = sheet.getParent().getName();
-    } else if (typeof SpreadsheetApp !== "undefined" && SpreadsheetApp.getActiveSpreadsheet) {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
-      if (ss && ss.getName) spreadsheetName = ss.getName();
-    }
-
-    spreadsheetName = spreadsheetName ? String(spreadsheetName).trim() : "";
-
-    // If spreadsheet name cannot be resolved, log clear error and abort (do not silently fallback)
-    if (!spreadsheetName) {
-      Logger.log("CRITICAL ERROR: Failed to resolve spreadsheet document title!");
-      throw new Error("Spreadsheet title could not be determined. Aborting dispatch.");
-    }
-
-    // Remove any column named 'source' or 'Source' from rowData so sheet columns NEVER override the document title
-    delete rowData["source"];
-    delete rowData["Source"];
-    delete rowData["SOURCE"];
-    delete rowData["lead_source"];
-    delete rowData["Lead Source"];
-
-    // 9. Payload construction - sends dynamic spreadsheet title as source
-    const payload = Object.assign({}, rowData, {
-      name: finalName,
-      contact: finalPhone,
-      email: email || rowData["email"] || rowData["Email"] || "",
-      city: city || rowData["city"] || rowData["where_is_your_project_located?"] || "",
-      source: spreadsheetName,
-      remark: remark || ""
-    });
-    payload.source = spreadsheetName;
-
-    Logger.log("Sending lead to CRM: " + finalName + " (" + finalPhone + ") | Source: " + spreadsheetName);
-
-    // 9. HTTP Options
-    const options = {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-
-    // 10. UrlFetchApp.fetch()
-    const response = UrlFetchApp.fetch(WEBHOOK_URL, options);
-
-    // 11. Response logging
-    const responseCode = response.getResponseCode();
-    const responseBody = response.getContentText();
-    Logger.log("CRM Response Code: " + responseCode);
-    Logger.log("CRM Response Body: " + responseBody);
-
-  } catch (error) {
-    // 12. Error handling
-    Logger.log("Error sending lead to CRM: " + error.toString());
-  }
-}`;
+  const googleAppsScriptCode = buildGoogleSheetsLeadScript(activeWebhookUrl);
 
   const copyScript = async () => {
     if (!resolvedToken) {
@@ -329,7 +188,7 @@ function sendLeadToCRM(e) {
       badge: "Step 4 of 10",
       image: "/images/google-sheets-step4.jpg",
       description:
-        "Copy the production-ready Google Apps Script below and paste it into the `Code.gs` editor. This script automatically captures row edits in your sheet and sends lead data to the CRM via HTTP POST.",
+        "Copy the Google Apps Script below into Code.gs, replacing the previous CRM script if already installed. It sends manual edits immediately and checks for Meta/API-added leads every minute after setup.",
       details: [
         "Click the 'Copy Script' button below",
         "Paste the entire snippet into Code.gs",
@@ -352,7 +211,7 @@ function sendLeadToCRM(e) {
             <div className="bg-[#1E1E1E] text-slate-200 px-4 py-2 border-b border-slate-700 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <Code2 className="w-4 h-4 text-emerald-400" />
-                <span className="font-semibold text-slate-100">Code.gs — sendLeadToCRM</span>
+                <span className="font-semibold text-slate-100">Code.gs — CRM Lead Sync</span>
               </div>
               <Button
                 size="sm"
@@ -389,57 +248,54 @@ function sendLeadToCRM(e) {
     },
     {
       stepNumber: 6,
-      title: "Apps Script → Triggers → Add Trigger",
-      shortTitle: "6. Triggers",
+      title: "Select Your Lead Tab and Run Setup",
+      shortTitle: "6. Run Setup",
       badge: "Step 6 of 10",
-      image: "/images/google-sheets-step6.jpg",
       description:
-        "In the Apps Script editor's left vertical navigation bar, click the alarm clock icon (⏰ Triggers). Then click the blue '+ Add Trigger' button in the bottom-right corner of the screen.",
+        "Select the spreadsheet tab receiving Meta leads. In Apps Script, select setupCRMSync from the function dropdown and click Run. Setup registers this tab for scheduled and manual-edit syncing.",
       details: [
-        "Click the ⏰ icon (Triggers) in the left rail",
-        "Click '+ Add Trigger' button in the bottom-right corner",
+        "Use one Google account to install and manage the triggers",
+        "Only the tab selected during setup is synced",
+        "Existing rows will also be sent; matching phone numbers update existing CRM leads",
       ],
     },
     {
       stepNumber: 7,
-      title: "Configure Trigger Settings",
-      shortTitle: "7. Trigger Settings",
+      title: "Authorize and Verify Both Triggers",
+      shortTitle: "7. Verify Triggers",
       badge: "Step 7 of 10",
-      image: "/images/google-sheets-step7.jpg",
       description:
-        "In the trigger configuration popup, select these exact 4 options: Function: sendLeadToCRM | Deployment: Head | Event source: From spreadsheet | Event type: On edit.",
+        "Grant the Google permissions requested by setupCRMSync. If authorization interrupts setup, run it again. Then open Triggers and verify both entries below; setup creates them automatically.",
       details: [
-        "Function: sendLeadToCRM",
-        "Deployment: Head",
-        "Event source: From spreadsheet",
-        "Event type: On edit",
+        "syncPendingLeads — Time-driven, every minute",
+        "sendLeadToCRM — From spreadsheet, On edit",
+        "Running setup again replaces this account's CRM triggers without duplicating them",
       ],
     },
     {
       stepNumber: 8,
-      title: "Save Trigger & Allow Google Permissions",
-      shortTitle: "8. Permissions",
+      title: "Check Sync Tracking Columns",
+      shortTitle: "8. Sync Status",
       badge: "Step 8 of 10",
-      image: "/images/google-sheets-step8.jpg",
       description:
-        "When saving the trigger, an authorization popup will appear to choose your Google account. Select your account -> click 'Advanced' -> click 'Go to Furnix CRM (unsafe)' -> click 'Allow'.",
+        "Setup adds CRM Sync Status, CRM Synced At, CRM Sync Hash, and CRM Sync Error columns. Synced means the CRM confirmed the lead; Retry rows are tried again automatically. Keep these columns with their rows when sorting.",
       details: [
-        "Select your Google Account",
-        "Click on 'Advanced' -> Click 'Go to Project (unsafe)'",
-        "Click 'Allow' button to grant network webhook permissions",
+        "Leave the four CRM tracking columns out of your Meta field mapping",
+        "Rows without a name or phone wait until those values are filled",
+        "Do not manually edit the sync hash; it prevents resending unchanged rows",
       ],
     },
     {
       stepNumber: 9,
-      title: "Add or Edit a Test Lead in Google Sheet",
-      shortTitle: "9. Test Lead",
+      title: "Test a Meta Lead and a Manual Paste",
+      shortTitle: "9. Test Leads",
       badge: "Step 9 of 10",
-      image: "/images/google-sheets-step9.jpg",
       description:
-        "Return to your Google Sheet and enter test lead data in a new row (such as Name, Phone, Email, City). The 'On edit' trigger will automatically fire and send the lead to your CRM.",
+        "Let Meta add a lead without editing the row manually. The scheduled sync will pick it up. Also try pasting multiple rows to verify manual edits. You can run syncPendingLeads directly for an immediate check.",
       details: [
-        "Enter customer details into row 2 or any new row",
-        "Fill in customer Name, Phone, Email, and City",
+        "Check CRM Sync Status and Apps Script → Executions",
+        "Sync runs every minute; large backlogs are processed over multiple runs",
+        "Failed deliveries retry; corrected or changed rows are sent again",
       ],
     },
     {
@@ -449,7 +305,7 @@ function sendLeadToCRM(e) {
       badge: "Step 10 of 10",
       image: "/images/google-sheets-step10.png",
       description:
-        "Go to the 'Lead Pool' page in Furnix CRM. Your test lead will appear immediately with the source showing your spreadsheet title. Setup and verification are complete!",
+        "Go to the 'Lead Pool' page in Furnix CRM. After its status becomes Synced, refresh Lead Pool to see the lead with your spreadsheet title as its source. Setup and verification are complete!",
       details: [
         "Go to CRM Dashboard -> Lead Pool",
         "Verify new lead with source showing your spreadsheet title",
@@ -571,7 +427,7 @@ function sendLeadToCRM(e) {
                 <span>1-Time Setup</span>
               </div>
               <p className="leading-snug">
-                Once configured, Google Sheets triggers will automatically sync rows to CRM live.
+                Once configured, Meta leads sync every minute and manual edits sync immediately. Large batches continue on subsequent runs.
               </p>
             </div>
           </div>
