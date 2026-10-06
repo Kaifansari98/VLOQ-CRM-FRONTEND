@@ -183,6 +183,11 @@ export default function LeadPoolPage() {
     normalizedUserType === "salesadmin" ||
     userType === "sales admin";
   const isSuperAdminOrAdmin = isSuperAdmin || isAdmin;
+  const isAuditor =
+    normalizedUserType === "auditor" ||
+    userType === "auditor" ||
+    (user as any)?.user_role?.toLowerCase() === "auditor" ||
+    (user as any)?.role?.toLowerCase() === "auditor";
   const userFranchiseId = user?.franchise_id;
 
   const { data: vendorDetail } = useVendorById(vendorId ? Number(vendorId) : undefined);
@@ -198,7 +203,8 @@ export default function LeadPoolPage() {
     rawLeads.find((l: any) => l.VendorMaster?.is_online_lead_feature_enabled != null)?.VendorMaster?.is_online_lead_feature_enabled === true
   );
 
-  const canAssign = !isCaller && isSuperAdminOrAdmin;
+  const canAssign = !isCaller && (isSuperAdminOrAdmin || isAuditor);
+  const canDelete = isSuperAdminOrAdmin || isAuditor;
   const canAddWalkIn =
     (!isCaller &&
       (normalizedUserType === "store-manager" ||
@@ -615,7 +621,7 @@ export default function LeadPoolPage() {
           }
         }
 
-        if (!canAssign && !isSuperAdminOrAdmin) {
+        if (!canAssign && !canDelete) {
           return <span className="text-xs text-muted-foreground italic flex justify-center">—</span>;
         }
 
@@ -636,7 +642,7 @@ export default function LeadPoolPage() {
               </Button>
             )}
 
-            {isSuperAdminOrAdmin && (
+            {canDelete && (
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -653,7 +659,7 @@ export default function LeadPoolPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, isCaller, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
+  ], [canAssign, canDelete, isSuperAdminOrAdmin, isCaller, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
 
   const table = useReactTable({
     data: leads,
