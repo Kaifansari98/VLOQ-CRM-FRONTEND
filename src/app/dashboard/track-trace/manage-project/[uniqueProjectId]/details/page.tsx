@@ -1610,16 +1610,52 @@ function BoxItemsDialog({
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
               <Box size={18} />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-foreground">Box {boxName}</span>
-              {data && (
-                <Badge
-                  variant="outline"
-                  className="text-xs font-semibold"
-                >
-                  {data.items.length}{" "}
-                  {data.items.length === 1 ? "Item" : "Items"}
-                </Badge>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-foreground">Box {boxName}</span>
+                {data && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs font-semibold"
+                  >
+                    {data.items.length}{" "}
+                    {data.items.length === 1 ? "Item" : "Items"}
+                  </Badge>
+                )}
+              </div>
+              {data && (data.box.factory_out_at || data.box.site_in_at) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground mt-0.5">
+                  {data.box.factory_out_at && (
+                    <span className="flex items-center gap-1.5">
+                      <span>Factory Out:</span>
+                      {data.box.factoryOutByUser && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={11} />
+                          {data.box.factoryOutByUser.user_name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 size={11} />
+                        {fmtDateTime(data.box.factory_out_at)}
+                      </span>
+                    </span>
+                  )}
+                  {data.box.site_in_at && (
+                    <span className="flex items-center gap-1.5">
+                      <span>Site In:</span>
+                      {data.box.siteInByUser && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={11} />
+                          {data.box.siteInByUser.user_name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <CheckCircle2 size={11} />
+                        {fmtDateTime(data.box.site_in_at)}
+                      </span>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </DialogTitle>

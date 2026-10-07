@@ -580,7 +580,7 @@ export default function TrackTraceCategoryTable({
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize",
+                  "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize w-[65px] justify-center",
                   isActive
                     ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/30"
                     : "bg-muted text-muted-foreground border-border"

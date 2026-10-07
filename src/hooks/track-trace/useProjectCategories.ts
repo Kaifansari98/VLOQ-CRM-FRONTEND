@@ -15,7 +15,9 @@ import {
 
 const KEYS = {
   categories: (vendorId: number, filters?: ProjectCategoryFilters) =>
-    ["project-categories", vendorId, filters] as const,
+    filters
+      ? (["project-categories", vendorId, filters] as const)
+      : (["project-categories", vendorId] as const),
   types: () => ["project-category-types"] as const,
   externalToken: (vendorId: number) => ["external-token", vendorId] as const,
 };
