@@ -38,11 +38,13 @@ interface LeadStatsResponse {
 const fetchLeadStats = async (
   vendorId: number,
   userId?: number,
-  franchiseId?: number
+  franchiseId?: number,
+  onlineLeadFranchiseId?: number
 ): Promise<LeadStatsResponse> => {
   const params = new URLSearchParams();
   if (userId) params.set("userId", String(userId));
   if (franchiseId) params.set("franchise_id", String(franchiseId));
+  if (onlineLeadFranchiseId) params.set("online_lead_franchise_id", String(onlineLeadFranchiseId));
   const suffix = params.toString() ? `?${params.toString()}` : "";
   const url = `/leads/stats/count/vendor/${vendorId}${suffix}`;
 
@@ -53,11 +55,12 @@ const fetchLeadStats = async (
 export const useLeadStats = (
   vendorId?: number,
   userId?: number,
-  franchiseId?: number
+  franchiseId?: number,
+  onlineLeadFranchiseId?: number
 ) => {
   return useQuery({
-    queryKey: ["leadStats", vendorId, userId, franchiseId],
-    queryFn: () => fetchLeadStats(vendorId!, userId, franchiseId),
+    queryKey: ["leadStats", vendorId, userId, franchiseId, onlineLeadFranchiseId],
+    queryFn: () => fetchLeadStats(vendorId!, userId, franchiseId, onlineLeadFranchiseId),
     enabled: !!vendorId, // Only run query if vendorId exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
