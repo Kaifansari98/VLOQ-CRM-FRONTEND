@@ -226,7 +226,7 @@ export default function LeadPoolPage() {
         return false;
       }
       const statusName = lead.followupStatus?.status_name.toLowerCase() || "";
-      if (statusName === "store assigned" || statusName === "store visit done") {
+      if (statusName === "store assigned" || statusName === "store visit done" || statusName === "inactive") {
         return false;
       }
       const isHold = statusName === "on hold" || statusName === "mark on hold" || statusName.includes("hold");
@@ -247,7 +247,9 @@ export default function LeadPoolPage() {
   const lostCount = useMemo(() => {
     return rawLeads.filter((l) => {
       if (l.approval_status != null || l.lead_master_id != null || l.pending_store_id != null) return false;
-      return l.followupStatus?.status_name.toLowerCase() === "lost";
+      const statusName = l.followupStatus?.status_name.toLowerCase() || "";
+      if (statusName === "inactive") return false;
+      return statusName === "lost";
     }).length;
   }, [rawLeads]);
 
@@ -255,6 +257,7 @@ export default function LeadPoolPage() {
     return rawLeads.filter((l) => {
       if (l.approval_status != null || l.lead_master_id != null || l.pending_store_id != null) return false;
       const name = l.followupStatus?.status_name.toLowerCase() || "";
+      if (name === "inactive") return false;
       return name === "on hold" || name === "mark on hold" || name.includes("hold");
     }).length;
   }, [rawLeads]);
