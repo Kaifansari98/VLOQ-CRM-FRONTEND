@@ -344,11 +344,7 @@ export default function ProjectCategoriesPage() {
           {/* Table Container */}
           {!isLoading && !isError && (
             <div>
-              {isFetching && (
-                <div className="mb-2 text-xs text-muted-foreground">
-                  Updating categories...
-                </div>
-              )}
+
 
               <TrackTraceCategoryTable
                 data={categories}
