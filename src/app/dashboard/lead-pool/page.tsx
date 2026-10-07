@@ -321,7 +321,7 @@ export default function LeadPoolPage() {
   }, [isB2b, router]);
 
   const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">(
-    queryTab && ["pool", "my", "overall"].includes(queryTab) ? queryTab : "pool"
+    queryTab && ["pool", "my", "overall"].includes(queryTab) && !(isAuditor && queryTab === "my") ? queryTab : "pool"
   );
   const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
@@ -697,12 +697,12 @@ export default function LeadPoolPage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
-    if (queryTab && ["pool", "my", "overall"].includes(queryTab)) {
+    if (queryTab && ["pool", "my", "overall"].includes(queryTab) && !(isAuditor && queryTab === "my")) {
       setActiveTab(queryTab);
     } else {
       setActiveTab("pool");
     }
-  }, [queryTab]);
+  }, [queryTab, isAuditor]);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -992,7 +992,7 @@ export default function LeadPoolPage() {
               {tabCounts.pool}
             </span>
           </button>
-          {!isSuperAdminOrAdmin && (
+          {!isSuperAdminOrAdmin && !isAuditor && (
             <button
               onClick={() => {
                 setActiveTab("my");
