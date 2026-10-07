@@ -209,7 +209,8 @@ export function NavMain({
   const { data: leadStats, isLoading } = useLeadStats(
     vendorId,
     userId,
-    statsFranchiseId
+    statsFranchiseId,
+    franchiseId
   );
   const isFilterByUser = normalizedUserType === "sales-executive";
 
