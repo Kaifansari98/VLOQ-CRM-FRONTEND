@@ -340,6 +340,7 @@ function BoxCard({
 }) {
   const isPacked = getBoxStatus(box) === "packed";
   const itemCount = getBoxItemCount(box);
+  const receivedQty = box.received_qty || 0;
   const boxWeight = getBoxWeight(box);
   const hasItems = itemCount > 0;
   const factoryOut = !!box.factory_out_at;
@@ -431,6 +432,17 @@ function BoxCard({
         </div>
 
         <div className="flex min-w-[140px] flex-1 flex-wrap items-center gap-1.5 text-xs md:justify-end">
+          {receivedQty > 0 && (
+            <span className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+              receivedQty < itemCount
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            )}>
+              {receivedQty}/{itemCount} at site
+            </span>
+          )}
+
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
@@ -612,6 +624,25 @@ function BoxCard({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
+        {receivedQty > 0 && (
+          <div className={cn(
+            "flex items-center gap-1.5 rounded-lg border px-3 py-2",
+            receivedQty < itemCount
+              ? "border-amber-500/30 bg-amber-500/10"
+              : "border-emerald-500/20 bg-emerald-500/10"
+          )}>
+            <MapPin size={14} className={receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
+            <div className="flex flex-col">
+              <span className={cn("text-[10px] font-bold uppercase leading-none", receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                At Site
+              </span>
+              <span className={cn("text-xs font-semibold mt-1", receivedQty < itemCount ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300")}>
+                {receivedQty} / {itemCount} items
+              </span>
+            </div>
+          </div>
+        )}
+
         <DispatchStep
           label="Factory Out"
           done={factoryOut}

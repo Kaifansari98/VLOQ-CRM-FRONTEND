@@ -217,6 +217,7 @@ export interface ProjectDetailData {
     box_name: string;
     box_status: string;
     items_count: number;
+    received_qty?: number;
     total_weight: number;
     sequence_no: number | null;
     product_group_name: string | null;
