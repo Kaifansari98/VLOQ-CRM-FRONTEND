@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -117,8 +118,10 @@ interface MachineMeta {
 
 const DetailedMachineCell = React.memo(function DetailedMachineCell({
   machine,
+  projectId,
 }: {
   machine?: MachineScanStatus;
+  projectId?: string | number;
 }) {
   if (!machine) {
     return (
@@ -133,8 +136,14 @@ const DetailedMachineCell = React.memo(function DetailedMachineCell({
   const pct =
     machine.total > 0 ? Math.round((machine.scanned / machine.total) * 100) : 0;
 
-  return (
-    <div className="flex flex-col gap-1 min-w-[135px]">
+  const content = (
+    <div
+      className={cn(
+        "group flex flex-col gap-1 min-w-[135px] p-1.5 rounded-xl border border-transparent transition-all",
+        projectId &&
+          "hover:border-primary/40 hover:bg-muted/40 hover:shadow-2xs cursor-pointer",
+      )}
+    >
       {allDone ? (
         <Badge
           variant="outline"
@@ -190,6 +199,20 @@ const DetailedMachineCell = React.memo(function DetailedMachineCell({
       </div>
     </div>
   );
+
+  if (projectId) {
+    return (
+      <Link
+        href={`/dashboard/track-trace/manage-project/${projectId}/machines/${machine.machine_id}`}
+        title={`Click to view ${machine.machine_name} panels & details`}
+        className="block"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 });
 
 // ─── Machine Cell: Compact High-Density View (Memoized, Shared Tooltip Provider) ──
@@ -197,9 +220,11 @@ const DetailedMachineCell = React.memo(function DetailedMachineCell({
 const CompactMachineCell = React.memo(function CompactMachineCell({
   machine,
   projectName,
+  projectId,
 }: {
   machine?: MachineScanStatus;
   projectName: string;
+  projectId?: string | number;
 }) {
   if (!machine) {
     return (
@@ -214,55 +239,68 @@ const CompactMachineCell = React.memo(function CompactMachineCell({
   const pct =
     machine.total > 0 ? Math.round((machine.scanned / machine.total) * 100) : 0;
 
+  const cardNode = (
+    <div
+      className={cn(
+        "group flex flex-col items-center justify-center p-1.5 rounded-lg border transition-colors cursor-pointer select-none",
+        allDone
+          ? "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
+          : isStarted && machine.pending > 0
+          ? "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20"
+          : "border-border/40 bg-muted/20 hover:bg-muted/40",
+      )}
+    >
+      <div className="flex items-center gap-1 w-full justify-between">
+        <span
+          className={cn(
+            "text-[11px] font-bold tabular-nums",
+            allDone
+              ? "text-emerald-600 dark:text-emerald-400"
+              : isStarted && machine.pending > 0
+              ? "text-amber-600 dark:text-amber-400"
+              : "text-muted-foreground",
+          )}
+        >
+          {allDone ? "100%" : `${pct}%`}
+        </span>
+        {allDone ? (
+          <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
+        ) : isStarted && machine.pending > 0 ? (
+          <Clock className="size-3 text-amber-500 shrink-0" />
+        ) : (
+          <span className="size-1.5 rounded-full bg-muted-foreground/30" />
+        )}
+      </div>
+
+      <div className="h-1 w-full overflow-hidden rounded-full bg-muted/60 mt-1">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-200",
+            allDone ? "bg-emerald-500" : isStarted ? "bg-amber-500" : "w-0",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 font-medium">
+        {machine.scanned}/{machine.total}
+      </span>
+    </div>
+  );
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div
-          className={cn(
-            "group flex flex-col items-center justify-center p-1.5 rounded-lg border transition-colors cursor-pointer select-none",
-            allDone
-              ? "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
-              : isStarted && machine.pending > 0
-              ? "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20"
-              : "border-border/40 bg-muted/20 hover:bg-muted/40",
-          )}
-        >
-          <div className="flex items-center gap-1 w-full justify-between">
-            <span
-              className={cn(
-                "text-[11px] font-bold tabular-nums",
-                allDone
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : isStarted && machine.pending > 0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-muted-foreground",
-              )}
-            >
-              {allDone ? "100%" : `${pct}%`}
-            </span>
-            {allDone ? (
-              <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
-            ) : isStarted && machine.pending > 0 ? (
-              <Clock className="size-3 text-amber-500 shrink-0" />
-            ) : (
-              <span className="size-1.5 rounded-full bg-muted-foreground/30" />
-            )}
-          </div>
-
-          <div className="h-1 w-full overflow-hidden rounded-full bg-muted/60 mt-1">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-200",
-                allDone ? "bg-emerald-500" : isStarted ? "bg-amber-500" : "w-0",
-              )}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-
-          <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 font-medium">
-            {machine.scanned}/{machine.total}
-          </span>
-        </div>
+        {projectId ? (
+          <Link
+            href={`/dashboard/track-trace/manage-project/${projectId}/machines/${machine.machine_id}`}
+            className="block"
+          >
+            {cardNode}
+          </Link>
+        ) : (
+          cardNode
+        )}
       </TooltipTrigger>
       <TooltipContent
         side="top"
@@ -359,6 +397,14 @@ const CompactMachineCell = React.memo(function CompactMachineCell({
                 : "Not Started"}
             </Badge>
           </div>
+
+          {/* Click to View Station Details Prompt */}
+          {projectId && (
+            <div className="px-3 py-1.5 bg-primary/5 text-primary text-[10px] font-bold border-t border-border/60 flex items-center justify-between">
+              <span>View station details</span>
+              <span>→</span>
+            </div>
+          )}
         </div>
       </TooltipContent>
     </Tooltip>
@@ -463,9 +509,12 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
             }
           />
           <div className="flex flex-col min-w-0 space-y-1">
-            <span className="font-bold text-sm text-foreground leading-snug group-hover:text-primary transition-colors whitespace-normal">
+            <Link
+              href={`/dashboard/track-trace/manage-project/${project.unique_project_id || project.project_id}/details`}
+              className="font-bold text-sm text-foreground leading-snug group-hover:text-primary transition-colors whitespace-normal hover:underline"
+            >
               {project.project_name}
-            </span>
+            </Link>
             <span className="text-xs text-muted-foreground font-medium">
               <strong className="text-foreground">
                 {project.panels_scanned}
@@ -479,6 +528,7 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
       {/* Machine Cells */}
       {visibleMachines.map((m) => {
         const machine = machineById.get(m.id);
+        const projId = project.unique_project_id || project.project_id;
 
         if (isCompact) {
           return (
@@ -486,6 +536,7 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
               <CompactMachineCell
                 machine={machine}
                 projectName={project.project_name}
+                projectId={projId}
               />
             </TableCell>
           );
@@ -493,7 +544,7 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
 
         return (
           <TableCell key={m.id} className="py-3.5 px-3.5 align-top">
-            <DetailedMachineCell machine={machine} />
+            <DetailedMachineCell machine={machine} projectId={projId} />
           </TableCell>
         );
       })}

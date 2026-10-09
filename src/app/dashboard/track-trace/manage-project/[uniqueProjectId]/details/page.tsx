@@ -3690,7 +3690,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   <div className="space-y-0.5 min-w-0">
-                    <h1 className="text-base font-bold tracking-tight text-foreground truncate">
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground truncate">
                       {data.project.project_name}
                     </h1>
 
@@ -4630,12 +4630,13 @@ export default function ProjectDetailPage() {
 
                 <div className="flex flex-wrap gap-3">
                   {data.machines.map((m) => (
-                    <div
+                    <Link
                       key={m.machine_id}
-                      className="flex-1 min-w-[220px] rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-2"
+                      href={`/dashboard/track-trace/manage-project/${uniqueProjectId}/machines/${m.machine_id}`}
+                      className="group flex-1 min-w-[220px] rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 hover:shadow-xs space-y-2 cursor-pointer block"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold capitalize text-foreground truncate" title={m.machine_name}>
+                        <p className="text-xs font-semibold capitalize text-foreground group-hover:text-primary transition-colors truncate" title={m.machine_name}>
                           {m.machine_name}
                         </p>
                         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted/80 border border-border text-emerald-600 dark:text-emerald-400">
@@ -4658,7 +4659,12 @@ export default function ProjectDetailPage() {
                           style={{ width: `${Math.min(100, m.pct)}%` }}
                         />
                       </div>
-                    </div>
+
+                      <p className="text-[10px] font-semibold text-primary/80 group-hover:text-primary pt-0.5 flex items-center justify-between">
+                        <span>View station items</span>
+                        <span>→</span>
+                      </p>
+                    </Link>
                   ))}
                 </div>
               </div>

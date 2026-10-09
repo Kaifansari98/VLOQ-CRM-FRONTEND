@@ -639,8 +639,9 @@ export default function TrackTraceProjectTable({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: totalPages !== undefined,
-    pageCount: totalPages ?? 1,
+    manualPagination: true,
+    pageCount: totalPages !== undefined && totalPages > 0 ? totalPages : 1,
+    rowCount: totalCount,
     state: {
       rowSelection,
       columnFilters,
@@ -651,6 +652,20 @@ export default function TrackTraceProjectTable({
         pageIndex: page - 1,
         pageSize: limit,
       },
+    },
+    onPaginationChange: (updater) => {
+      const currentPagination = {
+        pageIndex: page - 1,
+        pageSize: limit,
+      };
+      const nextPagination =
+        typeof updater === "function" ? updater(currentPagination) : updater;
+
+      if (nextPagination.pageSize !== currentPagination.pageSize) {
+        onLimitChange?.(nextPagination.pageSize);
+      } else if (nextPagination.pageIndex !== currentPagination.pageIndex) {
+        onPageChange?.(nextPagination.pageIndex + 1);
+      }
     },
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,
