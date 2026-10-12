@@ -1503,7 +1503,7 @@ export default function ProjectMachineDetailPage() {
                         <SelectValue placeholder={`${pageSize}`} />
                       </SelectTrigger>
                       <SelectContent side="top" className="rounded-lg">
-                        {[10, 20, 30, 50].map((size) => (
+                        {[10, 20, 30, 50, 100].map((size) => (
                           <SelectItem key={size} value={`${size}`} className="text-xs">
                             {size}
                           </SelectItem>
