@@ -557,16 +557,19 @@ export function UniversalTable({
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
     normalizedUserType === "auditor";
-  const shouldIncludeFranchise =
-    normalizedUserType === "admin" ||
-    normalizedUserType === "super-admin" ||
-    normalizedUserType === "auditor" ||
-    normalizedUserType === "sales-executive" ||
-    normalizedUserType === "site-supervisor" ||
-    normalizedUserType === "head-site-supervisor";
   const normalizedType = String(type || "")
     .trim()
     .toLowerCase();
+  const isHeadSiteSupervisor = normalizedUserType === "head-site-supervisor";
+  const isUnderInstallation = normalizedType === "type 15";
+  const shouldIncludeFranchise =
+    (normalizedUserType === "admin" ||
+      normalizedUserType === "super-admin" ||
+      normalizedUserType === "auditor" ||
+      normalizedUserType === "sales-executive" ||
+      normalizedUserType === "site-supervisor" ||
+      normalizedUserType === "head-site-supervisor") &&
+    !(isHeadSiteSupervisor && isUnderInstallation);
   const canSeeMyOverallTabs = normalizedUserType === "sales-executive";
   const hideOverallToggle =
     !canSeeMyOverallTabs ||
