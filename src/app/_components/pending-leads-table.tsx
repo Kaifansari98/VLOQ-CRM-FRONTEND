@@ -39,6 +39,13 @@ import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { mapTableFiltersToPayload } from "@/lib/utils";
 import {
   ActivityStatusFilterPayload,
@@ -74,6 +81,26 @@ export default function PendingLeadsTable({
     const activeFranchise = franchisesForB2b.find((f: any) => f.id === franchiseId);
     return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
   }, [franchisesForB2b, franchiseId, reduxModuledForB2b]);
+
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const normalizedUserType = userType?.toLowerCase().trim();
+  const isCaller =
+    [
+      "telecaller",
+      "telecaller-team-lead",
+      "caller",
+      "store-caller",
+    ].includes(normalizedUserType || "") ||
+    /^(telecaller|caller|store[-_\s]*caller)/i.test(normalizedUserType || "");
+
+  const stores = React.useMemo(() => {
+    return (franchisesForB2b || []).filter((s: any) => {
+      const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+      return name !== "b2b";
+    });
+  }, [franchisesForB2b]);
+
+  const [storeFilter, setStoreFilter] = React.useState<string>("");
   const router = useRouter();
 
   // ============================================
@@ -140,7 +167,9 @@ export default function PendingLeadsTable({
     const mappedFilters = mapTableFiltersToPayload(onHoldColumnFilters);
 
     return {
-      franchise_id: franchiseId ?? undefined,
+      franchise_id: isCaller
+        ? (storeFilter ? Number(storeFilter) : undefined)
+        : (franchiseId ?? undefined),
       page: onHoldPagination.pageIndex + 1,
       limit: onHoldPagination.pageSize,
       global_search: onHoldGlobalFilter || "",
@@ -158,14 +187,16 @@ export default function PendingLeadsTable({
       date_range: mappedFilters.date_range,
       status: mappedFilters.stagetag,
     };
-  }, [franchiseId, onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
+  }, [franchiseId, isCaller, storeFilter, onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
 
   const lostPayload: ActivityStatusFilterPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(lostColumnFilters);
 
     return {
-      franchise_id: franchiseId ?? undefined,
+      franchise_id: isCaller
+        ? (storeFilter ? Number(storeFilter) : undefined)
+        : (franchiseId ?? undefined),
       page: lostPagination.pageIndex + 1,
       limit: lostPagination.pageSize,
       global_search: lostGlobalFilter || "",
@@ -185,14 +216,16 @@ export default function PendingLeadsTable({
       site_map_link: mappedFilters.site_map_link,
       created_at: sortOrder,
     };
-  }, [franchiseId, lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
+  }, [franchiseId, isCaller, storeFilter, lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
 
   const lostApprovalPayload: ActivityStatusFilterPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(lostApprovalColumnFilters);
 
     return {
-      franchise_id: franchiseId ?? undefined,
+      franchise_id: isCaller
+        ? (storeFilter ? Number(storeFilter) : undefined)
+        : (franchiseId ?? undefined),
       page: lostApprovalPagination.pageIndex + 1,
       limit: lostApprovalPagination.pageSize,
       global_search: lostApprovalGlobalFilter || "",
@@ -217,6 +250,8 @@ export default function PendingLeadsTable({
     lostApprovalGlobalFilter,
     lostApprovalColumnFilters,
     franchiseId,
+    isCaller,
+    storeFilter,
     sorting,
   ]);
   // ============================================
@@ -571,6 +606,28 @@ export default function PendingLeadsTable({
                 title="Created At"
                 multiple
               />
+
+              {isCaller && (
+                <Select
+                  value={storeFilter || "ALL_STORES"}
+                  onValueChange={(val) => {
+                    setStoreFilter(val === "ALL_STORES" ? "" : val);
+                    setCurrentPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[140px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                    <SelectValue placeholder="All Stores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                    {stores.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <ClearInput
@@ -586,7 +643,7 @@ export default function PendingLeadsTable({
 
           {/* ================= DESKTOP LAYOUT ================= */}
           <div className="hidden md:flex justify-between items-end">
-            <div className="flex items-end gap-3">
+            <div className="flex items-center gap-3">
               <ClearInput
                 value={currentGlobalFilter ?? ""}
                 onChange={(e) => {
@@ -596,6 +653,28 @@ export default function PendingLeadsTable({
                 placeholder="Search…"
                 className="h-8 w-64"
               />
+
+              {isCaller && (
+                <Select
+                  value={storeFilter || "ALL_STORES"}
+                  onValueChange={(val) => {
+                    setStoreFilter(val === "ALL_STORES" ? "" : val);
+                    setCurrentPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[160px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                    <SelectValue placeholder="All Stores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                    {stores.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               <DataTableDateFilter
                 column={table.getColumn("createdAt")!}

@@ -2,21 +2,37 @@
 
 import { useEffect } from "react"
 import { useDispatch } from "react-redux"
-import { loadSession } from "@/redux/slices/authSlice"
+import { loadSession, updateVendorData } from "@/redux/slices/authSlice"
 import { loadCustomPrivileges } from "@/redux/slices/customPrivilegesSlice"
 import { loadThemeFromStorage } from "@/redux/slices/themeSlice"
+import { useAppSelector } from "@/redux/store"
 
 import { updateFavicon } from "@/utils/favicon"
-import { fetchVendorBySubdomain } from "@/api/vendors"
+import { fetchVendorById, fetchVendorBySubdomain } from "@/api/vendors"
 
 export function SessionLoader() {
   const dispatch = useDispatch()
+  const user = useAppSelector((state) => state.auth.user)
+  const vendorId = user?.vendor_id
 
   useEffect(() => {
     dispatch(loadSession())
     dispatch(loadCustomPrivileges())
     dispatch(loadThemeFromStorage())
   }, [dispatch])
+
+  useEffect(() => {
+    if (!vendorId) return
+    fetchVendorById(vendorId)
+      .then((res) => {
+        if (res?.success && res.data) {
+          dispatch(updateVendorData(res.data))
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to sync vendor data:", err)
+      })
+  }, [vendorId, dispatch])
 
   useEffect(() => {
     const resolveAndSetFavicon = async () => {

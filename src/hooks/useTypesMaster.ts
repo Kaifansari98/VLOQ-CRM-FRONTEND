@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   createCompanyVendor,
   createProductItemCode,
+  updateProductItemCode,
   createProductSubStructure,
   createProductStructure,
   createProductType,
@@ -161,6 +162,8 @@ export const useUsersForMaster = (params: {
   limit: number;
   search?: string;
   franchise_id?: number;
+  user_type?: string;
+  exclude_user_type?: string;
 }, vendorIdOverride?: number) => {
   const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
@@ -169,6 +172,8 @@ export const useUsersForMaster = (params: {
       params.limit,
       params.search ?? "",
       params.franchise_id ?? 0,
+      params.user_type ?? "",
+      params.exclude_user_type ?? "",
     ]),
     queryFn: () => fetchUsersForMaster(vendorId!, params),
     enabled: !!vendorId,
@@ -469,6 +474,25 @@ export const useCreateProductItemCode = (vendorIdOverride?: number) => {
       toastManager.add({
         title:
           error?.response?.data?.error || "Failed to create product item code.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateProductItemCode = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: updateProductItemCode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({ title: "Product item code updated successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update product item code.",
         type: "error",
       });
     },
@@ -1774,6 +1798,7 @@ export const useCreateUser = (vendorIdOverride?: number) => {
       });
     },
     onError: (error: any) => {
+      if (error?.response?.data?.code === "SUPERVISOR_CONFIRMATION_REQUIRED") return;
       toastManager.add({
         title: error?.response?.data?.message || "Failed to create user.",
         type: "error",
@@ -1797,6 +1822,7 @@ export const useUpdateUser = (vendorIdOverride?: number) => {
       });
     },
     onError: (error: any) => {
+      if (error?.response?.data?.code === "SUPERVISOR_CONFIRMATION_REQUIRED") return;
       toastManager.add({
         title: error?.response?.data?.message || "Failed to update user.",
         type: "error",

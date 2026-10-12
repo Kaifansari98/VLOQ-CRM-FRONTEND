@@ -8,10 +8,12 @@ export function GenerateLeadFormModal({
   open,
   onOpenChange,
   mode = "standard",
+  draftInOpenLeads = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode?: "standard" | "lead-pool";
+  draftInOpenLeads?: boolean;
 }) {
   return (
     <BaseModal
@@ -25,7 +27,11 @@ export function GenerateLeadFormModal({
       }
       size="lg"
     >
-      <LeadsGenerationForm onClose={() => onOpenChange(false)} mode={mode} />
+      <LeadsGenerationForm
+        onClose={() => onOpenChange(false)}
+        mode={mode}
+        draftInOpenLeads={draftInOpenLeads}
+      />
     </BaseModal>
   );
 }

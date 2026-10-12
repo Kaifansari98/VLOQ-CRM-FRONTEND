@@ -295,6 +295,8 @@ export default function InstallationMiscellaneous({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<MiscellaneousEntry | null>(null);
   const skipMaterialResetRef = useRef(false);
+  // Stores material IDs to restore after returnOrderMaterialOptions is computed
+  const pendingReturnMaterialIdsRef = useRef<string[]>([]);
 
   const form = useForm<MiscFormValues>({
     resolver: zodResolver(miscFormSchema),
@@ -764,6 +766,20 @@ export default function InstallationMiscellaneous({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedInstanceId]);
 
+  // ── Auto-restore return order materials after options are computed ──────────
+  useEffect(() => {
+    const pendingIds = pendingReturnMaterialIdsRef.current;
+    if (!pendingIds.length || !returnOrderMaterialOptions.length) return;
+    const matched = returnOrderMaterialOptions.filter((opt) =>
+      pendingIds.includes(String(opt.value))
+    );
+    if (matched.length > 0) {
+      form.setValue("return_order_selected_materials", matched, { shouldDirty: false });
+      pendingReturnMaterialIdsRef.current = [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnOrderMaterialOptions]);
+
   const [initialModalHandled, setInitialModalHandled] = useState(false);
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument(leadId);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -871,6 +887,80 @@ export default function InstallationMiscellaneous({
       label: t.team_name,
     }));
 
+    // ── Restore Return Order instance & material selections ─────────────────
+    // API response shape per Prisma schema:
+    // mapping: { id, orderlogindetails_id, orderLoginDetail: { id, item_type, item_desc, instance_id } }
+    const isEntryReturnOrder = Boolean((entryToEdit as any).return_order_delivery_method);
+    const rawMappings: any[] = (entryToEdit as any).reorder_instances_material_mappings || [];
+    let returnOrderSelectedInstances: Option[] = [];
+    let returnOrderSelectedMaterials: Option[] = [];
+    pendingReturnMaterialIdsRef.current = []; // clear any stale pending IDs
+
+    if (isEntryReturnOrder) {
+      if (rawMappings.length > 0) {
+        const seenInstIds = new Set<number>();
+        const matIds: string[] = [];
+
+        rawMappings.forEach((m: any) => {
+          // instance_id lives inside the nested orderLoginDetail relation
+          const detail = m.orderLoginDetail ?? m.order_login_detail ?? m.orderLoginDetails ?? {};
+          const instId = Number(
+            detail.instance_id ??
+            m.instance_id ??
+            m.instanceId ??
+            detail.instanceId,
+          );
+
+          if (!isNaN(instId) && instId > 0 && !seenInstIds.has(instId)) {
+            seenInstIds.add(instId);
+            const instObj = instances.find((i: any) => i.id === instId);
+            const instTitle = instObj?.title || `Instance ${instObj?.quantity_index ?? instId}`;
+            returnOrderSelectedInstances.push({ value: String(instId), label: instTitle });
+          }
+
+          // Material ID = orderlogindetails_id (matches item.id in orderLoginSummary)
+          const matId =
+            m.orderlogindetails_id ??
+            m.order_login_detail_id ??
+            detail.id ??
+            m.id;
+
+          if (matId) {
+            matIds.push(String(matId));
+          }
+        });
+
+        // Store material IDs — useEffect will match them against returnOrderMaterialOptions
+        // once instances are set and options are recomputed
+        pendingReturnMaterialIdsRef.current = matIds;
+      } else {
+        // Fallback for old entries without mappings
+        const fallbackInstId = Number(
+          (entryToEdit as any).instance_id ??
+          (entryToEdit as any).selected_instance_id ??
+          matchedInstanceId,
+        );
+        if (!isNaN(fallbackInstId) && fallbackInstId > 0) {
+          const instObj = instances.find((i: any) => i.id === fallbackInstId);
+          const instTitle = instObj?.title || `Instance ${instObj?.quantity_index ?? fallbackInstId}`;
+          returnOrderSelectedInstances = [{ value: String(fallbackInstId), label: instTitle }];
+
+          const materialStr = entryToEdit.reorder_material_details || "";
+          if (materialStr) {
+            const parts = materialStr.split(",").map((s: string) => s.trim()).filter(Boolean);
+            returnOrderSelectedMaterials = parts.map((rawName: string, idx: number) => ({
+              value: `inst_${fallbackInstId}_${rawName.toLowerCase().replace(/\s+/g, "_")}_${idx}`,
+              label: rawName,
+              rawName,
+              instance: instTitle,
+              instanceId: String(fallbackInstId),
+            } as any));
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     form.reset({
       misc_type_id: entryToEdit.type?.id,
       selected_instance_id: matchedInstanceId,
@@ -889,8 +979,8 @@ export default function InstallationMiscellaneous({
         : undefined,
       return_order_delivery_method:
         ((entryToEdit as any).return_order_delivery_method as any) || undefined,
-      return_order_selected_instances: [],
-      return_order_selected_materials: [],
+      return_order_selected_instances: returnOrderSelectedInstances,
+      return_order_selected_materials: returnOrderSelectedMaterials,
     });
 
     setFiles([]);
@@ -920,7 +1010,9 @@ export default function InstallationMiscellaneous({
       if (!formData.return_order_delivery_method) {
         errors.return_order_delivery_method = "Please select delivery method";
       }
-      if (formData.return_order_date) {
+      if (!formData.return_order_date) {
+        errors.return_order_date = "Return order date is required";
+      } else {
         const selectedDate = new Date(formData.return_order_date);
         selectedDate.setHours(0, 0, 0, 0);
         const today = new Date();
@@ -1234,12 +1326,8 @@ export default function InstallationMiscellaneous({
     viewModalData?.documents?.some((d) => d.doc_type_tag === "Type 37")
   );
   const isDeliveryTaskCompleted =
-    (Boolean(viewModalData?.required_delivery_date) &&
-      viewModalData?.delivery_task?.status === "completed") ||
-    viewModalData?.delivery_task?.status === "completed" ||
-    (viewModalData as any)?.status === "dispatched" ||
-    (viewModalData as any)?.status === "completed" ||
-    hasCompletionDocs;
+    Boolean(viewModalData?.delivery_task) &&
+    viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
     (isSupervisorUser || isAdminOrSuper) &&
     isApproved &&
@@ -1788,7 +1876,8 @@ export default function InstallationMiscellaneous({
           }
         }}
         title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
-        description="Log a miscellaneous issue with required details, supporting proofs, and material information."
+        description="
+        "
         size="lg"
       >
             <Form {...form}>
@@ -2184,7 +2273,7 @@ export default function InstallationMiscellaneous({
                     </div>
                     {/* Return Order Date */}
                     <div className={cn("flex flex-col gap-2", formErrors.return_order_date && "text-destructive [&_button]:border-destructive")} data-name="return_order_date">
-                      <label className="text-sm font-medium">Return Order Date</label>
+                      <label className="text-sm font-medium">Return Order Date *</label>
                       <CustomeDatePicker
                         value={formData.return_order_date}
                         restriction="futureOnly"
@@ -3784,114 +3873,131 @@ export default function InstallationMiscellaneous({
                         {/* Step 2: Required Delivery & Resolution Card */}
                         {canViewStep2Handover && (
                           <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 2 • Handover</span>
-                                {viewModalData?.is_resolved ? (
-                                  <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
-                                    Resolved
-                                  </Badge>
-                                ) : isDeliveryTaskCompleted ? (
-                                  <Badge variant="outline" className="text-[10px] bg-cyan-100 text-cyan-800 border-0 dark:bg-cyan-950 dark:text-cyan-300">
-                                    Delivery Completed
-                                  </Badge>
-                                ) : null}
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 2 • Handover</span>
+                                  {viewModalData?.is_resolved ? (
+                                    <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
+                                      Resolved
+                                    </Badge>
+                                  ) : isDeliveryTaskCompleted ? (
+                                    <Badge variant="outline" className="text-[10px] bg-cyan-100 text-cyan-800 border-0 dark:bg-cyan-950 dark:text-cyan-300">
+                                      Delivery Completed
+                                    </Badge>
+                                  ) : viewModalData?.required_delivery_date ? (
+                                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-0 dark:bg-amber-950 dark:text-amber-300">
+                                      Delivery Pending
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-primary" />
+                                  <h5 className="text-sm font-semibold text-foreground">Required Delivery Date</h5>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-primary" />
-                                <h5 className="text-sm font-semibold text-foreground">Required Delivery Date</h5>
-                              </div>
-                            </div>
 
-                            <div className="space-y-2">
-                              <CustomeTooltip
-                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                truncateValue={
-                                  <span className="block">
-                                    <CustomeDatePicker
-                                      key={`${viewModalData?.id}-delivery-${viewModalData?.delivery_task?.due_date || viewModalData?.required_delivery_date || ""}`}
-                                      value={
-                                        viewModalData?.delivery_task?.due_date
-                                          ? new Date(viewModalData.delivery_task.due_date).toISOString().slice(0, 10)
-                                          : (viewModalData?.required_delivery_date || undefined)
+                              <div className="space-y-2">
+                                <CustomeTooltip
+                                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                  truncateValue={
+                                    <span className="block">
+                                      <CustomeDatePicker
+                                        key={`${viewModalData?.id}-delivery-${viewModalData?.delivery_task?.due_date || viewModalData?.required_delivery_date || ""}`}
+                                        value={
+                                          viewModalData?.delivery_task?.due_date
+                                            ? new Date(viewModalData.delivery_task.due_date).toISOString().slice(0, 10)
+                                            : (viewModalData?.required_delivery_date || undefined)
+                                        }
+                                        restriction="futureOnly"
+                                        disabledReason={
+                                          shouldDisableBlockedActions
+                                            ? blockedTooltip
+                                            : viewModalData?.is_resolved
+                                              ? "Resolved. Delivery date cannot be updated."
+                                              : !isReady
+                                                ? "Mark as ready to set delivery date."
+                                                : !canUpdateRequiredDelivery
+                                                  ? isFactoryUser
+                                                    ? "Delivery date is set by Site Supervisor."
+                                                    : "Only site supervisor, admin or super-admin can update."
+                                                  : undefined
+                                        }
+                                        onChange={(newDate) => {
+                                          if (!effectiveCanUpdateRequiredDelivery || !newDate) return;
+                                          setSelectedRequiredDelivery(newDate);
+                                          setShowDeliveryConfirm(true);
+                                        }}
+                                      />
+                                    </span>
+                                  }
+                                />
+
+                                {viewModalData?.required_delivery_date && !isDeliveryTaskCompleted && !viewModalData?.is_resolved && (
+                                  <div className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-md border border-amber-200/60 dark:border-amber-800/60">
+                                    <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span>Delivery task is pending completion. Complete the delivery task before marking as resolved.</span>
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                  {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && !isDeliveryTaskCompleted && effectiveCanManageDeliveryTask && (
+                                    <CustomeTooltip
+                                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                      truncateValue={
+                                        <span className="block flex-1">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={shouldDisableBlockedActions}
+                                            onClick={() => {
+                                              if (shouldDisableBlockedActions) return;
+                                              setOpenDeliveryTaskModal(true);
+                                            }}
+                                            className="w-full text-xs"
+                                          >
+                                            Manage Delivery Task
+                                          </Button>
+                                        </span>
                                       }
-                                      restriction="futureOnly"
-                                      disabledReason={
+                                    />
+                                  )}
+
+                                  {viewModalData?.expected_ready_date && canDoMarkAsResolved && canResolveRole && isApproved && isReady && !viewModalData?.is_resolved && (
+                                    <CustomeTooltip
+                                      value={
                                         shouldDisableBlockedActions
                                           ? blockedTooltip
-                                          : viewModalData?.is_resolved
-                                            ? "Resolved. Delivery date cannot be updated."
-                                            : !isReady
-                                              ? "Mark as ready to set delivery date."
-                                              : !canUpdateRequiredDelivery
-                                                ? isFactoryUser
-                                                  ? "Delivery date is set by Site Supervisor."
-                                                  : "Only site supervisor, admin or super-admin can update."
-                                                : undefined
+                                          : !isDeliveryTaskCompleted
+                                            ? "Cannot mark as resolved: Delivery task is not completed yet."
+                                            : ""
                                       }
-                                      onChange={(newDate) => {
-                                        if (!effectiveCanUpdateRequiredDelivery || !newDate) return;
-                                        setSelectedRequiredDelivery(newDate);
-                                        setShowDeliveryConfirm(true);
-                                      }}
-                                    />
-                                  </span>
-                                }
-                              />
-
-                              <div className="flex gap-2">
-                                {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && !isDeliveryTaskCompleted && effectiveCanManageDeliveryTask && (
-                                  <CustomeTooltip
-                                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                    truncateValue={
-                                      <span className="block flex-1">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={shouldDisableBlockedActions}
-                                          onClick={() => {
-                                            if (shouldDisableBlockedActions) return;
-                                            setOpenDeliveryTaskModal(true);
-                                          }}
-                                          className="w-full text-xs"
-                                        >
-                                          Manage Delivery Task
-                                        </Button>
-                                      </span>
-                                    }
-                                  />
-                                )}
-
-                                {viewModalData?.expected_ready_date && canDoMarkAsResolved && canResolveRole && isApproved && isReady && isDeliveryTaskCompleted && !viewModalData?.is_resolved && (
-                                  <CustomeTooltip
-                                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                    truncateValue={
-                                      <span className="block flex-1">
-                                        <Button
-                                          variant="default"
-                                          size="sm"
-                                          disabled={resolveMisc.isPending || shouldDisableBlockedActions}
-                                          onClick={() => {
-                                            if (shouldDisableBlockedActions) return;
-                                            resolveMisc.mutate(
-                                              { vendorId, leadId, miscId: viewModalData?.id || 0, resolved_by: userId! },
-                                              {
-                                                onSuccess: () => {
-                                                  queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
+                                      truncateValue={
+                                        <span className="block flex-1">
+                                          <Button
+                                            variant="default"
+                                            size="sm"
+                                            disabled={!isDeliveryTaskCompleted || resolveMisc.isPending || shouldDisableBlockedActions}
+                                            onClick={() => {
+                                              if (!isDeliveryTaskCompleted || shouldDisableBlockedActions) return;
+                                              resolveMisc.mutate(
+                                                { vendorId, leadId, miscId: viewModalData?.id || 0, resolved_by: userId! },
+                                                {
+                                                  onSuccess: () => {
+                                                    queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
+                                                  },
                                                 },
-                                              },
-                                            );
-                                          }}
-                                          className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                                        >
-                                          <CheckCircle2 className="w-3.5 h-3.5" />
-                                          {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
-                                        </Button>
-                                      </span>
-                                    }
-                                  />
-                                )}
-                              </div>
+                                              );
+                                            }}
+                                            className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                                          >
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
+                                          </Button>
+                                        </span>
+                                      }
+                                    />
+                                  )}
+                                </div>
 
                               {(() => {
                                 const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];

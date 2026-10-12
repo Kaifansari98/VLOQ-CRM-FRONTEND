@@ -93,10 +93,13 @@ export interface CompanyVendorMasterResponse {
 }
 
 export interface UserMasterEntry {
+  franchise_ids?: number[];
+  franchises?: { id: number; franchise_name: string }[];
   id: number;
   vendor_id: number;
   franchise_id?: number | null;
   user_name: string;
+  designation?: string | null;
   user_contact: string;
   user_email: string;
   user_timezone: string;
@@ -1232,7 +1235,14 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number, isInventory
 
 export const fetchUsersForMaster = async (
   vendorId: number,
-  params: { page: number; limit: number; search?: string; franchise_id?: number },
+  params: {
+    page: number;
+    limit: number;
+    search?: string;
+    franchise_id?: number;
+    user_type?: string;
+    exclude_user_type?: string;
+  },
 ) => {
   const res = await apiClient.get<UserMasterResponse>(`/users/vendor/${vendorId}`, {
     params: {
@@ -1240,6 +1250,8 @@ export const fetchUsersForMaster = async (
       limit: params.limit,
       search: params.search ?? "",
       ...(params.franchise_id ? { franchise_id: params.franchise_id } : {}),
+      ...(params.user_type ? { user_type: params.user_type } : {}),
+      ...(params.exclude_user_type ? { exclude_user_type: params.exclude_user_type } : {}),
     },
   });
   return {
@@ -1433,6 +1445,13 @@ export const createProductItemCode = async (
   return res.data;
 }
 
+export const updateProductItemCode = async (
+  { id, ...payload }: CreateProductItemCodeMasterPayload & { id: number },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-item-code/${id}`, payload);
+  return res.data;
+}
+
 export const fetchSmallOrderRequestTypes = async (vendorId: number) => {
   const res = await apiClient.get(
     `/leads/get-all-small-order-request-types/${vendorId}`,
@@ -1462,9 +1481,12 @@ export interface UserTypeMasterResponse {
 }
 
 export interface CreateUserMasterPayload {
+  confirm_additional_supervisor?: boolean;
+  franchise_ids?: number[];
   vendor_id: number;
   franchise_id: number;
   user_name: string;
+  designation?: string | null;
   user_contact: string;
   user_email: string;
   user_timezone: string;
@@ -1517,7 +1539,10 @@ export const createUser = async (payload: CreateUserMasterPayload) => {
 }
 
 export interface UpdateUserMasterPayload {
+  confirm_additional_supervisor?: boolean;
+  franchise_ids?: number[];
   user_name?: string;
+  designation?: string | null;
   user_contact?: string;
   user_email?: string;
   user_timezone?: string;

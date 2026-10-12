@@ -33,6 +33,7 @@ export type LeadColumn = {
   designerRemark: string;
   isDraft?: boolean;
   isFastProduction?: boolean;
+  isBlocked?: boolean;
   accountId: number; // n
   updatedAt: string; //n
   site_map_link?: string;

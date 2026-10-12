@@ -195,6 +195,7 @@ export interface BookingLeadById {
   mrpValue: number;
   assignedTo: AssignedTo | null;
   bookingAmount?: number;
+  franchiseId?: number | null;
 }
 // ─────────── API Response ───────────
 export interface BookingLeadResponse {

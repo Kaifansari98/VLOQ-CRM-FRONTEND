@@ -2,6 +2,7 @@
 
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import PreProductionDetails from "./PreProductionDetails";
+import ProductionMachineMatrix from "@/components/track-trace/ProductionMachineMatrix";
 import PostProductionDetails from "./PostProductionDetails";
 import {
   useCheckPostProductionReady,
@@ -41,6 +42,10 @@ export default function LeadDetailsProductionUtil({
   instanceId,
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const showMachineMatrix = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+      s.auth.user?.vendor?.is_inventory_enabled === true,
+  );
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
@@ -268,11 +273,15 @@ export default function LeadDetailsProductionUtil({
           ? "Click Mark Pre Prod Done first to enable Under Production."
           : "",
       cardContent: isOrderLoginFilled ? (
-        <PreProductionDetails
-          leadId={leadId}
-          accountId={accountId}
-          instanceId={effectiveInstanceId}
-        />
+        showMachineMatrix ? (
+          <ProductionMachineMatrix vendorId={vendorId} leadId={leadId} />
+        ) : (
+          <PreProductionDetails
+            leadId={leadId}
+            accountId={accountId}
+            instanceId={effectiveInstanceId}
+          />
+        )
       ) : (
         <ComingSoon
           heading="Order Login Is Still Pending"
@@ -302,6 +311,9 @@ export default function LeadDetailsProductionUtil({
       ),
     },
   ], [
+    showMachineMatrix,
+    vendorId,
+    shouldRequirePreProduction,
     canViewProductionFiles,
     normalizedUserType,
     leadId,

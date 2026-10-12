@@ -50,14 +50,16 @@ export function getMaterialStockState(row: ProductionPreviewRow): keyof typeof s
 const quantity = (value: number | string | null | undefined) => value == null || value === "" || !Number.isFinite(Number(value))
   ? "—" : Number(value).toLocaleString(undefined, { maximumFractionDigits: 8 });
 
-export default function ProductionMaterialsTable({ rows, checked = true, busy = false, enableRowSelection = false, isMaterialIssueView = false, onFreezeSelected, onIssueSelected, hideSelectionBar = false }: {
+export default function ProductionMaterialsTable({ rows, checked = true, busy = false, enableRowSelection = false, isMaterialIssueView = false, onFreezeSelected, onIssueSelected, onOutsourceSelected, hideSelectionBar = false }: {
   rows: ProductionPreviewRow[]; checked?: boolean; busy?: boolean; enableRowSelection?: boolean; isMaterialIssueView?: boolean;
+  onOutsourceSelected?: (rows: ProductionPreviewRow[]) => void;
   onFreezeSelected?: (rows: ProductionPreviewRow[]) => void; onIssueSelected?: (rows: ProductionPreviewRow[]) => void; hideSelectionBar?: boolean;
 }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(() => new Set());
-  const selectedRows = useMemo(() => rows.filter((row) => selectedRowKeys.has(row.key)), [rows, selectedRowKeys]);
+  const selectableRows = useMemo(() => onOutsourceSelected ? rows.filter((row) => !row.orderLoginId) : rows, [rows, onOutsourceSelected]);
+  const selectedRows = useMemo(() => selectableRows.filter((row) => selectedRowKeys.has(row.key)), [selectableRows, selectedRowKeys]);
   const selectedCount = selectedRows.length;
-  const allSelected = rows.length > 0 && selectedCount === rows.length;
+  const allSelected = selectableRows.length > 0 && selectedCount === selectableRows.length;
   const clearSelection = () => setSelectedRowKeys(new Set());
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -115,8 +117,8 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                       <Checkbox
                         aria-label="Select all material rows"
                         checked={allSelected ? true : selectedCount > 0 ? "indeterminate" : false}
-                        disabled={busy || rows.length === 0}
-                        onCheckedChange={(value) => setSelectedRowKeys(value === true ? new Set(rows.map((row) => row.key)) : new Set())}
+                        disabled={busy || selectableRows.length === 0}
+                        onCheckedChange={(value) => setSelectedRowKeys(value === true ? new Set(selectableRows.map((row) => row.key)) : new Set())}
                       />
                     </th>}
                     <th className="border-r px-4 py-3 font-semibold uppercase tracking-wide">Product / Article code</th>
@@ -154,14 +156,15 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                     const updatedStock = row.available !== undefined
                       ? (row.available >= need ? row.available - need : need - row.available)
                       : undefined;
-                    const insufficient = row.available !== undefined && need > row.available;
+                    const isOutsourced = !!row.orderLoginId;
+                    const insufficient = !isOutsourced && row.available !== undefined && need > row.available;
                     const stockState = isMaterialIssueView && checked ? getMaterialStockState(row) : undefined;
-                    return <tr key={row.key} data-state={enableRowSelection && selectedRowKeys.has(row.key) ? "selected" : undefined} className="align-top transition-colors hover:bg-muted/30 data-[state=selected]:bg-primary/5">
+                    return <tr key={row.key} data-state={enableRowSelection && selectedRowKeys.has(row.key) ? "selected" : undefined} className={cn("align-top transition-colors hover:bg-muted/30 data-[state=selected]:bg-primary/5", row.orderLoginId && "bg-violet-500/10 hover:bg-violet-500/15")}>
                     {enableRowSelection && <td className="border-r px-4 py-3">
                       <Checkbox
                         aria-label={`Select ${row.name || "product"} (${row.articleCode || "no article code"})`}
-                        checked={selectedRowKeys.has(row.key)}
-                        disabled={busy}
+                        checked={selectedRowKeys.has(row.key) && (!onOutsourceSelected || !row.orderLoginId)}
+                        disabled={busy || (!!onOutsourceSelected && !!row.orderLoginId)}
                         onCheckedChange={(value) => setSelectedRowKeys((previous) => {
                           const next = new Set(previous);
                           if (value === true) next.add(row.key);
@@ -174,6 +177,7 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                       {stockState && <span className={cn("mb-1.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium", stockChipColors[stockState])}>
                         <span className={cn("size-1.5 rounded-full", stockDotColors[stockState])} />{stockLabels[stockState]}
                       </span>}
+                      {!!row.orderLoginId && <span className="mb-1.5 inline-flex rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">Outsourced</span>}
                       <p className="font-medium break-words">{row.name || "Unnamed product"}</p>
                       <p className="mt-1 font-mono text-xs text-primary">{row.articleCode || "No article code"}</p>
                       {row.product && row.product.product_name !== row.name && <p className="mt-1 text-xs text-muted-foreground">Inventory: {row.product.product_name}</p>}
@@ -188,8 +192,8 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                     </td>
                     <td className="border-r px-4 py-3 tabular-nums">{quantity(row.product?.current_stock)}<p className="text-xs text-muted-foreground">{row.stockUnit}</p></td>
                     <td className={cn("px-4 py-3 tabular-nums", insufficient && "font-medium text-amber-700 dark:text-amber-400")}>
-                      <span className="inline-flex items-center gap-1">{insufficient && <AlertTriangle className="size-3.5 shrink-0" />}{quantity(updatedStock)}</span>
-                      <p className="text-xs text-muted-foreground">{updatedStock !== undefined ? row.unit : ""}</p>
+                      <span className="inline-flex items-center gap-1">{insufficient && <AlertTriangle className="size-3.5 shrink-0" />}{isOutsourced ? "-" : quantity(updatedStock)}</span>
+                      <p className="text-xs text-muted-foreground">{!isOutsourced && updatedStock !== undefined ? row.unit : ""}</p>
                     </td>
                   </tr>;
                   })}</tbody>
@@ -214,12 +218,13 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                     <span className="whitespace-nowrap text-sm font-medium tabular-nums">{selectedCount} item{selectedCount === 1 ? "" : "s"} selected</span>
                     <div className="h-5 w-px bg-border" />
                     <div className="flex items-center gap-1.5">
-                      <Button size="sm" className="gap-1.5 rounded-full border-0 bg-blue-500 text-white hover:bg-blue-600" onClick={() => onFreezeSelected?.(selectedRows)}>
+                      {onFreezeSelected && <Button disabled={busy} size="sm" className="gap-1.5 rounded-full border-0 bg-blue-500 text-white hover:bg-blue-600" onClick={() => onFreezeSelected?.(selectedRows)}>
                         <Snowflake className="size-3.5" />Freeze Item
-                      </Button>
-                      <Button size="sm" className="gap-1.5 rounded-full border-0 bg-green-500 text-white hover:bg-green-600" onClick={() => onIssueSelected?.(selectedRows)}>
+                      </Button>}
+                      {onIssueSelected && <Button disabled={busy} size="sm" className="gap-1.5 rounded-full border-0 bg-green-500 text-white hover:bg-green-600" onClick={() => onIssueSelected?.(selectedRows)}>
                         <Truck className="size-3.5" />Issue Item
-                      </Button>
+                      </Button>}
+                      {onOutsourceSelected && <Button disabled={busy} size="sm" className="gap-1.5 rounded-full" onClick={() => onOutsourceSelected(selectedRows)}><Truck className="size-3.5" />Outsource Item</Button>}
                       <Button
                         size="icon"
                         variant="ghost"

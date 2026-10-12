@@ -311,10 +311,12 @@ const draftFormSchema = (
 interface LeadsGenerationFormProps {
   onClose: () => void;
   mode?: "standard" | "lead-pool";
+  draftInOpenLeads?: boolean;
 }
 export default function LeadsGenerationForm({
   onClose,
   mode = "standard",
+  draftInOpenLeads = false,
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
@@ -951,9 +953,15 @@ export default function LeadsGenerationForm({
         form.reset();
         setFiles([]);
         onClose();
-        router.push("/dashboard/online-leads");
         if (typeof window !== "undefined") {
-          window.location.reload();
+          if (window.location.pathname.includes("/dashboard/lead-pool")) {
+            window.location.reload();
+          } else if (window.location.pathname.includes("/dashboard/online-leads")) {
+            window.location.reload();
+          } else {
+            router.push("/dashboard/lead-pool");
+            window.location.reload();
+          }
         }
         return;
       }
@@ -1021,9 +1029,11 @@ export default function LeadsGenerationForm({
       setFiles([]);
       onClose();
       router.push(
-        isOnlineLeadFeatureEnabled
-          ? "/dashboard/leads/online-lead"
-          : "/dashboard/leads/draft-lead"
+        draftInOpenLeads
+          ? "/dashboard/leads/leadstable?tab=open"
+          : isOnlineLeadFeatureEnabled
+            ? "/dashboard/leads/online-lead"
+            : "/dashboard/leads/draft-lead"
       );
     },
     onError: (error: any) => {
@@ -1427,6 +1437,7 @@ export default function LeadsGenerationForm({
           assigned_by: createdBy,
         }),
       is_draft: true,
+      draft_in_open_leads: draftInOpenLeads,
     };
 
     saveDraftMutation.mutate({ payload, files: buildRenamedSitePhotoFiles() });

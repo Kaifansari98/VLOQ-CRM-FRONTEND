@@ -24,6 +24,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { MetaIcon } from "@/components/icons/meta-icon";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -433,6 +434,30 @@ const data = {
       ],
     },
   ],
+  hrmsMastersNav: [
+    {
+      title: "HRMS Masters",
+      url: "#",
+      icon: Users,
+      items: [
+        {
+          title: "Field Masters",
+          url: "/dashboard/masters-management/hrms-masters/field-masters",
+        },
+        {
+          title: "Employee Master",
+          url: "/dashboard/masters-management/hrms-masters/employee-master",
+        },
+      ],
+    },
+  ],
+  integrationNav: [
+    {
+      title: "Meta",
+      url: "/dashboard/integration/meta",
+      icon: MetaIcon,
+    },
+  ],
   masterAdminNav: [
     {
       title: "Dashboard",
@@ -483,12 +508,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
+  const isMiscellaneousEnabled = user?.vendor?.is_miscellaneous_enabled === true;
   const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const isOnlineLeadFeatureEnabled =
     user?.vendor?.is_online_lead_feature_enabled === true;
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const isHrmsMasterEnabled =
+    user?.vendor?.is_hrms_master_enabled === true ||
+    (user as any)?.vendorMaster?.is_hrms_master_enabled === true;
   const handlesLargeScaleProjects =
     user?.vendor?.handlesLargeScaleProjects === true;
   const canSeeOverallLeads =
@@ -613,16 +642,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
     : data.user;
 
-  const { navItems, trackTraceItems, inventoryItems, mastersItems, inventoryMasterItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, mastersItems, inventoryMasterItems, integrationItems } = React.useMemo(() => {
     // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
     if (isMasterAdmin) {
       return {
-  navItems: data.masterAdminNav,
-  trackTraceItems: [],
-  inventoryItems: [],
-  inventoryMasterItems: [],
-  mastersItems: [],
-};
+        navItems: data.masterAdminNav,
+        trackTraceItems: [],
+        inventoryItems: [],
+        inventoryMasterItems: [],
+        mastersItems: [],
+        integrationItems: [],
+      };
     }
 
       const environment = (
@@ -698,6 +728,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
 
       if (item.title === "Miscellaneous Module") {
+        if (!isMiscellaneousEnabled) return false;
         const canSeeMiscModule =
           userType === "admin" ||
           userType === "super-admin" ||
@@ -890,6 +921,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         );
         if (underInstallationIndex !== -1) {
           const shouldShowMisc =
+            isMiscellaneousEnabled &&
             userType !== "factory" &&
             canSeeMiscLeads &&
             (miscLeadsCount > 0 || userType === "miscellaneous");
@@ -963,7 +995,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           : finalNavItemsSource;
 
       let navItemsWithRoleAdditions: any[] = initialNavItems;
-      if (userType === "factory") {
+      if (userType === "factory" && isMiscellaneousEnabled) {
         const dashboardIndex = navItemsWithRoleAdditions.findIndex(
           (item) => item.title === "Dashboard",
         );
@@ -1018,18 +1050,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       : [];
 
     const finalMastersItems = isSuperAdmin && isCrmEnabled
-      ? data.mastersNav.map((section) => ({
-        ...section,
-        items:
-          environment === "PRODUCTION"
-            ? section.items.filter((item) =>
-              item.title === "User Master"
-                ? isCustomUserTypeOnlyVendor
-                : true,
-            )
-            : section.items,
-      }))
+      ? [
+          ...data.mastersNav.map((section) => ({
+            ...section,
+            items:
+              environment === "PRODUCTION"
+                ? section.items.filter((item) =>
+                  item.title === "User Master"
+                    ? isCustomUserTypeOnlyVendor
+                    : true,
+                )
+                : section.items,
+          })),
+          ...(isHrmsMasterEnabled ? data.hrmsMastersNav : []),
+        ]
       : [];
+
+    const finalIntegrationItems =
+      isSuperAdmin && isCrmEnabled && isOnlineLeadFeatureEnabled
+        ? data.integrationNav
+        : [];
     let resolvedNavItems = (
       isOnlineLeadFeatureEnabled
         ? finalNavItems
@@ -1050,7 +1090,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
       mastersItems: finalMastersItems,
-      inventoryMasterItems: finalInventoryMasterItems
+      inventoryMasterItems: finalInventoryMasterItems,
+      integrationItems: finalIntegrationItems,
     };
   }, [
     mounted,
@@ -1071,6 +1112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isTrackTraceEnabled,
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,
+    isHrmsMasterEnabled,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
     handlesLargeScaleProjects,
@@ -1094,14 +1136,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const activeFranchise = franchises.find(
       (franchise) => franchise.id === franchiseId,
     );
+    const normalizedUserType = (user?.user_type?.user_type || "")
+      .trim()
+      .toLowerCase();
+    const isSiteSupervisor = normalizedUserType === "site-supervisor";
     const userTypeLabel = sanitize(user?.user_type?.user_type || "");
 
     const fallbackTeam = {
       id: user.franchise_id ?? user.vendor_id,
-      name:
-        activeFranchise?.franchise_name ||
-        user.vendor?.vendor_name ||
-        "Default Vendor",
+      name: isSiteSupervisor
+        ? user.vendor?.vendor_name ||
+          activeFranchise?.franchise_name ||
+          "Default Vendor"
+        : activeFranchise?.franchise_name ||
+          user.vendor?.vendor_name ||
+          "Default Vendor",
       logo: GalleryVerticalEnd,
       plan: userTypeLabel,
     };
@@ -1155,7 +1204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           inventoryItems={inventoryItems}
           mastersItems={mastersItems}
           inventoryMasterItems={inventoryMasterItems}
-
+          integrationItems={integrationItems}
         />
       </SidebarContent>
 

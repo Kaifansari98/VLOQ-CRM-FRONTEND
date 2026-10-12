@@ -14,7 +14,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import {
   useCreateProductItemCode,
+  useUpdateProductItemCode,
   useCreateProductSubStructure,
   useCreateProductType,
   useCreateProductStructure,
@@ -63,6 +64,7 @@ type MasterRow = {
   id: number;
   name: string;
   parent?: string | null;
+  subStructureId?: number;
   description?: string | null;
   specification?: string | null;
   status: string;
@@ -81,6 +83,7 @@ function MasterListingTable({
   isError,
   errorMessage,
   onAction,
+  onEdit,
 }: {
   title: string;
   description: string;
@@ -94,6 +97,7 @@ function MasterListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction?: () => void;
+  onEdit?: (row: MasterRow) => void;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -154,8 +158,30 @@ function MasterListingTable({
           );
         },
       },
+      ...(onEdit
+        ? [
+            {
+              id: "actions",
+              header: "Actions",
+              enableSorting: false,
+              enableHiding: false,
+              cell: ({ row }) => (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(row.original)}
+                  aria-label={`Edit item code ${row.original.name}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              ),
+            } satisfies ColumnDef<MasterRow>,
+          ]
+        : []),
     ],
-    [showDescription, showParent, showSpecification],
+    [showDescription, showParent, showSpecification, onEdit],
   );
 
   const table = useReactTable({
@@ -231,6 +257,7 @@ function MasterListingTable({
 export default function BoqItemsMasterPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createProductItemCodeMutation = useCreateProductItemCode();
+  const updateProductItemCodeMutation = useUpdateProductItemCode();
   const createProductTypeMutation = useCreateProductType();
   const createProductStructureMutation = useCreateProductStructure();
   const createProductSubStructureMutation = useCreateProductSubStructure();
@@ -277,6 +304,7 @@ export default function BoqItemsMasterPage() {
         srNo: index + 1,
         id: item.id,
         name: item.item_code,
+        subStructureId: item.sub_product_structure_id ?? item.subProductStructure?.id,
         parent: item.subProductStructure?.type ?? null,
         description: item.description ?? null,
         specification: item.specification ?? null,
@@ -317,6 +345,8 @@ export default function BoqItemsMasterPage() {
   const [openCreateSubItemCategoryModal, setOpenCreateSubItemCategoryModal] =
     React.useState(false);
   const [itemGroupTypeValue, setItemGroupTypeValue] = React.useState("");
+  const [editingItemCodeId, setEditingItemCodeId] = React.useState<number | null>(null);
+  const isSavingItemCode = createProductItemCodeMutation.isPending || updateProductItemCodeMutation.isPending;
   const [itemCodeValue, setItemCodeValue] = React.useState("");
   const [itemCodeSubStructureId, setItemCodeSubStructureId] = React.useState("");
   const [itemCodeDescription, setItemCodeDescription] = React.useState("");
@@ -347,7 +377,31 @@ export default function BoqItemsMasterPage() {
     );
   };
 
-  const handleCreateItemCode = () => {
+  const resetItemCodeForm = () => {
+    setEditingItemCodeId(null);
+    setItemCodeValue("");
+    setItemCodeSubStructureId("");
+    setItemCodeDescription("");
+    setItemCodeSpecification("");
+  };
+
+  const handleItemCodeModalChange = (open: boolean) => {
+    if (isSavingItemCode) return;
+    setOpenCreateItemCodeModal(open);
+    if (!open) resetItemCodeForm();
+  };
+
+  const handleEditItemCode = (row: MasterRow) => {
+    setEditingItemCodeId(row.id);
+    setItemCodeValue(row.name);
+    setItemCodeSubStructureId(row.subStructureId ? String(row.subStructureId) : "");
+    setItemCodeDescription(row.description ?? "");
+    setItemCodeSpecification(row.specification ?? "");
+    setOpenCreateItemCodeModal(true);
+  };
+
+  const handleSaveItemCode = () => {
+    if (isSavingItemCode) return;
     const itemCode = itemCodeValue.trim();
     const description = itemCodeDescription.trim();
     const specification = itemCodeSpecification.trim();
@@ -370,25 +424,26 @@ export default function BoqItemsMasterPage() {
       return;
     }
 
-    createProductItemCodeMutation.mutate(
-      {
-        vendor_id: vendorId,
-        item_code: itemCode,
-        product_structure_id: productStructureId,
-        sub_product_structure_id: subStructureId,
-        description,
-        specification,
+    const payload = {
+      vendor_id: vendorId,
+      item_code: itemCode,
+      product_structure_id: productStructureId,
+      sub_product_structure_id: subStructureId,
+      description,
+      specification,
+    };
+    const options = {
+      onSuccess: () => {
+        setOpenCreateItemCodeModal(false);
+        resetItemCodeForm();
       },
-      {
-        onSuccess: () => {
-          setOpenCreateItemCodeModal(false);
-          setItemCodeValue("");
-          setItemCodeSubStructureId("");
-          setItemCodeDescription("");
-          setItemCodeSpecification("");
-        },
-      },
-    );
+    };
+
+    if (editingItemCodeId !== null) {
+      updateProductItemCodeMutation.mutate({ id: editingItemCodeId, ...payload }, options);
+    } else {
+      createProductItemCodeMutation.mutate(payload, options);
+    }
   };
 
   const handleCreateItemCategory = () => {
@@ -496,7 +551,11 @@ export default function BoqItemsMasterPage() {
                   errorMessage={
                     (productItemCodesError as any)?.response?.data?.error
                   }
-                  onAction={() => setOpenCreateItemCodeModal(true)}
+                  onAction={() => {
+                    resetItemCodeForm();
+                    setOpenCreateItemCodeModal(true);
+                  }}
+                  onEdit={handleEditItemCode}
                 />
               ),
             },
@@ -568,13 +627,15 @@ export default function BoqItemsMasterPage() {
 
       <Dialog
         open={openCreateItemCodeModal}
-        onOpenChange={setOpenCreateItemCodeModal}
+        onOpenChange={handleItemCodeModalChange}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Item Code</DialogTitle>
+            <DialogTitle>{editingItemCodeId !== null ? "Edit Item Code" : "Add Item Code"}</DialogTitle>
             <DialogDescription>
-              Create a new item code and link it to a sub-item category.
+              {editingItemCodeId !== null
+                ? "Update the item code and its sub-item category, description, and specification."
+                : "Create a new item code and link it to a sub-item category."}
             </DialogDescription>
           </DialogHeader>
 
@@ -634,20 +695,15 @@ export default function BoqItemsMasterPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setOpenCreateItemCodeModal(false);
-                setItemCodeValue("");
-                setItemCodeSubStructureId("");
-                setItemCodeDescription("");
-                setItemCodeSpecification("");
-              }}
+              disabled={isSavingItemCode}
+              onClick={() => handleItemCodeModalChange(false)}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateItemCode}
+              onClick={handleSaveItemCode}
               disabled={
-                createProductItemCodeMutation.isPending ||
+                isSavingItemCode ||
                 !itemCodeValue.trim() ||
                 !itemCodeSubStructureId ||
                 !itemCodeDescription.trim() ||
@@ -655,9 +711,9 @@ export default function BoqItemsMasterPage() {
                 !vendorId
               }
             >
-              {createProductItemCodeMutation.isPending
-                ? "Creating..."
-                : "Create"}
+              {isSavingItemCode
+                ? editingItemCodeId !== null ? "Saving..." : "Creating..."
+                : editingItemCodeId !== null ? "Save Changes" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

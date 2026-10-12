@@ -81,7 +81,7 @@ export default function DraftLeadsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {canShowAddNewLeadButton && (
+          {/* {canShowAddNewLeadButton && (
             <>
               <Button size="sm" className="hidden sm:flex" onClick={() => setOpenCreateLead(true)}>
                 Add New Lead
@@ -92,7 +92,7 @@ export default function DraftLeadsPage() {
                 onOpenChange={setOpenCreateLead}
               />
             </>
-          )}
+          )} */}
 
           <NotificationBell />
           <AnimatedThemeToggler />

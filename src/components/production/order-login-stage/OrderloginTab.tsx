@@ -45,6 +45,7 @@ interface OrderLoginTabProps {
   leadId: number;
   accountId: number;
   instanceId?: number | null;
+  hideSections?: boolean;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
 }
@@ -56,6 +57,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   leadId,
   accountId,
   instanceId,
+  hideSections = false,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
 }) => {
@@ -254,15 +256,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   }, [companyVendors, orderLoginData]);
 
   // Titles
-  const legacyDefaultTitles = [
-    "Carcass",
-    "Shutter",
-    "Stock Hardware",
-    "Special Hardware",
-    "Profile Shutter",
-    "Outsourced Shutter",
-    "Glass Material",
-  ];
   const mandatoryTitles = isSmallOrderRequestLead
     ? []
     : ["Carcass", "Shutter", "Stock Hardware"];
@@ -284,18 +277,18 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         title,
         existingData: orderLoginData?.find((i: any) => i.item_type === title),
       })),
-    [orderLoginData],
+    [defaultTitles, orderLoginData],
   );
 
   const extraFromApi = useMemo(
     () =>
       (orderLoginData || []).filter(
         (i: any) =>
-          isSmallOrderRequestLead
-            ? !legacyDefaultTitles.includes(i.item_type)
+          hideSections
+            ? i.outsourcedMaterials?.length > 0
             : !defaultTitles.includes(i.item_type),
       ),
-    [defaultTitles, isSmallOrderRequestLead, orderLoginData],
+    [defaultTitles, hideSections, orderLoginData],
   );
 
   console.log("order login data: ", orderLoginData)
@@ -324,16 +317,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
 
   // ─────────────────────────────────────────────────────────
   // MANDATORY VALIDATION
-  // All 3 mandatory sections must have vendor + description.
+  // Small orders need any one filled card; other leads need all 3 mandatory sections.
   // "Order Login Completed" button is ONLY VISIBLE when isValid = true.
   // ─────────────────────────────────────────────────────────
   const mandatoryValidation = useMemo(() => {
     if (isSmallOrderRequestLead) {
       const hasAtLeastOneFilledCard = (orderLoginData || []).some((item: any) => {
-        if (legacyDefaultTitles.includes(item.item_type)) {
-          return false;
-        }
-
         const local = breakups[item.item_type] ?? {
           item_desc: item.item_desc || "",
           company_vendor_id: item.company_vendor_id || null,
@@ -371,7 +360,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       isValid: missing.length === 0,
       missingFields: missing,
     };
-  }, [breakups, isSmallOrderRequestLead, legacyDefaultTitles, orderLoginData]);
+  }, [breakups, isSmallOrderRequestLead, mandatoryTitles, orderLoginData]);
 
   // Completed button is visible only when role can access AND mandatory fields filled
   const canShowCompletedButton =
@@ -565,6 +554,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         return next;
       });
 
+      queryClient.invalidateQueries({ queryKey: ["requiredProductionMaterials", vendorId, leadId] });
       toastManager.add({ title: "Section deleted successfully", type: "success" });
       setConfirmDelete(null);
 
@@ -585,10 +575,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       <div className="flex flex-col md:flex-row space-y-2 items-start justify-between">
         <div className="space-y-0">
           <h2 className="text-xl font-semibold tracking-tight">Order Login</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+          {!hideSections && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
             Fill out item-level breakups and assign responsibilities before
             order login is finalized.
-          </p>
+          </p>}
         </div>
 
    {isOrderLoginMarked ? (
@@ -653,9 +643,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       </div>
 
       {/* Grid of Breakups */}
+      {(!hideSections || extraFromApi.length > 0) && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* Default Cards */}
-        {defaultCards.map(({ title, existingData }) => {
+        {!hideSections && defaultCards.map(({ title, existingData }) => {
           const perms = getItemEditPermissions(existingData);
           return (
             <FileBreakUpField
@@ -729,7 +720,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         })}
 
         {/* Add New Section Card */}
-        {canAccessButtons && canAddCustomSection && (
+        {!hideSections && canAccessButtons && canAddCustomSection && (
           shouldDisableActions ? (
             <CustomeTooltip
               value={effectiveBlockedTooltip}
@@ -797,6 +788,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           )
         )}
       </div>
+      )}
 
       {/* ✅ Order Login Complete — Confirmation Dialog */}
       <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>

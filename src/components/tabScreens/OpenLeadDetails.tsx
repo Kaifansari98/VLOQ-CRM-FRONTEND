@@ -334,10 +334,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const latestRemarkInfo = useMemo(() => {
     const leadObj = data?.data?.lead;
     if (!leadObj) return null;
+    const isQuestionnaireText = (rem: string) => {
+      const lower = rem.toLowerCase();
+      return (
+        lower.includes("bulk imported") ||
+        lower.startsWith("**•") ||
+        lower.startsWith("•") ||
+        lower.includes("**•") ||
+        lower.includes("what modular solution") ||
+        lower.includes("when do you need your modular") ||
+        lower.startsWith("lead registered via") ||
+        lower.startsWith("lead updated with new data via") ||
+        lower.startsWith("lead assignments updated") ||
+        lower.includes("lead automatically created") ||
+        lower.startsWith("design remarks updated") ||
+        lower.includes("product structure instance added") ||
+        lower.startsWith("status marked as active") ||
+        lower.includes("lead conversion")
+      );
+    };
+
     const isInvalidRemark = (r?: string | null) => {
       if (!r) return true;
       const t = r.trim().toLowerCase();
-      return !t || t === "n/a" || t === "-" || t === "none" || t === "null";
+      const leadRem = ((leadObj as any).remark || "").trim().toLowerCase();
+      return (
+        !t ||
+        t === "n/a" ||
+        t === "-" ||
+        t === "none" ||
+        t === "null" ||
+        isQuestionnaireText(r) ||
+        (isOnlineLeadFeatureEnabled && leadRem ? t === leadRem : false)
+      );
     };
 
     const logs = (leadObj as any).call_log || [];
@@ -369,7 +398,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       }
     }
     return null;
-  }, [data?.data?.lead]);
+  }, [data?.data?.lead, isOnlineLeadFeatureEnabled]);
 
   const renderRemarkContent = (remarkText: string | null, defaultText = "No remarks provided") => {
     if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-" || remarkText.trim() === "N/A") {
@@ -451,7 +480,72 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       );
     }
 
-    const blocks = cleanText.split(/\n\s*\n/);
+    const rawBlocks = cleanText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+
+    // Deduplicate questionnaire blocks so that questions are only shown once (latest update wins)
+    const deduplicatedBlocks: string[] = [];
+    const questionMap = new Map<string, string>();
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
+      return norm;
+    };
+
+    for (const block of rawBlocks) {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const headerLine = lines[0] || "";
+      const isQuestion = headerLine.includes("•") || headerLine.endsWith("?") || headerLine.startsWith("**");
+      if (isQuestion) {
+        const key = getQuestionKey(headerLine);
+        const existingBlock = questionMap.get(key);
+        if (existingBlock) {
+          const existingLines = existingBlock.split("\n").map((l) => l.trim()).filter(Boolean);
+          const existingHeader = existingLines[0] || "";
+          const cleanHeader = getCleanHeader(headerLine);
+          const cleanExisting = getCleanHeader(existingHeader);
+          const isCurrentBetterHeader =
+            (cleanHeader.includes(" ") || cleanHeader.endsWith("?")) &&
+            (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+          const currentAnswer = lines.slice(1).join("\n").trim();
+          const existingAnswer = existingLines.slice(1).join("\n").trim();
+          const chosenAnswer = currentAnswer || existingAnswer;
+          const chosenHeader = isCurrentBetterHeader ? headerLine : existingHeader;
+          questionMap.set(key, chosenAnswer ? `${chosenHeader}\n${chosenAnswer}` : chosenHeader);
+        } else {
+          questionMap.set(key, block);
+        }
+      } else {
+        deduplicatedBlocks.push(block);
+      }
+    }
+    const blocks = [...deduplicatedBlocks, ...Array.from(questionMap.values())];
     return (
       <div className="space-y-3">
         {blocks.map((block, bIdx) => {

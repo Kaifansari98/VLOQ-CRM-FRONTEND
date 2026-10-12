@@ -104,6 +104,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { generateOnlineLeadHistoryReport } from "@/lib/reports/onlineLeadHistoryReport";
+import { useVendorById } from "@/api/vendors";
 import {
   Table,
   TableBody,
@@ -248,15 +249,51 @@ export default function OnlineLeadDetailsPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
-  const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
-  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
-  const isSuperAdmin = userType === "super-admin";
+  const normalizedUserType = userType.replace(/_/g, "-").replace(/\s+/g, "-");
+  const isSuperAdmin =
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "superadmin" ||
+    userType === "super admin";
+  const isAdmin =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "sales-admin" ||
+    normalizedUserType === "salesadmin" ||
+    userType === "sales admin" ||
+    isSuperAdmin;
+  const isCaller =
+    normalizedUserType === "telecaller" ||
+    normalizedUserType === "telecaller-team-lead" ||
+    normalizedUserType === "caller" ||
+    normalizedUserType === "store-caller";
+  const isSiteSupervisor =
+    normalizedUserType === "site-supervisor" ||
+    normalizedUserType === "head-site-supervisor";
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+
+  const { data: vendorDetail } = useVendorById(vendorId ? Number(vendorId) : undefined);
+  const vendorInfo = vendorDetail?.data;
+
   const isOnlineLeadFeatureEnabled =
     lead?.vendor?.is_online_lead_feature_enabled !== undefined
       ? Boolean(lead.vendor.is_online_lead_feature_enabled)
-      : Boolean(user?.vendor?.is_online_lead_feature_enabled === true);
+      : vendorInfo?.is_online_lead_feature_enabled !== undefined
+      ? Boolean(vendorInfo.is_online_lead_feature_enabled)
+      : Boolean(
+          user?.vendor?.is_online_lead_feature_enabled === true ||
+          (user as any)?.vendorMaster?.is_online_lead_feature_enabled === true
+        );
+
+  const isSalesExecutive =
+    normalizedUserType === "sales-executive" ||
+    normalizedUserType === "salesexecutive";
+
+  const canMarkOnHold =
+    isOnlineLeadFeatureEnabled &&
+    (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller);
+  const canMarkLostActive =
+    isOnlineLeadFeatureEnabled &&
+    (isAdmin || isSuperAdmin || isSiteSupervisor || isCaller || isSalesExecutive);
   const isVendorOnlineLeadEnabled = isOnlineLeadFeatureEnabled;
   const userFranchiseId = user?.franchise_id;
   const isPendingApproval = lead?.approval_status === "PENDING";
@@ -415,13 +452,35 @@ export default function OnlineLeadDetailsPage() {
   const latestRemarkInfo = useMemo(() => {
     if (!lead) return null;
     const isQuestionnaireText = (rem: string) => {
-      return rem.includes("Bulk imported:") || rem.includes("What modular solution") || rem.includes("When do you need your modular");
+      const lower = rem.toLowerCase();
+      return (
+        lower.includes("bulk imported") ||
+        lower.startsWith("**•") ||
+        lower.startsWith("•") ||
+        lower.includes("**•") ||
+        lower.includes("what modular solution") ||
+        lower.includes("when do you need your modular") ||
+        lower.startsWith("lead registered via") ||
+        lower.startsWith("lead updated with new data via") ||
+        lower.startsWith("lead assignments updated") ||
+        lower.includes("lead automatically created") ||
+        lower.startsWith("design remarks updated") ||
+        lower.includes("product structure instance added") ||
+        lower.startsWith("status marked as active") ||
+        lower.includes("lead conversion")
+      );
     };
 
     const isInvalidRemark = (rem: string | null | undefined) => {
       if (!rem) return true;
       const clean = rem.trim();
-      return clean === "" || clean === "-" || clean === "N/A" || isQuestionnaireText(clean);
+      return (
+        clean === "" ||
+        clean === "-" ||
+        clean === "N/A" ||
+        isQuestionnaireText(clean) ||
+        (isOnlineLeadFeatureEnabled && lead.remark ? clean.toLowerCase() === lead.remark.trim().toLowerCase() : false)
+      );
     };
 
     const logs = lead.call_log || [];
@@ -455,7 +514,7 @@ export default function OnlineLeadDetailsPage() {
       }
     }
     return null;
-  }, [lead]);
+  }, [lead, isOnlineLeadFeatureEnabled]);
 
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
   const [stores, setStores] = useState<Franchise[]>([]);
@@ -791,7 +850,73 @@ export default function OnlineLeadDetailsPage() {
     }
 
     // Handle multiline text (\n\n separated blocks)
-    const blocks = cleanText.split(/\n\s*\n/);
+    const rawBlocks = cleanText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
+      return norm;
+    };
+
+    // Deduplicate questionnaire blocks so that questions are only shown once (latest update wins)
+    const deduplicatedBlocks: string[] = [];
+    const questionMap = new Map<string, string>();
+
+    for (const block of rawBlocks) {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const headerLine = lines[0] || "";
+      const isQuestion = headerLine.includes("•") || headerLine.endsWith("?") || headerLine.startsWith("**");
+      if (isQuestion) {
+        const key = getQuestionKey(headerLine);
+        const existingBlock = questionMap.get(key);
+        if (existingBlock) {
+          const existingLines = existingBlock.split("\n").map((l) => l.trim()).filter(Boolean);
+          const existingHeader = existingLines[0] || "";
+          const cleanHeader = getCleanHeader(headerLine);
+          const cleanExisting = getCleanHeader(existingHeader);
+          const isCurrentBetterHeader =
+            (cleanHeader.includes(" ") || cleanHeader.endsWith("?")) &&
+            (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+          const currentAnswer = lines.slice(1).join("\n").trim();
+          const existingAnswer = existingLines.slice(1).join("\n").trim();
+          const chosenAnswer = currentAnswer || existingAnswer;
+          const chosenHeader = isCurrentBetterHeader ? headerLine : existingHeader;
+          questionMap.set(key, chosenAnswer ? `${chosenHeader}\n${chosenAnswer}` : chosenHeader);
+        } else {
+          questionMap.set(key, block);
+        }
+      } else {
+        deduplicatedBlocks.push(block);
+      }
+    }
+    const blocks = [...deduplicatedBlocks, ...Array.from(questionMap.values())];
     return (
       <div className="space-y-4">
         {blocks.map((block, bIdx) => {
@@ -834,15 +959,62 @@ export default function OnlineLeadDetailsPage() {
       remaining = cleanText.substring(firstStarIdx);
     }
 
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
+      return norm;
+    };
+
     const regex = /\*\*\s*•?\s*([^*]+?)\s*\*\*\s*([^*]+)/g;
-    const items: { question: string; answer: string }[] = [];
+    const itemMap = new Map<string, { question: string; answer: string }>();
     let match;
     while ((match = regex.exec(remaining)) !== null) {
-      items.push({
-        question: match[1].trim().replace(/^•\s*/, ""),
-        answer: match[2].trim(),
-      });
+      const q = match[1].trim().replace(/^•\s*/, "");
+      const a = match[2].trim();
+      const key = getQuestionKey(q);
+      const existing = itemMap.get(key);
+      if (!existing) {
+        itemMap.set(key, { question: q, answer: a });
+      } else {
+        const cleanQ = getCleanHeader(q);
+        const cleanExisting = getCleanHeader(existing.question);
+        const preferCurrentQ =
+          (cleanQ.includes(" ") || cleanQ.endsWith("?")) &&
+          (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+        itemMap.set(key, {
+          question: preferCurrentQ ? q : existing.question,
+          answer: a || existing.answer,
+        });
+      }
     }
+    const items = Array.from(itemMap.values());
     return items.length > 0 ? { prefix, items } : null;
   };
 
@@ -1154,8 +1326,10 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
+  const [markingActive, setMarkingActive] = useState(false);
+
   const handleMarkAsActive = async () => {
-    if (!lead) return;
+    if (!lead || markingActive) return;
     const pendingStatus = statuses.find(
       (s) => s.status_name.toLowerCase() === "pending"
     );
@@ -1167,6 +1341,7 @@ export default function OnlineLeadDetailsPage() {
       return;
     }
 
+    setMarkingActive(true);
     try {
       const res = await apiClient.patch(`/online-leads/${id}`, {
         status: pendingStatus.id,
@@ -1186,6 +1361,8 @@ export default function OnlineLeadDetailsPage() {
         title: err.response?.data?.error || "Failed to mark lead as active.",
         type: "error",
       });
+    } finally {
+      setMarkingActive(false);
     }
   };
 
@@ -1239,10 +1416,10 @@ export default function OnlineLeadDetailsPage() {
       let finalRemarkToSend = remarkOnlyText;
       if (parsedQuestionnaire && parsedQuestionnaire.items.length > 0) {
         const formattedItems = parsedQuestionnaire.items
-          .map((i) => `**• ${i.question}** ${i.answer}`)
-          .join(" ");
+          .map((i) => `**• ${i.question}**\n${i.answer}`)
+          .join("\n\n");
         finalRemarkToSend = parsedQuestionnaire.prefix
-          ? `${parsedQuestionnaire.prefix} ${formattedItems}`
+          ? `${parsedQuestionnaire.prefix}\n\n${formattedItems}`
           : formattedItems;
       }
 
@@ -1532,6 +1709,14 @@ export default function OnlineLeadDetailsPage() {
     return name === "lost";
   }, [lead]);
 
+  // Check if lead is marked as on hold
+  const isOnHold = useMemo(() => {
+    if (!lead) return false;
+    const statusObj = lead.followupStatus || statuses.find((s) => s.id === lead.status);
+    const name = (statusObj?.status_name || "").toLowerCase().trim();
+    return name === "mark on hold" || name === "on hold" || name.includes("hold");
+  }, [lead, statuses]);
+
   const canMoveToDraft = useMemo(() => {
     return (isAdmin || isCaller) && !isLost;
   }, [isAdmin, isCaller, isLost]);
@@ -1650,7 +1835,7 @@ export default function OnlineLeadDetailsPage() {
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {((!isLost && (!isCaller || canAssign)) || (isLost && !isCaller)) && (
+          {((!isLost && (!isCaller || canAssign)) || (isLost && canMarkLostActive)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1692,6 +1877,20 @@ export default function OnlineLeadDetailsPage() {
                         <PencilLine className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                     )}
+                    {isOnlineLeadFeatureEnabled && isOnHold && (
+                      <DropdownMenuItem
+                        onClick={handleMarkAsActive}
+                        disabled={markingActive}
+                        className="cursor-pointer"
+                      >
+                        {markingActive ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        Mark as Active
+                      </DropdownMenuItem>
+                    )}
                     {canAssign && isOnlineLeadFeatureEnabled && (
                       <DropdownMenuItem
                         onClick={() => {
@@ -1708,9 +1907,20 @@ export default function OnlineLeadDetailsPage() {
                     )}
                   </>
                 ) : (
-                  <DropdownMenuItem onClick={handleMarkAsActive}>
-                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
-                  </DropdownMenuItem>
+                  canMarkLostActive && (
+                    <DropdownMenuItem
+                      onClick={handleMarkAsActive}
+                      disabled={markingActive}
+                      className="cursor-pointer"
+                    >
+                      {markingActive ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      )}
+                      Mark as Active
+                    </DropdownMenuItem>
+                  )
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -2273,6 +2483,9 @@ export default function OnlineLeadDetailsPage() {
                       <TableRow>
                         <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Outcome Status</TableHead>
                         <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Caller</TableHead>
+                        {isOnlineLeadFeatureEnabled && (
+                          <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Call Log Remark</TableHead>
+                        )}
                         <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Date</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2285,8 +2498,17 @@ export default function OnlineLeadDetailsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                            {call.telecaller.user_name}
+                            {call.telecaller?.user_name || "N/A"}
                           </TableCell>
+                          {isOnlineLeadFeatureEnabled && (
+                            <TableCell className="px-4 py-3 text-xs text-foreground font-normal max-w-xs md:max-w-md whitespace-pre-wrap break-words">
+                              {call.remark ? (
+                                <span>{call.remark}</span>
+                              ) : (
+                                <span className="text-muted-foreground italic">No remark</span>
+                              )}
+                            </TableCell>
+                          )}
                           <TableCell className="px-4 py-3 text-xs text-muted-foreground">
                             {new Date(call.created_at).toLocaleDateString()}
                           </TableCell>
@@ -2328,15 +2550,19 @@ export default function OnlineLeadDetailsPage() {
                     {statuses
                       .filter((st) => {
                         const name = st.status_name.toLowerCase();
-                        return name === "follow up done" || name === "lost";
+                        const isDefault = name === "follow up done" || name === "lost";
+                        const isOnHold = name === "mark on hold" || name === "on hold" || name.includes("hold");
+                        return isDefault || (canMarkOnHold && isOnHold);
                       })
                       .map((st) => {
+                        const name = st.status_name.toLowerCase();
+                        const isOnHold = name === "mark on hold" || name === "on hold" || name.includes("hold");
                         return (
                           <SelectItem
                             key={st.id}
                             value={st.id.toString()}
                           >
-                            {st.status_name}
+                            {isOnHold ? "Mark on hold" : st.status_name}
                           </SelectItem>
                         );
                       })}
