@@ -955,9 +955,11 @@ export default function ProjectMachineDetailPage() {
                                       >
                                         <Package className="size-3 text-primary shrink-0" />
                                         <span>{b.box_name}</span>
-                                        <span className="rounded-full bg-zinc-200/90 dark:bg-zinc-700 px-1.5 py-0.2 text-[10px] font-extrabold text-foreground tabular-nums">
-                                          {b.quantity} {b.quantity === 1 ? "pc" : "pcs"}
-                                        </span>
+                                        {b.quantity > 1 && (
+                                          <span className="rounded-full bg-zinc-200/90 dark:bg-zinc-700 px-1.5 py-0.2 text-[10px] font-extrabold text-foreground tabular-nums">
+                                            {b.quantity}
+                                          </span>
+                                        )}
                                       </Badge>
                                     ))}
                                   </div>
@@ -1209,7 +1211,7 @@ export default function ProjectMachineDetailPage() {
                                     <TooltipContent side="top" className="text-xs">
                                       <div className="space-y-0.5">
                                         <p className="font-bold">
-                                          {b.box_name} ({b.quantity} {b.quantity === 1 ? "pc" : "pcs"})
+                                          {b.box_name}{b.quantity > 1 ? ` (${b.quantity})` : ""}
                                         </p>
                                         <p
                                           className={cn(
@@ -1318,16 +1320,18 @@ export default function ProjectMachineDetailPage() {
                                       >
                                         <Package className="size-3 text-primary shrink-0" />
                                         <span>{b.box_name}</span>
-                                        <span className="rounded-full bg-zinc-200/90 dark:bg-zinc-700 px-1.5 py-0.2 text-[10px] font-extrabold text-foreground tabular-nums">
-                                          {b.quantity} {b.quantity === 1 ? "pc" : "pcs"}
-                                        </span>
+                                        {b.quantity > 1 && (
+                                          <span className="rounded-full bg-zinc-200/90 dark:bg-zinc-700 px-1.5 py-0.2 text-[10px] font-extrabold text-foreground tabular-nums">
+                                            {b.quantity}
+                                          </span>
+                                        )}
                                       </Badge>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="text-xs">
                                       <div className="space-y-0.5">
                                         <p className="font-bold">{b.box_name}</p>
                                         <p className="text-[11px] text-muted-foreground">
-                                          Quantity packed: <strong>{b.quantity} pcs</strong>
+                                          Quantity packed: <strong>{b.quantity}</strong>
                                         </p>
                                       </div>
                                     </TooltipContent>
@@ -1442,7 +1446,7 @@ export default function ProjectMachineDetailPage() {
                                         {item.boxes && item.boxes.length > 0 && /pack/i.test(m.machine_name) ? (
                                           <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 pt-0.5 border-t border-border/50">
                                             <Package size={10} /> Packed in:{" "}
-                                            {item.boxes.map((b) => `${b.box_name} (${b.quantity} pcs)`).join(", ")}
+                                            {item.boxes.map((b) => b.quantity > 1 ? `${b.box_name} (${b.quantity})` : b.box_name).join(", ")}
                                           </p>
                                         ) : m.box_name ? (
                                           <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 pt-0.5 border-t border-border/50">
