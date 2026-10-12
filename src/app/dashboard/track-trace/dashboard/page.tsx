@@ -508,13 +508,19 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
                 : "Pending / In Progress"
             }
           />
-          <div className="flex flex-col min-w-0 space-y-1">
+          <div className="flex flex-col min-w-0 space-y-0.5">
             <Link
               href={`/dashboard/track-trace/manage-project/${project.unique_project_id || project.project_id}/details`}
               className="font-bold text-sm text-foreground leading-snug group-hover:text-primary transition-colors whitespace-normal hover:underline"
             >
               {project.project_name}
             </Link>
+            {project.order_no && (
+              <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                <span>Order:</span>
+                <span className="font-semibold text-foreground/90">{project.order_no}</span>
+              </span>
+            )}
             <span className="text-xs text-muted-foreground font-medium">
               <strong className="text-foreground">
                 {project.panels_scanned}
@@ -620,7 +626,7 @@ function ProjectTable({
                     isCompact ? "min-w-[240px]" : "min-w-[280px]",
                   )}
                 >
-                  Project Name
+                  Project / Order
                 </TableHead>
                 {visibleMachines.map((m) => (
                   <TableHead
@@ -907,14 +913,22 @@ export default function TraceTraceDashboard() {
     const list = data?.active ?? [];
     const query = deferredSearchQuery.toLowerCase().trim();
     if (!query) return list;
-    return list.filter((p) => p.project_name.toLowerCase().includes(query));
+    return list.filter((p) => {
+      const matchesName = p.project_name?.toLowerCase().includes(query);
+      const matchesOrder = p.order_no?.toLowerCase().includes(query);
+      return Boolean(matchesName || matchesOrder);
+    });
   }, [data?.active, deferredSearchQuery]);
 
   const archivedFiltered = useMemo(() => {
     const list = data?.archived ?? [];
     const query = deferredSearchQuery.toLowerCase().trim();
     if (!query) return list;
-    return list.filter((p) => p.project_name.toLowerCase().includes(query));
+    return list.filter((p) => {
+      const matchesName = p.project_name?.toLowerCase().includes(query);
+      const matchesOrder = p.order_no?.toLowerCase().includes(query);
+      return Boolean(matchesName || matchesOrder);
+    });
   }, [data?.archived, deferredSearchQuery]);
 
   // ── Top Stats (Memoized) ────────────────────────────────────────────────────
@@ -1112,10 +1126,10 @@ export default function TraceTraceDashboard() {
           {/* Left Controls: Search, Active/Archived Tabs, Status Dropdown */}
           <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
             {/* 1. Search Input */}
-            <div className="relative w-full sm:w-60">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <Input
-                placeholder="Search project..."
+                placeholder="Search project or order no..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 pl-8 pr-8 text-xs rounded-md"
