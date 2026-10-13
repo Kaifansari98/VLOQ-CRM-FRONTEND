@@ -570,12 +570,6 @@ export function UniversalTable({
       normalizedUserType === "site-supervisor" ||
       normalizedUserType === "head-site-supervisor") &&
     !(isHeadSiteSupervisor && isUnderInstallation);
-  const canSeeMyOverallTabs = normalizedUserType === "sales-executive";
-  const hideOverallToggle =
-    !canSeeMyOverallTabs ||
-    (normalizedType === "type 8" && normalizedUserType === "sales-executive");
-  const shouldShowLeadCodeFranchiseFilter = false;
-
   const isCaller =
     [
       "telecaller",
@@ -584,6 +578,14 @@ export function UniversalTable({
       "store-caller",
     ].includes(normalizedUserType || "") ||
     /^(telecaller|caller|store[-_\s]*caller)/i.test(normalizedUserType || "");
+
+  const canSeeMyOverallTabs =
+    normalizedUserType === "sales-executive" ||
+    (isOnlineLeadFeatureEnabled && isCaller);
+  const hideOverallToggle =
+    !canSeeMyOverallTabs ||
+    (normalizedType === "type 8" && normalizedUserType === "sales-executive");
+  const shouldShowLeadCodeFranchiseFilter = false;
 
   const callerStores = useMemo(() => {
     return (franchisesForB2b || []).filter((s: any) => {

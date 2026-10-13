@@ -157,6 +157,7 @@ export function NavMain({
   mastersItems,
   inventoryMasterItems,
   integrationItems,
+  crmGroupLabel,
 }: {
   items: NavItem[];
   trackTraceItems?: NavItem[];
@@ -164,22 +165,29 @@ export function NavMain({
   mastersItems?: NavItem[];
   inventoryMasterItems?: NavItem[];
   integrationItems?: NavItem[];
+  crmGroupLabel?: string;
 }) {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  const handlesLargeScaleProjects = useAppSelector(
-    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
-  );
-  const isCrmEnabled = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_crm_enabled !== false,
-  );
-  const isOnlineLeadFeatureEnabled = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
-  );
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type as string | undefined,
-  );
-  const normalizedUserType = userType?.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
+  const user = useAppSelector((state) => state.auth.user);
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
+  const handlesLargeScaleProjects =
+    user?.vendor?.handlesLargeScaleProjects === true;
+  const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
+  const isOnlineLeadFeatureEnabled =
+    user?.vendor?.is_online_lead_feature_enabled === true;
+  const rawUserType =
+    (typeof user?.user_type === "object"
+      ? user?.user_type?.user_type
+      : user?.user_type) ||
+    user?.user_role ||
+    "";
+  const userType = (rawUserType as string | undefined) || undefined;
+  const normalizedUserType = String(rawUserType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+  const isEmployee = normalizedUserType === "employee";
   const franchiseId =
     useAppSelector((state) => state.auth.franchise_id) ??
     useAppSelector((state) => state.auth.user?.franchise_id) ??
@@ -678,7 +686,9 @@ export function NavMain({
       {/* ── CRM Platform Group ── */}
       {isCrmEnabled && enhancedNavItems.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {crmGroupLabel || (isEmployee ? "HRMS" : "CRM Platform")}
+          </SidebarGroupLabel>
           <SidebarMenu>{enhancedNavItems.map((item) => renderItem(item))}</SidebarMenu>
         </SidebarGroup>
       )}
