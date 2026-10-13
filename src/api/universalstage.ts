@@ -415,6 +415,7 @@ export interface DraftLeadTableDataPostPayload {
     from: string;
     to: string;
   };
+  view_type?: "my" | "overall";
 }
 
 export const postDraftLeadTableData = async (

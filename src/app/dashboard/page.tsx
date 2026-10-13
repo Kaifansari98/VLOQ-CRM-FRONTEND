@@ -21,16 +21,28 @@ import { Kbd } from "@/components/ui/kbd";
 import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
 export default function Page() {
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
-  );
-  const userTypeLabel = sanitize(userType ?? "");
+  const user = useAppSelector((state) => state.auth.user);
+  const rawUserType =
+    (typeof user?.user_type === "object"
+      ? user?.user_type?.user_type
+      : user?.user_type) ||
+    user?.user_role ||
+    "";
+  const userTypeLabel = sanitize(String(rawUserType ?? ""));
+  const normalizedUserType = String(rawUserType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+  const isEmployee = normalizedUserType === "employee";
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
   const [isMac, setIsMac] = useState(true); // <-- FIX
 
   // Runs only in the browser → safe
   useEffect(() => {
+    if (isEmployee) return;
+
     setIsMac(
       typeof navigator !== "undefined" && navigator.platform.includes("Mac")
     );
@@ -47,7 +59,7 @@ export default function Page() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [isMac]);
+  }, [isMac, isEmployee]);
 
   return (
     <>
@@ -71,27 +83,31 @@ export default function Page() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2 pr-4">
-          {/* 🔍 Mobile Search Icon */}
-          <button
-            onClick={() => setOpenSearchModal(true)}
-            className="sm:hidden flex"
-            aria-label="Search"
-          >
-            <Search  />
-          </button>
+          {!isEmployee && (
+            <>
+              {/* 🔍 Mobile Search Icon */}
+              <button
+                onClick={() => setOpenSearchModal(true)}
+                className="sm:hidden flex"
+                aria-label="Search"
+              >
+                <Search  />
+              </button>
 
-          {/* 🔍 Desktop Search Input */}
-          <div
-            onClick={() => setOpenSearchModal(true)}
-            className="hidden sm:flex items-center justify-between w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
-          >
-            <span className="truncate">Search leads...</span>
+              {/* 🔍 Desktop Search Input */}
+              <div
+                onClick={() => setOpenSearchModal(true)}
+                className="hidden sm:flex items-center justify-between w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
+              >
+                <span className="truncate">Search leads...</span>
 
-            <div className="flex items-center gap-1">
-              <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
-              <Kbd>K</Kbd>
-            </div>
-          </div>
+                <div className="flex items-center gap-1">
+                  <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+                  <Kbd>K</Kbd>
+                </div>
+              </div>
+            </>
+          )}
 
           <NotificationBell />
           <AnimatedThemeToggler />
@@ -101,10 +117,12 @@ export default function Page() {
       {/* Wrap everything inside the conditional dashboard renderer */}
       <DashboardWrapper />
 
-      <GlobalLeadSearchModal
-        open={openSearchModal}
-        onOpenChange={setOpenSearchModal}
-      />
+      {!isEmployee && (
+        <GlobalLeadSearchModal
+          open={openSearchModal}
+          onOpenChange={setOpenSearchModal}
+        />
+      )}
     </>
   );
 }

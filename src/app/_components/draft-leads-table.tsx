@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 // API & REDUX IMPORTS
 import { useAppSelector } from "@/redux/store";
@@ -89,6 +90,12 @@ export default function DraftLeadsTable({
   }, [rawStores]);
 
   const [storeFilter, setStoreFilter] = React.useState<string>("");
+
+  const canSeeMyOverallTabs =
+    normalizedUserType === "sales-executive" ||
+    (isOnlineLeadFeatureEnabled && isCaller);
+
+  const [viewType, setViewType] = React.useState<"my" | "overall">("my");
 
   const [actingLeadId, setActingLeadId] = React.useState<number | null>(null);
 
@@ -159,7 +166,7 @@ export default function DraftLeadsTable({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const postPayload: DraftLeadTableDataPostPayload = React.useMemo(() => {
+  const basePostPayload: DraftLeadTableDataPostPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(columnFilters);
 
@@ -207,10 +214,36 @@ export default function DraftLeadsTable({
     globalFilter,
   ]);
 
-  const { data, isLoading } = useDraftLeadTableDataPost(
-    vendorId!,
-    postPayload
+  const myPayload = React.useMemo(
+    () => ({
+      ...basePostPayload,
+      view_type: "my" as const,
+    }),
+    [basePostPayload],
   );
+
+  const overallPayload = React.useMemo(
+    () => ({
+      ...basePostPayload,
+      view_type: "overall" as const,
+    }),
+    [basePostPayload],
+  );
+
+  const { data: myData, isLoading: isMyLoading } = useDraftLeadTableDataPost(
+    vendorId!,
+    myPayload,
+  );
+
+  const { data: overallData, isLoading: isOverallLoading } =
+    useDraftLeadTableDataPost(vendorId!, overallPayload);
+
+  const effectiveViewType = canSeeMyOverallTabs ? viewType : "my";
+  const data = effectiveViewType === "overall" ? overallData : myData;
+  const isLoading =
+    effectiveViewType === "overall" ? isOverallLoading : isMyLoading;
+  const myCount = myData?.count ?? 0;
+  const overallCount = overallData?.count ?? 0;
 
 
   const tableData: DraftLeadRow[] = React.useMemo(() => {
@@ -325,6 +358,44 @@ export default function DraftLeadsTable({
             {stageDescription}
           </p>
         </div>
+
+        {canSeeMyOverallTabs && (
+          <div className="flex gap-2 items-end">
+            <Button
+              size="sm"
+              variant={effectiveViewType === "my" ? "default" : "secondary"}
+              onClick={() => {
+                setViewType("my");
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              className="flex-1 md:flex-none"
+            >
+              My Leads
+              {isOnlineLeadFeatureEnabled &&
+              (myCount === 0 || Number(myCount) === 0)
+                ? ""
+                : ` (${myCount})`}
+            </Button>
+
+            <Button
+              size="sm"
+              variant={
+                effectiveViewType === "overall" ? "default" : "secondary"
+              }
+              onClick={() => {
+                setViewType("overall");
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              className="flex-1 md:flex-none"
+            >
+              Overall Leads
+              {isOnlineLeadFeatureEnabled &&
+              (overallCount === 0 || Number(overallCount) === 0)
+                ? ""
+                : ` (${overallCount})`}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ================= TABLE ================= */}

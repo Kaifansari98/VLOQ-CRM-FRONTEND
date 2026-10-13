@@ -44,6 +44,9 @@ export interface VendorListItem {
     id: number;
     name: string;
   } | null;
+  time_zone?: string;
+  time_zone_id?: number | null;
+  time_zone_master?: TimeZoneItem | null;
 }
 
 export interface VendorListParams {
@@ -82,6 +85,7 @@ export interface OnboardVendorPayload {
   status: "active";
   logo: string;
   time_zone: string;
+  time_zone_id?: number | null;
   handlesLargeScaleProjects?: boolean;
   is_crm_enabled?: boolean;
   is_inventory_enabled: boolean;
@@ -112,6 +116,7 @@ export interface UpdateVendorPayload {
   primary_contact_email: string;
   status: "active";
   time_zone: string;
+  time_zone_id?: number | null;
   handlesLargeScaleProjects: boolean;
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
@@ -249,3 +254,32 @@ export const useStates = () => {
     refetchOnWindowFocus: false,
   });
 };
+
+export interface TimeZoneItem {
+  id: number;
+  name: string;
+  time_zone_code: string;
+  is_active: boolean;
+}
+
+export const fetchTimeZones = async (params?: {
+  is_active?: boolean;
+}): Promise<{
+  success: boolean;
+  data: TimeZoneItem[];
+}> => {
+  const query =
+    params?.is_active !== undefined ? `?is_active=${params.is_active}` : "";
+  const { data } = await apiClient.get(`/time-zones${query}`);
+  return data;
+};
+
+export const useTimeZones = (params?: { is_active?: boolean }) => {
+  return useQuery({
+    queryKey: ["time-zones", params],
+    queryFn: () => fetchTimeZones(params),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
