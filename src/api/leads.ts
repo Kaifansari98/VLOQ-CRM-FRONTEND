@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toastManager } from "@/components/ui/toast";
 import { getErrorMessage } from "@/lib/utils";
+import type { WalkinAnswerGroup } from "@/types/walkin-lead-questions";
 
 interface ApiErrorResponse {
   message?: string;
@@ -28,6 +29,7 @@ export interface UploadProgressInfo {
 }
 
 export interface CreateLeadPayload {
+  walkin_answers?: WalkinAnswerGroup[];
   firstname: string;
   lastname: string;
   country_code: string;
@@ -747,7 +749,7 @@ export const createLead = async (
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       if (Array.isArray(value)) {
-        if (value.length > 0 && typeof value[0] === "object") {
+        if (key === "walkin_answers" || (value.length > 0 && typeof value[0] === "object")) {
           formData.append(key, JSON.stringify(value));
         } else {
           value.forEach((item) => {

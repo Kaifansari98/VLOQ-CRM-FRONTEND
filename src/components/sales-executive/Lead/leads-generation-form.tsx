@@ -72,6 +72,9 @@ import {
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
 import { getErrorMessage } from "@/lib/utils";
 import { FileUploadField } from "@/components/custom/file-upload";
+import WalkinLeadQuestions from "./walkin-lead-questions";
+import { useWalkinLeadQuestions } from "@/hooks/useWalkinLeadQuestions";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
 
 const priorityOptions = [
   { id: 1, label: "High", value: "High" },
@@ -639,6 +642,15 @@ export default function LeadsGenerationForm({
   }, [sourceTypes?.data, form, handlesLargeScaleProjects, mode]);
 
   const selectedProductTypes = form.watch("product_types");
+  const selectedSource = sourceTypes?.data?.find(
+    (source: { id: number; type: string }) => String(source.id) === selectedSourceId,
+  );
+  const walkinQuestions = useWalkinLeadQuestions({
+    vendorId,
+    sourceId: selectedSourceId ? Number(selectedSourceId) : undefined,
+    productTypeIds: (selectedProductTypes ?? []).map(Number),
+    enabled: mode === "standard" && requiresFurnitureSelection && isWalkinSource(selectedSource?.type ?? ""),
+  });
   const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =
     useProductStructureTypes();
@@ -993,6 +1005,9 @@ export default function LeadsGenerationForm({
     },
     onError: (error: any) => {
       console.error("Form submission error:", error);
+      if (error?.response?.status === 409 && walkinQuestions.enabled && getErrorMessage(error).toLowerCase().includes("questionnaire")) {
+        walkinQuestions.refreshAfterConflict();
+      }
       toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
@@ -1038,6 +1053,9 @@ export default function LeadsGenerationForm({
     },
     onError: (error: any) => {
       console.error("Draft save error:", error);
+      if (error?.response?.status === 409 && walkinQuestions.enabled && getErrorMessage(error).toLowerCase().includes("questionnaire")) {
+        walkinQuestions.refreshAfterConflict();
+      }
       toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
@@ -1231,6 +1249,8 @@ export default function LeadsGenerationForm({
   ]);
 
   function onSubmit(values: FormValues) {
+    const walkinSubmission = walkinQuestions.prepare();
+    if (!walkinSubmission.ok) return;
     if (similarLeadWarning) {
       toastManager.add({ title: similarLeadErrorMessage, type: "error" });
       return;
@@ -1259,6 +1279,7 @@ export default function LeadsGenerationForm({
     const altContactNo = values.alt_contact_no?.replace(/\D/g, "") || undefined;
 
     const payload = {
+      walkin_answers: walkinSubmission.groups,
       firstname: values.firstname,
       lastname: values.lastname,
       email: values.email,
@@ -1346,6 +1367,8 @@ export default function LeadsGenerationForm({
   }
 
   async function handleSaveAsDraft() {
+    const walkinSubmission = walkinQuestions.prepare(true);
+    if (!walkinSubmission.ok) return;
     // Temporarily switch to draft schema for validation
     const draftSchema = draftFormSchema(userType, isB2b, referenceSourceIds);
     const values = form.getValues();
@@ -1436,6 +1459,7 @@ export default function LeadsGenerationForm({
           assign_to: createdBy,
           assigned_by: createdBy,
         }),
+      walkin_answers: walkinSubmission.groups,
       is_draft: true,
       draft_in_open_leads: draftInOpenLeads,
     };
@@ -2215,6 +2239,11 @@ export default function LeadsGenerationForm({
           </>
         )}
 
+        <WalkinLeadQuestions
+          model={walkinQuestions}
+          disabled={createLeadMutation.isPending || saveDraftMutation.isPending}
+        />
+
         {!isB2b && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
             <FormField
@@ -2480,7 +2509,7 @@ export default function LeadsGenerationForm({
                   type="button"
                   variant="secondary"
                   className="text-sm"
-                  disabled={saveDraftMutation.isPending}
+                  disabled={saveDraftMutation.isPending || createLeadMutation.isPending || walkinQuestions.isUploading || walkinQuestions.isLoading}
                 >
                   {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
                 </Button>
@@ -2515,6 +2544,9 @@ export default function LeadsGenerationForm({
             className="text-sm"
             disabled={
               createLeadMutation.isPending ||
+              saveDraftMutation.isPending ||
+              walkinQuestions.isUploading ||
+              walkinQuestions.isLoading ||
               checkSimilarLeadMutation.isPending ||
               Boolean(similarLeadWarning)
             }

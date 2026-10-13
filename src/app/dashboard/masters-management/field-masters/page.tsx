@@ -22,6 +22,7 @@ import SimpleCompanyVendorMastersTable from "@/components/custom/SimpleCompanyVe
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
+import WalkinQuestionMasters from "@/components/custom/WalkinQuestionMasters";
 import * as React from "react";
 import { useMemo } from "react";
 import ProcessBriefsTable from "@/components/custom/ProcessBriefsTable";
@@ -136,6 +137,17 @@ export default function FieldMastersPage() {
             title: "Specs Master",
             color: "bg-black hover:bg-black",
             cardContent: <SpecsMasterTable />,
+          },
+        ]
+      : []),
+    // The walk-in question APIs only serve the signed-in user's own vendor.
+    ...(isVendorUser && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
+      ? [
+          {
+            id: "walkin-questions-master",
+            title: "Walk In Questions",
+            color: "bg-black hover:bg-black",
+            cardContent: <WalkinQuestionMasters />,
           },
         ]
       : []),

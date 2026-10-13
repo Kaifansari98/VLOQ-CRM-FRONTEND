@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
+import WalkinLeadAnswers from "./WalkinLeadAnswers";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
 import {
   useLeadById,
   useLeadProductStructureInstances,
@@ -3464,6 +3466,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </motion.div>
           </motion.section>
           )}
+
+          <WalkinLeadAnswers
+            vendorId={vendorId}
+            leadId={leadId}
+            enabled={isWalkinSource(lead?.source?.type ?? "")}
+            canEdit={canEditStructures}
+            isDraft={isDraftLead}
+          />
 
           <Dialog
             open={boqModalOpen}
