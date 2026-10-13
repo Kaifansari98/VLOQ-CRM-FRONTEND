@@ -4,10 +4,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import PreProductionDetails from "./PreProductionDetails";
 import ProductionMachineMatrix from "@/components/track-trace/ProductionMachineMatrix";
 import PostProductionDetails from "./PostProductionDetails";
-import {
-  useCheckPostProductionReady,
-  useCheckPreProductionFilesReady,
-} from "@/api/production/production-api";
+import { useCheckPostProductionReady } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -117,11 +114,6 @@ export default function LeadDetailsProductionUtil({
 
   console.log("data: ", data)
 
-  const { data: preProductionReadyData } = useCheckPreProductionFilesReady(
-    vendorId,
-    leadId,
-    scopedInstanceId ?? undefined,
-  );
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -151,10 +143,8 @@ export default function LeadDetailsProductionUtil({
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? scopedInstanceId;
   const isOrderLoginFilled =
     resolvedCurrentInstance?.is_order_login_filled === true;
-  const isPreProdDone = resolvedCurrentInstance?.is_pre_prod_done === true;
-  const readyForUnderProduction = effectiveInstanceId
-    ? isPreProdDone
-    : (preProductionReadyData?.readyForUnderProduction ?? false);
+  const readyForUnderProduction =
+    resolvedCurrentInstance?.is_order_login_completed === true;
   console.log("[LeadDetailsProductionUtil] under production gate", {
     leadId,
     scopedInstanceId,
@@ -162,7 +152,7 @@ export default function LeadDetailsProductionUtil({
     resolvedCurrentInstance,
     is_order_login_filled: resolvedCurrentInstance?.is_order_login_filled,
     isOrderLoginFilled,
-    is_pre_prod_done: resolvedCurrentInstance?.is_pre_prod_done,
+    is_order_login_completed: resolvedCurrentInstance?.is_order_login_completed,
     readyForUnderProduction,
     shouldRequirePreProduction,
   });
@@ -270,7 +260,7 @@ export default function LeadDetailsProductionUtil({
           ? "You don’t have permission to access Under Production."
           : "Only super-admin and factory can access this tab."
         : shouldRequirePreProduction
-          ? "Click Mark Pre Prod Done first to enable Under Production."
+          ? "Complete Order Login first to enable Under Production."
           : "",
       cardContent: isOrderLoginFilled ? (
         showMachineMatrix ? (
