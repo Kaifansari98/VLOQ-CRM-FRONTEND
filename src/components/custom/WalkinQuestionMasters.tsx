@@ -52,6 +52,7 @@ type QuestionDraft = {
   type: WalkinQuestion["type"];
   required: boolean;
   options: string[];
+  allowOther: boolean;
   min: string;
   integer: boolean;
 };
@@ -61,6 +62,7 @@ const emptyDraft: QuestionDraft = {
   type: "text",
   required: true,
   options: ["", ""],
+  allowOther: false,
   min: "",
   integer: false,
 };
@@ -83,6 +85,9 @@ function draftProblem(draft: QuestionDraft) {
     const options = draft.options.map((option) => option.trim()).filter(Boolean);
     if (options.length < 2) return "Add at least two options.";
     if (new Set(options).size !== options.length) return "Options must be different from each other.";
+    if (draft.type === "single_select" && draft.allowOther && options.some((option) => /^others?$/i.test(option))) {
+      return "Remove the Others option; it is added automatically.";
+    }
   }
   if (draft.type === "number" && draft.min !== "" && !Number.isFinite(Number(draft.min))) {
     return "Minimum value must be a number.";
@@ -100,6 +105,7 @@ function toQuestion(draft: QuestionDraft, existing: WalkinQuestion | undefined, 
     options: isChoice(draft.type) ? draft.options.map((option) => option.trim()).filter(Boolean) : [],
     sort_order: existing?.sort_order ?? 0,
   };
+  if (draft.type === "single_select" && draft.allowOther) question.allow_other = true;
   if (draft.type === "number") {
     if (draft.min !== "") question.min = Number(draft.min);
     if (draft.integer) question.integer = true;
@@ -188,6 +194,7 @@ export default function WalkinQuestionMasters() {
       type: question.type,
       required: question.required,
       options: question.options.length ? question.options : ["", ""],
+      allowOther: !!question.allow_other,
       min: question.min === undefined ? "" : String(question.min),
       integer: !!question.integer,
     });
@@ -345,6 +352,11 @@ export default function WalkinQuestionMasters() {
                                   {option}
                                 </Badge>
                               ))}
+                              {question.allow_other && (
+                                <Badge variant="secondary" className="font-normal">
+                                  Others (custom answer)
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           {canManage && (
@@ -446,6 +458,18 @@ export default function WalkinQuestionMasters() {
                   <Plus className="mr-2 h-4 w-4" />
                   Add Option
                 </Button>
+              </div>
+            )}
+
+            {draft.type === "single_select" && (
+              <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <Label>Allow custom answer</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Adds an Others option. When it is selected, a text box appears for a custom answer.
+                  </p>
+                </div>
+                <Switch checked={draft.allowOther} onCheckedChange={(checked) => { setDraft({ ...draft, allowOther: checked }); setFormError(""); }} />
               </div>
             )}
 

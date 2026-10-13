@@ -23,6 +23,7 @@ import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTab
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
 import WalkinQuestionMasters from "@/components/custom/WalkinQuestionMasters";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import * as React from "react";
 import { useMemo } from "react";
 import ProcessBriefsTable from "@/components/custom/ProcessBriefsTable";
@@ -41,6 +42,7 @@ export default function FieldMastersPage() {
     (state) => state.auth.user?.vendor?.is_broadcast_enabled === true,
   );
   const isVendorUser = useAppSelector((state) => Boolean(state.auth.user?.vendor_id));
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const sessionVendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorId = vendorIdOverride ?? sessionVendorId;
 
@@ -141,7 +143,7 @@ export default function FieldMastersPage() {
         ]
       : []),
     // The walk-in question APIs only serve the signed-in user's own vendor.
-    ...(isVendorUser && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
+    ...(isVendorUser && walkinQuestionsEnabled && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
       ? [
           {
             id: "walkin-questions-master",

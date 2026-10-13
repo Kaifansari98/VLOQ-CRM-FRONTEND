@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { cn, getErrorMessage } from "@/lib/utils";
-import { answerError } from "@/lib/walkin-lead-questions";
+import { answerError, isOtherAnswer, OTHER_ANSWER_MAX_LENGTH, OTHER_OPTION_LABEL } from "@/lib/walkin-lead-questions";
 import { fetchWalkinLeadAnswers, updateWalkinLeadAnswer, uploadWalkinReference } from "@/api/walkin-lead-questions";
 import type { WalkinAnswer, WalkinLeadResponse, WalkinQuestion, WalkinUpload } from "@/types/walkin-lead-questions";
 
@@ -78,6 +78,14 @@ function AnswerValue({ question, value, files }: {
   if (Array.isArray(value)) {
     return <div className="flex flex-wrap gap-1.5">{value.map(item => <Chip key={item}>{item}</Chip>)}</div>;
   }
+  if (isOtherAnswer(question, value)) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip>{OTHER_OPTION_LABEL}</Chip>
+        <p className="min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-foreground/90">{value}</p>
+      </div>
+    );
+  }
   if (question.type === "single_select") return <Chip>{value}</Chip>;
   if (question.type === "number") return <p className="text-sm tabular-nums leading-6 text-foreground/90">{value}</p>;
   return <p className="whitespace-pre-wrap wrap-break-word text-sm leading-6 text-foreground/90">{value}</p>;
@@ -91,6 +99,7 @@ function AnswerEditor({ question, value, onChange, files, onUploaded, vendorId, 
   disabled: boolean; onError: (message: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [otherPicked, setOtherPicked] = useState(false);
   const selected = Array.isArray(value) ? value : [];
   if (question.type === "text") {
     return <Textarea autoFocus aria-label={question.label} value={typeof value === "string" ? value : ""} onChange={event => onChange(event.target.value)} maxLength={5000} rows={3} disabled={disabled} className="min-h-24 resize-y text-sm shadow-none" />;
@@ -100,18 +109,25 @@ function AnswerEditor({ question, value, onChange, files, onUploaded, vendorId, 
   }
   if (question.type === "single_select" || question.type === "multi_select") {
     const single = question.type === "single_select";
+    const allowOther = single && !!question.allow_other;
+    const otherActive = allowOther && (otherPicked || isOtherAnswer(question, value));
+    const choices = [...question.options.map(option => ({ option, other: false })), ...(allowOther ? [{ option: OTHER_OPTION_LABEL, other: true }] : [])];
     return (
+      <div className="space-y-2.5">
       <div role={single ? "radiogroup" : "group"} aria-label={question.label} className="flex flex-wrap gap-2">
-        {question.options.map(option => {
-          const checked = single ? value === option : selected.includes(option);
+        {choices.map(({ option, other }) => {
+          const checked = other ? otherActive : single ? !otherActive && value === option : selected.includes(option);
           return (
             <button
-              key={option}
+              key={other ? "__other__" : option}
               type="button"
               role={single ? "radio" : "checkbox"}
               aria-checked={checked}
               disabled={disabled}
-              onClick={() => onChange(single ? option : checked ? selected.filter(v => v !== option) : [...selected, option])}
+              onClick={() => {
+                setOtherPicked(other);
+                onChange(other ? (otherActive ? value : "") : single ? option : checked ? selected.filter(v => v !== option) : [...selected, option]);
+              }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
                 checked ? "border-primary bg-primary/5 text-primary" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -124,6 +140,19 @@ function AnswerEditor({ question, value, onChange, files, onUploaded, vendorId, 
             </button>
           );
         })}
+      </div>
+      {otherActive && (
+        <Input
+          autoFocus={otherPicked}
+          aria-label={`${question.label} — ${OTHER_OPTION_LABEL}`}
+          value={typeof value === "string" ? value : ""}
+          onChange={event => onChange(event.target.value)}
+          placeholder="Please specify"
+          maxLength={OTHER_ANSWER_MAX_LENGTH}
+          disabled={disabled}
+          className="h-10 max-w-md shadow-none"
+        />
+      )}
       </div>
     );
   }

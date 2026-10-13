@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { answerError, walkinFieldId } from "@/lib/walkin-lead-questions";
+import { answerError, isOtherAnswer, OTHER_ANSWER_MAX_LENGTH, OTHER_OPTION_LABEL, walkinFieldId } from "@/lib/walkin-lead-questions";
 import type { WalkinQuestion, WalkinQuestionnaire } from "@/types/walkin-lead-questions";
 import type { WalkinQuestionsModel } from "@/hooks/useWalkinLeadQuestions";
 
@@ -17,6 +17,7 @@ function QuestionField({ form, question: q, index, model, disabled }: {
 }) {
   const uniqueId = useId();
   const [dragging, setDragging] = useState(false);
+  const [otherPicked, setOtherPicked] = useState(false);
   const fieldId = walkinFieldId(form, q);
   const value = model.getAnswer(form, q);
   const error = model.errors[fieldId];
@@ -27,6 +28,9 @@ function QuestionField({ form, question: q, index, model, disabled }: {
   const inputId = `${uniqueId}-input`;
   const helpId = `${uniqueId}-help`;
   const isChoice = q.type === "single_select" || q.type === "multi_select";
+  const allowOther = q.type === "single_select" && !!q.allow_other;
+  const otherActive = allowOther && (otherPicked || isOtherAnswer(q, value));
+  const choices = [...q.options.map(option => ({ option, other: false })), ...(allowOther ? [{ option: OTHER_OPTION_LABEL, other: true }] : [])];
   const maxFiles = q.max_files ?? 5;
   const maxMb = Math.floor((q.max_file_size_bytes ?? 10485760) / 1048576);
   const receiveFiles = (files: File[]) => {
@@ -49,11 +53,11 @@ function QuestionField({ form, question: q, index, model, disabled }: {
 
         {isChoice && (
           <div role={q.type === "single_select" ? "radiogroup" : "group"} aria-labelledby={labelId} aria-describedby={error ? errorId : undefined} aria-invalid={!!error} className="flex flex-wrap gap-2">
-            {q.options.map(option => {
-              const checked = q.type === "single_select" ? value === option : selected.includes(option);
+            {choices.map(({ option, other }) => {
+              const checked = other ? otherActive : q.type === "single_select" ? !otherActive && value === option : selected.includes(option);
               return (
                 <label
-                  key={option}
+                  key={other ? "__other__" : option}
                   className={cn(
                     "relative inline-flex max-w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] leading-5 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring has-focus-visible:ring-offset-1",
                     checked ? "border-primary bg-primary/5 font-medium text-primary" : "border-border bg-background text-foreground/80 hover:border-primary/40 hover:bg-muted/40",
@@ -63,11 +67,15 @@ function QuestionField({ form, question: q, index, model, disabled }: {
                   <input
                     type={q.type === "single_select" ? "radio" : "checkbox"}
                     name={`${uniqueId}-choice`}
-                    value={option}
+                    value={other ? "__other__" : option}
                     checked={checked}
                     disabled={disabled}
                     className="sr-only"
-                    onChange={() => model.setAnswer(form, q, q.type === "single_select" ? option : checked ? selected.filter(v => v !== option) : [...selected, option])}
+                    onChange={() => {
+                      setOtherPicked(other);
+                      // Picking Others clears the answer until the custom text is typed.
+                      model.setAnswer(form, q, other ? "" : q.type === "single_select" ? option : checked ? selected.filter(v => v !== option) : [...selected, option]);
+                    }}
                   />
                   <span aria-hidden="true" className={cn("flex size-3.5 shrink-0 items-center justify-center border", q.type === "single_select" ? "rounded-full" : "rounded", checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40")}>
                     {checked && <Check className="size-2.5" strokeWidth={3} />}
@@ -77,6 +85,21 @@ function QuestionField({ form, question: q, index, model, disabled }: {
               );
             })}
           </div>
+        )}
+
+        {otherActive && (
+          <Input
+            autoFocus={otherPicked}
+            aria-label={`${q.label} — ${OTHER_OPTION_LABEL}`}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
+            value={typeof value === "string" ? value : ""}
+            onChange={event => model.setAnswer(form, q, event.target.value)}
+            placeholder="Please specify"
+            maxLength={OTHER_ANSWER_MAX_LENGTH}
+            disabled={disabled}
+            className="h-10 max-w-md shadow-none"
+          />
         )}
 
         {q.type === "text" && (

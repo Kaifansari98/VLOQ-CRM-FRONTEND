@@ -73,7 +73,7 @@ import StructureQuantityCards from "@/components/sales-executive/Lead/structure-
 import { getErrorMessage } from "@/lib/utils";
 import { FileUploadField } from "@/components/custom/file-upload";
 import WalkinLeadQuestions from "./walkin-lead-questions";
-import { useWalkinLeadQuestions } from "@/hooks/useWalkinLeadQuestions";
+import { useWalkinLeadQuestions, useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import { isWalkinSource } from "@/lib/walkin-lead-questions";
 
 const priorityOptions = [
@@ -645,11 +645,12 @@ export default function LeadsGenerationForm({
   const selectedSource = sourceTypes?.data?.find(
     (source: { id: number; type: string }) => String(source.id) === selectedSourceId,
   );
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const walkinQuestions = useWalkinLeadQuestions({
     vendorId,
     sourceId: selectedSourceId ? Number(selectedSourceId) : undefined,
     productTypeIds: (selectedProductTypes ?? []).map(Number),
-    enabled: mode === "standard" && requiresFurnitureSelection && isWalkinSource(selectedSource?.type ?? ""),
+    enabled: walkinQuestionsEnabled && mode === "standard" && requiresFurnitureSelection && isWalkinSource(selectedSource?.type ?? ""),
   });
   const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =

@@ -8,7 +8,7 @@ function load(file,dependencies={}){
   new Function('exports','require',code)(exports,name=>dependencies[name]??{});
   return exports;
 }
-const {answerError,buildWalkinAnswerGroups,isWalkinSource,questionnaireId}=load('src/lib/walkin-lead-questions.ts');
+const {answerError,buildWalkinAnswerGroups,isOtherAnswer,isWalkinSource,questionnaireId}=load('src/lib/walkin-lead-questions.ts');
 const question=(type,extra={})=>({key:'q',label:'Question?',type,required:true,options:[],sort_order:1,...extra});
 const form=(id,version=1)=>({product_type_id:id,product_type:'Furniture',title:'Furniture',origin:'vendor',questionnaire_key:`vendor:${id}`,questionnaire_version:version,questions:[question('text')]});
 test('walk-in source matching handles case and separators without matching other sources',()=>{
@@ -41,4 +41,12 @@ test('multipart creation serializes question groups as JSON, including empty gro
   assert.equal(calls[0].body.get('product_types'),'1');
   await createLead({firstname:'Test',walkin_answers:[]});assert.equal(calls[1].body.get('walkin_answers'),'[]');
   await createLead({firstname:'Test'});assert.equal(calls[2].body.has('walkin_answers'),false);
+});
+
+test('single choice with Others accepts custom text only when allowed',()=>{
+  const q=question('single_select',{options:['Design','Budget'],allow_other:true});
+  assert.equal(answerError(q,'Budget'),undefined);assert.equal(answerError(q,'Resale value'),undefined);
+  assert.ok(answerError(q,''));assert.ok(answerError(q,'x'.repeat(501)));
+  assert.ok(answerError({...q,allow_other:false},'Resale value'));
+  assert.equal(isOtherAnswer(q,'Resale value'),true);assert.equal(isOtherAnswer(q,'Budget'),false);assert.equal(isOtherAnswer(q,''),false);
 });

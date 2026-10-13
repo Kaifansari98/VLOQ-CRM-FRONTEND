@@ -6,6 +6,7 @@ export interface WalkinQuestion {
   required: boolean;
   options: string[];
   sort_order: number;
+  allow_other?: boolean;
   min?: number;
   integer?: boolean;
   accepted_mime_types?: string[];

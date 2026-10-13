@@ -6,6 +6,11 @@ import { fetchWalkinQuestions, uploadWalkinReference } from "@/api/walkin-lead-q
 import { answerError, buildWalkinAnswerGroups, questionnaireId, walkinFieldId } from "@/lib/walkin-lead-questions";
 import type { WalkinAnswer, WalkinQuestion, WalkinQuestionnaire, WalkinUpload } from "@/types/walkin-lead-questions";
 import { getErrorMessage } from "@/lib/utils";
+import { useAppSelector } from "@/redux/store";
+
+// Per-vendor switch. It defaults to on, so sessions saved before the flag existed keep the feature.
+export const useWalkinQuestionsEnabled = () =>
+  useAppSelector((state) => state.auth.user?.vendor?.is_walkin_questions_feature_enabled !== false);
 
 export function useWalkinLeadQuestions({ vendorId, sourceId, productTypeIds, enabled }: {
   vendorId?: number; sourceId?: number; productTypeIds: number[]; enabled: boolean;

@@ -28,6 +28,7 @@ import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
 import WalkinLeadAnswers from "./WalkinLeadAnswers";
 import { isWalkinSource } from "@/lib/walkin-lead-questions";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import {
   useLeadById,
   useLeadProductStructureInstances,
@@ -276,6 +277,7 @@ const renameLeadSitePhotoFiles = ({
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 1. REDUX STATE
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const userId = useAppSelector((state) => state.auth.user?.id);
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
@@ -3470,7 +3472,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <WalkinLeadAnswers
             vendorId={vendorId}
             leadId={leadId}
-            enabled={isWalkinSource(lead?.source?.type ?? "")}
+            enabled={walkinQuestionsEnabled && isWalkinSource(lead?.source?.type ?? "")}
             canEdit={canEditStructures}
             isDraft={isDraftLead}
           />

@@ -22,6 +22,9 @@ import {
 } from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import WalkinLeadAnswers from "@/components/tabScreens/WalkinLeadAnswers";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +95,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     isLoading: orderLoginLockInsLoading,
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -564,6 +568,14 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           ) : null
         }
       />
+
+      {!isMaterialIssueView && (
+        <WalkinLeadAnswers
+          vendorId={vendorId}
+          leadId={leadId}
+          enabled={walkinQuestionsEnabled && isWalkinSource(leadResponse?.data?.lead?.source?.type ?? "")}
+        />
+      )}
 
       {!isMaterialIssueView && (
         <AlertDialog
