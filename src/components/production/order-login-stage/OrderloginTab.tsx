@@ -328,10 +328,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           company_vendor_id: item.company_vendor_id || null,
         };
         const hasVendor = !!local.company_vendor_id;
-        const normalizedDescription = local.item_desc?.trim();
-        const hasDesc =
-          !!normalizedDescription &&
-          normalizedDescription.toLowerCase() !== "n/a";
+        const hasDesc = !!local.item_desc?.trim();
         return hasVendor && hasDesc;
       });
 
