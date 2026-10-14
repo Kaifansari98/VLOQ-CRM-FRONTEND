@@ -337,6 +337,7 @@ export interface UploadCSPBookingPayload {
   assigned_to: number;
   created_by: number;
   site_photos: File[];
+  required_documents?: File[];
 }
 
 export const uploadCSPBooking = async (
@@ -352,6 +353,10 @@ export const uploadCSPBooking = async (
 
   payload.site_photos.forEach((file) => {
     formData.append("current_site_photos", file);
+  });
+
+  payload.required_documents?.forEach((file) => {
+    formData.append("required_documents", file);
   });
 
   const { data } = await apiClient.post(
@@ -378,6 +383,7 @@ export interface CSPBookingPhoto {
 export interface GetCSPBookingResponse {
   count: number;
   documents: CSPBookingPhoto[];
+  requiredDocuments?: CSPBookingPhoto[];
 }
 
 export const getCSPBookingPhotos = async (

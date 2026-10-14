@@ -76,6 +76,7 @@ const formSchema = z
     task_type: z.string().min(1, "Task Type is required"),
     due_date: z.string().min(1, "Due Date is required"),
     remark: z.string().optional(),
+    required_documents: z.array(z.instanceof(File)).optional(),
     current_site_photos: z.array(z.instanceof(File)).optional(),
   })
   .superRefine((data, ctx) => {
@@ -255,6 +256,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
       due_date: "",
       remark: "N/A",
+      required_documents: [],
       current_site_photos: [],
     },
   });
@@ -278,6 +280,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
       due_date: "",
       remark: "N/A",
+      required_documents: [],
       current_site_photos: [],
     });
   }, [canAccessRestrictedTasks, form]);
@@ -916,7 +919,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
                 due_date: "",
                 remark: "N/A",
-                current_site_photos: [],
+                required_documents: [],
+      current_site_photos: [],
               });
               onOpenChange(false);
             },
@@ -998,6 +1002,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           assigned_to: values.assign_lead_to!,
           created_by: userId!,
           site_photos: values.current_site_photos!,
+          required_documents: values.required_documents ?? [],
         });
       }
 
@@ -1378,6 +1383,28 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                   />
                 </FormControl>
               </FormItem>
+            )}
+
+            {form.watch("task_type") === "Final Measurements" && (
+              <FormField
+                control={form.control}
+                name="required_documents"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Required Documents</FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value || []}
+                        onChange={field.onChange}
+                        accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                        multiple
+                        maxFiles={10}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             {form.watch("task_type") === "Final Measurements" && (
