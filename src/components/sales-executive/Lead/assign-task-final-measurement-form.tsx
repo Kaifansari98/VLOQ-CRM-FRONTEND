@@ -81,6 +81,13 @@ const formSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.task_type === "Final Measurements") {
+      if (!data.required_documents || data.required_documents.length === 0) {
+        ctx.addIssue({
+          path: ["required_documents"],
+          message: "Required documents are mandatory",
+          code: z.ZodIssueCode.custom,
+        });
+      }
       if (!data.current_site_photos || data.current_site_photos.length === 0) {
         ctx.addIssue({
           path: ["current_site_photos"],
@@ -1391,7 +1398,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 name="required_documents"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Required Documents</FormLabel>
+                    <FormLabel className="text-sm">
+                      Required Documents{" "}
+                      <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <FileUploadField
                         value={field.value || []}
@@ -1448,7 +1458,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                   mutation.isPending ||
                   uploadCSPMutation.isPending ||
                   (form.watch("task_type") === "Final Measurements" &&
-                    form.watch("current_site_photos")?.length === 0)
+                    (!form.watch("required_documents")?.length ||
+                      !form.watch("current_site_photos")?.length))
                 }
               >
                 {uploadCSPMutation.isPending || mutation.isPending
