@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { OnlineLeadExecutiveMappingCard } from "@/components/vendors/OnlineLeadExecutiveMappingCard";
 import { CutlistHeaderMappingCard } from "@/components/vendors/CutlistHeaderMappingCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -1065,7 +1066,10 @@ function OnboardVendorFormContent() {
           </div>
 
           {editingVendorId ? (
-            <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
+            <>
+              <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
+              <OnlineLeadExecutiveMappingCard key={`online-leads-${editingVendorId}`} vendorId={editingVendorId} />
+            </>
           ) : (
             <div className="rounded-xl border bg-muted/20 p-5 text-sm text-muted-foreground">
               Save the vendor first to configure custom cutlist Excel headers.
