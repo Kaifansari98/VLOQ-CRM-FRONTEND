@@ -644,7 +644,7 @@ export default function PreProductionFilesSection({
           </TabsContent>
           {isTrackTraceUploadFlow && (
             <TabsContent value="metal" forceMount className="data-[state=inactive]:hidden">
-              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} />
+              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} leadId={leadId} />
             </TabsContent>
           )}
         </Tabs>
