@@ -27,6 +27,19 @@ export const updateCutListMachine = async (payload: CutListSavePayload) => {
   return response.data;
 };
 
+export interface UpdateCutListQtyApiPayload {
+  project_id: string;
+  vendor_id: number;
+  cut_list_id: number;
+  new_qty: number;
+  user_role?: string;
+}
+
+export const updateCutListQty = async (payload: UpdateCutListQtyApiPayload) => {
+  const response = await apiClient.post(`/track-trace/update-cutlist-qty`, payload);
+  return response.data;
+};
+
 export const generateQRLabels = async (
   vendorId: number,
   projectId: string,
