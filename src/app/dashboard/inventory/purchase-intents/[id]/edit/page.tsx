@@ -31,6 +31,13 @@ import {
 } from "@/components/ui/breadcrumb";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,10 +72,10 @@ type ProductRow = {
 const PRIORITIES: PIPriority[] = ["Low", "Medium", "High", "Urgent"];
 
 const inputClass =
-  "h-9 w-full rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+  "h-9 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-foreground/20";
 
 const tableInputClass =
-  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-foreground/20";
 
 const toMoney = (value: any) => {
   const n = Number(value || 0);
@@ -98,8 +105,8 @@ const PRIORITY_META: Record<
   Medium: {
     label: "Medium",
     icon: "◐",
-    active: "bg-indigo-600 text-white border-indigo-600",
-    idle: "text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/70 dark:hover:bg-indigo-950",
+    active: "bg-foreground text-background border-foreground",
+    idle: "text-muted-foreground border-border hover:bg-muted hover:text-foreground",
   },
   High: {
     label: "High",
@@ -893,30 +900,52 @@ export default function EditPurchaseIntentPage() {
           </div>
         ) : (
           <>
-            <div className="mb-4 rounded-xl border bg-card p-4">
+            <div className="mb-4 rounded-md border bg-card p-4">
               <div className="grid gap-3 md:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-semibold">
                     Priority
                   </label>
-                  <select
+                  <Select
                     value={priority}
-                    onChange={(e) => setPriority(e.target.value as PIPriority)}
-                    className={inputClass}
+                    onValueChange={(val) => setPriority(val as PIPriority)}
                   >
-                    {PRIORITIES.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-9 w-full rounded-md border bg-background px-3 text-xs outline-none focus:ring-1 focus:ring-foreground/20">
+                      <SelectValue placeholder="Select Priority" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-md border bg-popover p-1 shadow-md">
+                      {PRIORITIES.map((p) => (
+                        <SelectItem
+                          key={p}
+                          value={p}
+                          className="cursor-pointer rounded-md text-xs font-medium"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                p === "Urgent"
+                                  ? "bg-foreground"
+                                  : p === "High"
+                                  ? "bg-foreground/80"
+                                  : p === "Medium"
+                                  ? "bg-foreground/50"
+                                  : "bg-foreground/25"
+                              )}
+                            />
+                            {p}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-xs font-semibold">
                     Total
                   </label>
-                  <div className="flex h-9 items-center rounded-lg border bg-muted/30 px-3 text-sm font-bold text-indigo-600">
+                  <div className="flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm font-bold text-foreground">
                     {toMoney(grandTotal)}
                   </div>
                 </div>
@@ -950,13 +979,13 @@ export default function EditPurchaseIntentPage() {
             </div>
 
             {rows.length === 0 ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed bg-card text-center">
+              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-md border border-dashed bg-card text-center">
                 <Package size={32} className="mb-2 text-muted-foreground/40" />
                 <p className="text-sm font-semibold">No product added</p>
                 <p className="mb-4 text-xs text-muted-foreground">
                   Click Add Product Row to start.
                 </p>
-                <Button type="button" size="sm" onClick={addProductRow}>
+                <Button type="button" size="sm" onClick={addProductRow} className="rounded-md">
                   <Plus size={14} className="mr-1" />
                   Add Product Row
                 </Button>
@@ -966,7 +995,7 @@ export default function EditPurchaseIntentPage() {
                 {rows.map((row, rowIndex) => (
                   <div
                     key={row.row_id}
-                    className="overflow-hidden rounded-xl border bg-card"
+                    className="overflow-hidden rounded-md border bg-card"
                   >
                     <div className="border-b bg-muted/30 p-3">
                       <div className="grid gap-2 md:grid-cols-[2fr_120px_1fr_40px]">
@@ -1061,7 +1090,7 @@ export default function EditPurchaseIntentPage() {
 
                       <p className="text-sm font-bold">
                         Product Total:{" "}
-                        <span className="text-indigo-600">
+                        <span className="text-foreground">
                           {toMoney(
                             row.vendor_entries.reduce(
                               (sum, entry) => sum + toNum(entry.total_amount),
@@ -1076,10 +1105,10 @@ export default function EditPurchaseIntentPage() {
               </div>
             )}
 
-            <div className="mt-5 flex items-center justify-between rounded-xl border bg-card px-4 py-3">
+            <div className="mt-5 flex items-center justify-between rounded-md border bg-card px-4 py-3">
               <p className="text-sm font-semibold">
                 Grand Total:{" "}
-                <span className="text-lg font-bold text-indigo-600">
+                <span className="text-lg font-bold text-foreground">
                   {toMoney(grandTotal)}
                 </span>
               </p>
@@ -1088,7 +1117,7 @@ export default function EditPurchaseIntentPage() {
                 type="button"
                 disabled={submitting || rows.length === 0}
                 onClick={handleSubmit}
-                className="gap-2"
+                className="gap-2 rounded-md"
               >
                 {submitting ? (
                   <Loader2 size={15} className="animate-spin" />
@@ -1213,25 +1242,32 @@ function ProductSupplierTable({
                   </td>
 
                   <td className="px-2 py-2">
-                    <select
-                      value={entry.payment_term_id || ""}
-                      onChange={(e) =>
+                    <Select
+                      value={entry.payment_term_id ? String(entry.payment_term_id) : undefined}
+                      onValueChange={(val) =>
                         updateSupplierRow(
                           rowIndex,
                           vendorIndex,
                           "payment_term_id" as keyof VendorEntry,
-                          e.target.value
+                          val
                         )
                       }
-                      className={tableInputClass}
                     >
-                      <option value="">Select</option>
-                      {availablePaymentTerms.map((term) => (
-                        <option key={term.id} value={term.id}>
-                          {term.term_name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-foreground/20">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border bg-popover p-1 shadow-xl">
+                        {availablePaymentTerms.map((term) => (
+                          <SelectItem
+                            key={term.id}
+                            value={String(term.id)}
+                            className="cursor-pointer text-xs"
+                          >
+                            {term.term_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </td>
 
                   <td className="px-2 py-2">
@@ -1332,7 +1368,7 @@ function ProductSupplierTable({
                     {toMoney(entry.tax_amount)}
                   </td>
 
-                  <td className="px-2 py-2 font-bold text-indigo-600">
+                  <td className="px-2 py-2 font-bold text-foreground">
                     {toMoney(entry.total_amount)}
                   </td>
 
@@ -1403,7 +1439,7 @@ function ProductAutocomplete({
           onFocus={onFocus}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Search product by name/code..."
-          className="h-9 w-full rounded-lg border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300"
+          className="h-9 w-full rounded-lg border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-foreground/20"
         />
       </div>
 
@@ -1518,7 +1554,7 @@ function SupplierPickerModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search supplier..."
-              className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+              className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </div>
         </div>

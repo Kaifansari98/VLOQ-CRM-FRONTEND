@@ -35,6 +35,13 @@ import {
 } from "@/components/ui/breadcrumb";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,10 +77,10 @@ type ProductRow = {
 const PRIORITIES: PIPriority[] = ["Low", "Medium", "High", "Urgent"];
 
 const inputClass =
-  "h-9 w-full rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+  "h-9 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-foreground/20";
 
 const tableInputClass =
-  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-foreground/20";
 
 const toMoney = (value: any) => {
   const n = Number(value || 0);
@@ -1005,46 +1012,66 @@ const finalGrandTotal = useMemo(() => {
           </div>
         ) : (
           <>
-            <div className="mb-4 rounded-xl border bg-card p-4">
-              <div className="mb-4 rounded-xl border bg-card p-4">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold">
-                      Priority
-                    </label>
-                    <select
-                      value={priority}
-                      onChange={(e) => setPriority(e.target.value as PIPriority)}
-                      className={inputClass}
-                    >
+            <div className="mb-4 rounded-md border bg-card p-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold">
+                    Priority
+                  </label>
+                  <Select
+                    value={priority}
+                    onValueChange={(val) => setPriority(val as PIPriority)}
+                  >
+                    <SelectTrigger className="h-9 w-full rounded-md border bg-background px-3 text-xs outline-none focus:ring-1 focus:ring-foreground/20">
+                      <SelectValue placeholder="Select Priority" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-md border bg-popover p-1 shadow-md">
                       {PRIORITIES.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
+                        <SelectItem
+                          key={p}
+                          value={p}
+                          className="cursor-pointer rounded-md text-xs font-medium"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                p === "Urgent"
+                                  ? "bg-foreground"
+                                  : p === "High"
+                                  ? "bg-foreground/80"
+                                  : p === "Medium"
+                                  ? "bg-foreground/50"
+                                  : "bg-foreground/25"
+                              )}
+                            />
+                            {p}
+                          </span>
+                        </SelectItem>
                       ))}
-                    </select>
-                  </div>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold">
-                      Total
-                    </label>
-                    <div className="flex h-9 items-center rounded-lg border bg-muted/30 px-3 text-sm font-bold text-indigo-600">
-                      {toMoney(finalGrandTotal)}
-                    </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold">
+                    Total
+                  </label>
+                  <div className="flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm font-bold text-foreground">
+                    {toMoney(finalGrandTotal)}
                   </div>
+                </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold">
-                      Overall Remarks
-                    </label>
-                    <input
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Optional remarks"
-                      className={inputClass}
-                    />
-                  </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold">
+                    Overall Remarks
+                  </label>
+                  <input
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Optional remarks"
+                    className={inputClass}
+                  />
                 </div>
               </div>
             </div>
@@ -1064,13 +1091,13 @@ const finalGrandTotal = useMemo(() => {
             </div>
 
             {rows.length === 0 ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed bg-card text-center">
+              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-md border border-dashed bg-card text-center">
                 <Package size={32} className="mb-2 text-muted-foreground/40" />
                 <p className="text-sm font-semibold">No product added</p>
                 <p className="mb-4 text-xs text-muted-foreground">
                   Click Add Product Row to start.
                 </p>
-                <Button type="button" size="sm" onClick={addProductRow}>
+                <Button type="button" size="sm" onClick={addProductRow} className="rounded-md">
                   <Plus size={14} className="mr-1" />
                   Add Product Row
                 </Button>
@@ -1080,7 +1107,7 @@ const finalGrandTotal = useMemo(() => {
                 {rows.map((row, rowIndex) => (
                   <div
                     key={row.row_id}
-                    className="overflow-hidden rounded-xl border bg-card"
+                    className="overflow-hidden rounded-md border bg-card"
                   >
                     <div className="border-b bg-muted/30 p-3">
                       <div className="grid gap-2 md:grid-cols-[2fr_120px_1fr_40px]">
@@ -1222,25 +1249,32 @@ const finalGrandTotal = useMemo(() => {
                                   </td>
 
                                   <td className="px-2 py-2">
-                                    <select
-                                      value={entry.payment_term_id || ""}
-                                      onChange={(e) =>
+                                    <Select
+                                      value={entry.payment_term_id ? String(entry.payment_term_id) : undefined}
+                                      onValueChange={(val) =>
                                         updateSupplierRow(
                                           rowIndex,
                                           vendorIndex,
                                           "payment_term_id" as keyof VendorEntry,
-                                          e.target.value
+                                          val
                                         )
                                       }
-                                      className={tableInputClass}
                                     >
-                                      <option value="">Select</option>
-                                      {availablePaymentTerms.map((term) => (
-                                        <option key={term.id} value={term.id}>
-                                          {term.term_name}
-                                        </option>
-                                      ))}
-                                    </select>
+                                      <SelectTrigger className="h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-foreground/20">
+                                        <SelectValue placeholder="Select" />
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-xl border bg-popover p-1 shadow-xl">
+                                        {availablePaymentTerms.map((term) => (
+                                          <SelectItem
+                                            key={term.id}
+                                            value={String(term.id)}
+                                            className="cursor-pointer text-xs"
+                                          >
+                                            {term.term_name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </td>
 
                                   <td className="px-2 py-2">
@@ -1341,7 +1375,7 @@ const finalGrandTotal = useMemo(() => {
                                     {toMoney(entry.tax_amount)}
                                   </td>
 
-                                  <td className="px-2 py-2 font-bold text-indigo-600">
+                                  <td className="px-2 py-2 font-bold text-foreground">
                                     {toMoney(entry.total_amount)}
                                   </td>
 
@@ -1377,7 +1411,7 @@ const finalGrandTotal = useMemo(() => {
                                       <IndianRupee size={13} />
                                       Charges
                                       {getSupplierCostTotal(Number(entry.vendor.id)) > 0 && (
-                                        <span className="ml-1 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">
+                                        <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground">
                                           {toMoney(getSupplierCostTotal(Number(entry.vendor.id)))}
                                         </span>
                                       )}
@@ -1419,7 +1453,7 @@ const finalGrandTotal = useMemo(() => {
 
                       <p className="text-sm font-bold">
                         Product Total:{" "}
-                        <span className="text-indigo-600">
+                        <span className="text-foreground">
                           {toMoney(
                             row.vendor_entries.reduce(
                               (sum, entry) => sum + toNum(entry.total_amount),
@@ -1434,10 +1468,10 @@ const finalGrandTotal = useMemo(() => {
               </div>
             )}
 
-            <div className="mt-5 flex items-center justify-between rounded-xl border bg-card px-4 py-3">
+            <div className="mt-5 flex items-center justify-between rounded-md border bg-card px-4 py-3">
               <p className="text-sm font-semibold">
                 Grand Total:{" "}
-                <span className="text-lg font-bold text-indigo-600">
+                <span className="text-lg font-bold text-foreground">
                   {toMoney(finalGrandTotal)}
                 </span>
               </p>
@@ -1446,7 +1480,7 @@ const finalGrandTotal = useMemo(() => {
                 type="button"
                 disabled={submitting || rows.length === 0}
                 onClick={handleSubmit}
-                className="gap-2"
+                className="gap-2 rounded-md"
               >
                 {submitting ? (
                   <Loader2 size={15} className="animate-spin" />
@@ -1560,7 +1594,7 @@ function ProductAutocomplete({
           onFocus={onFocus}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Search product by name/code..."
-          className="h-9 w-full rounded-lg border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300"
+          className="h-9 w-full rounded-lg border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-foreground/20"
         />
       </div>
 
@@ -1682,7 +1716,7 @@ function SupplierPickerModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search supplier..."
-              className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+              className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </div>
         </div>
@@ -1800,7 +1834,7 @@ function AdditionalChargesModal({
 
           <div className="rounded-xl border bg-background p-3">
             <p className="text-xs text-muted-foreground">Supplier Final Total</p>
-            <p className="text-base font-bold text-indigo-600">
+            <p className="text-base font-bold text-foreground">
               {toMoney(baseAmount + total)}
             </p>
           </div>
@@ -1932,7 +1966,7 @@ function AdditionalChargesModal({
                       {toMoney(row.tax_amount)}
                     </td>
 
-                    <td className="px-2 py-2 text-right font-bold text-indigo-600">
+                    <td className="px-2 py-2 text-right font-bold text-foreground">
                       {toMoney(row.total_amount)}
                     </td>
 
