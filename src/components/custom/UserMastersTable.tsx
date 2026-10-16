@@ -404,7 +404,7 @@ export default function UserMastersTable({
 
   const queryUserType =
     isEmployeeMaster && isHrmsMasterEnabled
-      ? "employee,hrms-admin"
+      ? "employee,hrms-admin,hrms admin"
       : userTypeFilter;
 
   const { data, isLoading, isError, error } = useUsersForMaster(
@@ -414,7 +414,9 @@ export default function UserMastersTable({
       search: globalFilter,
       franchise_id: franchiseFilter,
       user_type: queryUserType,
-      exclude_user_type: !userTypeFilter ? "employee" : undefined,
+      exclude_user_type: !userTypeFilter
+        ? "employee,hrms-admin,hrms admin"
+        : undefined,
     },
     vendorId,
   );
@@ -476,7 +478,11 @@ export default function UserMastersTable({
               itemUserType === userTypeFilter.trim().toLowerCase()
             );
           }
-          if (itemUserType === "employee") {
+          if (
+            itemUserType === "employee" ||
+            itemUserType === "hrms-admin" ||
+            itemUserType === "hrms admin"
+          ) {
             return false;
           }
           return true;
@@ -572,7 +578,13 @@ export default function UserMastersTable({
               typeName === userTypeFilter.trim().toLowerCase()
             );
           }
-          if (typeName === "employee") return false;
+          if (
+            typeName === "employee" ||
+            typeName === "hrms-admin" ||
+            typeName === "hrms admin"
+          ) {
+            return false;
+          }
           return true;
         })
         .map((ut) => ({

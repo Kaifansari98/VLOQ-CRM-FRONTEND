@@ -26,6 +26,8 @@ export interface AttendanceRecord {
   check_in_local: string | null;
   check_out?: string | null;
   check_out_local?: string | null;
+  duration_formatted?: string | null;
+  status?: string | null;
   source: "MANUAL" | "PHONE" | "CARD";
   logs?: AttendanceLogItem[];
   user?: {
@@ -33,6 +35,15 @@ export interface AttendanceRecord {
     user_name: string;
     user_contact?: string;
     user_email?: string;
+    designation?: string;
+    user_type?: {
+      user_type?: string;
+    };
+  };
+  franchise?: {
+    id: number;
+    franchise_name: string;
+    franchise_code?: string;
   };
 }
 
@@ -77,7 +88,10 @@ export interface MarkAttendanceResponse {
 }
 
 export interface AttendanceFilterParams {
+  vendor_id?: number;
+  franchise_id?: number;
   user_id?: number;
+  attendance_date?: string;
   page?: number;
   limit?: number;
   from_date?: string;
@@ -106,7 +120,7 @@ export const useTodayAttendance = (userId?: number) => {
 };
 
 /**
- * Fetch attendance history
+ * Fetch attendance history / list
  */
 export const getAttendanceHistory = async (
   params?: AttendanceFilterParams
@@ -118,13 +132,36 @@ export const getAttendanceHistory = async (
 };
 
 /**
- * Hook to get attendance history
+ * Hook to get attendance history / list
  */
 export const useAttendanceHistory = (params?: AttendanceFilterParams) => {
   return useQuery({
     queryKey: ["attendance-history", params],
     queryFn: () => getAttendanceHistory(params),
     refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Fetch audit punch logs for a specific attendance record
+ */
+export const getAttendanceLogsApi = async (
+  attendanceId: number
+): Promise<AttendanceLogItem[]> => {
+  const response = await apiClient.get<{ success: boolean; data: AttendanceLogItem[] }>(
+    `/attendance/${attendanceId}/logs`
+  );
+  return response.data.data;
+};
+
+/**
+ * Hook to get attendance punch logs
+ */
+export const useAttendanceLogs = (attendanceId?: number) => {
+  return useQuery({
+    queryKey: ["attendance-logs", attendanceId],
+    queryFn: () => getAttendanceLogsApi(attendanceId!),
+    enabled: !!attendanceId,
   });
 };
 
