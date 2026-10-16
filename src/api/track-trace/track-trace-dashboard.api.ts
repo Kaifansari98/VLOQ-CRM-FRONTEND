@@ -15,7 +15,9 @@ export interface MachineScanStatus {
 export interface ProjectScanStatus {
   lead_id: number | null;
   project_id: number;
+  unique_project_id?: string;
   project_name: string;
+  order_no?: string | null;
   project_status: string;
   track_trace_status: string;
   created_at: string;

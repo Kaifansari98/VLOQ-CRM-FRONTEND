@@ -69,6 +69,7 @@ const createVendorSchema = z.object({
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
   cutlist_configuration: z.string().optional().default("default"),
+  show_status_on_scan: z.string().optional().default("1"),
   is_scanpack_enabled: z.boolean(),
   is_hrms_master_enabled: z.boolean(),
   is_available_unique_code: z.boolean(),
@@ -143,6 +144,7 @@ function OnboardVendorFormContent() {
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
     cutlist_configuration: "default",
+    show_status_on_scan: "1",
     is_scanpack_enabled: false,
     is_hrms_master_enabled: false,
     is_available_unique_code: false,
@@ -182,6 +184,7 @@ function OnboardVendorFormContent() {
         is_inventory_enabled: v.is_inventory_enabled === true,
         is_tracktrace_enabled: v.is_tracktrace_enabled === true,
         cutlist_configuration: v.cutlist_configuration || "default",
+        show_status_on_scan: (v as any).show_status_on_scan ?? "1",
         is_scanpack_enabled: v.is_scanpack_enabled === true,
         is_hrms_master_enabled: (v as any).is_hrms_master_enabled === true,
         is_available_unique_code: v.is_available_unique_code === true,
@@ -325,6 +328,7 @@ function OnboardVendorFormContent() {
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
         formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
+        formData.append("show_status_on_scan", validatedForm.data.show_status_on_scan || "1");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
         formData.append("is_hrms_master_enabled", String(validatedForm.data.is_hrms_master_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
@@ -373,6 +377,7 @@ function OnboardVendorFormContent() {
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
         formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
+        formData.append("show_status_on_scan", validatedForm.data.show_status_on_scan || "1");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
         formData.append("is_hrms_master_enabled", String(validatedForm.data.is_hrms_master_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
@@ -873,28 +878,64 @@ function OnboardVendorFormContent() {
                   </div>
 
                   {form.is_tracktrace_enabled && (
-                    <div className="pt-2 border-t mt-1 flex items-center justify-between gap-2">
-                      <Label htmlFor="cutlist_configuration" className="font-medium text-xs text-muted-foreground shrink-0">
-                        Cutlist Configuration
-                      </Label>
-                      <Select
-                        value={form.cutlist_configuration || "default"}
-                        onValueChange={(value) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            cutlist_configuration: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger id="cutlist_configuration" className="h-8 text-xs w-[130px] bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default" className="text-xs">Default</SelectItem>
-                          <SelectItem value="rule manage" className="text-xs">Rule Manage</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <>
+                      <div className="pt-2 border-t mt-1 flex items-center justify-between gap-2">
+                        <Label htmlFor="cutlist_configuration" className="font-medium text-xs text-muted-foreground shrink-0">
+                          Cutlist Configuration
+                        </Label>
+                        <Select
+                          value={form.cutlist_configuration || "default"}
+                          onValueChange={(value) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              cutlist_configuration: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger id="cutlist_configuration" className="h-8 text-xs w-[130px] bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default" className="text-xs">Default</SelectItem>
+                            <SelectItem value="rule manage" className="text-xs">Rule Manage</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="pt-2 border-t mt-1 flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <Label htmlFor="show_status_on_scan" className="font-medium text-xs text-muted-foreground shrink-0">
+                            Mobile Scan Mode
+                          </Label>
+                          <span className="text-[11px] text-muted-foreground">
+                            {form.show_status_on_scan === "0"
+                              ? "Continuous scan without confirmation modal"
+                              : "Manual confirmation modal before completing"}
+                          </span>
+                        </div>
+                        <Select
+                          value={form.show_status_on_scan || "1"}
+                          onValueChange={(value) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              show_status_on_scan: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger id="show_status_on_scan" className="h-8 text-xs w-[170px] bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1" className="text-xs">
+                              Manual / Normal
+                            </SelectItem>
+                            <SelectItem value="0" className="text-xs">
+                              Continuous Scan
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
                   )}
                 </div>
 

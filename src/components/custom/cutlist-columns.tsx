@@ -1,8 +1,9 @@
 // components/custom/cutlist-columns.tsx
+import React, { useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Check, X, Filter } from "lucide-react";
+import { Check, X, Filter, Pencil, Trash2, Loader2, Minus, Plus, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -11,6 +12,204 @@ import {
 } from "@/components/ui/popover";
 
 import { cn } from "@/lib/utils";
+
+interface QtyCellEditorProps {
+  cutListId: number;
+  currentQty: number;
+  itemName: string;
+  isDisabled?: boolean;
+  disabledReason?: string;
+  onUpdate?: (cutListId: number, newQty: number) => Promise<void>;
+}
+
+const MAX_CUTLIST_QTY = 999;
+
+function QtyCellEditor({
+  cutListId,
+  currentQty,
+  itemName,
+  isDisabled,
+  disabledReason,
+  onUpdate,
+}: QtyCellEditorProps) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState<number>(currentQty);
+  const [isSaving, setIsSaving] = useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setVal(currentQty);
+    }
+  }, [open, currentQty]);
+
+  if (isDisabled || !onUpdate) {
+    return (
+      <span
+        className="font-medium text-foreground cursor-not-allowed select-none"
+        title={disabledReason || "Quantity cannot be edited."}
+      >
+        {currentQty}
+      </span>
+    );
+  }
+
+  const handleSave = async (qtyToSave: number) => {
+    if (isSaving || qtyToSave < 0 || qtyToSave > MAX_CUTLIST_QTY) return;
+    try {
+      setIsSaving(true);
+      await onUpdate(cutListId, qtyToSave);
+      setOpen(false);
+    } catch {
+      // toast is handled in parent
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isDeleting = val === 0;
+  const isOverLimit = val > MAX_CUTLIST_QTY;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group inline-flex items-center gap-1.5 rounded-md border border-transparent px-2 py-0.5 font-medium hover:border-border hover:bg-muted/80 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          title="Click to edit quantity or remove item"
+        >
+          <span>{currentQty}</span>
+          <Pencil className="size-3 text-muted-foreground opacity-50 group-hover:opacity-100 group-hover:text-primary transition-opacity" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-3 shadow-lg" align="start">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-semibold text-foreground">Edit Quantity</h4>
+              <p className="text-[11px] text-muted-foreground truncate max-w-[180px]" title={itemName}>
+                {itemName}
+              </p>
+            </div>
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              Max: {MAX_CUTLIST_QTY}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setVal((prev) => Math.max(0, prev - 1))}
+              disabled={isSaving || val <= 0}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+            <Input
+              type="number"
+              min={0}
+              max={MAX_CUTLIST_QTY}
+              value={val}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") {
+                  setVal(0);
+                  return;
+                }
+                const num = parseInt(raw, 10);
+                setVal(isNaN(num) ? 0 : Math.max(0, num));
+              }}
+              className="h-8 text-center text-sm font-semibold"
+              disabled={isSaving}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setVal((prev) => Math.min(MAX_CUTLIST_QTY, prev + 1))}
+              disabled={isSaving || val >= MAX_CUTLIST_QTY}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </div>
+
+          {isOverLimit ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive flex items-start gap-1.5">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+              <span>Quantity cannot exceed {MAX_CUTLIST_QTY}.</span>
+            </div>
+          ) : isDeleting ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive flex items-start gap-1.5">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+              <span>Setting quantity to 0 will remove this item from the project.</span>
+            </div>
+          ) : val < currentQty ? (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              Will decrease by {currentQty - val} piece{currentQty - val > 1 ? "s" : ""} in production.
+            </p>
+          ) : val > currentQty ? (
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+              Will increase by {val - currentQty} piece{val - currentQty > 1 ? "s" : ""} in production.
+            </p>
+          ) : null}
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="flex-1 h-7 text-xs"
+              onClick={() => setOpen(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            {isDeleting ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="flex-1 h-7 text-xs"
+                onClick={() => handleSave(0)}
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Trash2 className="size-3.5 mr-1" />}
+                Remove
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="flex-1 h-7 text-xs"
+                onClick={() => handleSave(val)}
+                disabled={isSaving || val === currentQty || isOverLimit || val < 0}
+              >
+                {isSaving ? <Loader2 className="size-3.5 animate-spin mr-1" /> : null}
+                Save
+              </Button>
+            )}
+          </div>
+
+          {!isDeleting && (
+            <div className="border-t pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setVal(0)}
+                className="text-[11px] text-muted-foreground hover:text-destructive transition-colors inline-flex items-center gap-1"
+                disabled={isSaving}
+              >
+                <Trash2 className="size-3" />
+                Remove item completely
+              </button>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function getCutListColumns(
   machineColumns: string[],
@@ -23,6 +222,9 @@ export function getCutListColumns(
   ) => void,
   data?: any[], // ✅ add this
   isAssignmentDisabled?: boolean,
+  onQtyUpdate?: (cutListId: number, newQty: number) => Promise<void>,
+  isQtyEditDisabled?: boolean,
+  projectPackingType?: string,
 ): ColumnDef<any>[] {
   // ✅ Build unique option lists from data
   const uniqueGroups = Array.from(
@@ -434,7 +636,45 @@ export function getCutListColumns(
           </Popover>
         </div>
       ),
-      size: 80,
+      cell: ({ row }) => {
+        const cutListId = Number(row.original.id);
+        const currentQty = Number(row.getValue("qty"));
+        const itemName =
+          row.original.item_name ||
+          row.original.description ||
+          `Item #${cutListId}`;
+
+        // Determine if item is a custom group packing cutlist item
+        const effectivePackingType = String(
+          projectPackingType || row.original.packing_type || "",
+        )
+          .trim()
+          .toUpperCase();
+        const hasCustomGroup = Boolean(
+          row.original.custom_packing_group || row.original.group_name,
+        );
+        const isCustomGroupCutlist =
+          effectivePackingType === "CUSTOM_GROUP" && hasCustomGroup;
+
+        const disabled = isQtyEditDisabled || isCustomGroupCutlist;
+        const disabledReason = isQtyEditDisabled
+          ? "Project has started. Quantity cannot be edited."
+          : isCustomGroupCutlist
+            ? "Editing quantity for custom group packing items is currently disabled."
+            : undefined;
+
+        return (
+          <QtyCellEditor
+            cutListId={cutListId}
+            currentQty={currentQty}
+            itemName={itemName}
+            isDisabled={!!disabled}
+            disabledReason={disabledReason}
+            onUpdate={onQtyUpdate}
+          />
+        );
+      },
+      size: 90,
       enableColumnFilter: true,
     },
 
@@ -706,7 +946,7 @@ export function getCutListColumns(
         const machineData = row.getValue(machineName);
         const isAssigned = machineData?.assigned || false;
         const machineId = machineData?.machineId;
-        const cutListId = row.original.id;
+        const cutListId = Number(row.original.id);
 
         return (
           <div

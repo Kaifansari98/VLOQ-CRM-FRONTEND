@@ -61,6 +61,9 @@ interface Props {
   ) => Promise<string>;
   onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
   onDownloadBasicExcel?: (cutListIds?: number[]) => Promise<string>; // ✅ New prop
+  onQtyUpdate?: (cutListId: number, newQty: number) => Promise<void>;
+  isQtyEditDisabled?: boolean;
+  projectPackingType?: string;
 }
 
 export default function CutListTable({
@@ -68,10 +71,13 @@ export default function CutListTable({
   machineColumns,
   className,
   isAssignmentDisabled = false,
+  isQtyEditDisabled = false,
+  onQtyUpdate,
   onMachineAssign,
   onDownloadLabels,
   onDownloadExcel,
   onDownloadBasicExcel, // ✅ New prop
+  projectPackingType,
 }: Props) {
   const { project_id } = useParams();
   const projectId = String(project_id);
@@ -128,7 +134,13 @@ export default function CutListTable({
       const selectedRowIds =
         options?.cutListIds ??
         (selectedRows.length > 0
-          ? selectedRows.map((row) => row.original.id)
+          ? [
+              ...new Set(
+                selectedRows.map((row) =>
+                  Number(row.original.cut_list_id ?? row.original.id),
+                ),
+              ),
+            ]
           : undefined);
 
       const rawPdfUrl = await onDownloadLabels(selectedRowIds, options);
@@ -162,7 +174,13 @@ export default function CutListTable({
 
       const selectedRowIds =
         selectedRows.length > 0
-          ? selectedRows.map((row) => row.original.id)
+          ? [
+              ...new Set(
+                selectedRows.map((row) =>
+                  Number(row.original.cut_list_id ?? row.original.id),
+                ),
+              ),
+            ]
           : undefined;
 
       const rawFileUrl = await onDownloadExcel(selectedRowIds);
@@ -199,7 +217,13 @@ export default function CutListTable({
 
       const selectedRowIds =
         selectedRows.length > 0
-          ? selectedRows.map((row) => row.original.id)
+          ? [
+              ...new Set(
+                selectedRows.map((row) =>
+                  Number(row.original.cut_list_id ?? row.original.id),
+                ),
+              ),
+            ]
           : undefined;
 
       const rawFileUrl = await onDownloadBasicExcel(selectedRowIds);
@@ -319,8 +343,19 @@ export default function CutListTable({
         handleMachineCellClick,
         data, // ✅ pass data here
         isAssignmentDisabled,
+        onQtyUpdate,
+        isQtyEditDisabled,
+        projectPackingType,
       ),
-    [machineColumns, data, onMachineAssign, isAssignmentDisabled],
+    [
+      machineColumns,
+      data,
+      onMachineAssign,
+      isAssignmentDisabled,
+      onQtyUpdate,
+      isQtyEditDisabled,
+      projectPackingType,
+    ],
   );
 
   const table = useReactTable({
@@ -350,11 +385,17 @@ export default function CutListTable({
     machineName: string,
     assigned: boolean,
   ) => {
-    const rowsToUpdate = selectedRows.map((row) => row.original.id);
+    // Use cut_list_id (numeric) and deduplicate — multiple unit rows of the
+    // same item share the same cut_list_id.
+    const cutListIds = [
+      ...new Set(
+        selectedRows.map((row) => Number(row.original.cut_list_id ?? row.original.id)),
+      ),
+    ];
 
     if (onMachineAssign) {
       try {
-        await onMachineAssign(rowsToUpdate, machineId, machineName, assigned);
+        await onMachineAssign(cutListIds, machineId, machineName, assigned);
         toastManager.add({
           title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
           type: "success",
