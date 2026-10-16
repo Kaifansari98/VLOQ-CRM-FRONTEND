@@ -42,6 +42,7 @@ import {
   useProjectLocations,
   useSaveProjectLocations,
 } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
+import { validateIndianMobileRisk } from "@/utils/phoneRiskValidator";
 
 type EditableLocationRow = {
   rowKey: string;
@@ -148,9 +149,10 @@ export default function ProjectLocationsPage() {
   };
 
   const updateContactNo = (rowKey: string, value: string) => {
+    const numericValue = value.replace(/\D/g, '').slice(0, 10);
     setRows((currentRows) =>
       currentRows.map((row) =>
-        row.rowKey === rowKey ? { ...row, contact_no: value } : row
+        row.rowKey === rowKey ? { ...row, contact_no: numericValue } : row
       )
     );
   };
@@ -211,12 +213,23 @@ export default function ProjectLocationsPage() {
         return null;
       }
 
-      if (contactNo.length > 50) {
+      if (contactNo.length > 10) {
         toastManager.add({
-          title: `Contact No must not exceed 50 characters in row ${index + 1}`,
+          title: `Contact No must not exceed 10 digits in row ${index + 1}`,
           type: "error",
         });
         return null;
+      }
+
+      if (contactNo.length === 10) {
+        const riskCheck = validateIndianMobileRisk(contactNo);
+        if (!riskCheck.isValid) {
+          toastManager.add({
+            title: `Row ${index + 1}: ${riskCheck.reason}`,
+            type: "error",
+          });
+          return null;
+        }
       }
 
       if (seenLocations.has(normalizedLocation)) {
