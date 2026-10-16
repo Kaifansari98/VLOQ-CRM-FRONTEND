@@ -547,6 +547,8 @@ export const useSaveMetalCutlist = (vendorId?: number, leadId?: number) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["metalCutlist", vendorId, leadId] });
+      queryClient.invalidateQueries({ queryKey: ["track-trace-projects", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["track-trace-leads", vendorId] });
     },
   });
 };

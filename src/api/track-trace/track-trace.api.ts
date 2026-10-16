@@ -19,6 +19,7 @@ export type ProjectSortBy =
   | "track_trace_status";
 
 export interface TrackTraceProjectFilters {
+  fabrication?: "WOODWORK" | "METALWORK";
   page: number;
   limit: number;
 
@@ -69,6 +70,7 @@ export const getAllTrackTraceProjects = async (
     `/track-trace/project/${vendorId}`,
     {
       params: {
+        fabrication: filters.fabrication,
         page: filters.page,
         limit: filters.limit,
 

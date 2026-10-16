@@ -18,7 +18,7 @@ export default function SavedMetalCutlist({ rows, loading }: { rows: MetalCutlis
   const uploadedAt = rows[0] ? new Date(rows[0].created_at).toLocaleString() : null;
 
   if (loading) {
-    return <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading metal cutlist…</div>;
+    return <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading Metalwork Cutlist…</div>;
   }
 
   return (
@@ -27,7 +27,7 @@ export default function SavedMetalCutlist({ rows, loading }: { rows: MetalCutlis
         <div className="flex items-center gap-2">
           <Layers className="size-4 text-primary" />
           <div>
-            <h3 className="text-sm font-semibold">Uploaded metal cutlist</h3>
+            <h3 className="text-sm font-semibold">Uploaded Metalwork Cutlist</h3>
             <p className="text-xs text-muted-foreground">
               {rows.length ? `${rows.length} part rows · ${total} total pieces · uploaded ${uploadedAt}` : "Nothing uploaded yet"}
             </p>

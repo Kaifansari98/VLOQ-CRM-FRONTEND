@@ -5,7 +5,6 @@ import React, { useMemo, useState } from "react";
 import {
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   getSortedRowModel,
   getFilteredRowModel,
   ColumnFiltersState,
@@ -326,6 +325,8 @@ export default function CutListTable({
   const table = useReactTable({
     data: data ?? [],
     columns,
+    // This table displays all rows; avoid queued pagination resets during render.
+    autoResetPageIndex: false,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),

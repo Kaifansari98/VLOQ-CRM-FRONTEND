@@ -330,8 +330,12 @@ const data = {
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
         { title: "Workstations", url: "/dashboard/track-trace/machines" },
         {
-          title: "Projects",
+          title: "Woodwork Projects",
           url: "/dashboard/track-trace/manage-project",
+        },
+        {
+          title: "Metalwork Projects",
+          url: "/dashboard/track-trace/metalwork-projects",
         },
         {
           title: "Defects",

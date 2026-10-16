@@ -493,7 +493,7 @@ export default function PreProductionFilesSection({
           {isTrackTraceUploadFlow && (
             <TabsList className="mx-6 mt-4">
               <TabsTrigger value="woodwork">Woodwork Cutlist</TabsTrigger>
-              <TabsTrigger value="metal">Metal Cutlist</TabsTrigger>
+              <TabsTrigger value="metal">Metalwork Cutlist</TabsTrigger>
             </TabsList>
           )}
           <TabsContent value="woodwork" forceMount className="data-[state=inactive]:hidden">

@@ -17,7 +17,7 @@ import {
     useProjectCutList,
 } from "@/hooks/track-trace/useProjectCutList";
 import { useAppSelector } from "@/redux/store";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "react-aria-components";
 import CutListTable from "@/components/custom/CutListTable";
@@ -40,6 +40,12 @@ export default function CutListPage() {
     const user = useAppSelector((state) => state.auth.user);
     const vendorId = user?.vendor_id;
     const { uniqueProjectId } = useParams();
+    const searchParams = useSearchParams();
+    const fabrication = searchParams.get("fabrication") === "METALWORK" ? "METALWORK" : "WOODWORK";
+    const fabricationLabel = fabrication === "METALWORK" ? "Metalwork" : "Woodwork";
+    const projectsUrl = fabrication === "METALWORK"
+        ? "/dashboard/track-trace/metalwork-projects"
+        : "/dashboard/track-trace/manage-project";
     const {
         data: response,
         isLoading,
@@ -47,7 +53,12 @@ export default function CutListPage() {
         refetch,
     } = useProjectCutList(Number(vendorId), String(uniqueProjectId));
 
-    const data = response?.data ?? [];
+    const data = useMemo(
+        () => (response?.data ?? []).filter(
+            (row: CutListRow) => row.fabrication === fabrication,
+        ),
+        [response?.data, fabrication],
+    );
     const machineColumns = response?.machineColumns ?? [];
     const project = response?.project;
 
@@ -185,7 +196,7 @@ export default function CutListPage() {
                             </BreadcrumbItem>
                             <BreadcrumbSeparator />
                             <BreadcrumbItem>
-                                <BreadcrumbPage>Manage Projects</BreadcrumbPage>
+                                <BreadcrumbLink href={projectsUrl}>{fabricationLabel} Projects</BreadcrumbLink>
                             </BreadcrumbItem>
                         </BreadcrumbList>
                     </Breadcrumb>
@@ -195,7 +206,7 @@ export default function CutListPage() {
             <main className="flex-1 overflow-x-hidden py-4">
                 <div className="px-4">
                     <h1 className="text-lg font-semibold">
-                        Manage Track & Trace Projects
+                        {fabricationLabel} Cutlist
                     </h1>
                 </div>
 
