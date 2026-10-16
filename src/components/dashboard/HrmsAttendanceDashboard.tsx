@@ -62,6 +62,7 @@ export default function HrmsAttendanceDashboard() {
 
   // Active Timezone
   const activeTimeZone =
+    user?.vendor?.time_zone_master?.time_zone_name ||
     user?.vendor?.time_zone_master?.time_zone_code ||
     user?.vendor?.time_zone ||
     (user as any)?.user_timezone ||

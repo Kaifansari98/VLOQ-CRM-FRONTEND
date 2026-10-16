@@ -257,9 +257,11 @@ export const useStates = () => {
 
 export interface TimeZoneItem {
   id: number;
-  name: string;
-  time_zone_code: string;
-  is_active: boolean;
+  country: string;
+  time_zone_name: string;
+  time_zone: string | null;
+  active: boolean;
+  mins: number | null;
 }
 
 export const fetchTimeZones = async (params?: {
@@ -269,7 +271,7 @@ export const fetchTimeZones = async (params?: {
   data: TimeZoneItem[];
 }> => {
   const query =
-    params?.is_active !== undefined ? `?is_active=${params.is_active}` : "";
+    params?.is_active !== undefined ? `?active=${params.is_active}` : "";
   const { data } = await apiClient.get(`/time-zones${query}`);
   return data;
 };
