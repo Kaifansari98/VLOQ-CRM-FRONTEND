@@ -76,32 +76,55 @@ export default function EmployeeDashboard() {
   // Freeze Punch OUT button after punch out action until page/dashboard is refreshed
   const [isPunchOutFrozen, setIsPunchOutFrozen] = useState(false);
 
-  // Helper to format timestamps without date
+  // Helper to format timestamps without date in 12-hour format (e.g., 03:35:48 pm)
   const formatTimeOnly = (timeStr?: string | null): string => {
     if (!timeStr || timeStr === "-" || timeStr === "--:--") return "-";
-    const trimmed = String(timeStr).trim();
+    let trimmed = String(timeStr).trim();
     if (trimmed.includes(",")) {
-      return trimmed.split(",")[1].trim();
+      trimmed = trimmed.split(",")[1].trim();
     }
-    if (/^\d{1,2}:\d{2}(:\d{2})?(\s*[AaPp][Mm])?$/.test(trimmed)) {
-      return trimmed;
+
+    // If it already has am/pm
+    const amPmMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
+    if (amPmMatch) {
+      const h = String(parseInt(amPmMatch[1], 10)).padStart(2, "0");
+      const m = amPmMatch[2];
+      const s = amPmMatch[3];
+      const p = amPmMatch[4].toLowerCase();
+      return s ? `${h}:${m}:${s} ${p}` : `${h}:${m} ${p}`;
     }
-    if (trimmed.includes("T")) {
-      try {
-        const d = new Date(trimmed);
-        if (!isNaN(d.getTime())) {
-          return new Intl.DateTimeFormat("en-GB", {
-            timeZone: activeTimeZone,
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          }).format(d);
-        }
-      } catch {}
+
+    // Convert 24-hour time string (HH:mm or HH:mm:ss) to 12-hour format
+    const match24 = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (match24) {
+      const hour = parseInt(match24[1], 10);
+      const minute = match24[2];
+      const second = match24[3];
+      const period = hour >= 12 ? "pm" : "am";
+      const hour12 = hour % 12 || 12;
+      const hourStr = String(hour12).padStart(2, "0");
+      return second
+        ? `${hourStr}:${minute}:${second} ${period}`
+        : `${hourStr}:${minute} ${period}`;
     }
+
+    // If it contains ISO date/time or date string
+    try {
+      const d = new Date(trimmed);
+      if (!isNaN(d.getTime())) {
+        return new Intl.DateTimeFormat("en-IN", {
+          timeZone: activeTimeZone,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }).format(d);
+      }
+    } catch {}
+
     return trimmed;
   };
+
 
   useEffect(() => {
     const updateTime = () => {
@@ -182,7 +205,7 @@ export default function EmployeeDashboard() {
       return {
         label: "Not Checked In",
         badgeVariant: "secondary" as const,
-        bgClass: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300",
+        bgClass: "bg-muted text-muted-foreground border border-border",
         icon: AlertCircle,
         description: "You have not marked your attendance for today yet.",
       };
@@ -190,20 +213,20 @@ export default function EmployeeDashboard() {
 
     if (attendance?.check_out) {
       return {
-        label: "Checked Out",
+        label: "Punched Out",
         badgeVariant: "outline" as const,
-        bgClass: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300",
+        bgClass: "bg-muted text-foreground border border-border",
         icon: LogOut,
         description: isPunchOutFrozen
-          ? `Checked out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. Punch OUT button is frozen for this session (refresh page to punch OUT again).`
-          : `Checked out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. You can punch OUT again if needed.`,
+          ? `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. Punch OUT button is frozen for this session (refresh page to punch OUT again).`
+          : `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. You can punch OUT again if needed.`,
       };
     }
 
     return {
       label: "Checked In",
       badgeVariant: "default" as const,
-      bgClass: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300",
+      bgClass: "bg-foreground text-background border border-foreground",
       icon: CheckCircle2,
       description: `Checked in at ${formatTimeOnly(attendance?.check_in_local || attendance?.check_in)}. Your attendance is active.`,
     };
@@ -213,30 +236,24 @@ export default function EmployeeDashboard() {
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full">
       {/* 1. Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl border bg-card text-card-foreground shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Welcome, {username}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Welcome, <span className="capitalize">{username}</span>
             </h1>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="secondary" className="text-xs font-medium px-2.5 py-0.5 rounded-full capitalize">
               {userRole}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <span>{vendorName}</span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-              Time Zone: <strong className="text-foreground">{activeTimeZone}</strong>
-            </span>
-          </p>
         </div>
 
         {/* Live Clock Card */}
-        <div className="flex items-center gap-4 bg-muted/50 p-3 px-4 rounded-lg border">
-          <Clock className="h-6 w-6 text-primary shrink-0" />
+        <div className="flex items-center gap-3.5 bg-muted/30 p-3 px-4 rounded-xl border">
+          <div className="p-2 rounded-lg bg-background border shadow-2xs">
+            <Clock className="h-4 w-4 text-foreground" />
+          </div>
           <div className="text-right sm:text-left">
-            <div className="text-xl font-mono font-bold tracking-tight text-foreground">
+            <div className="text-lg font-mono font-bold tracking-tight text-foreground">
               {currentTimeStr || "--:--:--"}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -253,9 +270,9 @@ export default function EmployeeDashboard() {
             }}
             disabled={isRefetchingToday}
             title="Refresh Attendance"
-            className="h-8 w-8 ml-2"
+            className="h-8 w-8 ml-1 text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefetchingToday ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefetchingToday ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
@@ -266,7 +283,7 @@ export default function EmployeeDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <CalendarCheck className="h-5 w-5 text-primary" />
+                <CalendarCheck className="h-5 w-5 text-foreground" />
                 Today&apos;s Attendance
               </CardTitle>
               <CardDescription>
@@ -341,10 +358,10 @@ export default function EmployeeDashboard() {
                     <LogOut className={`mr-2 h-4 w-4 ${hasMarkedIn && !isPunchOutFrozen ? "text-[#FFFFFF]" : "text-muted-foreground"}`} />
                     <span>
                       {!hasMarkedIn
-                        ? "Punch OUT (Punch IN First)"
+                        ? "Checked OUT (Checked IN First)"
                         : isPunchOutFrozen
                         ? "Checked OUT (Completed)"
-                        : "Punch OUT"}
+                        : "Checked OUT"}
                     </span>
                   </>
                 )}
@@ -355,7 +372,7 @@ export default function EmployeeDashboard() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-[170px] p-2.5 px-3.5 rounded-lg bg-muted/40 border space-y-0.5">
                 <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
-                  <LogIn className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  <LogIn className="h-3.5 w-3.5 text-foreground shrink-0" />
                   IN
                 </span>
                 <p className="text-sm font-semibold font-mono text-foreground">
@@ -365,7 +382,7 @@ export default function EmployeeDashboard() {
 
               <div className="min-w-[170px] p-2.5 px-3.5 rounded-lg bg-muted/40 border space-y-0.5">
                 <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
-                  <LogOut className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <LogOut className="h-3.5 w-3.5 text-foreground shrink-0" />
                   OUT
                 </span>
                 <p className="text-sm font-semibold font-mono text-foreground">
@@ -377,19 +394,19 @@ export default function EmployeeDashboard() {
 
           {hasMarkedIn && (
             <p className="text-xs text-muted-foreground italic">
-              * Note: Only one IN punch is permitted per calendar date. You can punch OUT multiple times if your day involves breaks or shift departure.
+               Note : Only one IN Checked is permitted per calendar date. You can Checked OUT multiple times if your day involves breaks or shift departure.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* 3. Attendance History Section */}
+      {/* 3. Attendance History Section (Temporarily commented out)
       <Card className="border shadow-xs">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <History className="h-5 w-5 text-primary" />
+                <History className="h-5 w-5 text-foreground" />
                 My Attendance History
               </CardTitle>
               <CardDescription>
@@ -397,7 +414,7 @@ export default function EmployeeDashboard() {
               </CardDescription>
             </div>
 
-            {/* Filter Bar */}
+            // Filter Bar
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ListFilter className="h-3.5 w-3.5 shrink-0" />
@@ -475,14 +492,12 @@ export default function EmployeeDashboard() {
                         <td className="py-3 px-4 font-medium text-foreground">
                           {record.attendance_date_local || record.attendance_date}
                         </td>
-                        <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-mono text-xs">
+                        <td className="py-3 px-4 font-mono text-xs text-foreground">
                           {formatTimeOnly(record.check_in_local || record.check_in)}
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">
+                        <td className="py-3 px-4 font-mono text-xs text-foreground">
                           {record.check_out_local ? (
-                            <span className="text-amber-700 dark:text-amber-400">
-                              {formatTimeOnly(record.check_out_local)}
-                            </span>
+                            formatTimeOnly(record.check_out_local)
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
@@ -492,8 +507,8 @@ export default function EmployeeDashboard() {
                             variant={isCompleted ? "outline" : "default"}
                             className={
                               isCompleted
-                                ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300"
-                                : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300"
+                                ? "bg-muted/40 text-foreground border-border hover:bg-muted/60"
+                                : "bg-foreground text-background border-foreground hover:bg-foreground/90"
                             }
                           >
                             {isCompleted ? "Completed" : "Checked IN"}
@@ -510,7 +525,7 @@ export default function EmployeeDashboard() {
             </div>
           )}
 
-          {/* Pagination Controls */}
+          // Pagination Controls
           {historyData?.pagination && historyData.pagination.totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 text-xs text-muted-foreground">
               <span>
@@ -544,6 +559,7 @@ export default function EmployeeDashboard() {
           )}
         </CardContent>
       </Card>
+      */}
     </div>
   );
 }
