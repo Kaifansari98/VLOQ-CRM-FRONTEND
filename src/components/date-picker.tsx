@@ -11,10 +11,12 @@ import { format, isValid, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import CustomeTooltip from "./custom-tooltip";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface CustomeDatePickerProps {
   value?: string;
   onChange: (value?: string) => void;
+  className?: string;
   restriction?:
     | "none"
     | "pastOnly"
@@ -36,6 +38,7 @@ interface CustomeDatePickerProps {
 export default function CustomeDatePicker({
   value,
   onChange,
+  className,
   restriction = "none",
   minDate,
   disabledReason,
@@ -86,6 +89,7 @@ export default function CustomeDatePicker({
 
   const handleReset = (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setDate(undefined);
     onChange(undefined);
   };
@@ -180,12 +184,12 @@ export default function CustomeDatePicker({
             <Button
               type="button"
               variant="outline"
-              className="w-full justify-start"
+              className={cn("w-full justify-start text-xs font-normal", className)}
               disabled
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
               {date ? (
-                <span>{format(date, "PPP")}</span>
+                <span className="truncate">{format(date, "PPP")}</span>
               ) : (
                 <span>Date selection unavailable</span>
               )}
@@ -203,20 +207,24 @@ export default function CustomeDatePicker({
           <Button
             type="button"
             variant="outline"
-            className="w-full justify-start"
+            className={cn(
+              "w-full justify-start text-xs font-normal",
+              date && "pr-7",
+              className
+            )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "PPP") : <span>Pick a date</span>}
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+            {date ? <span className="truncate">{format(date, "PPP")}</span> : <span>Pick a date</span>}
           </Button>
           {date && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="absolute top-1/2 right-2 -translate-y-1/2"
+              className="absolute top-1/2 right-1 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
               onClick={handleReset}
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>

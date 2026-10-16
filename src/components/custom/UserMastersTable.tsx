@@ -88,6 +88,10 @@ function formatUserTypeLabel(value?: string | null) {
   const normalized = String(value ?? "").trim();
   if (!normalized) return "—";
 
+  if (normalized.toLowerCase().replace(/[-_]+/g, " ") === "hrms admin") {
+    return "HRMS Admin";
+  }
+
   return normalized
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
@@ -106,6 +110,7 @@ function normalizeNumberArray(values: number[]) {
 
 function getUserMasterColumns(
   isEmployeeMaster: boolean,
+  isHrmsMasterEnabled?: boolean,
 ): ColumnDef<UserMasterRow>[] {
   const baseColumns: ColumnDef<UserMasterRow>[] = [
     {
@@ -154,7 +159,7 @@ function getUserMasterColumns(
     },
   ];
 
-  if (!isEmployeeMaster) {
+  if (!isEmployeeMaster || isHrmsMasterEnabled) {
     baseColumns.push({
       accessorKey: "user_type",
       header: ({ column }) => (
@@ -386,13 +391,29 @@ export default function UserMastersTable({
   const deferredPrivilegeSearch = React.useDeferredValue(privilegeSearch);
   const [isExporting, setIsExporting] = React.useState(false);
 
+  const authUser = useAppSelector((state) => state.auth.user);
+  const { data: vendorData } = useVendorById(vendorId);
+
+  const isHrmsMasterEnabled =
+    vendorData?.data?.is_hrms_master_enabled === true ||
+    authUser?.vendor?.is_hrms_master_enabled === true ||
+    (authUser as any)?.vendorMaster?.is_hrms_master_enabled === true;
+
+  const effectiveEntityName =
+    isEmployeeMaster && isHrmsMasterEnabled ? "User" : entityName;
+
+  const queryUserType =
+    isEmployeeMaster && isHrmsMasterEnabled
+      ? "employee,hrms-admin"
+      : userTypeFilter;
+
   const { data, isLoading, isError, error } = useUsersForMaster(
     {
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       search: globalFilter,
       franchise_id: franchiseFilter,
-      user_type: userTypeFilter,
+      user_type: queryUserType,
       exclude_user_type: !userTypeFilter ? "employee" : undefined,
     },
     vendorId,
@@ -401,7 +422,6 @@ export default function UserMastersTable({
     vendorId,
     !!vendorId,
   );
-  const { data: vendorData } = useVendorById(isMasterAdmin ? vendorId : undefined);
   const { data: userTypesData } = useUserTypes();
   const employeeUserType = React.useMemo(
     () =>
@@ -444,6 +464,13 @@ export default function UserMastersTable({
           if (itemUserType === "master-admin") {
             return false;
           }
+          if (isEmployeeMaster && isHrmsMasterEnabled) {
+            return (
+              itemUserType === "employee" ||
+              itemUserType === "hrms-admin" ||
+              itemUserType === "hrms admin"
+            );
+          }
           if (userTypeFilter) {
             return (
               itemUserType === userTypeFilter.trim().toLowerCase()
@@ -473,14 +500,22 @@ export default function UserMastersTable({
                 item.user_type?.user_type?.trim().toLowerCase(),
             )?.id ?? null,
         })),
-    [data, userTypesData, pagination.pageIndex, pagination.pageSize, userTypeFilter],
+    [
+      data,
+      userTypesData,
+      pagination.pageIndex,
+      pagination.pageSize,
+      userTypeFilter,
+      isEmployeeMaster,
+      isHrmsMasterEnabled,
+    ],
   );
 
   const totalPages = data?.pagination?.totalPages ?? 1;
 
   const columns = React.useMemo(
-    () => getUserMasterColumns(isEmployeeMaster),
-    [isEmployeeMaster],
+    () => getUserMasterColumns(isEmployeeMaster, isHrmsMasterEnabled),
+    [isEmployeeMaster, isHrmsMasterEnabled],
   );
 
   const table = useReactTable({
@@ -546,6 +581,21 @@ export default function UserMastersTable({
         })),
     [userTypesData?.data, userTypeFilter],
   );
+  const hrmsUserTypeOptions = React.useMemo(() => {
+    const all = userTypesData?.data ?? [];
+    const emp = all.find(
+      (ut) => ut.user_type?.trim().toLowerCase() === "employee",
+    );
+    const hrmsAdmin = all.find((ut) => {
+      const t = ut.user_type?.trim().toLowerCase().replace(/[ _]+/g, "-");
+      return t === "hrms-admin";
+    });
+
+    const list: { id: number; label: string }[] = [];
+    if (emp) list.push({ id: emp.id, label: "Employee" });
+    if (hrmsAdmin) list.push({ id: hrmsAdmin.id, label: "HRMS Admin" });
+    return list;
+  }, [userTypesData?.data]);
   const serverSelectedPrivilegeIds = React.useMemo(
     () =>
       normalizeNumberArray(
@@ -592,12 +642,17 @@ export default function UserMastersTable({
 
   const resetForm = () => {
     setSupervisorConfirmation(null);
-    const defaultUserTypeId =
-      isEmployeeMaster && employeeUserTypeId
-        ? employeeUserTypeId
-        : userTypeFilter && userTypeOptions.length > 0
-        ? String(userTypeOptions[0].id)
-        : "";
+    let defaultUserTypeId = "";
+    if (isEmployeeMaster) {
+      if (isHrmsMasterEnabled && hrmsUserTypeOptions.length > 0) {
+        defaultUserTypeId = String(hrmsUserTypeOptions[0].id);
+      } else if (employeeUserTypeId) {
+        defaultUserTypeId = employeeUserTypeId;
+      }
+    } else if (userTypeFilter && userTypeOptions.length > 0) {
+      defaultUserTypeId = String(userTypeOptions[0].id);
+    }
+
     setForm({ ...defaultForm, user_type_id: defaultUserTypeId });
     setOriginalForm({ ...defaultForm, user_type_id: defaultUserTypeId });
     setShowPassword(false);
@@ -613,20 +668,29 @@ export default function UserMastersTable({
   };
 
   React.useEffect(() => {
-    if (isEmployeeMaster && employeeUserTypeId) {
-      if (!form.user_type_id || form.user_type_id !== employeeUserTypeId) {
-        setForm((f) => ({ ...f, user_type_id: employeeUserTypeId }));
+    if (modalMode === "create") {
+      if (isEmployeeMaster) {
+        if (isHrmsMasterEnabled) {
+          if (!form.user_type_id && hrmsUserTypeOptions.length > 0) {
+            setForm((f) => ({ ...f, user_type_id: String(hrmsUserTypeOptions[0].id) }));
+          }
+        } else if (employeeUserTypeId) {
+          if (!form.user_type_id || form.user_type_id !== employeeUserTypeId) {
+            setForm((f) => ({ ...f, user_type_id: employeeUserTypeId }));
+          }
+        }
+      } else if (
+        userTypeFilter &&
+        userTypeOptions.length > 0 &&
+        !form.user_type_id
+      ) {
+        setForm((f) => ({ ...f, user_type_id: String(userTypeOptions[0].id) }));
       }
-    } else if (
-      modalMode === "create" &&
-      userTypeFilter &&
-      userTypeOptions.length > 0 &&
-      !form.user_type_id
-    ) {
-      setForm((f) => ({ ...f, user_type_id: String(userTypeOptions[0].id) }));
     }
   }, [
     isEmployeeMaster,
+    isHrmsMasterEnabled,
+    hrmsUserTypeOptions,
     employeeUserTypeId,
     modalMode,
     userTypeFilter,
@@ -642,9 +706,10 @@ export default function UserMastersTable({
       ? !form.password || passwordStrengthScore === 5
       : passwordStrengthScore === 5;
 
-  const effectiveUserTypeId = isEmployeeMaster
-    ? form.user_type_id || employeeUserTypeId
-    : form.user_type_id;
+  const effectiveUserTypeId =
+    isEmployeeMaster && !isHrmsMasterEnabled
+      ? form.user_type_id || employeeUserTypeId
+      : form.user_type_id;
 
   const isFormValid =
     form.user_name.trim() &&
@@ -662,7 +727,9 @@ export default function UserMastersTable({
           ut.user_type?.trim().toLowerCase() ===
           row.user_type?.trim().toLowerCase(),
       )?.id ??
-      (isEmployeeMaster && employeeUserType?.id ? employeeUserType.id : null);
+      (isEmployeeMaster && !isHrmsMasterEnabled && employeeUserType?.id
+        ? employeeUserType.id
+        : null);
 
     const prefilled = {
       user_name: row.user_name,
@@ -738,7 +805,7 @@ export default function UserMastersTable({
     if (JSON.stringify(form.franchise_ids) !== JSON.stringify(originalForm.franchise_ids))
       payload.franchise_ids = form.franchise_ids;
 
-    if (!isEmployeeMaster && form.user_type_id !== originalForm.user_type_id)
+    if ((!isEmployeeMaster || isHrmsMasterEnabled) && form.user_type_id !== originalForm.user_type_id)
       payload.user_type_id = Number(form.user_type_id);
 
     if (form.status !== originalForm.status) payload.status = form.status;
@@ -901,7 +968,7 @@ export default function UserMastersTable({
                   setGlobalFilter(e.target.value);
                   setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                 }}
-                placeholder={`Search ${entityName.toLowerCase()}s...`}
+                placeholder={`Search ${effectiveEntityName.toLowerCase()}s...`}
                 className="h-9 w-full sm:max-w-md"
               />
               <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
@@ -921,7 +988,7 @@ export default function UserMastersTable({
                   className="sm:hidden"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Create {entityName}
+                  Create {effectiveEntityName}
                 </Button>
               </div>
             </div>
@@ -933,18 +1000,18 @@ export default function UserMastersTable({
               className="hidden sm:flex"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create {entityName}
+              Create {effectiveEntityName}
             </Button>
           </div>
 
           {isLoading ? (
             <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
-              Loading {entityName.toLowerCase()}s...
+              Loading ${effectiveEntityName.toLowerCase()}s...
             </div>
           ) : isError ? (
             <div className="rounded-lg border bg-background p-6 text-sm text-destructive">
               {(error as any)?.response?.data?.message ||
-                `Failed to load ${entityName.toLowerCase()}s.`}
+                `Failed to load ${effectiveEntityName.toLowerCase()}s.`}
             </div>
           ) : (
             <div className="select-none">
@@ -976,12 +1043,12 @@ export default function UserMastersTable({
             </div>
             <div className="flex flex-col">
               <DialogTitle className="text-base font-semibold leading-tight">
-                {modalMode === "edit" ? `Edit ${entityName}` : `Create ${entityName}`}
+                {modalMode === "edit" ? `Edit ${effectiveEntityName}` : `Create ${effectiveEntityName}`}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground leading-tight mt-0.5">
                 {modalMode === "edit"
-                  ? `Update the details for this ${entityName.toLowerCase()}.`
-                  : `Add a new ${entityName.toLowerCase()} for this vendor.`}
+                  ? `Update the details for this ${effectiveEntityName.toLowerCase()}.`
+                  : `Add a new ${effectiveEntityName.toLowerCase()} for this vendor.`}
               </DialogDescription>
             </div>
           </div>
@@ -1054,45 +1121,107 @@ export default function UserMastersTable({
                     </div>
                   </div>
 
-                  {/* Row 3: Designation (in place of User Type) | Franchise */}
-                  <div className="space-y-2">
-                    <Label htmlFor="user-designation">Designation</Label>
-                    <Input
-                      id="user-designation"
-                      value={form.designation}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, designation: e.target.value }))
-                      }
-                      placeholder="Enter designation"
-                    />
-                  </div>
+                  {/* Row 3: If HRMS Master is enabled, render User Type and Designation side-by-side, with Franchise spanning 2 cols */}
+                  {isHrmsMasterEnabled ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label>User Type</Label>
+                        <AssignToPicker
+                          data={hrmsUserTypeOptions}
+                          value={
+                            form.user_type_id ? Number(form.user_type_id) : undefined
+                          }
+                          onChange={(selectedId) =>
+                            setForm((f) => ({
+                              ...f,
+                              user_type_id: selectedId ? String(selectedId) : "",
+                            }))
+                          }
+                          placeholder="Select user type..."
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="employee-franchise-search">Franchise</Label>
-                    <MultipleSelector
-                      inputProps={{
-                        id: "employee-franchise-search",
-                        name: "employee-franchise-search",
-                        autoComplete: "off",
-                        autoCapitalize: "none",
-                        spellCheck: false,
-                      }}
-                      options={franchisesData.map((fr) => ({
-                        value: String(fr.id),
-                        label: fr.franchise_name,
-                      }))}
-                      value={form.franchise_ids.map((id) => ({
-                        value: String(id),
-                        label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
-                      }))}
-                      onChange={(selected) =>
-                        setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
-                      }
-                      placeholder="Select franchises..."
-                      hidePlaceholderWhenSelected
-                      showSelectedOptionsInDropdown
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="user-designation">Designation</Label>
+                        <Input
+                          id="user-designation"
+                          value={form.designation}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, designation: e.target.value }))
+                          }
+                          placeholder="Enter designation"
+                        />
+                      </div>
+
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="employee-franchise-search">Franchise</Label>
+                        <MultipleSelector
+                          inputProps={{
+                            id: "employee-franchise-search",
+                            name: "employee-franchise-search",
+                            autoComplete: "off",
+                            autoCapitalize: "none",
+                            spellCheck: false,
+                          }}
+                          options={franchisesData.map((fr) => ({
+                            value: String(fr.id),
+                            label: fr.franchise_name,
+                          }))}
+                          value={form.franchise_ids.map((id) => ({
+                            value: String(id),
+                            label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                          }))}
+                          onChange={(selected) =>
+                            setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                          }
+                          placeholder="Select franchises..."
+                          hidePlaceholderWhenSelected
+                          showSelectedOptionsInDropdown
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="user-designation">Designation</Label>
+                        <Input
+                          id="user-designation"
+                          value={form.designation}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, designation: e.target.value }))
+                          }
+                          placeholder="Enter designation"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="employee-franchise-search">Franchise</Label>
+                        <MultipleSelector
+                          inputProps={{
+                            id: "employee-franchise-search",
+                            name: "employee-franchise-search",
+                            autoComplete: "off",
+                            autoCapitalize: "none",
+                            spellCheck: false,
+                          }}
+                          options={franchisesData.map((fr) => ({
+                            value: String(fr.id),
+                            label: fr.franchise_name,
+                          }))}
+                          value={form.franchise_ids.map((id) => ({
+                            value: String(id),
+                            label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                          }))}
+                          onChange={(selected) =>
+                            setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                          }
+                          placeholder="Select franchises..."
+                          hidePlaceholderWhenSelected
+                          showSelectedOptionsInDropdown
+                        />
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -1366,7 +1495,7 @@ export default function UserMastersTable({
                   ) : createUserMutation.isPending ? (
                     "Creating..."
                   ) : (
-                    `Create ${entityName}`
+                    `Create ${effectiveEntityName}`
                   )}
                 </Button>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { OnlineLeadExecutiveMappingCard } from "@/components/vendors/OnlineLeadExecutiveMappingCard";
 import { CutlistHeaderMappingCard } from "@/components/vendors/CutlistHeaderMappingCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useOnboardVendor, useUpdateVendor, useStates, useVendorById } from "@/api/vendors";
+import { useOnboardVendor, useUpdateVendor, useStates, useVendorById, useTimeZones } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -101,6 +102,7 @@ const createVendorSchema = z.object({
     }),
   city: z.string().trim().optional().or(z.literal("")),
   state_id: z.number().nullable().optional(),
+  time_zone_id: z.number().int().positive("Time zone is required"),
 });
 
 type CreateVendorForm = z.infer<typeof createVendorSchema>;
@@ -115,7 +117,19 @@ function OnboardVendorFormContent() {
   const statesQuery = useStates();
   const states = statesQuery.data?.data || [];
 
+  const timeZonesQuery = useTimeZones({ is_active: true });
+  const activeTimeZones = timeZonesQuery.data?.data || [];
+
   const { data: vendorDetailResponse } = useVendorById(editingVendorId || undefined);
+
+  const displayTimeZones = React.useMemo(() => {
+    const list = [...activeTimeZones];
+    const currentVendorTz = vendorDetailResponse?.data?.time_zone_master;
+    if (currentVendorTz && !list.some((tz) => tz.id === currentVendorTz.id)) {
+      list.unshift(currentVendorTz);
+    }
+    return list;
+  }, [activeTimeZones, vendorDetailResponse?.data?.time_zone_master]);
 
   const [form, setForm] = React.useState<CreateVendorForm>({
     vendor_name: "",
@@ -141,6 +155,7 @@ function OnboardVendorFormContent() {
     pincode: "",
     city: "",
     state_id: null,
+    time_zone_id: (null as any),
   });
 
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
@@ -179,9 +194,22 @@ function OnboardVendorFormContent() {
         pincode: v.pincode || "",
         city: v.city || "",
         state_id: v.state_id || (v.state?.id ?? null),
+        time_zone_id: v.time_zone_id || (displayTimeZones.find((t) => t.time_zone_code === v.time_zone)?.id ?? (null as any)),
       });
     }
-  }, [vendorDetailResponse]);
+  }, [vendorDetailResponse, displayTimeZones]);
+
+  const handleTimeZoneChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setForm((prev) => ({
+      ...prev,
+      time_zone_id: value ? Number(value) : (null as any),
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      time_zone_id: undefined,
+    }));
+  };
 
   const handleStateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -255,6 +283,7 @@ function OnboardVendorFormContent() {
         website_link: nextFieldErrors.website_link?.[0],
         pincode: nextFieldErrors.pincode?.[0],
         state_id: nextFieldErrors.state_id?.[0],
+        time_zone_id: nextFieldErrors.time_zone_id?.[0],
       };
       setFieldErrors(errorsObj);
 
@@ -288,7 +317,9 @@ function OnboardVendorFormContent() {
         formData.append("country_code", "+91");
         formData.append("head_office_id", "");
         formData.append("status", validatedForm.data.status);
-        formData.append("time_zone", "Asia/Kolkata");
+        formData.append("time_zone_id", String(validatedForm.data.time_zone_id));
+        const selectedTz = displayTimeZones.find((t) => t.id === validatedForm.data.time_zone_id);
+        formData.append("time_zone", selectedTz?.time_zone_code || "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
@@ -334,7 +365,9 @@ function OnboardVendorFormContent() {
         formData.append("country_code", "+91");
         formData.append("head_office_id", "");
         formData.append("status", validatedForm.data.status);
-        formData.append("time_zone", "Asia/Kolkata");
+        formData.append("time_zone_id", String(validatedForm.data.time_zone_id));
+        const selectedTz = displayTimeZones.find((t) => t.id === validatedForm.data.time_zone_id);
+        formData.append("time_zone", selectedTz?.time_zone_code || "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
@@ -642,7 +675,7 @@ function OnboardVendorFormContent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="pincode" className="text-xs font-semibold">Pincode</Label>
                   <Input
@@ -688,6 +721,29 @@ function OnboardVendorFormContent() {
                   </select>
                   {fieldErrors.state_id && (
                     <p className="text-xs text-destructive font-medium mt-0.5">{fieldErrors.state_id}</p>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="time_zone_id" className="text-xs font-semibold">Time Zone *</Label>
+                  <select
+                    id="time_zone_id"
+                    value={form.time_zone_id || ""}
+                    onChange={handleTimeZoneChange}
+                    className={cn(
+                      "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      fieldErrors.time_zone_id && "border-destructive focus-visible:ring-destructive"
+                    )}
+                  >
+                    <option value="">Select Time Zone</option>
+                    {displayTimeZones.map((tz) => (
+                      <option key={tz.id} value={tz.id}>
+                        {tz.name} ({tz.time_zone_code}){!tz.is_active ? " - (Inactive)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.time_zone_id && (
+                    <p className="text-xs text-destructive font-medium mt-0.5">{fieldErrors.time_zone_id}</p>
                   )}
                 </div>
               </div>
@@ -1010,7 +1066,10 @@ function OnboardVendorFormContent() {
           </div>
 
           {editingVendorId ? (
-            <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
+            <>
+              <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
+              <OnlineLeadExecutiveMappingCard key={`online-leads-${editingVendorId}`} vendorId={editingVendorId} />
+            </>
           ) : (
             <div className="rounded-xl border bg-muted/20 p-5 text-sm text-muted-foreground">
               Save the vendor first to configure custom cutlist Excel headers.

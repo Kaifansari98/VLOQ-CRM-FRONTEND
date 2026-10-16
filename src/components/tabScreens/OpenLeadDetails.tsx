@@ -26,6 +26,9 @@ import {
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
+import WalkinLeadAnswers from "./WalkinLeadAnswers";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import {
   useLeadById,
   useLeadProductStructureInstances,
@@ -274,6 +277,7 @@ const renameLeadSitePhotoFiles = ({
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 1. REDUX STATE
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const userId = useAppSelector((state) => state.auth.user?.id);
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
@@ -334,10 +338,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const latestRemarkInfo = useMemo(() => {
     const leadObj = data?.data?.lead;
     if (!leadObj) return null;
+    const isQuestionnaireText = (rem: string) => {
+      const lower = rem.toLowerCase();
+      return (
+        lower.includes("bulk imported") ||
+        lower.startsWith("**•") ||
+        lower.startsWith("•") ||
+        lower.includes("**•") ||
+        lower.includes("what modular solution") ||
+        lower.includes("when do you need your modular") ||
+        lower.startsWith("lead registered via") ||
+        lower.startsWith("lead updated with new data via") ||
+        lower.startsWith("lead assignments updated") ||
+        lower.includes("lead automatically created") ||
+        lower.startsWith("design remarks updated") ||
+        lower.includes("product structure instance added") ||
+        lower.startsWith("status marked as active") ||
+        lower.includes("lead conversion")
+      );
+    };
+
     const isInvalidRemark = (r?: string | null) => {
       if (!r) return true;
       const t = r.trim().toLowerCase();
-      return !t || t === "n/a" || t === "-" || t === "none" || t === "null";
+      const leadRem = ((leadObj as any).remark || "").trim().toLowerCase();
+      return (
+        !t ||
+        t === "n/a" ||
+        t === "-" ||
+        t === "none" ||
+        t === "null" ||
+        isQuestionnaireText(r) ||
+        (isOnlineLeadFeatureEnabled && leadRem ? t === leadRem : false)
+      );
     };
 
     const logs = (leadObj as any).call_log || [];
@@ -369,7 +402,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       }
     }
     return null;
-  }, [data?.data?.lead]);
+  }, [data?.data?.lead, isOnlineLeadFeatureEnabled]);
 
   const renderRemarkContent = (remarkText: string | null, defaultText = "No remarks provided") => {
     if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-" || remarkText.trim() === "N/A") {
@@ -3435,6 +3468,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </motion.div>
           </motion.section>
           )}
+
+          <WalkinLeadAnswers
+            vendorId={vendorId}
+            leadId={leadId}
+            enabled={walkinQuestionsEnabled && isWalkinSource(lead?.source?.type ?? "")}
+            canEdit={canEditStructures}
+            isDraft={isDraftLead}
+          />
 
           <Dialog
             open={boqModalOpen}

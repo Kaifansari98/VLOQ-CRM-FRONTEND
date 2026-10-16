@@ -156,10 +156,15 @@ export default function OnlineLeadsPage() {
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const userFranchiseId = user?.franchise_id;
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
+  const isAuditor =
+    userType === "auditor" ||
+    (user as any)?.user_role?.toLowerCase() === "auditor" ||
+    (user as any)?.role?.toLowerCase() === "auditor";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
 
-  const canAssign = (userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead") && !(isCaller && isOnlineLeadFeatureEnabled);
+  const canAssign = (userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead" || isAuditor) && !(isCaller && isOnlineLeadFeatureEnabled);
+  const canDelete = isSuperAdminOrAdmin || isAuditor;
   const canAddWalkIn = (userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive") && !(isCaller && isOnlineLeadFeatureEnabled);
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
@@ -546,7 +551,7 @@ export default function OnlineLeadsPage() {
               </Button>
             )}
 
-            {isSuperAdminOrAdmin && (
+            {canDelete && (
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -563,7 +568,7 @@ export default function OnlineLeadsPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled, isCaller]);
+  ], [canAssign, canDelete, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled, isCaller]);
 
   const table = useReactTable({
     data: leads,

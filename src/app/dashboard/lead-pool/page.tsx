@@ -183,6 +183,11 @@ export default function LeadPoolPage() {
     normalizedUserType === "salesadmin" ||
     userType === "sales admin";
   const isSuperAdminOrAdmin = isSuperAdmin || isAdmin;
+  const isAuditor =
+    normalizedUserType === "auditor" ||
+    userType === "auditor" ||
+    (user as any)?.user_role?.toLowerCase() === "auditor" ||
+    (user as any)?.role?.toLowerCase() === "auditor";
   const userFranchiseId = user?.franchise_id;
 
   const { data: vendorDetail } = useVendorById(vendorId ? Number(vendorId) : undefined);
@@ -198,7 +203,8 @@ export default function LeadPoolPage() {
     rawLeads.find((l: any) => l.VendorMaster?.is_online_lead_feature_enabled != null)?.VendorMaster?.is_online_lead_feature_enabled === true
   );
 
-  const canAssign = !isCaller && isSuperAdminOrAdmin;
+  const canAssign = !isCaller && (isSuperAdminOrAdmin || isAuditor);
+  const canDelete = isSuperAdminOrAdmin || isAuditor;
   const canAddWalkIn =
     (!isCaller &&
       (normalizedUserType === "store-manager" ||
@@ -220,7 +226,7 @@ export default function LeadPoolPage() {
         return false;
       }
       const statusName = lead.followupStatus?.status_name.toLowerCase() || "";
-      if (statusName === "store assigned" || statusName === "store visit done") {
+      if (statusName === "store assigned" || statusName === "store visit done" || statusName === "inactive") {
         return false;
       }
       const isHold = statusName === "on hold" || statusName === "mark on hold" || statusName.includes("hold");
@@ -241,7 +247,9 @@ export default function LeadPoolPage() {
   const lostCount = useMemo(() => {
     return rawLeads.filter((l) => {
       if (l.approval_status != null || l.lead_master_id != null || l.pending_store_id != null) return false;
-      return l.followupStatus?.status_name.toLowerCase() === "lost";
+      const statusName = l.followupStatus?.status_name.toLowerCase() || "";
+      if (statusName === "inactive") return false;
+      return statusName === "lost";
     }).length;
   }, [rawLeads]);
 
@@ -249,6 +257,7 @@ export default function LeadPoolPage() {
     return rawLeads.filter((l) => {
       if (l.approval_status != null || l.lead_master_id != null || l.pending_store_id != null) return false;
       const name = l.followupStatus?.status_name.toLowerCase() || "";
+      if (name === "inactive") return false;
       return name === "on hold" || name === "mark on hold" || name.includes("hold");
     }).length;
   }, [rawLeads]);
@@ -315,7 +324,7 @@ export default function LeadPoolPage() {
   }, [isB2b, router]);
 
   const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">(
-    queryTab && ["pool", "my", "overall"].includes(queryTab) ? queryTab : "pool"
+    queryTab && ["pool", "my", "overall"].includes(queryTab) && !(isAuditor && queryTab === "my") ? queryTab : "pool"
   );
   const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
@@ -615,7 +624,7 @@ export default function LeadPoolPage() {
           }
         }
 
-        if (!canAssign && !isSuperAdminOrAdmin) {
+        if (!canAssign && !canDelete) {
           return <span className="text-xs text-muted-foreground italic flex justify-center">—</span>;
         }
 
@@ -636,7 +645,7 @@ export default function LeadPoolPage() {
               </Button>
             )}
 
-            {isSuperAdminOrAdmin && (
+            {canDelete && (
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -653,7 +662,7 @@ export default function LeadPoolPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, isCaller, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
+  ], [canAssign, canDelete, isSuperAdminOrAdmin, isCaller, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
 
   const table = useReactTable({
     data: leads,
@@ -691,12 +700,12 @@ export default function LeadPoolPage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
-    if (queryTab && ["pool", "my", "overall"].includes(queryTab)) {
+    if (queryTab && ["pool", "my", "overall"].includes(queryTab) && !(isAuditor && queryTab === "my")) {
       setActiveTab(queryTab);
     } else {
       setActiveTab("pool");
     }
-  }, [queryTab]);
+  }, [queryTab, isAuditor]);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -986,7 +995,7 @@ export default function LeadPoolPage() {
               {tabCounts.pool}
             </span>
           </button>
-          {!isSuperAdminOrAdmin && (
+          {!isSuperAdminOrAdmin && !isAuditor && (
             <button
               onClick={() => {
                 setActiveTab("my");

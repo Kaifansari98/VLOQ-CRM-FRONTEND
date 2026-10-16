@@ -345,6 +345,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     });
 
   const bookingStagePhotos = cspBookingData?.documents ?? [];
+  const fmRequiredDocuments = cspBookingData?.requiredDocuments ?? [];
   const initialMeasurementDocs =
     siteMeasurementDetails?.initial_site_measurement_documents || [];
   const initialCurrentSitePhotos =
@@ -1550,6 +1551,48 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           </div>
                         }
                       />
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+          {/* -------- Booking Stage – Required Documents (Final Measurement assign task) -------- */}
+          {!handlesLargeScaleProjects &&
+            !cspLoading &&
+            canViewBookingStageCurrentSitePhotos &&
+            fmRequiredDocuments.length > 0 && (
+              <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-border overflow-hidden">
+                <SectionHeader
+                  title="Booking Stage – Required Documents"
+                  icon={<FileText size={20} />}
+                />
+
+                <motion.div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {fmRequiredDocuments.map((doc, index) =>
+                      /\.(png|jpe?g|gif|webp)$/i.test(doc.originalName) ? (
+                        <ImageComponent
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            doc_og_name: doc.originalName,
+                            signedUrl: doc.signedUrl,
+                            created_at: doc.createdAt,
+                          }}
+                          index={index}
+                        />
+                      ) : (
+                        <DocumentCard
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            originalName: doc.originalName,
+                            signedUrl: doc.signedUrl,
+                            created_at: doc.createdAt,
+                          }}
+                        />
+                      ),
                     )}
                   </div>
                 </motion.div>

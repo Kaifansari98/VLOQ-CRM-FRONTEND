@@ -411,13 +411,35 @@ export default function OnlineLeadDetailsPage() {
   const latestRemarkInfo = useMemo(() => {
     if (!lead) return null;
     const isQuestionnaireText = (rem: string) => {
-      return rem.includes("Bulk imported:") || rem.includes("What modular solution") || rem.includes("When do you need your modular");
+      const lower = rem.toLowerCase();
+      return (
+        lower.includes("bulk imported") ||
+        lower.startsWith("**•") ||
+        lower.startsWith("•") ||
+        lower.includes("**•") ||
+        lower.includes("what modular solution") ||
+        lower.includes("when do you need your modular") ||
+        lower.startsWith("lead registered via") ||
+        lower.startsWith("lead updated with new data via") ||
+        lower.startsWith("lead assignments updated") ||
+        lower.includes("lead automatically created") ||
+        lower.startsWith("design remarks updated") ||
+        lower.includes("product structure instance added") ||
+        lower.startsWith("status marked as active") ||
+        lower.includes("lead conversion")
+      );
     };
 
     const isInvalidRemark = (rem: string | null | undefined) => {
       if (!rem) return true;
       const clean = rem.trim();
-      return clean === "" || clean === "-" || clean === "N/A" || isQuestionnaireText(clean);
+      return (
+        clean === "" ||
+        clean === "-" ||
+        clean === "N/A" ||
+        isQuestionnaireText(clean) ||
+        (isOnlineLeadFeatureEnabled && lead.remark ? clean.toLowerCase() === lead.remark.trim().toLowerCase() : false)
+      );
     };
 
     const logs = lead.call_log || [];
@@ -451,7 +473,7 @@ export default function OnlineLeadDetailsPage() {
       }
     }
     return null;
-  }, [lead]);
+  }, [lead, isOnlineLeadFeatureEnabled]);
 
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
   const [stores, setStores] = useState<Franchise[]>([]);

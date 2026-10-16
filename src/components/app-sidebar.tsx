@@ -655,6 +655,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
     }
 
+    // employee only sees Dashboard
+    if (userType === "employee") {
+      return {
+        navItems: [
+          {
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: LayoutDashboard,
+          },
+        ],
+        trackTraceItems: [],
+        inventoryItems: [],
+        inventoryMasterItems: [],
+        mastersItems: [],
+        integrationItems: [],
+      };
+    }
+
       const environment = (
         process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
       ).toUpperCase();
@@ -1205,6 +1223,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           mastersItems={mastersItems}
           inventoryMasterItems={inventoryMasterItems}
           integrationItems={integrationItems}
+          crmGroupLabel={userType === "employee" ? "HRMS" : undefined}
         />
       </SidebarContent>
 

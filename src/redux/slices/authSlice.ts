@@ -18,6 +18,7 @@ export interface User {
     handlesLargeScaleProjects?: boolean | null
     is_crm_enabled?: boolean | null
     is_online_lead_feature_enabled?: boolean | null
+    is_walkin_questions_feature_enabled?: boolean | null
     is_custom_doc_nomenclature_enabled?: boolean | null
     is_this_vendor_is_custom_usertype_only?: boolean | null
     is_year_wise_lead_code_enabled?: boolean | null

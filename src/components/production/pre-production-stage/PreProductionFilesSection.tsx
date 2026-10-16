@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MetalCutlistUpload from "./MetalCutlistUpload";
 import { useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -487,6 +489,14 @@ export default function PreProductionFilesSection({
           </div>
         </div>
 
+        <Tabs defaultValue="woodwork" key={`${vendorId}-${leadId}-${effectiveInstanceId}-${isTrackTraceUploadFlow}`} className="gap-0">
+          {isTrackTraceUploadFlow && (
+            <TabsList className="mx-6 mt-4">
+              <TabsTrigger value="woodwork">Woodwork Cutlist</TabsTrigger>
+              <TabsTrigger value="metal">Metal Cutlist</TabsTrigger>
+            </TabsList>
+          )}
+          <TabsContent value="woodwork" forceMount className="data-[state=inactive]:hidden">
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
         {canUploadPreProductionFiles && (
           <div className="p-6 border-b space-y-4">
@@ -630,6 +640,14 @@ export default function PreProductionFilesSection({
             </div>
           )}
         </div>
+
+          </TabsContent>
+          {isTrackTraceUploadFlow && (
+            <TabsContent value="metal" forceMount className="data-[state=inactive]:hidden">
+              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} leadId={leadId} />
+            </TabsContent>
+          )}
+        </Tabs>
 
         {/* -------------------------------- DELETE CONFIRMATION -------------------------------- */}
         <AlertDialog

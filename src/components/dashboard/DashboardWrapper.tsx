@@ -11,6 +11,7 @@ import FactoryDashboard from "./FactoryDashboard";
 import PreProdDashboard from "./PreProdDashboard";
 import BackendDashboard from "./BackendDashboard";
 import TechCheckDashboard from "./TechCheckDashboard";
+import EmployeeDashboard from "./EmployeeDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -98,6 +99,14 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <PreProdDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "employee") {
+    return (
+      <FadeInProvider>
+        <EmployeeDashboard />
       </FadeInProvider>
     );
   }
