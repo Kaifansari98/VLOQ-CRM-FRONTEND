@@ -3,18 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import {
-    AlertCircle,
-    Boxes,
-    CheckCircle2,
-    Hammer,
-    ImageIcon,
-    Layers,
-    Lock,
-    RefreshCw,
-    ScanLine,
-    Wrench,
-} from "lucide-react";
+import { AlertCircle, Lock, RefreshCw } from "lucide-react";
 
 import {
     Breadcrumb,
@@ -35,7 +24,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import CutListTable, { type Fabrication } from "@/components/custom/CutListTable";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+import {
+    CutlistHero,
+    CutlistKpis,
+    FABRICATION_THEMES as FABRICATIONS,
+    MachinePipeline,
+    computeCutlistStats,
+} from "@/components/track-trace/cutlist-overview";
 import {
     CutListSavePayload,
     generateQRLabels,
@@ -44,11 +39,6 @@ import {
 } from "@/api/track-trace/track-trace-cutlist.api";
 
 export type CutListRow = Record<string, any>;
-
-const FABRICATIONS: Record<Fabrication, { label: string; icon: typeof Wrench; projectsUrl: string }> = {
-    WOODWORK: { label: "Woodwork", icon: Hammer, projectsUrl: "/dashboard/track-trace/manage-project" },
-    METALWORK: { label: "Metalwork", icon: Wrench, projectsUrl: "/dashboard/track-trace/metalwork-projects" },
-};
 
 const rowFabrication = (row: CutListRow): Fabrication =>
     row.fabrication === "METALWORK" ? "METALWORK" : "WOODWORK";
@@ -65,7 +55,6 @@ export default function CutListPage() {
         data: response,
         isLoading,
         isError,
-        isFetching,
         refetch,
     } = useProjectCutList(Number(vendorId), String(uniqueProjectId));
 
@@ -82,12 +71,7 @@ export default function CutListPage() {
     const machineColumns: string[] = response?.machineColumns ?? [];
     const project = response?.project;
 
-    const stats = useMemo(() => {
-        const totalPieces = data.reduce((sum, row) => sum + (Number(row.qty) || 0), 0);
-        const withMachines = data.filter((row) => machineColumns.some((machine) => row[machine]?.assigned)).length;
-        const withImages = data.filter((row) => row.image_url).length;
-        return { totalPieces, withMachines, withImages };
-    }, [data, machineColumns]);
+    const stats = useMemo(() => computeCutlistStats(data, machineColumns), [data, machineColumns]);
 
     const userRole = useMemo(() => {
         return (
@@ -123,7 +107,6 @@ export default function CutListPage() {
     }, [response]);
 
     const isAssignmentDisabled = isProjectStarted && !isSuperAdmin;
-    const scanCount: number = response?.scanned_mapping_count ?? project?.scanned_mapping_count ?? 0;
 
     const handleMachineAssign = async (
         cutListIds: number[],
@@ -172,25 +155,6 @@ export default function CutListPage() {
     const handleDownloadBasicExcel = () =>
         downloadCutListBasicExcel(Number(vendorId), String(uniqueProjectId));
 
-    const kpis = [
-        { label: "Part rows", value: data.length, icon: Layers },
-        { label: "Total pieces", value: stats.totalPieces, icon: Boxes },
-        fabrication === "METALWORK"
-            ? {
-                label: "Part images",
-                value: `${stats.withImages}/${data.length}`,
-                hint: data.length ? `${Math.round((stats.withImages / data.length) * 100)}% have a shape` : undefined,
-                icon: ImageIcon,
-            }
-            : {
-                label: "Machine coverage",
-                value: data.length ? `${Math.round((stats.withMachines / data.length) * 100)}%` : "—",
-                hint: `${stats.withMachines} of ${data.length} rows routed`,
-                icon: CheckCircle2,
-            },
-        { label: "Scan events", value: scanCount, hint: isProjectStarted ? "Production started" : "Not started", icon: ScanLine },
-    ];
-
     return (
         <>
             <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -216,103 +180,24 @@ export default function CutListPage() {
             </header>
 
             <main className="flex-1 space-y-5 overflow-x-hidden px-4 py-5">
-                {/* Page heading */}
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-primary/10 text-primary">
-                            <FabricationIcon className="size-5" />
-                        </div>
-                        <div className="min-w-0">
-                            {isLoading ? (
-                                <Skeleton className="h-7 w-72" />
-                            ) : (
-                                <h1 className="truncate text-xl font-semibold tracking-tight" title={project?.project_name}>
-                                    {project?.project_name ?? "Project cutlist"}
-                                </h1>
-                            )}
-                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                                <span className="font-medium text-muted-foreground">{fabricationLabel} cutlist</span>
-                                {project?.track_trace_status && (
-                                    <StatusChip tone={isProjectStarted ? "info" : "neutral"}>
-                                        {project.track_trace_status}
-                                    </StatusChip>
-                                )}
-                                {project?.project_status && (
-                                    <StatusChip tone="neutral">{project.project_status}</StatusChip>
-                                )}
-                                {isProjectStarted && (
-                                    <StatusChip tone="warning">
-                                        <Lock className="size-3" />
-                                        {isSuperAdmin ? "Started · editable by you" : "Assignment locked"}
-                                    </StatusChip>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                <CutlistHero
+                    fabrication={fabrication}
+                    project={project}
+                    counts={counts}
+                    isLoading={isLoading}
+                    isProjectStarted={isProjectStarted}
+                    isSuperAdmin={isSuperAdmin}
+                />
 
-                    <div className="flex items-center gap-2">
-                        <nav aria-label="Fabrication" className="inline-flex rounded-lg border bg-muted/50 p-1">
-                            {(Object.keys(FABRICATIONS) as Fabrication[]).map((key) => {
-                                const { label, icon: Icon } = FABRICATIONS[key];
-                                const active = key === fabrication;
-                                return (
-                                    <Link
-                                        key={key}
-                                        href={`?fabrication=${key}`}
-                                        scroll={false}
-                                        aria-current={active ? "page" : undefined}
-                                        className={cn(
-                                            "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                                            active
-                                                ? "bg-background text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground",
-                                        )}
-                                    >
-                                        <Icon className="size-4" />
-                                        {label}
-                                        <span
-                                            className={cn(
-                                                "rounded-full px-1.5 text-xs tabular-nums",
-                                                active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
-                                            )}
-                                        >
-                                            {isLoading ? "–" : counts[key]}
-                                        </span>
-                                    </Link>
-                                );
-                            })}
-                        </nav>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="size-9"
-                            onClick={() => refetch()}
-                            disabled={isFetching}
-                            title="Refresh"
-                            aria-label="Refresh cutlist"
-                        >
-                            <RefreshCw className={cn("size-4", isFetching && "animate-spin")} />
-                        </Button>
-                    </div>
-                </div>
+                <CutlistKpis
+                    fabrication={fabrication}
+                    rows={data}
+                    allRowCount={allRows.length}
+                    stats={stats}
+                    isLoading={isLoading}
+                />
 
-                {/* KPIs */}
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    {kpis.map(({ label, value, hint, icon: Icon }) => (
-                        <div key={label} className="rounded-xl border bg-card p-4">
-                            <div className="flex items-center justify-between text-muted-foreground">
-                                <span className="text-xs font-medium">{label}</span>
-                                <Icon className="size-4" />
-                            </div>
-                            {isLoading ? (
-                                <Skeleton className="mt-2 h-7 w-16" />
-                            ) : (
-                                <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight">{value}</p>
-                            )}
-                            {hint && !isLoading && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
-                        </div>
-                    ))}
-                </div>
+                {!isLoading && <MachinePipeline machines={stats.machines} />}
 
                 {isAssignmentDisabled && (
                     <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
@@ -383,27 +268,6 @@ export default function CutListPage() {
                 )}
             </main>
         </>
-    );
-}
-
-function StatusChip({
-    tone,
-    children,
-}: {
-    tone: "neutral" | "info" | "warning";
-    children: React.ReactNode;
-}) {
-    return (
-        <span
-            className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium",
-                tone === "neutral" && "border-border bg-muted text-muted-foreground",
-                tone === "info" && "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300",
-                tone === "warning" && "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
-            )}
-        >
-            {children}
-        </span>
     );
 }
 
