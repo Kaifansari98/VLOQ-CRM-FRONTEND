@@ -227,6 +227,8 @@
 .cutlist-table-container {
   max-height: calc(100vh - 250px);
   overflow: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
 }
 
 .cutlist-table-container [data-slot="table-container"] {
@@ -236,11 +238,14 @@
 /* Remove overflow from DataTable's flex container */
 .cutlist-table-container > div {
   overflow: visible !important;
+  display: block !important;
 }
 
-/* Make the border container scrollable */
+/* Remove inner border from DataTable to prevent vertical lines across wide tables */
 .cutlist-table-container .overflow-hidden {
   overflow: visible !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 .cutlist-table-container table thead {

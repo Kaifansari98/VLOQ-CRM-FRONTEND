@@ -896,17 +896,8 @@ export function getCutListColumns(
         <div className="flex items-center gap-2 justify-between">
           <Button
             variant="ghost"
-            className={cn(
-              "h-auto p-0 font-extrabold flex-1",
-              isAssignmentDisabled
-                ? "cursor-not-allowed opacity-70 hover:bg-transparent"
-                : "hover:bg-transparent hover:text-primary",
-            )}
-            title={
-              isAssignmentDisabled
-                ? "Project Started: You cannot assign. Only Super Admin can do this."
-                : `Click to assign ${machineName}`
-            }
+            className="h-auto p-0 font-extrabold flex-1 hover:bg-transparent hover:text-primary"
+            title={`Click to assign/unassign ${machineName}`}
             onClick={() => onMachineHeaderClick?.(machineName)}
           >
             {machineName}
@@ -945,18 +936,30 @@ export function getCutListColumns(
       cell: ({ row }: any) => {
         const machineData = row.getValue(machineName);
         const isAssigned = machineData?.assigned || false;
+        const isScanned = Boolean(machineData?.scanned);
         const machineId = machineData?.machineId;
         const cutListId = Number(row.original.id);
+
+        const isUncheckDisabled = isAssigned && isScanned;
+
+        const tooltipTitle = isUncheckDisabled
+          ? `Cannot uncheck: Item already scanned at ${machineName}`
+          : isAssigned
+            ? `Click to unassign ${machineName}`
+            : `Click to assign ${machineName}`;
 
         return (
           <div
             className={cn(
               "flex items-center justify-center rounded p-1 transition-colors",
-              isAssignmentDisabled
-                ? "cursor-not-allowed opacity-50"
+              isUncheckDisabled
+                ? "cursor-not-allowed opacity-60"
                 : "cursor-pointer hover:bg-accent",
             )}
             onClick={() => {
+              if (isUncheckDisabled) {
+                return;
+              }
               if (machineId && onMachineCellClick) {
                 onMachineCellClick(
                   cutListId,
@@ -966,18 +969,12 @@ export function getCutListColumns(
                 );
               }
             }}
-            title={
-              isAssignmentDisabled
-                ? "Project Started: You cannot assign. Only Super Admin can do this."
-                : isAssigned
-                  ? `Click to unassign ${machineName}`
-                  : `Click to assign ${machineName}`
-            }
+            title={tooltipTitle}
           >
             {isAssigned ? (
               <Check className="h-5 w-5 text-green-600" />
             ) : (
-              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              <X className="h-5 w-5 text-red-500 hover:text-red-600 dark:text-red-400" />
             )}
           </div>
         );

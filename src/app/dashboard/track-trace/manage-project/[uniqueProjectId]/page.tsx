@@ -91,7 +91,16 @@ export default function CutListPage() {
         return false;
     }, [response]);
 
-    const isAssignmentDisabled = isProjectStarted && !isSuperAdmin;
+    const isProjectCompleted = useMemo(() => {
+        const status = (
+            response?.project?.project_status ||
+            response?.project?.track_trace_status ||
+            ""
+        ).toLowerCase();
+        return status === "completed" || status === "dispatched";
+    }, [response]);
+
+    const isAssignmentDisabled = isProjectCompleted;
     const isQtyEditDisabled = isProjectStarted;
 
     const updateQtyMutation = useUpdateCutListQty(String(uniqueProjectId));

@@ -257,13 +257,18 @@ export default function CutListTable({
     machineName: string,
     currentlyAssigned: boolean,
   ) => {
-    if (isAssignmentDisabled) {
-      toastManager.add({
-        title:
-          "Project Started: You cannot assign. Only Super Admin can do this.",
-        type: "error",
-      });
-      return;
+    if (currentlyAssigned) {
+      const row = (data ?? []).find(
+        (r) => Number(r.cut_list_id ?? r.id) === cutListId,
+      );
+      const machineData = row?.[machineName];
+      if (machineData?.scanned) {
+        toastManager.add({
+          title: `Cannot uncheck ${machineName}: item is already scanned`,
+          type: "error",
+        });
+        return;
+      }
     }
 
     if (!onMachineAssign) return;
@@ -290,15 +295,6 @@ export default function CutListTable({
   };
 
   function handleMachineHeaderClick(machineName: string) {
-    if (isAssignmentDisabled) {
-      toastManager.add({
-        title:
-          "Project Started: You cannot assign. Only Super Admin can do this.",
-        type: "error",
-      });
-      return;
-    }
-
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
 
     if (currentSelectedRows.length === 0) {
@@ -385,13 +381,28 @@ export default function CutListTable({
     machineName: string,
     assigned: boolean,
   ) => {
+    // When unassigning, filter out rows that are already scanned at this machine
+    const rowsToProcess = assigned
+      ? selectedRows
+      : selectedRows.filter((row) => !row.original[machineName]?.scanned);
+
+    if (!assigned && rowsToProcess.length === 0 && selectedRows.length > 0) {
+      toastManager.add({
+        title: `Cannot unassign ${machineName}: all selected items are already scanned at this machine`,
+        type: "error",
+      });
+      return;
+    }
+
     // Use cut_list_id (numeric) and deduplicate — multiple unit rows of the
     // same item share the same cut_list_id.
     const cutListIds = [
       ...new Set(
-        selectedRows.map((row) => Number(row.original.cut_list_id ?? row.original.id)),
+        rowsToProcess.map((row) => Number(row.original.cut_list_id ?? row.original.id)),
       ),
     ];
+
+    if (cutListIds.length === 0) return;
 
     if (onMachineAssign) {
       try {
@@ -436,14 +447,13 @@ export default function CutListTable({
           }
           title={
             isAssignmentDisabled
-              ? "Project Started: You cannot assign. Only Super Admin can do this."
+              ? "Machine assignment is disabled for this project."
               : "Upload Cutlist"
           }
           onClick={() => {
             if (isAssignmentDisabled) {
               toastManager.add({
-                title:
-                  "Project Started: You cannot assign. Only Super Admin can do this.",
+                title: "Machine assignment is disabled for this project.",
                 type: "error",
               });
               return;
