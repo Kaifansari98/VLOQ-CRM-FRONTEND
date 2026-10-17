@@ -16,7 +16,7 @@ import {
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import { getCutListColumns } from "./cutlist-columns";
+import { getCutListColumns, RoutingLegend } from "./cutlist-columns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -538,6 +538,8 @@ export default function CutListTable({
           </Button>
         </div>
       )}
+
+      {machineColumns.length > 0 && <RoutingLegend className="px-0.5" />}
 
       {/* Table */}
       <div

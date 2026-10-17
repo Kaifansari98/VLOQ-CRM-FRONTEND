@@ -225,7 +225,8 @@
 
 /* Cutlist table: one scroll container with sticky header and pinned columns */
 .cutlist-table-container {
-  max-height: calc(100vh - 360px);
+  /* Tall enough that, once the summary cards scroll away, the table fills the screen */
+  max-height: calc(100vh - 200px);
   min-height: 320px;
   overflow: auto;
   position: relative;

@@ -1,6 +1,6 @@
 // components/custom/cutlist-columns.tsx
 import { Column, ColumnDef, FilterFn } from "@tanstack/react-table";
-import { Check, Filter, ImageOff, Minus } from "lucide-react";
+import { Check, CheckCheck, Filter, ImageOff, Plus, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -210,6 +210,65 @@ function StatusPill({ status }: { status?: string | null }) {
   );
 }
 
+type MachineCell = {
+  assigned?: boolean;
+  machineId?: number;
+  /** Pieces routed to this machine (one mapping per piece). */
+  total?: number;
+  /** Pieces already scanned at this machine. */
+  scanned?: number;
+};
+
+type RouteState = "none" | "pending" | "progress" | "done";
+
+const routeStateOf = (cell?: MachineCell): RouteState => {
+  if (!cell?.assigned) return "none";
+  const total = cell.total ?? 0;
+  const scanned = cell.scanned ?? 0;
+  if (total > 0 && scanned >= total) return "done";
+  if (scanned > 0) return "progress";
+  return "pending";
+};
+
+const ROUTE_STATES: Record<RouteState, { label: string; chip: string }> = {
+  none: { label: "Not routed", chip: "" },
+  pending: {
+    label: "Routed, not started",
+    chip: "border border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  },
+  progress: {
+    label: "In progress",
+    chip: "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
+  },
+  done: {
+    label: "Completed",
+    chip: "border border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500 dark:text-emerald-950",
+  },
+};
+
+/** Explains the machine cell states; render near the table. */
+export function RoutingLegend({ className }: { className?: string }) {
+  const sample = (state: RouteState, content: React.ReactNode) => (
+    <span className={cn("inline-flex h-5 min-w-7 items-center justify-center rounded px-1 text-[10px] font-semibold", ROUTE_STATES[state].chip)}>
+      {content}
+    </span>
+  );
+  return (
+    <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground", className)}>
+      <span className="font-medium text-foreground">Machine routing</span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="flex h-5 min-w-7 items-center justify-center">
+          <span className="size-1 rounded-full bg-muted-foreground/40" />
+        </span>
+        Not routed
+      </span>
+      <span className="inline-flex items-center gap-1.5">{sample("pending", <Check className="size-3" strokeWidth={2.5} />)}Routed</span>
+      <span className="inline-flex items-center gap-1.5">{sample("progress", "2/4")}In progress</span>
+      <span className="inline-flex items-center gap-1.5">{sample("done", <CheckCheck className="size-3" strokeWidth={2.5} />)}Completed</span>
+    </div>
+  );
+}
+
 export function getCutListColumns(
   machineColumns: string[],
   onMachineHeaderClick?: (machineName: string) => void,
@@ -344,97 +403,141 @@ export function getCutListColumns(
     edgeColumn("esl", "ESL"),
     edgeColumn("esr", "ESR"),
 
-    ...machineColumns.map((machineName): ColumnDef<any> => {
-      const assignedCount = rows.filter((row) => row[machineName]?.assigned).length;
+    ...machineColumns.map((machineName, machineIndex): ColumnDef<any> => {
+      const states = rows.map((row) => routeStateOf(row[machineName]));
+      const routedCount = states.filter((state) => state !== "none").length;
+      const doneCount = states.filter((state) => state === "done").length;
+      const routedPercent = rows.length ? (routedCount / rows.length) * 100 : 0;
+      const donePercent = rows.length ? (doneCount / rows.length) * 100 : 0;
       return {
         accessorKey: machineName,
         header: ({ column }) => {
           const value = (column.getFilterValue() as string) ?? "all";
           return (
-            <div className="flex items-center justify-between gap-1">
-              <button
-                type="button"
-                className={cn(
-                  "flex min-w-0 flex-1 flex-col items-start rounded px-1 py-0.5 text-left transition-colors",
-                  isAssignmentDisabled
-                    ? "cursor-not-allowed opacity-70"
-                    : "hover:bg-primary/10 hover:text-primary",
-                )}
-                title={isAssignmentDisabled ? LOCKED_MESSAGE : `Assign ${machineName} to selected rows`}
-                onClick={() => onMachineHeaderClick?.(machineName)}
+            <div className="flex w-full flex-col gap-1.5 py-1">
+              <div className="flex items-center justify-between gap-1">
+                <button
+                  type="button"
+                  className={cn(
+                    "flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors",
+                    isAssignmentDisabled
+                      ? "cursor-not-allowed opacity-70"
+                      : "hover:bg-primary/10 hover:text-primary",
+                  )}
+                  title={isAssignmentDisabled ? LOCKED_MESSAGE : `Assign ${machineName} to selected rows`}
+                  onClick={() => onMachineHeaderClick?.(machineName)}
+                >
+                  <span className="rounded bg-background px-1 font-mono text-[10px] text-muted-foreground tabular-nums ring-1 ring-border">
+                    {String(machineIndex + 1).padStart(2, "0")}
+                  </span>
+                  <span className="truncate font-semibold text-foreground">{machineName}</span>
+                </button>
+                <Popover>
+                  <FilterTrigger active={value !== "all"} label={machineName} />
+                  <PopoverContent className="w-56 p-3" align="start">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">Filter by routing</p>
+                    <Select
+                      value={value}
+                      onValueChange={(next) => column.setFilterValue(next === "all" ? undefined : next)}
+                    >
+                      <SelectTrigger className="h-8 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All rows</SelectItem>
+                        <SelectItem value="routed">Routed</SelectItem>
+                        <SelectItem value="none">Not routed</SelectItem>
+                        <SelectItem value="pending">Not started</SelectItem>
+                        <SelectItem value="progress">In progress</SelectItem>
+                        <SelectItem value="done">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div
+                className="relative h-1 overflow-hidden rounded-full bg-border"
+                title={`${routedCount} of ${rows.length} rows routed · ${doneCount} completed`}
               >
-                <span className="truncate font-semibold">{machineName}</span>
-                <span className="text-[10px] font-normal text-muted-foreground tabular-nums">
-                  {assignedCount}/{rows.length} assigned
-                </span>
-              </button>
-              <Popover>
-                <FilterTrigger active={value !== "all"} label={machineName} />
-                <PopoverContent className="w-56 p-3" align="start">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">Filter by assignment</p>
-                  <Select
-                    value={value}
-                    onValueChange={(next) => column.setFilterValue(next === "all" ? undefined : next)}
-                  >
-                    <SelectTrigger className="h-8 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All rows</SelectItem>
-                      <SelectItem value="assigned">Assigned</SelectItem>
-                      <SelectItem value="not-assigned">Not assigned</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </PopoverContent>
-              </Popover>
+                <div className="absolute inset-y-0 left-0 rounded-full bg-emerald-500/30" style={{ width: `${routedPercent}%` }} />
+                <div className="absolute inset-y-0 left-0 rounded-full bg-emerald-500" style={{ width: `${donePercent}%` }} />
+              </div>
+              <span className="px-0.5 text-[10px] font-normal text-muted-foreground tabular-nums">
+                {routedCount}/{rows.length} routed{doneCount > 0 && ` · ${doneCount} done`}
+              </span>
             </div>
           );
         },
         cell: ({ row }) => {
-          const machineData = row.getValue<any>(machineName);
-          const isAssigned = machineData?.assigned || false;
+          const machineData = row.getValue<MachineCell | undefined>(machineName);
+          const state = routeStateOf(machineData);
           const machineId = machineData?.machineId;
+          const isAssigned = state !== "none";
+          const total = machineData?.total ?? 0;
+          const scanned = machineData?.scanned ?? 0;
+          const editable = !isAssignmentDisabled && !!machineId;
+          const progressLabel = total > 1 ? `${scanned}/${total}` : null;
+
           return (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                disabled={!machineId}
-                aria-pressed={isAssigned}
-                aria-label={`${isAssigned ? "Unassign" : "Assign"} ${machineName}`}
-                title={
-                  isAssignmentDisabled
-                    ? LOCKED_MESSAGE
-                    : `Click to ${isAssigned ? "unassign" : "assign"} ${machineName}`
+            <button
+              type="button"
+              disabled={!machineId}
+              aria-pressed={isAssigned}
+              aria-label={`${machineName}: ${ROUTE_STATES[state].label}. ${isAssigned ? "Unassign" : "Assign"}`}
+              title={
+                isAssignmentDisabled
+                  ? `${ROUTE_STATES[state].label} — ${LOCKED_MESSAGE}`
+                  : `${ROUTE_STATES[state].label}${total ? ` (${scanned}/${total} scanned)` : ""} · click to ${isAssigned ? "unassign" : "assign"}`
+              }
+              onClick={() => {
+                if (machineId && onMachineCellClick) {
+                  onMachineCellClick(row.original.id, machineId, machineName, isAssigned);
                 }
-                onClick={() => {
-                  if (machineId && onMachineCellClick) {
-                    onMachineCellClick(row.original.id, machineId, machineName, isAssigned);
-                  }
-                }}
-                className={cn(
-                  "group/cell flex size-7 items-center justify-center rounded-full transition-colors",
-                  isAssigned
-                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                    : "text-muted-foreground/40",
-                  isAssignmentDisabled
-                    ? "cursor-not-allowed opacity-60"
-                    : isAssigned
-                      ? "hover:bg-emerald-500/25"
-                      : "hover:bg-accent hover:text-foreground",
-                )}
-              >
-                {isAssigned ? <Check className="size-4" strokeWidth={2.5} /> : <Minus className="size-4" />}
-              </button>
-            </div>
+              }}
+              className={cn(
+                "group/cell flex h-8 w-full items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isAssignmentDisabled ? "cursor-not-allowed" : "cursor-pointer",
+              )}
+            >
+              {state === "none" ? (
+                editable ? (
+                  <>
+                    <span className="size-1 rounded-full bg-muted-foreground/30 group-hover/cell:hidden" />
+                    <span className="hidden items-center gap-1 rounded-md border border-dashed border-primary/40 px-2 py-0.5 text-[11px] font-medium text-primary group-hover/cell:inline-flex">
+                      <Plus className="size-3" />
+                      Route
+                    </span>
+                  </>
+                ) : (
+                  <span className="size-1 rounded-full bg-muted-foreground/30" />
+                )
+              ) : (
+                <span
+                  className={cn(
+                    "inline-flex h-6 min-w-9 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors",
+                    ROUTE_STATES[state].chip,
+                    state === "pending" && editable &&
+                      "group-hover/cell:border-destructive/40 group-hover/cell:bg-destructive/10 group-hover/cell:text-destructive",
+                  )}
+                >
+                  {state === "pending" && editable && <X className="hidden size-3.5 group-hover/cell:block" strokeWidth={2.5} />}
+                  {state === "pending" && (
+                    <Check className={cn("size-3.5", editable && "group-hover/cell:hidden")} strokeWidth={2.5} />
+                  )}
+                  {state === "progress" && <span>{progressLabel ?? "…"}</span>}
+                  {state === "done" && <CheckCheck className="size-3.5" strokeWidth={2.5} />}
+                  {state === "done" && progressLabel && <span>{total}</span>}
+                </span>
+              )}
+            </button>
           );
         },
-        size: 130,
+        size: 140,
         enableSorting: false,
         filterFn: (row, columnId, filterValue: string) => {
-          const isAssigned = row.getValue<any>(columnId)?.assigned || false;
-          if (filterValue === "assigned") return isAssigned;
-          if (filterValue === "not-assigned") return !isAssigned;
-          return true;
+          const state = routeStateOf(row.getValue<MachineCell | undefined>(columnId));
+          if (filterValue === "routed") return state !== "none";
+          return !filterValue || filterValue === "all" || state === filterValue;
         },
       };
     }),
