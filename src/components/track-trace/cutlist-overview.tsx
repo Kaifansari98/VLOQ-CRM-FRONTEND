@@ -35,7 +35,7 @@ export const FABRICATION_THEMES: Record<Fabrication, Theme> = {
         icon: Hammer,
         projectsUrl: "/dashboard/track-trace/manage-project",
         tile: "bg-amber-500/15 text-amber-700 ring-amber-500/25 dark:text-amber-300",
-        glow: "from-amber-500/15 via-orange-500/5",
+        glow: "from-foreground/[0.09] via-foreground/[0.03]",
         badge: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     },
     METALWORK: {
@@ -43,7 +43,7 @@ export const FABRICATION_THEMES: Record<Fabrication, Theme> = {
         icon: Wrench,
         projectsUrl: "/dashboard/track-trace/metalwork-projects",
         tile: "bg-sky-500/15 text-sky-700 ring-sky-500/25 dark:text-sky-300",
-        glow: "from-sky-500/15 via-indigo-500/5",
+        glow: "from-foreground/[0.09] via-foreground/[0.03]",
         badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
     },
 };
@@ -163,8 +163,6 @@ export function CutlistHero({
 
     return (
         <section className="relative overflow-hidden rounded-2xl border bg-card p-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div aria-hidden className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent", theme.glow)} />
-            <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 size-64 rounded-full bg-primary/5 blur-3xl" />
 
             <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
