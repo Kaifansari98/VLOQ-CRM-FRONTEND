@@ -392,7 +392,7 @@ export default function ProjectMachineDetailPage() {
           </div>
 
           {/* ── KPI Stat Summary Cards ── */}
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
             {/* Total Panels */}
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-blue-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
@@ -468,32 +468,6 @@ export default function ProjectMachineDetailPage() {
                   ? "Remaining to dispatch from factory"
                   : "Remaining to process at this machine"}
               </p>
-            </div>
-
-            {/* Station Specs */}
-            <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-purple-500/30 hover:shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Workstation Info
-                </span>
-                <div className="flex size-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                  <Cpu className="size-4" />
-                </div>
-              </div>
-              <div className="mt-3 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Code:</span>
-                  <span className="font-bold text-foreground font-mono">
-                    {isDispatch ? "DISPATCH" : currentMachine?.machine_code || "N/A"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Scan Type:</span>
-                  <Badge variant="outline" className="text-[10px] font-semibold py-0">
-                    {isDispatch ? "FACTORY OUT & SITE IN" : currentMachine?.scan_type || "QR SCAN"}
-                  </Badge>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -706,7 +680,7 @@ export default function ProjectMachineDetailPage() {
                           Packing / Box
                         </TableHead>
                         <TableHead className="min-w-[130px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Packed By
+                          {isPackagingMachine ? "Packed By" : "Scanned By"}
                         </TableHead>
                         <TableHead className="min-w-[240px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                           Machine Production Flow
@@ -821,6 +795,18 @@ export default function ProjectMachineDetailPage() {
                         item.packed_by || item.boxes?.[0]?.packed_by;
                       const packedAt =
                         item.packed_at || item.boxes?.[0]?.packed_at;
+                      const scannedBy =
+                        machineSummary?.scanned_by ||
+                        item.scanned_by ||
+                        packedBy;
+                      const scannedAt =
+                        machineSummary?.scanned_at ||
+                        item.scanned_at ||
+                        packedAt;
+                      const operatorName = isPackagingMachine ? packedBy : scannedBy;
+                      const operatorAt = isPackagingMachine ? packedAt : scannedAt;
+                      const operatorLabel = isPackagingMachine ? "Packed by" : "Scanned by";
+                      const operatorAtLabel = isPackagingMachine ? "Packed at" : "Scanned at";
                       const factoryOutBy =
                         item.factory_out_by || item.boxes?.[0]?.factory_out_by;
                       const factoryOutAt =
@@ -1354,28 +1340,28 @@ export default function ProjectMachineDetailPage() {
                             )}
                           </TableCell>
 
-                          {/* Packed By */}
+                          {/* Packed By / Scanned By */}
                           <TableCell className="py-3.5 text-xs">
-                            {packedBy ? (
-                              packedAt ? (
+                            {operatorName ? (
+                              operatorAt ? (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex items-center gap-1.5 font-medium text-foreground cursor-default">
                                       <User className="size-3 text-muted-foreground shrink-0" />
-                                      <span className="truncate max-w-[130px] font-semibold">{packedBy}</span>
+                                      <span className="truncate max-w-[130px] font-semibold">{operatorName}</span>
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent side="top" className="text-xs">
-                                    <p className="font-semibold text-white">Packed by: {packedBy}</p>
+                                    <p className="font-semibold text-white">{operatorLabel}: {operatorName}</p>
                                     <p className="text-[11px] text-white/90">
-                                      Packed at: {fmtDateTime(packedAt)}
+                                      {operatorAtLabel}: {fmtDateTime(operatorAt)}
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>
                               ) : (
                                 <div className="flex items-center gap-1.5 font-medium text-foreground">
                                   <User className="size-3 text-muted-foreground shrink-0" />
-                                  <span className="truncate max-w-[130px] font-semibold">{packedBy}</span>
+                                  <span className="truncate max-w-[130px] font-semibold">{operatorName}</span>
                                 </div>
                               )
                             ) : (

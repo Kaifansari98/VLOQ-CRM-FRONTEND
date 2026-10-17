@@ -533,6 +533,7 @@ const buildCutlistPreview = async (
     ];
 
     const dataRows: Array<{ row: number; values: Record<string, string> }> = [];
+    let dataRowIndex = 1;
 
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber === 1) return;
@@ -543,8 +544,17 @@ const buildCutlistPreview = async (
         values[field.key] = value;
         if (value) hasData = true;
       });
-      if (hasData) dataRows.push({ row: rowNumber, values });
+      if (hasData) dataRows.push({ row: dataRowIndex++, values });
     });
+
+    const isFieldMissingOrInvalid = (fieldKey: string, val?: string) => {
+      if (!val) return true;
+      if (fieldKey === "qty") {
+        const num = Number(val);
+        return isNaN(num) || num <= 0;
+      }
+      return false;
+    };
 
     const uniqueCodeValues = dataRows.map((row) => Boolean(row.values.unique_code));
     const hasUniqueCode = uniqueCodeValues.some(Boolean);
@@ -565,7 +575,7 @@ const buildCutlistPreview = async (
           (row) =>
             field.required &&
             !isUniqueCodeAllBlank &&
-            !row.values[field.key]
+            isFieldMissingOrInvalid(field.key, row.values[field.key])
         )
         .map((row) => row.row);
 
@@ -594,9 +604,14 @@ const buildCutlistPreview = async (
           (field) =>
             field.required &&
             !(field.key === "unique_code" && uniqueCodeMode === "all-blank") &&
-            !row.values[field.key]
+            isFieldMissingOrInvalid(field.key, row.values[field.key])
         )
-        .map((field) => field.label);
+        .map((field) => {
+          if (field.key === "qty" && row.values.qty && (Number(row.values.qty) <= 0 || isNaN(Number(row.values.qty)))) {
+            return "Quantity cannot be 0";
+          }
+          return field.label;
+        });
       const duplicates =
         row.values.unique_code &&
         (codeCounts.get(row.values.unique_code) ?? 0) > 1
@@ -892,6 +907,35 @@ export default function TrackTraceProjectForm({
   const showNoOfBoxes = !isCustomGroupPacking;
   const showMultiLocation = !isGroupwiseWithConfiguredBoxes;
 
+  const watchedProjectName = form.watch("projectName");
+  const watchedOrderNo = form.watch("order_no");
+  const watchedClientName = form.watch("client_name");
+  const watchedClientContactNo = form.watch("client_contact_no");
+  const watchedClientAddress = form.watch("client_address");
+
+  const missingProjectDetails = useMemo(() => {
+    const missing: string[] = [];
+    if (!watchedProjectName?.trim() || watchedProjectName.trim().length < 3) {
+      missing.push("Project Name");
+    }
+    if (!selectedLeadId) {
+      if (!watchedOrderNo?.trim()) missing.push("Order No");
+      if (!watchedClientName?.trim()) missing.push("Client Name");
+      if (!watchedClientContactNo?.trim()) missing.push("Client Contact No");
+      if (!watchedClientAddress?.trim()) missing.push("Client Address");
+    }
+    return missing;
+  }, [
+    watchedProjectName,
+    selectedLeadId,
+    watchedOrderNo,
+    watchedClientName,
+    watchedClientContactNo,
+    watchedClientAddress,
+  ]);
+
+  const isFormComplete = missingProjectDetails.length === 0;
+
   useEffect(() => {
     if (isCustomGroupPacking && selectedNoOfBoxes !== 0) {
       form.setValue("no_of_boxes", 0, {
@@ -986,7 +1030,8 @@ export default function TrackTraceProjectForm({
   const previewRows = cutlistPreview?.rows ?? [];
   const previewInvalidRows = previewRows.filter((row) => row.missing.length > 0 || row.duplicates.length > 0);
   const previewDuplicateRows = previewRows.filter((row) => row.duplicates.length > 0);
-  const previewCompleteRows = previewRows.length - previewInvalidRows.length;
+  const previewPassedRows = previewRows.length - previewInvalidRows.length;
+  const previewCompleteRows = previewPassedRows;
 
   useEffect(() => {
     if (mode !== "edit" || !projectData) return;
@@ -1440,6 +1485,35 @@ export default function TrackTraceProjectForm({
         });
       },
     });
+  };
+
+  const handleContinueWithUpload = async () => {
+    if (
+      cutlistPreviewHasErrors ||
+      isPreviewingCutlist ||
+      isPending ||
+      !isFormComplete
+    ) {
+      return;
+    }
+
+    await form.handleSubmit(
+      async (data) => {
+        setCutlistPreviewOpen(false);
+        await onSubmit(data);
+      },
+      (errors) => {
+        setCutlistPreviewOpen(false);
+        const firstErrorKey = Object.keys(errors)[0] as keyof typeof errors;
+        const message =
+          errors[firstErrorKey]?.message?.toString() ||
+          "Please complete all required project fields before submitting.";
+        toastManager.add({
+          title: message,
+          type: "error",
+        });
+      }
+    )();
   };
 
   if (mode === "edit" && projectLoading) {
@@ -2151,8 +2225,8 @@ export default function TrackTraceProjectForm({
                   </p>
                 </div>
                 <div className="rounded-md border bg-emerald-50/60 px-3 py-2 dark:bg-emerald-950/20">
-                  <p className="text-xs text-muted-foreground">Complete rows</p>
-                  <p className="mt-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">{previewCompleteRows}</p>
+                  <p className="text-xs text-muted-foreground">Passed rows</p>
+                  <p className="mt-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">{previewPassedRows}</p>
                 </div>
                 <div className={cn("rounded-md border px-3 py-2", previewInvalidRows.length ? "border-amber-300 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20" : "bg-muted/20")}>
                   <p className="text-xs text-muted-foreground">Needs attention</p>
@@ -2175,6 +2249,7 @@ export default function TrackTraceProjectForm({
                     <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-destructive" />Missing</span>
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Duplicate</span>
+                      <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Passed</span>
                     </div>
                   </div>
                   <div className="max-h-[430px] overflow-auto rounded-b-md border bg-background shadow-sm">
@@ -2182,10 +2257,10 @@ export default function TrackTraceProjectForm({
                       <thead className="sticky top-0 z-10 bg-slate-100 text-left text-[10px] uppercase tracking-wide text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                         <tr>
                           <th className="w-16 whitespace-nowrap border-r px-2 py-2">Row</th>
+                          <th className="w-28 whitespace-nowrap border-r px-2.5 py-2">Status</th>
                           {cutlistPreview.fields.map((field) => (
-                            <th key={field.key} className="min-w-[110px] whitespace-nowrap border-r px-2.5 py-2">{field.label}{!field.required && " (optional)"}</th>
+                            <th key={field.key} className="min-w-[110px] whitespace-nowrap border-r px-2.5 py-2">{field.label}</th>
                           ))}
-                          <th className="w-28 whitespace-nowrap px-2 py-2">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -2194,8 +2269,15 @@ export default function TrackTraceProjectForm({
                           return (
                             <tr key={row.row} className={rowHasError ? "bg-destructive/5" : "bg-background"}>
                               <td className="border-r px-2 py-2 font-mono font-semibold text-muted-foreground">{row.row}</td>
+                              <td className={cn("whitespace-nowrap border-r px-2.5 py-2 font-semibold", rowHasError ? "text-destructive" : "text-emerald-700 dark:text-emerald-400")}>
+                                {rowHasError ? "Needs correction" : "Passed"}
+                              </td>
                               {cutlistPreview.fields.map((field) => {
-                                const missing = row.missing.includes(field.label);
+                                const isQty = field.key === "qty";
+                                const isZeroQty = isQty && Boolean(row.values[field.key]) && (Number(row.values[field.key]) <= 0 || isNaN(Number(row.values[field.key])));
+                                const missing = isQty
+                                  ? row.missing.includes(field.label) || row.missing.includes("Quantity cannot be 0")
+                                  : row.missing.includes(field.label);
                                 const duplicate = row.duplicates.includes(field.label);
                                 return (
                                   <td
@@ -2205,16 +2287,25 @@ export default function TrackTraceProjectForm({
                                       missing && "bg-destructive/10 font-semibold text-destructive",
                                       duplicate && "bg-amber-100 font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
                                     )}
-                                    title={missing ? `${field.label} is missing` : duplicate ? "Duplicate Unique Code" : row.values[field.key]}
+                                    title={
+                                      isZeroQty
+                                        ? "Quantity can never be 0"
+                                        : missing
+                                          ? `${field.label} is missing`
+                                          : duplicate
+                                            ? "Duplicate Unique Code"
+                                            : row.values[field.key]
+                                    }
                                   >
-                                    {missing ? "Missing" : row.values[field.key] || "-"}
+                                    {isZeroQty
+                                      ? `${row.values[field.key]} (cannot be 0)`
+                                      : missing
+                                        ? "Missing"
+                                        : row.values[field.key] || ""}
                                     {duplicate && <span className="ml-1">(duplicate)</span>}
                                   </td>
                                 );
                               })}
-                              <td className={cn("whitespace-nowrap px-2.5 py-2 font-semibold", rowHasError ? "text-destructive" : "text-emerald-700 dark:text-emerald-400")}>
-                                {rowHasError ? "Needs correction" : "Complete"}
-                              </td>
                             </tr>
                           );
                         })}
@@ -2247,14 +2338,54 @@ export default function TrackTraceProjectForm({
             </div>
           )}
 
-          <DialogFooter className="shrink-0 border-t bg-muted/20 px-5 py-3">
-            <Button type="button" size="sm" variant="outline" onClick={() => setCutlistPreviewOpen(false)}>
-              Close
-            </Button>
-            <Button type="button" size="sm" disabled={cutlistPreviewHasErrors || isPreviewingCutlist} onClick={() => setCutlistPreviewOpen(false)}>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Continue with upload
-            </Button>
+          <DialogFooter className="shrink-0 flex-col gap-2 border-t bg-muted/20 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            {!isFormComplete ? (
+              <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <Info className="size-3.5 shrink-0" />
+                <span>
+                  Please fill{" "}
+                  <strong className="font-semibold">
+                    {missingProjectDetails.join(", ")}
+                  </strong>{" "}
+                  to enable upload.
+                </span>
+              </p>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setCutlistPreviewOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={
+                  cutlistPreviewHasErrors ||
+                  isPreviewingCutlist ||
+                  isPending ||
+                  !isFormComplete
+                }
+                onClick={() => void handleContinueWithUpload()}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === "edit" ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Continue with upload
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

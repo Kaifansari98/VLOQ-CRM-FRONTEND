@@ -11,6 +11,7 @@ export interface ItemMachineSummary {
   scanned_quantity: number;
   status: "scanned" | "pending";
   scanned_at: string | null;
+  scanned_by?: string | null;
   box_id?: number | null;
   box_name?: string | null;
   box_status?: string | null;
@@ -82,6 +83,8 @@ export interface ProjectTrackedItem {
   packed_by?: string | null;
   packed_at?: string | null;
   packed_by_id?: number | null;
+  scanned_by?: string | null;
+  scanned_at?: string | null;
 }
 
 export interface ProjectItemTrackingResponse {
