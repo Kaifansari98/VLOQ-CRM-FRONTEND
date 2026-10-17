@@ -19,6 +19,7 @@ import {
 } from "@/hooks/track-trace/useProjectCutList";
 import { useAppSelector } from "@/redux/store";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import CutListTable, { type Fabrication } from "@/components/custom/CutListTable";
@@ -177,6 +178,9 @@ export default function CutListPage() {
                         </BreadcrumbItem>
                     </BreadcrumbList>
                 </Breadcrumb>
+                <div className="ml-auto flex items-center gap-2">
+                    <AnimatedThemeToggler />
+                </div>
             </header>
 
             <main className="flex-1 space-y-5 overflow-x-hidden px-4 py-5">
