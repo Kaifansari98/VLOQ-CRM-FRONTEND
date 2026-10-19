@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateTrackTraceBoxStatus } from "@/api/track-trace/track-trace-cutlist.api";
 import {
@@ -19,6 +19,7 @@ import {
   Search,
   Wrench,
   X,
+  MapPin,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +28,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +65,8 @@ interface HardwarePackingModalProps {
   projectDetailsId?: number | null;
   leadId?: number | null;
   onBoxPackedAndClosed?: (boxId: number) => void;
+  isMultiLocation?: boolean;
+  locations?: Array<{ location_name: string }>;
 }
 
 type StatusFilter = "all" | "pending" | "packed";
@@ -74,6 +84,8 @@ export function HardwarePackingModal({
   projectDetailsId,
   leadId,
   onBoxPackedAndClosed,
+  isMultiLocation = false,
+  locations = [],
 }: HardwarePackingModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
@@ -81,11 +93,32 @@ export function HardwarePackingModal({
   const [packingItemId, setPackingItemId] = useState<number | null>(null);
   const [activeCustomBox, setActiveCustomBox] = useState<PackagingBox | null>(null);
   const [isPackingMultiple, setIsPackingMultiple] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState("");
+
+  useEffect(() => {
+    if (isOpen) setSelectedLocation("");
+  }, [isOpen]);
 
   const queryClient = useQueryClient();
   const updateBoxStatusMutation = useMutation({
-    mutationFn: ({ boxId, status, userId }: { boxId: number, status: "packed" | "unpacked", userId: number }) =>
-      updateTrackTraceBoxStatus(boxId, status, userId, "Auto-packed from hardware modal"),
+    mutationFn: ({
+      boxId,
+      status,
+      userId,
+      locationName,
+    }: {
+      boxId: number;
+      status: "packed" | "unpacked";
+      userId: number;
+      locationName?: string;
+    }) =>
+      updateTrackTraceBoxStatus(
+        boxId,
+        status,
+        userId,
+        "Auto-packed from hardware modal",
+        locationName,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["packaging-boxes"] });
     }
@@ -149,6 +182,15 @@ export function HardwarePackingModal({
       toastManager.add({
         title: "No items selected",
         description: "Please increase the quantity for at least one item to pack.",
+        type: "warning",
+      });
+      return;
+    }
+
+    if (isMultiLocation && !selectedLocation) {
+      toastManager.add({
+        title: "Location required",
+        description: "Select a packing location before packing hardware.",
         type: "warning",
       });
       return;
@@ -248,6 +290,7 @@ export function HardwarePackingModal({
             boxId: targetBoxId,
             status: "packed",
             userId,
+            locationName: selectedLocation || undefined,
           });
           setActiveCustomBox(null);
           onBoxPackedAndClosed?.(targetBoxId);
@@ -402,8 +445,35 @@ export function HardwarePackingModal({
                 </span>
               </div>
             )}
+            {isMultiLocation && (
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-emerald-700 shadow-2xs dark:bg-emerald-500/10 dark:text-emerald-400">
+                <MapPin className="size-3.5 shrink-0" />
+                <span className="font-medium text-emerald-800 dark:text-emerald-300">Loc:</span>
+                <Select
+                  value={selectedLocation}
+                  onValueChange={setSelectedLocation}
+                  disabled={isPackingMultiple}
+                >
+                  <SelectTrigger className="h-6 w-[140px] border-none bg-transparent px-1.5 py-0 text-xs font-bold text-emerald-900 shadow-none focus:ring-0 dark:text-emerald-100 data-[placeholder]:text-emerald-600/70">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-emerald-500/20 shadow-xl">
+                    {locations.map((location) => (
+                      <SelectItem 
+                        key={location.location_name} 
+                        value={location.location_name}
+                        className="text-xs font-medium cursor-pointer rounded-lg focus:bg-emerald-500/10 focus:text-emerald-900 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-100"
+                      >
+                        {location.location_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
+
 
 
 
@@ -781,7 +851,11 @@ export function HardwarePackingModal({
               type="button"
               size="sm"
               onClick={handlePackMultiple}
-              disabled={isPackingMultiple || items.filter(i => getItemInputQty(i) > 0).length === 0}
+              disabled={
+                isPackingMultiple ||
+                items.filter(i => getItemInputQty(i) > 0).length === 0 ||
+                (isMultiLocation && !selectedLocation)
+              }
               className="rounded-xl text-xs h-9 px-6 font-bold shadow-2xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isPackingMultiple ? (
@@ -792,7 +866,9 @@ export function HardwarePackingModal({
               ) : (
                 <>
                   <PackageCheck className="size-3.5" />
-                  Pack Selected ({items.filter(i => getItemInputQty(i) > 0).length})
+                  {isMultiLocation && !selectedLocation
+                    ? "Select Location First"
+                    : `Pack Selected (${items.filter(i => getItemInputQty(i) > 0).length})`}
                 </>
               )}
             </Button>

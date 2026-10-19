@@ -4,6 +4,8 @@ import {
   CutListSavePayload,
   getProjectCutList,
   updateCutListMachine,
+  updateCutListQty,
+  UpdateCutListQtyApiPayload,
   Lead,
   LinkLeadPayload,
   linkLeadToProject,
@@ -32,6 +34,21 @@ export function useProjectCutList(vendorId: number, projectId?: string) {
 
 export function useCutListMachine(payload: CutListSavePayload) {
   return updateCutListMachine(payload);
+}
+
+export function useUpdateCutListQty(projectToken?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateCutListQtyApiPayload) => updateCutListQty(payload),
+    onSuccess: () => {
+      if (projectToken) {
+        queryClient.invalidateQueries({
+          queryKey: TRACK_TRACE_KEYS.cutlist(projectToken),
+        });
+      }
+    },
+  });
 }
 
 export function useLeadSearch(vendorId: number) {

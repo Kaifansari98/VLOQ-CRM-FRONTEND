@@ -51,7 +51,7 @@ export type CutListRow = Record<string, any>;
 export type Fabrication = "WOODWORK" | "METALWORK";
 
 const LOCKED_MESSAGE =
-  "Project Started: You cannot assign. Only Super Admin can do this.";
+  "Machine assignment is disabled for completed or dispatched projects.";
 
 /** Columns that only carry data for woodwork (panel) cutlists. */
 const WOODWORK_ONLY_COLUMNS = [
@@ -110,6 +110,9 @@ interface Props {
   ) => Promise<string>;
   onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
   onDownloadBasicExcel?: (cutListIds?: number[]) => Promise<string>;
+  onQtyUpdate?: (cutListId: number, newQty: number) => Promise<void>;
+  isQtyEditDisabled?: boolean;
+  projectPackingType?: string;
 }
 
 const resolveFileUrl = (url?: string) => {
@@ -132,10 +135,13 @@ export default function CutListTable({
   className,
   fabrication = "WOODWORK",
   isAssignmentDisabled = false,
+  isQtyEditDisabled = false,
+  onQtyUpdate,
   onMachineAssign,
   onDownloadLabels,
   onDownloadExcel,
   onDownloadBasicExcel,
+  projectPackingType,
 }: Props) {
   const params = useParams();
   // This table is mounted under /manage-project/[uniqueProjectId].
@@ -176,7 +182,7 @@ export default function CutListTable({
 
   const selectedIds = () => {
     const rows = table.getFilteredSelectedRowModel().rows;
-    return rows.length > 0 ? rows.map((row) => row.original.id) : undefined;
+    return rows.length > 0 ? [...new Set(rows.map((row) => Number(row.original.cut_list_id ?? row.original.id)))] : undefined;
   };
 
   const runDownload = async (
@@ -236,6 +242,20 @@ export default function CutListTable({
     currentlyAssigned: boolean,
   ) => {
     if (isAssignmentDisabled) return notifyLocked();
+    if (currentlyAssigned) {
+      const row = (data ?? []).find(
+        (r) => Number(r.cut_list_id ?? r.id) === cutListId,
+      );
+      const machineData = row?.[machineName];
+      if (machineData?.scanned) {
+        toastManager.add({
+          title: `Cannot uncheck ${machineName}: item is already scanned`,
+          type: "error",
+        });
+        return;
+      }
+    }
+
     if (!onMachineAssign) return;
 
     try {
@@ -285,9 +305,19 @@ export default function CutListTable({
         handleMachineCellClick,
         data,
         isAssignmentDisabled,
+        onQtyUpdate,
+        isQtyEditDisabled,
+        projectPackingType,
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [machineColumns, data, onMachineAssign, isAssignmentDisabled],
+    [
+      machineColumns,
+      data,
+      onMachineAssign,
+      isAssignmentDisabled,
+      onQtyUpdate,
+      isQtyEditDisabled,
+      projectPackingType,
+    ],
   );
 
   const isMetalwork = fabrication === "METALWORK";
@@ -345,21 +375,45 @@ export default function CutListTable({
     machineName: string,
     assigned: boolean,
   ) => {
-    if (!onMachineAssign) return;
-    try {
-      await onMachineAssign(
-        selectedRows.map((row) => row.original.id),
-        machineId,
-        machineName,
-        assigned,
-      );
+    if (isAssignmentDisabled) return notifyLocked();
+
+    // When unassigning, filter out rows that are already scanned at this machine
+    const rowsToProcess = assigned
+      ? selectedRows
+      : selectedRows.filter((row) => !row.original[machineName]?.scanned);
+
+    if (!assigned && rowsToProcess.length === 0 && selectedRows.length > 0) {
       toastManager.add({
-        title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
-        type: "success",
+        title: `Cannot unassign ${machineName}: all selected items are already scanned at this machine`,
+        type: "error",
       });
-    } catch (error) {
-      toastManager.add({ title: "Failed to update machine assignment", type: "error" });
-      console.error(error);
+      return;
+    }
+
+    // Use cut_list_id (numeric) and deduplicate — multiple unit rows of the
+    // same item share the same cut_list_id.
+    const cutListIds = [
+      ...new Set(
+        rowsToProcess.map((row) => Number(row.original.cut_list_id ?? row.original.id)),
+      ),
+    ];
+
+    if (cutListIds.length === 0) return;
+
+    if (onMachineAssign) {
+      try {
+        await onMachineAssign(cutListIds, machineId, machineName, assigned);
+        toastManager.add({
+          title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
+          type: "success",
+        });
+      } catch (error) {
+        toastManager.add({
+          title: "Failed to update machine assignment",
+          type: "error",
+        });
+        console.error(error);
+      }
     }
   };
 

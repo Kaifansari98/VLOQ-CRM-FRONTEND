@@ -340,6 +340,7 @@ function BoxCard({
 }) {
   const isPacked = getBoxStatus(box) === "packed";
   const itemCount = getBoxItemCount(box);
+  const receivedQty = box.received_qty || 0;
   const boxWeight = getBoxWeight(box);
   const hasItems = itemCount > 0;
   const factoryOut = !!box.factory_out_at;
@@ -431,6 +432,17 @@ function BoxCard({
         </div>
 
         <div className="flex min-w-[140px] flex-1 flex-wrap items-center gap-1.5 text-xs md:justify-end">
+          {receivedQty > 0 && (
+            <span className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+              receivedQty < itemCount
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            )}>
+              {receivedQty}/{itemCount} at site
+            </span>
+          )}
+
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
@@ -612,6 +624,25 @@ function BoxCard({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
+        {receivedQty > 0 && (
+          <div className={cn(
+            "flex items-center gap-1.5 rounded-lg border px-3 py-2",
+            receivedQty < itemCount
+              ? "border-amber-500/30 bg-amber-500/10"
+              : "border-emerald-500/20 bg-emerald-500/10"
+          )}>
+            <MapPin size={14} className={receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
+            <div className="flex flex-col">
+              <span className={cn("text-[10px] font-bold uppercase leading-none", receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                At Site
+              </span>
+              <span className={cn("text-xs font-semibold mt-1", receivedQty < itemCount ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300")}>
+                {receivedQty} / {itemCount} items
+              </span>
+            </div>
+          </div>
+        )}
+
         <DispatchStep
           label="Factory Out"
           done={factoryOut}
@@ -1610,16 +1641,52 @@ function BoxItemsDialog({
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
               <Box size={18} />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-foreground">Box {boxName}</span>
-              {data && (
-                <Badge
-                  variant="outline"
-                  className="text-xs font-semibold"
-                >
-                  {data.items.length}{" "}
-                  {data.items.length === 1 ? "Item" : "Items"}
-                </Badge>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-foreground">Box {boxName}</span>
+                {data && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs font-semibold"
+                  >
+                    {data.items.length}{" "}
+                    {data.items.length === 1 ? "Item" : "Items"}
+                  </Badge>
+                )}
+              </div>
+              {data && (data.box.factory_out_at || data.box.site_in_at) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground mt-0.5">
+                  {data.box.factory_out_at && (
+                    <span className="flex items-center gap-1.5">
+                      <span>Factory Out:</span>
+                      {data.box.factoryOutByUser && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={11} />
+                          {data.box.factoryOutByUser.user_name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 size={11} />
+                        {fmtDateTime(data.box.factory_out_at)}
+                      </span>
+                    </span>
+                  )}
+                  {data.box.site_in_at && (
+                    <span className="flex items-center gap-1.5">
+                      <span>Site In:</span>
+                      {data.box.siteInByUser && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={11} />
+                          {data.box.siteInByUser.user_name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <CheckCircle2 size={11} />
+                        {fmtDateTime(data.box.site_in_at)}
+                      </span>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </DialogTitle>
@@ -3690,7 +3757,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   <div className="space-y-0.5 min-w-0">
-                    <h1 className="text-base font-bold tracking-tight text-foreground truncate">
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground truncate">
                       {data.project.project_name}
                     </h1>
 
@@ -4630,12 +4697,13 @@ export default function ProjectDetailPage() {
 
                 <div className="flex flex-wrap gap-3">
                   {data.machines.map((m) => (
-                    <div
+                    <Link
                       key={m.machine_id}
-                      className="flex-1 min-w-[220px] rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-2"
+                      href={`/dashboard/track-trace/manage-project/${uniqueProjectId}/machines/${m.machine_id}`}
+                      className="group flex-1 min-w-[220px] rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 hover:shadow-xs space-y-2 cursor-pointer block"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold capitalize text-foreground truncate" title={m.machine_name}>
+                        <p className="text-xs font-semibold capitalize text-foreground group-hover:text-primary transition-colors truncate" title={m.machine_name}>
                           {m.machine_name}
                         </p>
                         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted/80 border border-border text-emerald-600 dark:text-emerald-400">
@@ -4658,7 +4726,12 @@ export default function ProjectDetailPage() {
                           style={{ width: `${Math.min(100, m.pct)}%` }}
                         />
                       </div>
-                    </div>
+
+                      <p className="text-[10px] font-semibold text-primary/80 group-hover:text-primary pt-0.5 flex items-center justify-between">
+                        <span>View station items</span>
+                        <span>→</span>
+                      </p>
+                    </Link>
                   ))}
                 </div>
               </div>

@@ -16,6 +16,7 @@ import {
 import {
     useCutListMachine,
     useProjectCutList,
+    useUpdateCutListQty,
 } from "@/hooks/track-trace/useProjectCutList";
 import { useAppSelector } from "@/redux/store";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -104,10 +105,66 @@ export default function CutListPage() {
         if (typeof response.scanned_mapping_count === "number") {
             return response.scanned_mapping_count > 0;
         }
+        if (
+            response.project?.track_trace_status &&
+            response.project.track_trace_status.toLowerCase() !== "not started"
+        ) {
+            return true;
+        }
         return false;
     }, [response]);
 
-    const isAssignmentDisabled = isProjectStarted && !isSuperAdmin;
+    const isProjectCompleted = useMemo(() => {
+        const status = (
+            response?.project?.project_status ||
+            response?.project?.track_trace_status ||
+            ""
+        ).toLowerCase();
+        return status === "completed" || status === "dispatched";
+    }, [response]);
+
+    const isAssignmentDisabled = isProjectCompleted;
+    const isQtyEditDisabled = isProjectStarted;
+
+    const updateQtyMutation = useUpdateCutListQty(String(uniqueProjectId));
+
+    // ✅ Handler for editing cutlist item quantity or removing if 0
+    const handleQtyUpdate = async (cutListId: number, newQty: number) => {
+        if (newQty > 999) {
+            toastManager.add({ title: "Quantity cannot exceed 999", type: "error" });
+            return;
+        }
+        if (newQty < 0) {
+            toastManager.add({ title: "Quantity must be 0 or greater", type: "error" });
+            return;
+        }
+        try {
+            const res = await updateQtyMutation.mutateAsync({
+                vendor_id: Number(vendorId),
+                project_id: String(uniqueProjectId),
+                cut_list_id: cutListId,
+                new_qty: newQty,
+                user_role: userRole,
+            });
+
+            const msg =
+                res?.message ||
+                (newQty === 0
+                    ? "Item removed successfully"
+                    : "Quantity updated successfully");
+
+            toastManager.add({ title: msg, type: "success" });
+            await refetch();
+        } catch (error: any) {
+            console.error("Error updating quantity:", error);
+            const errMsg =
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to update quantity";
+            toastManager.add({ title: errMsg, type: "error" });
+            throw error;
+        }
+    };
 
     const handleMachineAssign = async (
         cutListIds: number[],
@@ -264,10 +321,13 @@ export default function CutListPage() {
                         machineColumns={machineColumns}
                         fabrication={fabrication}
                         isAssignmentDisabled={isAssignmentDisabled}
+                        isQtyEditDisabled={isQtyEditDisabled}
+                        onQtyUpdate={handleQtyUpdate}
                         onMachineAssign={handleMachineAssign}
                         onDownloadLabels={handleDownloadLabels}
                         onDownloadExcel={handleDownloadExcel}
                         onDownloadBasicExcel={handleDownloadBasicExcel}
+                        projectPackingType={project?.packing_type}
                     />
                 )}
             </main>

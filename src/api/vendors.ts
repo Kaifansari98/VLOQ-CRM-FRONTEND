@@ -18,6 +18,7 @@ export interface VendorListItem {
   is_inventory_enabled: boolean | null;
   is_tracktrace_enabled: boolean | null;
   cutlist_configuration?: string | null;
+  show_status_on_scan?: string | null;
   is_scanpack_enabled: boolean | null;
   is_hrms_master_enabled: boolean | null;
   is_available_unique_code: boolean | null;
@@ -90,6 +91,7 @@ export interface OnboardVendorPayload {
   is_crm_enabled?: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  show_status_on_scan?: string;
   is_available_unique_code?: boolean;
   push_lead_to_cadbid?: boolean;
   is_online_lead_feature_enabled?: boolean;
@@ -121,6 +123,7 @@ export interface UpdateVendorPayload {
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  show_status_on_scan?: string;
   is_available_unique_code: boolean;
   push_lead_to_cadbid?: boolean;
   is_online_lead_feature_enabled?: boolean;

@@ -112,6 +112,11 @@ export default function TrackTraceProjectsPage({ fabrication }: { fabrication: "
     );
   };
 
+  const handleDispatch = (row: TrackTraceProjectListRow) => {
+    if (row.isDeleted) return;
+    router.push(`/dashboard/track-trace/machines/20/dispatch?projectId=${row.id}`);
+  };
+
   const navigateTrackTraceProject = (row: TrackTraceProjectListRow) => {
     handleCutList(row);
   };
@@ -273,6 +278,7 @@ export default function TrackTraceProjectsPage({ fabrication }: { fabrication: "
               onCutListClick={handleCutList}
               onProjectDetailClick={handleProjectDetail}
               onPackagingClick={handlePackaging}
+              onDispatchClick={handleDispatch}
               isPackagingDisabled={isLoadingMachines || !packagingMachine}
               onEditClick={handleEditProject}
               onDeleteClick={handleDeleteProject}

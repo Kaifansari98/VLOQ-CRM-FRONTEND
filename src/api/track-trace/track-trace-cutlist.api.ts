@@ -27,6 +27,19 @@ export const updateCutListMachine = async (payload: CutListSavePayload) => {
   return response.data;
 };
 
+export interface UpdateCutListQtyApiPayload {
+  project_id: string;
+  vendor_id: number;
+  cut_list_id: number;
+  new_qty: number;
+  user_role?: string;
+}
+
+export const updateCutListQty = async (payload: UpdateCutListQtyApiPayload) => {
+  const response = await apiClient.post(`/track-trace/update-cutlist-qty`, payload);
+  return response.data;
+};
+
 export const generateQRLabels = async (
   vendorId: number,
   projectId: string,
@@ -217,6 +230,7 @@ export interface ProjectDetailData {
     box_name: string;
     box_status: string;
     items_count: number;
+    received_qty?: number;
     total_weight: number;
     sequence_no: number | null;
     product_group_name: string | null;
@@ -654,12 +668,14 @@ export const updateTrackTraceBoxStatus = async (
   status: TrackTraceBoxStatus,
   userId: number,
   reason?: string,
+  locationName?: string,
 ) => {
   const { data } = await apiClient.put(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
       reason,
+      ...(locationName ? { location_name: locationName } : {}),
     },
   );
 
