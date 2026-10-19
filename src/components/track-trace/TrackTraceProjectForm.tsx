@@ -396,16 +396,9 @@ const buildCutlistPreview = async (
 
     const KNOWN_FIELDS_DEF = [
       {
-        key: "group_name",
-        label: "Group Name",
-        aliases: ["group name", "group"],
-        required: true,
-        alwaysInclude: true,
-      },
-      {
-        key: "category_name",
-        label: "Category Name",
-        aliases: ["category name", "category"],
+        key: "item_name",
+        label: "Item Name",
+        aliases: ["item name", "name", "description"],
         required: true,
         alwaysInclude: true,
       },
@@ -417,16 +410,16 @@ const buildCutlistPreview = async (
         alwaysInclude: true,
       },
       {
-        key: "item_name",
-        label: "Item Name",
-        aliases: ["item name", "name", "description"],
+        key: "category_name",
+        label: "Category Name",
+        aliases: ["category name", "category"],
         required: true,
         alwaysInclude: true,
       },
       {
-        key: "qty",
-        label: "Quantity",
-        aliases: ["qty", "quantity"],
+        key: "group_name",
+        label: "Group Name",
+        aliases: ["group name", "group"],
         required: true,
         alwaysInclude: true,
       },
@@ -449,6 +442,13 @@ const buildCutlistPreview = async (
         label: "Thickness",
         aliases: ["thickness", "l3"],
         required: false,
+        alwaysInclude: true,
+      },
+      {
+        key: "qty",
+        label: "Quantity",
+        aliases: ["qty", "quantity"],
+        required: true,
         alwaysInclude: true,
       },
       {
@@ -483,31 +483,59 @@ const buildCutlistPreview = async (
         required: false,
       },
       {
-        key: "sl3",
-        label: "SL3",
-        aliases: ["sl3", "sl 3"],
-        required: false,
-      },
-      {
         key: "weight",
         label: "Weight",
-        aliases: ["weight", "wt", "wt.", "weight kg", "weight (kg)", "total weight", "totalweight"],
+        aliases: [
+          "weight",
+          "wt",
+          "wt.",
+          "weight kg",
+          "weight (kg)",
+          "total weight",
+          "totalweight",
+        ],
         required: false,
       },
       {
         key: "custom_packing_group",
         label: "Custom Packing Group",
-        aliases: ["custom packing group", "custom_packing_group", "custom packing", "packing group"],
+        aliases: [
+          "custom packing group",
+          "custom_packing_group",
+          "custom packing",
+          "packing group",
+        ],
         required: isCustomGroup,
         alwaysInclude: isCustomGroup,
       },
+      {
+        key: "top_drill",
+        label: "Top Drill",
+        aliases: ["top drill", "topdrill", "top_drill"],
+        required: false,
+      },
+      {
+        key: "bottom_drill",
+        label: "Bottom Drill",
+        aliases: [
+          "bottom drill",
+          "bottomdrill",
+          "bottom_drill",
+          "btm drill",
+          "btmdrill",
+        ],
+        required: false,
+      },
+      {
+        key: "is_drill",
+        label: "Is Drill",
+        aliases: ["is drill", "isdrill", "is_drill", "drill"],
+        required: false,
+      },
     ];
-
-    const matchedColumnNumbers = new Set<number>();
 
     const matchedKnownFields = KNOWN_FIELDS_DEF.map((def) => {
       const column = getColumnForAliases(def.key, def.aliases);
-      if (column > 0) matchedColumnNumbers.add(column);
       return {
         key: def.key,
         label: def.label,
@@ -517,20 +545,17 @@ const buildCutlistPreview = async (
       };
     });
 
-    const extraPresentFields = excelHeaders
-      .filter((h) => !matchedColumnNumbers.has(h.column))
-      .map((h) => ({
-        key: `extra_${h.column}_${h.normalized.replace(/[^a-z0-9]+/g, "_")}`,
-        label: h.header,
-        required: false,
-        alwaysInclude: false,
-        column: h.column,
-      }));
-
-    const activePreviewFields = [
-      ...matchedKnownFields.filter((f) => f.alwaysInclude || f.column > 0),
-      ...extraPresentFields,
-    ];
+    // Show only the columns that exist in our Excel template
+    const activePreviewFields = matchedKnownFields
+      .filter((f) => f.alwaysInclude || f.column > 0)
+      .sort((a, b) => {
+        if (a.column > 0 && b.column > 0) {
+          return a.column - b.column;
+        }
+        if (a.column > 0) return -1;
+        if (b.column > 0) return 1;
+        return 0;
+      });
 
     const dataRows: Array<{ row: number; values: Record<string, string> }> = [];
     let dataRowIndex = 1;
