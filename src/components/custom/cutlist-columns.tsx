@@ -644,6 +644,9 @@ export function getCutListColumns(
     edgeColumn("elb", "ELB"),
     edgeColumn("esl", "ESL"),
     edgeColumn("esr", "ESR"),
+    textColumn("top_drill", "Top Drill", 110, "font-mono text-xs"),
+    textColumn("bottom_drill", "Bottom Drill", 110, "font-mono text-xs"),
+    textColumn("is_drill", "Is Drill", 100, "font-mono text-xs"),
 
     ...machineColumns.map((machineName, machineIndex): ColumnDef<any> => {
       const states = rows.map((row) => routeStateOf(row[machineName]));

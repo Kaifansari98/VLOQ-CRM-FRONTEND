@@ -34,6 +34,9 @@ export interface CutList {
   item_name: string;
   material_details: string;
   description: string;
+  top_drill?: string | null;
+  bottom_drill?: string | null;
+  is_drill?: string | null;
 }
 
 export interface Operator {
