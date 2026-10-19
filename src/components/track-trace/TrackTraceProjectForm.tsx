@@ -1098,7 +1098,7 @@ export default function TrackTraceProjectForm({
   const handleDownloadTemplate = () => {
     try {
       const link = document.createElement("a");
-      link.href = "/TrackTrace_Project_Template.xlsx";
+      link.href = `/TrackTrace_Project_Template.xlsx?v=${Date.now()}`;
       link.download = "TrackTrace_Project_Template.xlsx";
       document.body.appendChild(link);
       link.click();
