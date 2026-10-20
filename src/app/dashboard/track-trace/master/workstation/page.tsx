@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { MachineFabrication } from "@/types/track-trace";
 import { Button } from "@/components/ui/button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -32,7 +34,11 @@ export default function MachineMasterPage() {
       (authUser as { id?: number; user_id?: number } | undefined)?.user_id
   );
 
-  const { data: vendorResponse } = useVendorById(vendorId ? Number(vendorId) : undefined);
+  const [fabrication, setFabrication] = useState<MachineFabrication>("WOODWORK");
+  const { data: vendorResponse, error: vendorError, refetch: refetchVendor } = useVendorById(
+    vendorId ? Number(vendorId) : undefined,
+    { refetchOnWindowFocus: "always", refetchOnMount: "always" },
+  );
   const cutlistConfiguration = vendorResponse?.data?.cutlist_configuration || "default";
 
   const { data: machines, isLoading, error, isFetching } = useMachinesByVendor(vendorId!);
@@ -106,13 +112,26 @@ export default function MachineMasterPage() {
             size="sm"
             className="gap-2 shrink-0"
             onClick={() =>
-              router.push("/dashboard/track-trace/master/workstation/create")
+              router.push(`/dashboard/track-trace/master/workstation/create?fabrication=${fabrication}`)
             }
           >
             <Plus size={15} />
             Create Workstation
           </Button>
         </div>
+
+        <Tabs value={fabrication} onValueChange={(value) => setFabrication(value as MachineFabrication)} className="px-4 mb-4">
+          <TabsList aria-label="Machine type">
+            <TabsTrigger value="WOODWORK">Woodwork Machines</TabsTrigger>
+            <TabsTrigger value="METALWORK">Metalwork Machines</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {vendorError && (
+          <div role="alert" className="px-4 mb-4 text-sm text-destructive">
+            Could not load vendor configuration. CutList Rules availability cannot be determined.
+            <Button variant="link" onClick={() => refetchVendor()}>Retry</Button>
+          </div>
+        )}
 
         {/* Loading State */}
         {isLoading && (
@@ -139,7 +158,8 @@ export default function MachineMasterPage() {
             )}
 
             <TrackTraceWorkstationTable
-              data={machines ?? []}
+              key={fabrication}
+              data={(machines ?? []).filter(machine => (machine.fabrication ?? "WOODWORK") === fabrication)}
               onEditClick={handleEdit}
               onAssignUsersClick={handleAssignUsers}
               cutlistConfiguration={cutlistConfiguration}

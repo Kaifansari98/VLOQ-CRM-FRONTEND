@@ -117,10 +117,13 @@ export type FilterOptions = {
   endDate?: string;   // format: "YYYY-MM-DD", only used when dateRange === "custom"
 };
 
+export type MachineFabrication = "WOODWORK" | "METALWORK";
+
 export type MachineStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED";
 export type MachineScanType = "IN" | "OUT" | "BOTH" | "PASS";
 
 export interface MachineData {
+  fabrication?: MachineFabrication;
   id: number;
   machine_name: string;
   machine_code: string;
@@ -147,6 +150,7 @@ export interface GetMachinesByVendorResponse {
 }
 
 export interface CreateMachinePayload {
+  fabrication?: MachineFabrication;
   vendor_id?: number;
   machine_name: string;
   machine_code: string;
@@ -163,6 +167,7 @@ export interface CreateMachinePayload {
 }
 
 export interface UpdateMachinePayload {
+  fabrication?: MachineFabrication;
   machine_name: string;
   machine_code: string;
   machine_type_id: number;

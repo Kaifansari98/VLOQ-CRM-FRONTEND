@@ -591,7 +591,7 @@ export default function TrackTraceWorkstationTable({
                   Assign Users
                 </DropdownMenuItem>
 
-                {(cutlistConfiguration === "rule manage" || cutlistConfiguration === "rule_manage") && (
+                {(cutlistConfiguration.trim().toLowerCase().replace(/_/g, " ") === "rule manage") && (
                   <DropdownMenuItem
                     className="cursor-pointer gap-2"
                     onClick={() => {
