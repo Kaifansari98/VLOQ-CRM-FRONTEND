@@ -70,7 +70,13 @@ export default function CutListPage() {
         allRows.forEach((row) => { result[rowFabrication(row)] += 1; });
         return result;
     }, [allRows]);
-    const machineColumns: string[] = response?.machineColumns ?? [];
+    // Only show machines that belong to the current fabrication tab.
+    const machineColumns: string[] = useMemo(() => {
+        const columns: string[] = response?.machineColumns ?? [];
+        const machineFabrication: Record<string, Fabrication> | undefined = response?.machineFabrication;
+        if (!machineFabrication) return columns;
+        return columns.filter((code) => (machineFabrication[code] ?? "WOODWORK") === fabrication);
+    }, [response?.machineColumns, response?.machineFabrication, fabrication]);
     const project = response?.project;
 
     const stats = useMemo(() => computeCutlistStats(data, machineColumns), [data, machineColumns]);
