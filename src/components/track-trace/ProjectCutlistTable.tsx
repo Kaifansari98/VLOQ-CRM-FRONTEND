@@ -128,6 +128,7 @@ export default function ProjectCutlistTable({
     emptyDescription?: string;
     emptyAction?: React.ReactNode;
 }) {
+    const userId = useAppSelector((state) => state.auth.user?.id);
     const {
         vendorId,
         data,
@@ -197,6 +198,7 @@ export default function ProjectCutlistTable({
                 machine_name: machineName,
                 assigned: assigned,
                 user_role: userRole,
+                user_id: userId,
             };
             await useCutListMachine(payload);
             await refetch();
