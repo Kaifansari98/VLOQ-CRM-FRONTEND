@@ -357,7 +357,10 @@ export type CreateTrackTraceProjectRequest = {
   box_info_fields?: ProjectBoxInfoField[];
   no_of_boxes?: number;
 remove_box_ids?: number[];
-
+  created_by?: number;
+  instance_id?: number | null;
+  /** Let the backend name the project after the lead (Firstname-Lastname-LEADCODE[.index]). */
+  use_lead_project_name?: boolean;
 };
 
 export interface CreateTrackTraceProjectResponse {

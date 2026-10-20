@@ -30,7 +30,7 @@ const COUNT_COLUMNS = [
   { key: "processed", label: "Processed" },
 ] as const;
 
-export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: boolean; leadId: number }) {
+export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { canUpload: boolean; leadId: number; instanceId?: number | null }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId);
@@ -98,6 +98,7 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
       }
       formData.append("parts", JSON.stringify(parts));
       formData.append("created_by", String(userId));
+      if (instanceId) formData.append("instance_id", String(instanceId));
 
       const response = await saveMetalCutlist(formData);
       toastManager.add({ title: response?.data?.projectCreated ? "Metalwork Cutlist uploaded and Track & Trace project created!" : "Metalwork Cutlist uploaded successfully!", type: "success" });

@@ -350,6 +350,9 @@ export default function PreProductionFilesSection({
         vendorId,
         projectName: `Pre-Production Import - Lead #${leadId}`,
         lead_id: leadId,
+        created_by: userId,
+        instance_id: effectiveInstanceId,
+        use_lead_project_name: true,
         packing_type: packingType,
         no_of_boxes: noOfBoxes,
         is_multi_location: isMultiLocation,
@@ -666,7 +669,7 @@ export default function PreProductionFilesSection({
           </TabsContent>
           {isTrackTraceUploadFlow && (
             <TabsContent value="metal" forceMount className="data-[state=inactive]:hidden">
-              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} leadId={leadId} />
+              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} leadId={leadId} instanceId={effectiveInstanceId} />
             </TabsContent>
           )}
         </Tabs>
