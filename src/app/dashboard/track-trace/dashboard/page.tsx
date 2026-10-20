@@ -40,16 +40,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -70,6 +60,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTraceTraceDashboard } from "@/hooks/track-trace/useTraceTraceDashboard";
+import { useActiveMachines } from "@/hooks/track-trace/useActiveMachines";
+import type { MachineFabrication } from "@/types/track-trace";
 import type {
   MachineScanStatus,
   ProjectScanStatus,
@@ -78,7 +70,6 @@ import { useAppSelector } from "@/redux/store";
 import {
   Activity,
   AlertTriangle,
-  Archive,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -90,7 +81,6 @@ import {
   Columns3,
   Layers,
   LayoutGrid,
-  ListFilter,
   Maximize2,
   Minimize2,
   Package2,
@@ -106,7 +96,6 @@ import { cn } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ViewMode = "matrix" | "compact";
-type StatusFilter = "all" | "not_started" | "pending" | "completed";
 
 interface MachineMeta {
   id: number;
@@ -791,8 +780,12 @@ function TableSkeleton() {
 
 export default function TraceTraceDashboard() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const { data, isLoading, isError } = useTraceTraceDashboard(vendorId, statusFilter);
+  // The Woodwork | Metalwork switch only appears for vendors with metalwork machines.
+  const { data: activeMachines = [] } = useActiveMachines(vendorId);
+  const hasMetalwork = activeMachines.some((m) => m.fabrication === "METALWORK");
+  const [selectedFabrication, setSelectedFabrication] = useState<MachineFabrication>("WOODWORK");
+  const fabrication: MachineFabrication = hasMetalwork ? selectedFabrication : "WOODWORK";
+  const { data, isLoading, isError } = useTraceTraceDashboard(vendorId, "all", fabrication);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -801,7 +794,6 @@ export default function TraceTraceDashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>("matrix");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [hiddenMachineIds, setHiddenMachineIds] = useState<Set<number>>(new Set());
 
   // Pagination states
@@ -812,7 +804,12 @@ export default function TraceTraceDashboard() {
   // Reset pagination on filter / tab changes
   useEffect(() => {
     setPageIndex(0);
-  }, [statusFilter, deferredSearchQuery, activeTab, pageSize]);
+  }, [fabrication, deferredSearchQuery, pageSize]);
+
+  // Machine ids differ per fabrication, so stale hidden columns would linger.
+  useEffect(() => {
+    setHiddenMachineIds(new Set());
+  }, [fabrication]);
 
   // ── Fullscreen Handlers ─────────────────────────────────────────────────────
   const enterFullscreen = useCallback(() => {
@@ -920,17 +917,6 @@ export default function TraceTraceDashboard() {
     });
   }, [data?.active, deferredSearchQuery]);
 
-  const archivedFiltered = useMemo(() => {
-    const list = data?.archived ?? [];
-    const query = deferredSearchQuery.toLowerCase().trim();
-    if (!query) return list;
-    return list.filter((p) => {
-      const matchesName = p.project_name?.toLowerCase().includes(query);
-      const matchesOrder = p.order_no?.toLowerCase().includes(query);
-      return Boolean(matchesName || matchesOrder);
-    });
-  }, [data?.archived, deferredSearchQuery]);
-
   // ── Top Stats (Memoized) ────────────────────────────────────────────────────
   const totalActive = data?.active_count ?? 0;
   const totalArchived = data?.archived_count ?? 0;
@@ -957,7 +943,7 @@ export default function TraceTraceDashboard() {
   );
 
   // Pagination calculation
-  const displayedProjects = activeTab === "active" ? activeFiltered : archivedFiltered;
+  const displayedProjects = activeFiltered;
   const totalItems = displayedProjects.length;
   const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
   const paginatedProjects = useMemo(() => {
@@ -1123,7 +1109,7 @@ export default function TraceTraceDashboard() {
 
         {/* ── Single-Row Faceted Toolbar ── */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 py-0.5">
-          {/* Left Controls: Search, Active/Archived Tabs, Status Dropdown */}
+          {/* Left Controls: Search, Woodwork/Metalwork Switcher */}
           <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
             {/* 1. Search Input */}
             <div className="relative w-full sm:w-64">
@@ -1145,124 +1131,26 @@ export default function TraceTraceDashboard() {
               )}
             </div>
 
-            {/* 2. Active Projects / Archived Switcher */}
-            <div className="inline-flex items-center rounded-lg border border-border/80 bg-muted/50 p-0.5 h-8">
-              <button
-                type="button"
-                onClick={() => setActiveTab("active")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-xs transition-all select-none",
-                  activeTab === "active"
-                    ? "bg-background text-foreground shadow-xs font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/40 font-medium",
-                )}
-              >
-                <TrendingUp className="size-3.5 text-blue-500 shrink-0" />
-                <span>Active Projects</span>
-                {data && (
-                  <span
+            {/* 2. Woodwork / Metalwork Switcher (only for vendors with metalwork machines) */}
+            {hasMetalwork && (
+              <div className="inline-flex items-center rounded-lg border border-border/80 bg-muted/50 p-0.5 h-8">
+                {(["WOODWORK", "METALWORK"] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSelectedFabrication(value)}
                     className={cn(
-                      "ml-1 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums",
-                      activeTab === "active"
-                        ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                        : "bg-muted text-muted-foreground",
+                      "inline-flex items-center h-7 px-3 rounded-md text-xs transition-all select-none",
+                      fabrication === value
+                        ? "bg-background text-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/40 font-medium",
                     )}
                   >
-                    {data.active_count}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("archived")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-xs transition-all select-none",
-                  activeTab === "archived"
-                    ? "bg-background text-foreground shadow-xs font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/40 font-medium",
-                )}
-              >
-                <Archive className="size-3.5 text-muted-foreground shrink-0" />
-                <span>Archived</span>
-                {data && (
-                  <span
-                    className={cn(
-                      "ml-1 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums",
-                      activeTab === "archived"
-                        ? "bg-muted text-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {data.archived_count}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* 3. Status Dropdown Filter with Colored Dots */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs rounded-md font-medium"
-                >
-                  <ListFilter className="size-3.5 text-muted-foreground" />
-                  <span>Status:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        "size-2 rounded-full",
-                        statusFilter === "completed"
-                          ? "bg-emerald-500"
-                          : statusFilter === "pending"
-                          ? "bg-amber-500"
-                          : statusFilter === "not_started"
-                          ? "bg-slate-400"
-                          : "bg-blue-500",
-                      )}
-                    />
-                    <span className="font-semibold capitalize">
-                      {statusFilter === "not_started"
-                        ? "Not Started"
-                        : statusFilter === "pending"
-                        ? "Pending"
-                        : statusFilter === "completed"
-                        ? "Completed"
-                        : "All"}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="size-3 text-muted-foreground opacity-60 ml-0.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-44 p-1 rounded-lg shadow-lg">
-                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-semibold text-muted-foreground">
-                  Filter by Status
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={statusFilter}
-                  onValueChange={(val) => setStatusFilter(val as StatusFilter)}
-                >
-                  <DropdownMenuRadioItem value="all" className="text-xs cursor-pointer gap-2">
-                    <span className="size-2 rounded-full bg-blue-500" />
-                    <span>All Projects</span>
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="not_started" className="text-xs cursor-pointer gap-2">
-                    <span className="size-2 rounded-full bg-slate-400" />
-                    <span>Not Started</span>
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="pending" className="text-xs cursor-pointer gap-2">
-                    <span className="size-2 rounded-full bg-amber-500" />
-                    <span>Pending</span>
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="completed" className="text-xs cursor-pointer gap-2">
-                    <span className="size-2 rounded-full bg-emerald-500" />
-                    <span>Completed</span>
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    {value === "WOODWORK" ? "Woodwork" : "Metalwork"}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right Controls: Machines Popover (Exact DataTableViewOptions UI) */}

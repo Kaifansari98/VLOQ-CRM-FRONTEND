@@ -21,7 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useMetalCutlist, useSaveMetalCutlist } from "@/api/production/production-api";
 import { cn } from "@/lib/utils";
 import type { MetalCutlistResult } from "@/lib/metal-cutlist-parser";
-import SavedMetalCutlist from "./SavedMetalCutlist";
+import ProjectCutlistTable from "@/components/track-trace/ProjectCutlistTable";
 
 const COUNT_COLUMNS = [
   { key: "partsCount", label: "Parts" },
@@ -315,7 +315,13 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
         </AlertDialogContent>
       </AlertDialog>
 
-      <SavedMetalCutlist rows={saved?.rows ?? []} loading={savedLoading} />
+      {project && (
+        <ProjectCutlistTable
+          uniqueProjectId={project.unique_project_id}
+          fabrication="METALWORK"
+          emptyDescription="Upload a nesting PDF above and confirm the upload to add parts to this project."
+        />
+      )}
     </div>
   );
 }
