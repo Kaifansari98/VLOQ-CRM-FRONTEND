@@ -25,6 +25,7 @@ interface Props {
   materialsLoading?: boolean;
   materialsError?: boolean;
   embedded?: boolean;
+  viewOnly?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   files: File[];
@@ -38,7 +39,7 @@ interface Props {
   onDownloadTemplate: () => void;
 }
 
-export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
+export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, viewOnly = false, open, onOpenChange, files, onFilesChange, vendorId,
   leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
@@ -59,7 +60,8 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const freezeMutation = useFreezeProductionMaterials(vendorId, leadId, instanceId);
   const issueMutation = useIssueProductionMaterials(vendorId, leadId, instanceId);
   // Once materials are saved, uploading again happens in its own dialog instead of inline.
-  const moveUploadToModal = embedded && savedMaterials.length > 0 && !isIssuedItemsView;
+  const moveUploadToModal = embedded && !viewOnly && savedMaterials.length > 0 && !isIssuedItemsView;
+  const showUpload = !viewOnly && !isIssuedItemsView && !moveUploadToModal;
 
   // handleUpload clears the parent's file selection only on success, so a completed
   // upload (uploading flips true -> false) that leaves no files behind is our signal
@@ -118,7 +120,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   // Outsourced materials are fulfilled through Order Login, so they are not issued from inventory.
   const tableRows = useMemo(() => isMaterialIssueView ? savedRows.filter((row) => !row.orderLoginId) : savedRows, [savedRows, isMaterialIssueView]);
   const outsourceRows = savedRows.filter((row) => outsourceKeys?.includes(row.key) && !row.orderLoginId);
-  const canOutsource = embedded && !isMaterialIssueView && canUpload && !!leadId && !uploading;
+  const canOutsource = embedded && !viewOnly && !isMaterialIssueView && canUpload && !!leadId && !uploading;
   const freezeRows = useMemo(() => savedRows.filter((row) => freezeKeys?.includes(row.key)), [savedRows, freezeKeys]);
   const issueRows = useMemo(() => savedRows.filter((row) => issueKeys?.includes(row.key)), [savedRows, issueKeys]);
   const rows = preview?.rows ?? [];
@@ -191,7 +193,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
             <div className="flex items-center gap-3">
               <div className="rounded-xl border bg-background p-2.5 text-primary"><FileSpreadsheet className="size-6" /></div>
               <div>{embedded ? (
-                <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">Check your Excel rows and inventory before uploading production files.</p></>
+                <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">{viewOnly ? "Materials saved during Order Login. View only." : "Check your Excel rows and inventory before uploading production files."}</p></>
               ) : (
                 <><DialogTitle className="text-lg">Required Production Materials</DialogTitle><DialogDescription className="mt-1">Check your Excel rows and inventory before uploading production files.</DialogDescription></>
               )}</div>
@@ -216,9 +218,12 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
             />
           </div>}
 
-          {!isIssuedItemsView && !moveUploadToModal && uploadBody}
+          {viewOnly && !materialsLoading && !materialsError && !savedMaterials.length && (
+            <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">No required production materials have been uploaded in Order Login yet.</p>
+          )}
+          {showUpload && uploadBody}
         </div>
-        {!isIssuedItemsView && !moveUploadToModal && uploadFooter}
+        {showUpload && uploadFooter}
         <AlertDialog open={confirmReplace} onOpenChange={setConfirmReplace}>
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Replace saved materials?</AlertDialogTitle>
             <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>

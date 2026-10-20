@@ -57,6 +57,8 @@ interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
   readOnly?: boolean;
+  /** Required Production Materials shown for reference only: no upload, re-upload or outsourcing. */
+  viewOnly?: boolean;
   showRequiredMaterials?: boolean;
   documentsOnly?: boolean;
   instanceId?: number | null;
@@ -101,7 +103,8 @@ const MATERIAL_REQUIRED_TEMPLATE_HIGHLIGHT_HEADERS = new Set([
 export default function ProductionFilesSection({
   leadId,
   accountId,
-  readOnly = false,
+  readOnly: readOnlyProp = false,
+  viewOnly = false,
   showRequiredMaterials = false,
   documentsOnly = false,
   instanceId,
@@ -109,6 +112,7 @@ export default function ProductionFilesSection({
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
   hideDeliveryDateBanner = false,
 }: ProductionFilesSectionProps) {
+  const readOnly = readOnlyProp || viewOnly;
   const searchParams = useSearchParams();
 
   const instanceFromUrl = searchParams.get("instance_id");
@@ -386,6 +390,7 @@ export default function ProductionFilesSection({
               materialsLoading={materialsLoading}
               materialsError={materialsError}
               embedded
+              viewOnly={viewOnly}
               open
               onOpenChange={() => {}}
               files={selectedFiles}
