@@ -9,6 +9,7 @@ export interface CutListSavePayload {
   machine_name: string;
   assigned: boolean;
   user_role?: string;
+  user_id?: number;
 }
 
 export const getProjectCutList = async (

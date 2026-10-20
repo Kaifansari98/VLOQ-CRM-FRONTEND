@@ -680,6 +680,13 @@ export default function TrackTraceCategoryTable({
         pageSize: limit,
       },
     },
+    // Pagination state is owned by the parent (server-side), so report changes upward.
+    onPaginationChange: (updater) => {
+      const current = { pageIndex: page - 1, pageSize: limit };
+      const next = typeof updater === "function" ? updater(current) : updater;
+      if (next.pageSize !== current.pageSize) onLimitChange?.(next.pageSize);
+      else if (next.pageIndex !== current.pageIndex) onPageChange?.(next.pageIndex + 1);
+    },
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,

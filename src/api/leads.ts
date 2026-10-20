@@ -1260,7 +1260,7 @@ export const fetchLeadLogs = async ({
   vendorId: number;
   limit?: number;
   cursor?: number;
-  historyType?: "Lead" | "Task" | "FollowUp" | "Approval";
+  historyType?: "Lead" | "Task" | "FollowUp" | "Approval" | "TrackTrace";
   search?: string;
   userTypeId?: number;
 }) => {

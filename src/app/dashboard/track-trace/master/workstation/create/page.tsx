@@ -57,6 +57,7 @@ import type {
 } from "@/types/track-trace";
 
 const workstationSchema = z.object({
+  fabrication: z.enum(["WOODWORK", "METALWORK"]),
   machine_name: z.string().min(1, "Workstation name is required"),
   machine_code: z.string().min(1, "Workstation code is required"),
   machine_type_id: z.string().min(1, "Workstation type is required"),
@@ -135,6 +136,7 @@ function WorkstationFormContent() {
   const form = useForm<WorkstationFormData>({
     resolver: zodResolver(workstationSchema),
     defaultValues: {
+      fabrication: searchParams.get("fabrication") === "METALWORK" ? "METALWORK" : "WOODWORK",
       machine_name: "",
       machine_code: "",
       machine_type_id: "",
@@ -151,6 +153,7 @@ function WorkstationFormContent() {
   useEffect(() => {
     if (editData) {
       form.reset({
+        fabrication: editData.fabrication ?? "WOODWORK",
         machine_name: editData.machine_name || "",
         machine_code: editData.machine_code || "",
         machine_type_id: editData.machine_type_id ? String(editData.machine_type_id) : "",
@@ -205,6 +208,7 @@ function WorkstationFormContent() {
 
     if (isEdit && editData) {
       const payload: UpdateMachinePayload = {
+        fabrication: data.fabrication,
         machine_name: data.machine_name.trim(),
         machine_code: data.machine_code.trim(),
         machine_type_id: Number(data.machine_type_id.trim()),
@@ -247,6 +251,7 @@ function WorkstationFormContent() {
     } else {
       const payload: CreateMachinePayload = {
         vendor_id: Number(vendorId),
+        fabrication: data.fabrication,
         machine_name: data.machine_name.trim(),
         machine_code: data.machine_code.trim(),
         machine_type_id: Number(data.machine_type_id.trim()),
@@ -393,6 +398,23 @@ function WorkstationFormContent() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="fabrication"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Machine Type <span className="text-destructive">*</span></FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select machine type" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="WOODWORK">Woodwork</SelectItem>
+                        <SelectItem value="METALWORK">Metalwork</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="machine_type_id"

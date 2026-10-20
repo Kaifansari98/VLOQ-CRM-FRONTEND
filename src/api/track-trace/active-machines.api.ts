@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import type { MachineFabrication } from "@/types/track-trace";
 
 export interface ActiveMachine {
   id: number;
@@ -7,6 +8,7 @@ export interface ActiveMachine {
   machine_type_id: number | null;
   image_path: string | null;
   sequence_no: number | null;
+  fabrication?: MachineFabrication;
 }
 
 interface ActiveMachinesResponse {

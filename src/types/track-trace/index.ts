@@ -120,10 +120,13 @@ export type FilterOptions = {
   endDate?: string;   // format: "YYYY-MM-DD", only used when dateRange === "custom"
 };
 
+export type MachineFabrication = "WOODWORK" | "METALWORK";
+
 export type MachineStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED";
 export type MachineScanType = "IN" | "OUT" | "BOTH" | "PASS";
 
 export interface MachineData {
+  fabrication?: MachineFabrication;
   id: number;
   machine_name: string;
   machine_code: string;
@@ -150,6 +153,7 @@ export interface GetMachinesByVendorResponse {
 }
 
 export interface CreateMachinePayload {
+  fabrication?: MachineFabrication;
   vendor_id?: number;
   machine_name: string;
   machine_code: string;
@@ -166,6 +170,7 @@ export interface CreateMachinePayload {
 }
 
 export interface UpdateMachinePayload {
+  fabrication?: MachineFabrication;
   machine_name: string;
   machine_code: string;
   machine_type_id: number;
@@ -355,7 +360,10 @@ export type CreateTrackTraceProjectRequest = {
   box_info_fields?: ProjectBoxInfoField[];
   no_of_boxes?: number;
 remove_box_ids?: number[];
-
+  created_by?: number;
+  instance_id?: number | null;
+  /** Let the backend name the project after the lead (Firstname-Lastname-LEADCODE[.index]). */
+  use_lead_project_name?: boolean;
 };
 
 export interface CreateTrackTraceProjectResponse {

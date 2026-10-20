@@ -21,7 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useMetalCutlist, useSaveMetalCutlist } from "@/api/production/production-api";
 import { cn } from "@/lib/utils";
 import type { MetalCutlistResult } from "@/lib/metal-cutlist-parser";
-import SavedMetalCutlist from "./SavedMetalCutlist";
+import ProjectCutlistTable from "@/components/track-trace/ProjectCutlistTable";
 
 const COUNT_COLUMNS = [
   { key: "partsCount", label: "Parts" },
@@ -30,7 +30,7 @@ const COUNT_COLUMNS = [
   { key: "processed", label: "Processed" },
 ] as const;
 
-export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: boolean; leadId: number }) {
+export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { canUpload: boolean; leadId: number; instanceId?: number | null }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId);
@@ -98,6 +98,7 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
       }
       formData.append("parts", JSON.stringify(parts));
       formData.append("created_by", String(userId));
+      if (instanceId) formData.append("instance_id", String(instanceId));
 
       const response = await saveMetalCutlist(formData);
       toastManager.add({ title: response?.data?.projectCreated ? "Metalwork Cutlist uploaded and Track & Trace project created!" : "Metalwork Cutlist uploaded successfully!", type: "success" });
@@ -315,7 +316,13 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
         </AlertDialogContent>
       </AlertDialog>
 
-      <SavedMetalCutlist rows={saved?.rows ?? []} loading={savedLoading} />
+      {project && (
+        <ProjectCutlistTable
+          uniqueProjectId={project.unique_project_id}
+          fabrication="METALWORK"
+          emptyDescription="Upload a nesting PDF above and confirm the upload to add parts to this project."
+        />
+      )}
     </div>
   );
 }

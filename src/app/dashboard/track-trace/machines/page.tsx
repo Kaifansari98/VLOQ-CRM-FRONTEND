@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -20,10 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useAppSelector } from "@/redux/store";
 import { useActiveMachines } from "@/hooks/track-trace/useActiveMachines";
+import type { MachineFabrication } from "@/types/track-trace";
 
 const MachineCardSkeleton = () => (
   <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -37,13 +40,18 @@ const MachineCardSkeleton = () => (
 
 export default function ActiveMachinesPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const [fabrication, setFabrication] = useState<MachineFabrication>("WOODWORK");
   const {
-    data: machines = [],
+    data: allMachines = [],
     isLoading,
     isError,
     isFetching,
     refetch,
   } = useActiveMachines(vendorId);
+  const machines = useMemo(
+    () => allMachines.filter((machine) => (machine.fabrication ?? "WOODWORK") === fabrication),
+    [allMachines, fabrication],
+  );
 
   const hasValidVendor = Number.isInteger(vendorId) && Number(vendorId) > 0;
 
@@ -112,6 +120,17 @@ export default function ActiveMachinesPage() {
             </Button>
           </div>
 
+          <Tabs
+            value={fabrication}
+            onValueChange={(value) => setFabrication(value as MachineFabrication)}
+            className="mb-6"
+          >
+            <TabsList aria-label="Machine type">
+              <TabsTrigger value="WOODWORK">Woodwork</TabsTrigger>
+              <TabsTrigger value="METALWORK">Metalwork</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {!hasValidVendor && (
             <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 px-6 text-center">
               <AlertCircle className="mb-3 size-9 text-destructive" />
@@ -153,9 +172,11 @@ export default function ActiveMachinesPage() {
           {hasValidVendor && !isLoading && !isError && machines.length === 0 && (
             <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 px-6 text-center">
               <Cpu className="mb-3 size-10 text-muted-foreground" />
-              <h2 className="font-semibold">No active machines found</h2>
+              <h2 className="font-semibold">
+                No active {fabrication === "METALWORK" ? "metalwork" : "woodwork"} machines found
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Active machines configured for this vendor will appear here.
+                Active {fabrication === "METALWORK" ? "metalwork" : "woodwork"} machines configured for this vendor will appear here.
               </p>
             </div>
           )}

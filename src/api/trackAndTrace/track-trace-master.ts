@@ -35,6 +35,7 @@ export const createMachine = async (
   const formData = new FormData();
 
   formData.append("vendor_id", String(payload.vendor_id));
+  formData.append("fabrication", payload.fabrication ?? "WOODWORK");
   formData.append("machine_name", payload.machine_name);
   formData.append("machine_code", payload.machine_code);
   formData.append("machine_type_id", String(payload.machine_type_id));
@@ -67,6 +68,7 @@ export const updateMachine = async ({
 }: UpdateMachineParams) => {
   const formData = new FormData();
 
+  if (data.fabrication) formData.append("fabrication", data.fabrication);
   formData.append("machine_name", data.machine_name);
   formData.append("machine_code", data.machine_code);
   formData.append("machine_type_id",String(data.machine_type_id));
@@ -198,6 +200,9 @@ export const createTrackTraceProjectApi = async (
 
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
+  if (payload.created_by) formData.append("created_by", String(payload.created_by));
+  if (payload.instance_id) formData.append("instance_id", String(payload.instance_id));
+  if (payload.use_lead_project_name) formData.append("use_lead_project_name", "true");
   formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
   formData.append("is_multi_location", String(payload.is_multi_location ?? false));
   formData.append("no_of_boxes", String(Number((payload as any).no_of_boxes || 0)));

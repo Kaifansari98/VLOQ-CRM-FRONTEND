@@ -14,7 +14,9 @@ import {
   usePreProductionFiles,
   useUploadPreProductionFiles,
   useMarkPreProdDone,
+  useMetalCutlist,
 } from "@/api/production/production-api";
+import ProjectCutlistTable from "@/components/track-trace/ProjectCutlistTable";
 import { updateLeadProductStructureInstance } from "@/api/leads";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useDeleteDocument } from "@/api/leads";
@@ -115,6 +117,13 @@ export default function PreProductionFilesSection({
 
   const { mutateAsync: createTrackTraceProject, isPending: isCreatingProject } =
     useCreateTrackTraceProject();
+
+  // The lead's Track & Trace project (shared by the woodwork and metalwork cutlists).
+  const { data: leadCutlist } = useMetalCutlist(
+    isTrackTraceUploadFlow ? vendorId : undefined,
+    leadId,
+  );
+  const trackTraceProjectId = leadCutlist?.project?.unique_project_id;
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data } = useInstanceStage(vendorId, leadId, instanceId!);
@@ -341,6 +350,9 @@ export default function PreProductionFilesSection({
         vendorId,
         projectName: `Pre-Production Import - Lead #${leadId}`,
         lead_id: leadId,
+        created_by: userId,
+        instance_id: effectiveInstanceId,
+        use_lead_project_name: true,
         packing_type: packingType,
         no_of_boxes: noOfBoxes,
         is_multi_location: isMultiLocation,
@@ -351,6 +363,8 @@ export default function PreProductionFilesSection({
         title: "Track & Trace project created successfully!",
         type: "success",
       });
+      queryClient.invalidateQueries({ queryKey: ["metalCutlist", vendorId, leadId] });
+      queryClient.invalidateQueries({ queryKey: ["track-trace-cutlist"] });
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.error ||
@@ -641,10 +655,21 @@ export default function PreProductionFilesSection({
           )}
         </div>
 
+        {/* -------------------------------- TRACK & TRACE CUTLIST -------------------------------- */}
+        {isTrackTraceUploadFlow && trackTraceProjectId && (
+          <div className="space-y-4 border-t p-6">
+            <ProjectCutlistTable
+              uniqueProjectId={trackTraceProjectId}
+              fabrication="WOODWORK"
+              emptyDescription="Upload the woodwork cutlist above to add parts to this project."
+            />
+          </div>
+        )}
+
           </TabsContent>
           {isTrackTraceUploadFlow && (
             <TabsContent value="metal" forceMount className="data-[state=inactive]:hidden">
-              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} leadId={leadId} />
+              <MetalCutlistUpload canUpload={canUploadPreProductionFiles} leadId={leadId} instanceId={effectiveInstanceId} />
             </TabsContent>
           )}
         </Tabs>
