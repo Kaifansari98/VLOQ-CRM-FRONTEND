@@ -638,6 +638,9 @@ function RuleEditorContent() {
   const { data: machines = [] } = useMachinesByVendor(vendorId ?? 0);
   const { data: ruleFields = [], isLoading: fieldsLoading } = useRuleFields();
   const { data: vendorActions = [], isLoading: actionsLoading } = useVendorRuleActions(vendorId);
+  const availableActions = useMemo(() => {
+    return vendorActions.filter((a) => a.action_code !== "REPLACE_MACHINE");
+  }, [vendorActions]);
   const { data: projectCategoriesData, isLoading: categoriesLoading } = useProjectCategories(vendorId);
   const projectCategories = useMemo(() => {
     return projectCategoriesData?.categories ?? [];
@@ -680,7 +683,6 @@ function RuleEditorContent() {
 
   // Selected Action State
   const [selectedActionId, setSelectedActionId] = useState<number | "">("");
-  const [replacementMachineId, setReplacementMachineId] = useState<string>("");
 
   const handleLoadDefaultRule = () => {
     if (!currentMachine) {
@@ -699,7 +701,6 @@ function RuleEditorContent() {
     if (defaultState.selectedActionId) {
       setSelectedActionId(defaultState.selectedActionId);
     }
-    setReplacementMachineId("");
     setConditionGroups(defaultState.conditionGroups);
 
     toastManager.add({
@@ -745,14 +746,6 @@ function RuleEditorContent() {
           act.actionId ||
           (act.actionMaster ? act.actionMaster.id : 0);
         if (actId) setSelectedActionId(actId);
-
-        const actVal = act.action_value ?? act.actionValue;
-        if (actVal) {
-          const valObj = typeof actVal === "object" && actVal !== null ? actVal : {};
-          setReplacementMachineId(
-            String(valObj.machine_id || valObj.machineId || actVal || "")
-          );
-        }
       }
 
       const rawGroups =
@@ -1039,16 +1032,11 @@ function RuleEditorContent() {
 
   // Selected Action Details
   const selectedAction = useMemo(() => {
-    return vendorActions.find((a) => a.id === Number(selectedActionId)) || null;
-  }, [vendorActions, selectedActionId]);
+    return availableActions.find((a) => a.id === Number(selectedActionId)) || null;
+  }, [availableActions, selectedActionId]);
 
   // Live JSON Preview Construction
   const liveJsonPreview = useMemo(() => {
-    const actionVal =
-      selectedAction?.action_code === "REPLACE_MACHINE" && replacementMachineId
-        ? { machine_id: Number(replacementMachineId) }
-        : null;
-
     const finalRuleName = (ruleName.trim() || currentMachine?.machine_name || "Untitled Rule").trim();
     const finalRuleCode = (ruleCode.trim() || currentMachine?.machine_name || "UNTITLED_RULE").trim();
 
@@ -1110,7 +1098,7 @@ function RuleEditorContent() {
           action_id: Number(selectedActionId),
           action_code: selectedAction?.action_code || "",
           action_name: selectedAction?.action_name || "",
-          action_value: actionVal,
+          action_value: null,
         },
       ],
     };
@@ -1123,7 +1111,6 @@ function RuleEditorContent() {
     conditionGroups,
     selectedActionId,
     selectedAction,
-    replacementMachineId,
     ruleFields,
   ]);
 
@@ -1393,10 +1380,7 @@ function RuleEditorContent() {
       actions: [
         {
           action_id: Number(selectedActionId),
-          action_value:
-            selectedAction?.action_code === "REPLACE_MACHINE" && replacementMachineId
-              ? { machine_id: Number(replacementMachineId) }
-              : null,
+          action_value: null,
           sequence_no: 1,
         },
       ],
@@ -2156,13 +2140,13 @@ function RuleEditorContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="max-w-md">
                     <div>
                       <label className="text-xs font-medium text-foreground/80 block mb-1.5">
                         Select Action <span className="text-destructive">*</span>
                       </label>
                       <Select
-                        key={`action-select-${selectedActionId}-${vendorActions.length}-${actionsLoading}`}
+                        key={`action-select-${selectedActionId}-${availableActions.length}-${actionsLoading}`}
                         value={String(selectedActionId)}
                         onValueChange={(val) => setSelectedActionId(Number(val))}
                       >
@@ -2170,7 +2154,7 @@ function RuleEditorContent() {
                           <SelectValue placeholder="Select Action" />
                         </SelectTrigger>
                         <SelectContent>
-                          {vendorActions.map((act) => (
+                          {availableActions.map((act) => (
                             <SelectItem key={act.id} value={String(act.id)}>
                               {act.action_name}
                             </SelectItem>
@@ -2178,32 +2162,6 @@ function RuleEditorContent() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {selectedAction?.action_code === "REPLACE_MACHINE" && (
-                      <div>
-                        <label className="text-xs font-medium text-foreground/80 block mb-1.5">
-                          Target Replacement Machine <span className="text-destructive">*</span>
-                        </label>
-                        <Select
-                          key={`machine-select-${replacementMachineId}-${machines.length}`}
-                          value={replacementMachineId}
-                          onValueChange={(val) => setReplacementMachineId(val)}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Select machine" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {machines
-                              .filter((m) => m.id !== machineId)
-                              .map((m) => (
-                                <SelectItem key={m.id} value={String(m.id)}>
-                                  {m.machine_name} ({m.machine_code})
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

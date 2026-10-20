@@ -49,9 +49,14 @@ import {
   XCircle,
   Copy,
   Check,
+  CheckCircle2,
   SlidersHorizontal,
+  AlertCircle,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
+import { useMachineRules } from "@/hooks/track-trace-hooks/useCutListRulesHooks";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { useRouter } from "next/navigation";
 
@@ -285,6 +290,177 @@ function AssignedCountBadge({ machineId }: { machineId: number }) {
   );
 }
 
+function MachineConfigQuickFilter({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const isFiltered = value !== "all";
+  const options = [
+    { value: "all", label: "All Status", dot: null },
+    { value: "SET", label: "Configured", dot: "bg-emerald-500" },
+    { value: "NOT_SET", label: "Not Configured", dot: "bg-amber-500" },
+  ];
+  const selectedOption = options.find((o) => o.value === value);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="border-dashed h-8 text-xs">
+          {isFiltered ? (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("all");
+              }}
+              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 shrink-0 mr-1"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+            </div>
+          ) : (
+            <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 mr-1 text-muted-foreground" />
+          )}
+          <span className="flex items-center gap-1.5 truncate">
+            <span className="truncate">Machine Configured</span>
+            {isFiltered && (
+              <>
+                <Separator orientation="vertical" className="mx-0.5 h-4" />
+                <Badge
+                  variant="secondary"
+                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[120px] flex items-center gap-1"
+                >
+                  {selectedOption?.dot && (
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedOption.dot}`}
+                    />
+                  )}
+                  {selectedOption?.label}
+                </Badge>
+              </>
+            )}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-44 p-1" align="start">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`w-full text-left px-3 py-1.5 text-xs rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2 ${
+              value === option.value ? "bg-accent text-accent-foreground font-medium" : ""
+            }`}
+          >
+            {option.dot && (
+              <span className={`h-2 w-2 rounded-full shrink-0 ${option.dot}`} />
+            )}
+            {option.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function MachineRuleIndicator({
+  machine,
+  onClick,
+}: {
+  machine: MachineData;
+  onClick?: () => void;
+}) {
+  const router = useRouter();
+  const hasBackendField =
+    machine.has_rules !== undefined || machine.rules_count !== undefined;
+  const { data: fetchedRules, isLoading } = useMachineRules(
+    hasBackendField ? 0 : machine.id
+  );
+
+  const rulesList = machine.rules ?? fetchedRules ?? [];
+  const rulesCount = hasBackendField
+    ? (machine.rules_count ?? rulesList.length)
+    : rulesList.length;
+  const activeCount = hasBackendField
+    ? (machine.active_rules_count ??
+        rulesList.filter((r) => r.status === "ACTIVE").length)
+    : rulesList.filter((r) => r.status === "ACTIVE").length;
+
+  const isRuleSet = (machine.has_rules ?? false) || rulesCount > 0;
+  const isRuleActive = (machine.has_active_rules ?? false) || activeCount > 0;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onClick) {
+      onClick();
+    } else {
+      router.push(
+        `/dashboard/track-trace/master/workstation/rules/create?machine_id=${machine.id}`
+      );
+    }
+  };
+
+  if (!hasBackendField && isLoading) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
+        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        <span className="text-[11px]">Checking...</span>
+      </div>
+    );
+  }
+
+  if (isRuleSet) {
+    const tooltipText =
+      rulesList.length > 0
+        ? `Configured Rules: ${rulesList.map((r) => r.rule_name).join(", ")} (Click to view/edit)`
+        : `Machine configured. Click to view or edit`;
+
+    return (
+      <div className="flex items-center">
+        <Badge
+          variant="outline"
+          onClick={handleClick}
+          role="button"
+          tabIndex={0}
+          title={tooltipText}
+          className={cn(
+            "group inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-all duration-150 shadow-2xs hover:scale-102",
+            isRuleActive
+              ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50"
+              : "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50"
+          )}
+        >
+          {isRuleActive ? (
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          ) : (
+            <SlidersHorizontal className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          )}
+          <span>{isRuleActive ? "Configured" : "Inactive"}</span>
+        </Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center">
+      <Badge
+        variant="outline"
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        title="Machine not configured. Click to configure cutlist routing rules."
+        className="group inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-all duration-150 border-dashed bg-muted/30 text-muted-foreground border-muted-foreground/30 hover:bg-primary/10 hover:text-primary hover:border-primary/40 shadow-2xs hover:scale-102"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-400 group-hover:bg-primary shrink-0 transition-colors" />
+        <span>Not Configured</span>
+        <Plus className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary shrink-0 -ml-0.5" />
+      </Badge>
+    </div>
+  );
+}
+
 export default function TrackTraceWorkstationTable({
   data,
   onEditClick,
@@ -294,6 +470,12 @@ export default function TrackTraceWorkstationTable({
   className,
 }: TrackTraceWorkstationTableProps) {
   const router = useRouter();
+  const isRuleManage =
+    (cutlistConfiguration ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[_\s]+/g, " ") === "rule manage";
+
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -304,6 +486,7 @@ export default function TrackTraceWorkstationTable({
   const [localSearch, setLocalSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [scanTypeFilter, setScanTypeFilter] = useState("all");
+  const [rulesFilter, setRulesFilter] = useState("all");
 
   const debouncedSearch = useDebouncedCallback((val: string) => {
     setGlobalFilter(val.trim());
@@ -326,6 +509,13 @@ export default function TrackTraceWorkstationTable({
       if (scanTypeFilter !== "all" && item.scan_type !== scanTypeFilter) {
         return false;
       }
+      // Rules filter (only active when cutlist configuration is rule manage)
+      if (isRuleManage && rulesFilter !== "all") {
+        const hasRules =
+          (item.rules_count ?? item.rules?.length ?? 0) > 0 || !!item.has_rules;
+        if (rulesFilter === "SET" && !hasRules) return false;
+        if (rulesFilter === "NOT_SET" && hasRules) return false;
+      }
       // Global Search
       if (globalFilter) {
         const q = globalFilter.toLowerCase();
@@ -339,7 +529,7 @@ export default function TrackTraceWorkstationTable({
       }
       return true;
     });
-  }, [data, statusFilter, scanTypeFilter, globalFilter]);
+  }, [data, statusFilter, scanTypeFilter, isRuleManage, rulesFilter, globalFilter]);
 
   const columns = useMemo<ColumnDef<MachineData>[]>(
     () => [
@@ -496,6 +686,37 @@ export default function TrackTraceWorkstationTable({
           );
         },
       },
+      ...(isRuleManage
+        ? [
+            {
+              id: "machine_configured",
+              header: ({ column }: { column: Column<MachineData, unknown> }) => (
+                <WorkstationColumnHeader column={column} title="Machine Configured" />
+              ),
+              cell: ({ row }: { row: { original: MachineData } }) => (
+                <MachineRuleIndicator
+                  machine={row.original}
+                  onClick={
+                    onManageRulesClick
+                      ? () => onManageRulesClick(row.original)
+                      : undefined
+                  }
+                />
+              ),
+              sortingFn: (rowA: { original: MachineData }, rowB: { original: MachineData }) => {
+                const hasA =
+                  (rowA.original.rules_count ??
+                    rowA.original.rules?.length ??
+                    (rowA.original.has_rules ? 1 : 0)) > 0;
+                const hasB =
+                  (rowB.original.rules_count ??
+                    rowB.original.rules?.length ??
+                    (rowB.original.has_rules ? 1 : 0)) > 0;
+                return (hasA ? 1 : 0) - (hasB ? 1 : 0);
+              },
+            } as ColumnDef<MachineData>,
+          ]
+        : []),
       {
         accessorKey: "target_per_hour",
         header: ({ column }) => (
@@ -612,7 +833,7 @@ export default function TrackTraceWorkstationTable({
         ),
       },
     ],
-    [onEditClick, onAssignUsersClick, onManageRulesClick, cutlistConfiguration, router]
+    [onEditClick, onAssignUsersClick, onManageRulesClick, cutlistConfiguration, isRuleManage, router]
   );
 
   const tableInstance = useReactTable({
@@ -645,6 +866,7 @@ export default function TrackTraceWorkstationTable({
     setGlobalFilter("");
     setStatusFilter("all");
     setScanTypeFilter("all");
+    setRulesFilter("all");
     setColumnFilters([]);
   };
 
@@ -652,6 +874,7 @@ export default function TrackTraceWorkstationTable({
     (localSearch && localSearch.trim() !== "") ||
     statusFilter !== "all" ||
     scanTypeFilter !== "all" ||
+    (isRuleManage && rulesFilter !== "all") ||
     columnFilters.length > 0;
 
   return (
@@ -678,6 +901,14 @@ export default function TrackTraceWorkstationTable({
             value={scanTypeFilter}
             onChange={setScanTypeFilter}
           />
+
+          {/* Machine Configured Filter - only displayed for cutlist configuration = rule manage */}
+          {isRuleManage && (
+            <MachineConfigQuickFilter
+              value={rulesFilter}
+              onChange={setRulesFilter}
+            />
+          )}
 
           {/* Created At Date Filter */}
           {tableInstance.getColumn("created_at") && (

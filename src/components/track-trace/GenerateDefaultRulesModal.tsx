@@ -191,9 +191,20 @@ export function GenerateDefaultRulesModal({
                       key={machine.id}
                       className="px-3 py-2 flex items-center justify-between text-xs"
                     >
-                      <span className="font-medium text-foreground truncate max-w-[220px]">
-                        {machine.machine_name}
-                      </span>
+                      <div className="flex items-center gap-2 truncate max-w-[240px]">
+                        <span className="font-medium text-foreground truncate">
+                          {machine.machine_name}
+                        </span>
+                        {machine.has_rules ? (
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                            (Configured)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            (Not Configured)
+                          </span>
+                        )}
+                      </div>
                       <Badge
                         variant="outline"
                         className={`text-[10px] font-medium py-0.5 px-2 rounded-md ${info.color}`}

@@ -40,7 +40,8 @@ export const useRuleDetails = (machineId: number, ruleId: number | null) => {
 export const useCreateRule = (machineId: number) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreateRulePayload) => createRuleApi(machineId, payload),
+    mutationFn: (payload: CreateRulePayload) =>
+      createRuleApi(machineId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machine-rules", machineId] });
     },
@@ -50,8 +51,13 @@ export const useCreateRule = (machineId: number) => {
 export const useUpdateRule = (machineId: number) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ ruleId, payload }: { ruleId: number; payload: UpdateRulePayload }) =>
-      updateRuleApi(machineId, ruleId, payload),
+    mutationFn: ({
+      ruleId,
+      payload,
+    }: {
+      ruleId: number;
+      payload: UpdateRulePayload;
+    }) => updateRuleApi(machineId, ruleId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["machine-rules", machineId] });
       queryClient.invalidateQueries({
@@ -79,12 +85,13 @@ export const useToggleRuleStatus = (machineId: number) => {
     onMutate: async ({ ruleId, status }) => {
       await queryClient.cancelQueries({ queryKey: ["machine-rules"] });
       const queryKey = ["machine-rules", machineId];
-      const previousRules = queryClient.getQueryData<CutListRuleMaster[]>(queryKey);
+      const previousRules =
+        queryClient.getQueryData<CutListRuleMaster[]>(queryKey);
 
       if (previousRules) {
         queryClient.setQueryData<CutListRuleMaster[]>(
           queryKey,
-          previousRules.map((r) => (r.id === ruleId ? { ...r, status } : r))
+          previousRules.map((r) => (r.id === ruleId ? { ...r, status } : r)),
         );
       }
 
@@ -118,7 +125,10 @@ export const useVendorRuleActions = (vendorId?: number) => {
   });
 };
 
-export const useDefaultRuleTemplate = (machineId: number, vendorId?: number) => {
+export const useDefaultRuleTemplate = (
+  machineId: number,
+  vendorId?: number,
+) => {
   return useQuery({
     queryKey: ["machine-default-rule-template", machineId, vendorId],
     queryFn: () => getDefaultRuleTemplateApi(machineId, vendorId!),
@@ -130,8 +140,11 @@ export const useDefaultRuleTemplate = (machineId: number, vendorId?: number) => 
 export const useGenerateDefaultRules = (vendorId?: number) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload?: { overwrite?: boolean; created_by?: number; machine_id?: number }) =>
-      generateDefaultRulesApi(vendorId!, payload),
+    mutationFn: (payload?: {
+      overwrite?: boolean;
+      created_by?: number;
+      machine_id?: number;
+    }) => generateDefaultRulesApi(vendorId!, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machine-rules"] });
       queryClient.invalidateQueries({ queryKey: ["machines"] });
@@ -143,12 +156,14 @@ export const useGenerateDefaultRules = (vendorId?: number) => {
 export const useGenerateDefaultRuleForMachine = (machineId: number) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { vendor_id: number; overwrite?: boolean; created_by?: number }) =>
-      generateDefaultRuleForMachineApi(machineId, payload),
+    mutationFn: (payload: {
+      vendor_id: number;
+      overwrite?: boolean;
+      created_by?: number;
+    }) => generateDefaultRuleForMachineApi(machineId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machine-rules", machineId] });
       queryClient.invalidateQueries({ queryKey: ["machine-rules"] });
     },
   });
 };
-
