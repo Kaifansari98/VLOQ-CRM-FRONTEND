@@ -2,6 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getCutlistHeaderMappings } from "@/api/cutlist-headers";
+import {
+  previewCutlistMachineMapping,
+  PreviewMachineInfo,
+} from "@/api/track-trace/active-machines.api";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -324,11 +328,21 @@ type CutlistPreviewField = {
   missingRows: number[];
 };
 
+type CutlistPreviewRow = {
+  row: number;
+  values: Record<string, string>;
+  missing: string[];
+  duplicates: string[];
+  machineAssignments?: Record<string, boolean>;
+  assignedMachineCodes?: string[];
+};
+
 type CutlistPreview = {
   fileName: string;
   rowCount: number;
   fields: CutlistPreviewField[];
-  rows: Array<{ row: number; values: Record<string, string>; missing: string[]; duplicates: string[] }>;
+  machines?: PreviewMachineInfo[];
+  rows: CutlistPreviewRow[];
   rowErrors: Array<{ row: number; missing: string[]; duplicates: string[] }>;
   uniqueCodeMode: "all-filled" | "all-blank" | "mixed";
   parseError?: string;
@@ -623,7 +637,29 @@ const buildCutlistPreview = async (
       }
     });
 
-    const rows = dataRows.map((row) => {
+    let previewMachines: PreviewMachineInfo[] = [];
+    let previewRowMappings: Array<{
+      rowIndex: number;
+      assignedMachineIds: number[];
+      assignedMachineCodes: string[];
+      machineAssignments: Record<string, boolean>;
+    }> = [];
+
+    if (vendorId && dataRows.length > 0) {
+      try {
+        const mappingRes = await previewCutlistMachineMapping(
+          vendorId,
+          dataRows.map((r) => r.values),
+          packingType
+        );
+        previewMachines = mappingRes.machines || [];
+        previewRowMappings = mappingRes.rowMappings || [];
+      } catch (err) {
+        console.warn("Could not preview machine mappings:", err);
+      }
+    }
+
+    const rows: CutlistPreviewRow[] = dataRows.map((row, idx) => {
       const missing = fields
         .filter(
           (field) =>
@@ -642,7 +678,18 @@ const buildCutlistPreview = async (
         (codeCounts.get(row.values.unique_code) ?? 0) > 1
           ? ["Unique Code"]
           : [];
-      return { ...row, missing, duplicates };
+
+      const mapping = previewRowMappings[idx];
+      const machineAssignments = mapping?.machineAssignments || {};
+      const assignedMachineCodes = mapping?.assignedMachineCodes || [];
+
+      return {
+        ...row,
+        missing,
+        duplicates,
+        machineAssignments,
+        assignedMachineCodes,
+      };
     });
 
     const rowErrors = rows
@@ -653,6 +700,7 @@ const buildCutlistPreview = async (
       fileName: file.name,
       rowCount: dataRows.length,
       fields,
+      machines: previewMachines,
       rows,
       rowErrors,
       uniqueCodeMode,
@@ -2234,7 +2282,7 @@ export default function TrackTraceProjectForm({
 
           {cutlistPreview && (
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-              <div className="grid gap-2 sm:grid-cols-5">
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
                 <div className="rounded-md border bg-muted/20 px-3 py-2">
                   <p className="text-xs text-muted-foreground">File</p>
                   <p className="mt-0.5 truncate text-xs font-medium">{cutlistPreview.fileName}</p>
@@ -2257,6 +2305,14 @@ export default function TrackTraceProjectForm({
                   <p className="text-xs text-muted-foreground">Needs attention</p>
                   <p className={cn("mt-0.5 text-xs font-semibold", previewInvalidRows.length ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>{previewInvalidRows.length}</p>
                 </div>
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Machine routing</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+                    {cutlistPreview.machines && cutlistPreview.machines.length > 0
+                      ? `${cutlistPreview.machines.length} machine${cutlistPreview.machines.length > 1 ? "s" : ""} active`
+                      : "No machines"}
+                  </p>
+                </div>
               </div>
 
               {cutlistPreview.parseError ? (
@@ -2266,15 +2322,19 @@ export default function TrackTraceProjectForm({
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-3 rounded-t-md border border-b-0 bg-slate-50 px-3 py-2 dark:bg-slate-900/70">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-md border border-b-0 bg-slate-50 px-3 py-2 dark:bg-slate-900/70">
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span className="font-semibold text-foreground">Rows preview</span>
                       <span>{previewRows.length} item{previewRows.length === 1 ? "" : "s"}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-destructive" />Missing</span>
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Duplicate</span>
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Passed</span>
+                      <span className="hidden sm:inline h-3 w-px bg-border" />
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">Machines:</span>
+                      <span className="inline-flex items-center gap-1"><span className="inline-flex size-3.5 items-center justify-center rounded bg-rose-600 text-[9px] font-bold text-white shadow-xs">✕</span> Not routed</span>
+                      <span className="inline-flex items-center gap-1"><span className="inline-flex size-3.5 items-center justify-center rounded bg-emerald-600 text-[9px] font-bold text-white shadow-xs">✓</span> Routed</span>
                     </div>
                   </div>
                   <div className="max-h-[430px] overflow-auto rounded-b-md border bg-background shadow-sm">
@@ -2286,6 +2346,29 @@ export default function TrackTraceProjectForm({
                           {cutlistPreview.fields.map((field) => (
                             <th key={field.key} className="min-w-[110px] whitespace-nowrap border-r px-2.5 py-2">{field.label}</th>
                           ))}
+                          {cutlistPreview.machines?.map((machine, mIdx) => {
+                            const routedCount = cutlistPreview.rows.filter(
+                              (r) => r.machineAssignments?.[machine.machine_code]
+                            ).length;
+                            return (
+                              <th
+                                key={machine.id}
+                                className="min-w-[125px] whitespace-nowrap border-r bg-slate-200/70 px-2.5 py-2 text-center dark:bg-slate-800/80"
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="rounded bg-background px-1 font-mono text-[9px] text-muted-foreground ring-1 ring-border">
+                                    {String(mIdx + 1).padStart(2, "0")}
+                                  </span>
+                                  <span className="font-semibold text-foreground">
+                                    {machine.machine_code}
+                                  </span>
+                                </div>
+                                <div className="mt-0.5 text-[9px] font-normal normal-case text-muted-foreground">
+                                  {routedCount}/{cutlistPreview.rows.length} routed
+                                </div>
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -2328,6 +2411,35 @@ export default function TrackTraceProjectForm({
                                         ? "Missing"
                                         : row.values[field.key] || ""}
                                     {duplicate && <span className="ml-1">(duplicate)</span>}
+                                  </td>
+                                );
+                              })}
+                              {cutlistPreview.machines?.map((machine) => {
+                                const isAssigned = Boolean(row.machineAssignments?.[machine.machine_code]);
+                                return (
+                                  <td
+                                    key={machine.id}
+                                    className={cn(
+                                      "border-r px-2.5 py-2 text-center transition-colors",
+                                      isAssigned
+                                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+                                        : ""
+                                    )}
+                                    title={
+                                      isAssigned
+                                        ? `Will route to ${machine.machine_code}`
+                                        : `Not routed to ${machine.machine_code}`
+                                    }
+                                  >
+                                    {isAssigned ? (
+                                      <span className="inline-flex size-5 items-center justify-center rounded bg-emerald-600 text-[11px] font-bold text-white shadow-xs dark:bg-emerald-500 dark:text-emerald-950">
+                                        ✓
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex size-5 items-center justify-center rounded bg-rose-600 text-[11px] font-bold text-white shadow-xs dark:bg-rose-600 dark:text-white">
+                                        ✕
+                                      </span>
+                                    )}
                                   </td>
                                 );
                               })}

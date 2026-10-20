@@ -88,3 +88,47 @@ export const getVendorRuleActionsApi = async (
   );
   return response.data.data;
 };
+
+export const getDefaultRuleTemplateApi = async (
+  machineId: number,
+  vendorId: number
+): Promise<CreateRulePayload> => {
+  const response = await apiClient.get<{ success: boolean; data: CreateRulePayload }>(
+    `/track-trace-master/machines/${machineId}/default-rule-template`,
+    { params: { vendor_id: vendorId } }
+  );
+  return response.data.data;
+};
+
+export interface GenerateDefaultRulesResult {
+  success: boolean;
+  message: string;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  totalMachines: number;
+  rules: any[];
+}
+
+export const generateDefaultRulesApi = async (
+  vendorId: number,
+  payload?: { overwrite?: boolean; created_by?: number; machine_id?: number }
+): Promise<GenerateDefaultRulesResult> => {
+  const response = await apiClient.post<GenerateDefaultRulesResult>(
+    `/track-trace-master/vendors/${vendorId}/generate-default-rules`,
+    payload || {}
+  );
+  return response.data;
+};
+
+export const generateDefaultRuleForMachineApi = async (
+  machineId: number,
+  payload: { vendor_id: number; overwrite?: boolean; created_by?: number }
+): Promise<GenerateDefaultRulesResult> => {
+  const response = await apiClient.post<GenerateDefaultRulesResult>(
+    `/track-trace-master/machines/${machineId}/generate-default-rule`,
+    payload
+  );
+  return response.data;
+};
+

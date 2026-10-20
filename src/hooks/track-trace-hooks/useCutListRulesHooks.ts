@@ -8,6 +8,9 @@ import {
   toggleRuleStatusApi,
   getRuleFieldsApi,
   getVendorRuleActionsApi,
+  getDefaultRuleTemplateApi,
+  generateDefaultRulesApi,
+  generateDefaultRuleForMachineApi,
 } from "@/api/trackAndTrace/cut-list-rules";
 import type {
   CreateRulePayload,
@@ -114,3 +117,38 @@ export const useVendorRuleActions = (vendorId?: number) => {
     staleTime: 1000 * 60 * 10, // 10 mins
   });
 };
+
+export const useDefaultRuleTemplate = (machineId: number, vendorId?: number) => {
+  return useQuery({
+    queryKey: ["machine-default-rule-template", machineId, vendorId],
+    queryFn: () => getDefaultRuleTemplateApi(machineId, vendorId!),
+    enabled: !!machineId && !!vendorId && !isNaN(machineId) && !isNaN(vendorId),
+    staleTime: 1000 * 60 * 10,
+  });
+};
+
+export const useGenerateDefaultRules = (vendorId?: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload?: { overwrite?: boolean; created_by?: number; machine_id?: number }) =>
+      generateDefaultRulesApi(vendorId!, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["machine-rules"] });
+      queryClient.invalidateQueries({ queryKey: ["machines"] });
+      queryClient.invalidateQueries({ queryKey: ["machines-by-vendor"] });
+    },
+  });
+};
+
+export const useGenerateDefaultRuleForMachine = (machineId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { vendor_id: number; overwrite?: boolean; created_by?: number }) =>
+      generateDefaultRuleForMachineApi(machineId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["machine-rules", machineId] });
+      queryClient.invalidateQueries({ queryKey: ["machine-rules"] });
+    },
+  });
+};
+

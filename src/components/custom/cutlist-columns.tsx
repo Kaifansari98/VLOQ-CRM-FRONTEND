@@ -232,7 +232,10 @@ const routeStateOf = (cell?: MachineCell): RouteState => {
 };
 
 const ROUTE_STATES: Record<RouteState, { label: string; chip: string }> = {
-  none: { label: "Not routed", chip: "" },
+  none: {
+    label: "Not routed",
+    chip: "border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400",
+  },
   pending: {
     label: "Routed, not started",
     chip: "border border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -258,9 +261,7 @@ export function RoutingLegend({ className }: { className?: string }) {
     <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground", className)}>
       <span className="font-medium text-foreground">Machine routing</span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="flex h-5 min-w-7 items-center justify-center">
-          <span className="size-1 rounded-full bg-muted-foreground/40" />
-        </span>
+        {sample("none", <X className="size-3" strokeWidth={2.5} />)}
         Not routed
       </span>
       <span className="inline-flex items-center gap-1.5">{sample("pending", <Check className="size-3" strokeWidth={2.5} />)}Routed</span>
@@ -749,14 +750,18 @@ export function getCutListColumns(
               {state === "none" ? (
                 editable ? (
                   <>
-                    <span className="size-1 rounded-full bg-muted-foreground/30 group-hover/cell:hidden" />
+                    <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-500 transition-colors group-hover/cell:hidden dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">
+                      <X className="size-3.5" strokeWidth={2.5} />
+                    </span>
                     <span className="hidden items-center gap-1 rounded-md border border-dashed border-primary/40 px-2 py-0.5 text-[11px] font-medium text-primary group-hover/cell:inline-flex">
                       <Plus className="size-3" />
                       Route
                     </span>
                   </>
                 ) : (
-                  <span className="size-1 rounded-full bg-muted-foreground/30" />
+                  <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-500 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">
+                    <X className="size-3.5" strokeWidth={2.5} />
+                  </span>
                 )
               ) : (
                 <span
