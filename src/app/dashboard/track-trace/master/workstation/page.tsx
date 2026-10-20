@@ -123,29 +123,17 @@ export default function MachineMasterPage() {
               </Button>
             )}
 
-          <div className="flex items-center gap-2 shrink-0">
-            {(cutlistConfiguration === "rule manage" || cutlistConfiguration === "rule_manage") && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shadow-2xs"
-                onClick={() => setIsDefaultRulesModalOpen(true)}
-              >
-                <Sparkles size={14} />
-                Generate Default Rules
-              </Button>
-            )}
-
-          <Button
-            size="sm"
-            className="gap-2 shrink-0"
-            onClick={() =>
-              router.push(`/dashboard/track-trace/master/workstation/create?fabrication=${fabrication}`)
-            }
-          >
-            <Plus size={15} />
-            Create Workstation
-          </Button>
+            <Button
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={() =>
+                router.push(`/dashboard/track-trace/master/workstation/create?fabrication=${fabrication}`)
+              }
+            >
+              <Plus size={15} />
+              Create Workstation
+            </Button>
+          </div>
         </div>
 
         <Tabs value={fabrication} onValueChange={(value) => setFabrication(value as MachineFabrication)} className="px-4 mb-4">
