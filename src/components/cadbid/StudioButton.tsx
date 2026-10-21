@@ -31,14 +31,14 @@ export const StudioButton: React.FC<StudioButtonProps> = ({
       size={size}
       onClick={launchStudio}
       disabled={isLaunching}
-      className={`h-9 gap-1.5 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/40 font-medium transition-all ${className}`}
+      className={`h-9 gap-1.5 border-[#2b7fff] bg-[#2b7fff] text-white hover:bg-[#2b7fff] hover:border-[#2b7fff] hover:text-white dark:border-[#2b7fff] dark:bg-[#2b7fff] dark:text-white dark:hover:bg-[#2b7fff] dark:hover:text-white font-medium transition-all ${className}`}
       title="Launch CADX Studio"
       aria-label="Launch CADX Studio"
     >
       {isLaunching ? (
-        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        <Loader2 className="h-4 w-4 animate-spin text-current" />
       ) : (
-        <DraftingCompass className="h-4 w-4 text-primary" />
+        <DraftingCompass className="h-4 w-4 text-current" />
       )}
       <span className="hidden sm:inline font-medium">Studio</span>
     </Button>

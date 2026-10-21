@@ -61,3 +61,35 @@ export const getStudioSsoUrl = async (): Promise<string> => {
   }>("/cadbid/studio-sso");
   return res.data.data.url;
 };
+
+export interface CreateCadbidCustomerResult {
+  success: boolean;
+  skipped: boolean;
+  message: string;
+}
+
+// Never throws: resolves with a user-friendly message for every outcome
+export const createCadbidCustomerFromLead = async (
+  leadId: number,
+): Promise<CreateCadbidCustomerResult> => {
+  try {
+    const res = await apiClient.post<{
+      success: boolean;
+      message: string;
+      data: { skipped: boolean };
+    }>(`/cadbid/leads/${leadId}/create-customer`);
+    return {
+      success: res.data.success,
+      skipped: !!res.data.data?.skipped,
+      message: res.data.message,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      skipped: false,
+      message:
+        err?.response?.data?.message ||
+        "We couldn't reach Cadbid, so the project was not created there. Please try again later.",
+    };
+  }
+};

@@ -9,9 +9,11 @@ import {
   connectCadbid,
   disconnectCadbid,
   getStudioSsoUrl,
+  createCadbidCustomerFromLead,
   CadbidStatusData,
   VerifyTokenData,
 } from "@/api/cadbid";
+import { toastManager } from "@/components/ui/toast";
 
 export const CADBID_STATUS_QUERY_KEY = ["cadbid-status"] as const;
 
@@ -94,4 +96,18 @@ export const useLaunchStudio = () => {
   };
 
   return { launchStudio, isLaunching };
+};
+
+// Fire-and-forget after a lead moves to Designing; silent when Cadbid isn't linked
+export const createCadbidCustomerWithToast = (leadId: number) => {
+  createCadbidCustomerFromLead(leadId).then((result) => {
+    if (result.skipped) return;
+    toastManager.add({
+      title: result.success
+        ? "Project created in Cadbid"
+        : "Project not created in Cadbid",
+      description: result.message,
+      type: result.success ? "success" : "error",
+    });
+  });
 };

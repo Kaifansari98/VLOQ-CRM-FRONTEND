@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button";
 import AssignToPicker from "@/components/assign-to-picker";
 import { toastManager } from "@/components/ui/toast";
+import { createCadbidCustomerWithToast } from "@/hooks/useCadbid";
 import { useAppSelector } from "@/redux/store";
 import { assignDesignerToLead, getVendorSalesExecutiveUsers } from "@/api/leads";
 import { useLeadById, useUpdateLeadStage } from "@/hooks/useLeadsQueries";
@@ -197,6 +198,7 @@ export default function MoveToDesigningStageModal({
       setShowSingleUserConfirm(false);
       onOpenChange(false);
       router.push("/dashboard/leads/designing-stage");
+      createCadbidCustomerWithToast(data.id);
     },
     onError: (error: any) => {
       toastManager.add({
