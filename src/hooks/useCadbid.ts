@@ -10,6 +10,8 @@ import {
   disconnectCadbid,
   getStudioSsoUrl,
   createCadbidCustomerFromLead,
+  updateCadbidCustomerFromLead,
+  CadbidLeadSyncResult,
   CadbidStatusData,
   VerifyTokenData,
 } from "@/api/cadbid";
@@ -98,16 +100,32 @@ export const useLaunchStudio = () => {
   return { launchStudio, isLaunching };
 };
 
-// Fire-and-forget after a lead moves to Designing; silent when Cadbid isn't linked
-export const createCadbidCustomerWithToast = (leadId: number) => {
-  createCadbidCustomerFromLead(leadId).then((result) => {
+// Fire-and-forget; silent when the backend skips (e.g. Cadbid isn't linked)
+const syncLeadToCadbidWithToast = (
+  sync: Promise<CadbidLeadSyncResult>,
+  successTitle: string,
+  failureTitle: string,
+) => {
+  sync.then((result) => {
     if (result.skipped) return;
     toastManager.add({
-      title: result.success
-        ? "Project created in Cadbid"
-        : "Project not created in Cadbid",
+      title: result.success ? successTitle : failureTitle,
       description: result.message,
       type: result.success ? "success" : "error",
     });
   });
 };
+
+export const createCadbidCustomerWithToast = (leadId: number) =>
+  syncLeadToCadbidWithToast(
+    createCadbidCustomerFromLead(leadId),
+    "Project created in Cadbid",
+    "Project not created in Cadbid",
+  );
+
+export const updateCadbidCustomerWithToast = (leadId: number) =>
+  syncLeadToCadbidWithToast(
+    updateCadbidCustomerFromLead(leadId),
+    "Lead updated in Cadbid",
+    "Lead not updated in Cadbid",
+  );

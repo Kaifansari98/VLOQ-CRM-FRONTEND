@@ -62,22 +62,21 @@ export const getStudioSsoUrl = async (): Promise<string> => {
   return res.data.data.url;
 };
 
-export interface CreateCadbidCustomerResult {
+export interface CadbidLeadSyncResult {
   success: boolean;
   skipped: boolean;
   message: string;
 }
 
 // Never throws: resolves with a user-friendly message for every outcome
-export const createCadbidCustomerFromLead = async (
-  leadId: number,
-): Promise<CreateCadbidCustomerResult> => {
+const syncLeadToCadbid = async (
+  request: () => Promise<{
+    data: { success: boolean; message: string; data: { skipped: boolean } };
+  }>,
+  fallbackMessage: string,
+): Promise<CadbidLeadSyncResult> => {
   try {
-    const res = await apiClient.post<{
-      success: boolean;
-      message: string;
-      data: { skipped: boolean };
-    }>(`/cadbid/leads/${leadId}/create-customer`);
+    const res = await request();
     return {
       success: res.data.success,
       skipped: !!res.data.data?.skipped,
@@ -87,9 +86,19 @@ export const createCadbidCustomerFromLead = async (
     return {
       success: false,
       skipped: false,
-      message:
-        err?.response?.data?.message ||
-        "We couldn't reach Cadbid, so the project was not created there. Please try again later.",
+      message: err?.response?.data?.message || fallbackMessage,
     };
   }
 };
+
+export const createCadbidCustomerFromLead = (leadId: number) =>
+  syncLeadToCadbid(
+    () => apiClient.post(`/cadbid/leads/${leadId}/create-customer`),
+    "We couldn't reach Cadbid, so the project was not created there. Please try again later.",
+  );
+
+export const updateCadbidCustomerFromLead = (leadId: number) =>
+  syncLeadToCadbid(
+    () => apiClient.put(`/cadbid/leads/${leadId}/update-customer`),
+    "We couldn't reach Cadbid, so the lead's details were not updated there. Please try again later.",
+  );
