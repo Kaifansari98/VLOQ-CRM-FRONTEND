@@ -12,6 +12,8 @@ import {
   createCadbidCustomerFromLead,
   updateCadbidCustomerFromLead,
   CadbidLeadSyncResult,
+  getCadbidQuotesForLead,
+  CadbidLeadQuotesData,
   CadbidStatusData,
   VerifyTokenData,
 } from "@/api/cadbid";
@@ -129,3 +131,13 @@ export const updateCadbidCustomerWithToast = (leadId: number) =>
     "Lead updated in Cadbid",
     "Lead not updated in Cadbid",
   );
+
+export const useCadbidLeadQuotes = (leadId?: number) => {
+  return useQuery<CadbidLeadQuotesData>({
+    queryKey: ["cadbid-lead-quotes", leadId],
+    queryFn: () => getCadbidQuotesForLead(leadId!),
+    enabled: !!leadId,
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+};

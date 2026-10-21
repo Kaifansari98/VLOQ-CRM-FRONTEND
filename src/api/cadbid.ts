@@ -102,3 +102,32 @@ export const updateCadbidCustomerFromLead = (leadId: number) =>
     () => apiClient.put(`/cadbid/leads/${leadId}/update-customer`),
     "We couldn't reach Cadbid, so the lead's details were not updated there. Please try again later.",
   );
+
+export interface CadbidQuote {
+  nQuotationId: number;
+  sDocumentNo: string | null;
+  sRefNo: string | null;
+  sName: string | null;
+  sStage: string | null;
+  sUserName: string | null;
+  nTotalAmt: number | null;
+  nDiscountAmt: number | null;
+  dtCreated: string | null;
+}
+
+export interface CadbidLeadQuotesData {
+  connected: boolean;
+  linked: boolean;
+  quotes: CadbidQuote[];
+}
+
+export const getCadbidQuotesForLead = async (
+  leadId: number,
+): Promise<CadbidLeadQuotesData> => {
+  const res = await apiClient.get<{
+    success: boolean;
+    message: string;
+    data: CadbidLeadQuotesData;
+  }>(`/cadbid/leads/${leadId}/quotes`);
+  return res.data.data;
+};
