@@ -24,11 +24,11 @@ export const TRACK_TRACE_KEYS = {
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-export function useProjectCutList(vendorId: number, projectId?: string) {
+export function useProjectCutList(vendorId: number, projectId?: string, fabrication?: "WOODWORK" | "METALWORK") {
   return useQuery({
-    queryKey: TRACK_TRACE_KEYS.cutlist(projectId ?? ""),
-    queryFn: () => getProjectCutList(vendorId, projectId!),
-    enabled: !!projectId,
+    queryKey: [...TRACK_TRACE_KEYS.cutlist(projectId ?? ""), vendorId, fabrication ?? "ALL"],
+    queryFn: () => getProjectCutList(vendorId, projectId!, fabrication),
+    enabled: !!projectId && !!vendorId,
   });
 }
 

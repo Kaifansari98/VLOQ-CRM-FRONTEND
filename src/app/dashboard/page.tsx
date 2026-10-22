@@ -1,5 +1,7 @@
 "use client";
 
+import { CadbidHeaderGroup } from "@/components/cadbid/CadbidHeaderGroup";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,7 +46,7 @@ export default function Page() {
     if (isEmployee) return;
 
     setIsMac(
-      typeof navigator !== "undefined" && navigator.platform.includes("Mac")
+      typeof navigator !== "undefined" && navigator.platform.includes("Mac"),
     );
 
     const handleKey = (e: KeyboardEvent) => {
@@ -109,6 +111,7 @@ export default function Page() {
             </>
           )}
 
+          <CadbidHeaderGroup />
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>

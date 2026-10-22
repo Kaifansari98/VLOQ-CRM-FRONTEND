@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { FileUploadField } from "@/components/custom/file-upload";
 import MachinePicker from "@/components/machine-picker";
+import CustomeDatePicker from "@/components/date-picker";
 import {
   useCreateMachine,
   useMachinesByVendor,
@@ -75,12 +76,8 @@ const workstationSchema = z.object({
     .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
       message: "Sequence number must be a positive number",
     }),
-  target_per_hour: z
-    .string()
-    .min(1, "Target per hour is required")
-    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-      message: "Target per hour must be a positive number",
-    }),
+  // "yyyy-MM-dd" from the date picker; optional
+  purchased_at: z.string().optional(),
   machine_image: z.array(z.instanceof(File)).optional(),
 });
 
@@ -145,7 +142,7 @@ function WorkstationFormContent() {
       description: "",
       factory_id: "",
       sequence_no: "",
-      target_per_hour: "",
+      purchased_at: "",
       machine_image: [],
     },
   });
@@ -165,10 +162,7 @@ function WorkstationFormContent() {
           editData.sequence_no !== undefined && editData.sequence_no !== null
             ? String(editData.sequence_no)
             : "",
-        target_per_hour:
-          editData.target_per_hour !== undefined && editData.target_per_hour !== null
-            ? String(editData.target_per_hour)
-            : "",
+        purchased_at: editData.purchased_at ? editData.purchased_at.slice(0, 10) : "",
         machine_image: [],
       });
     }
@@ -217,7 +211,7 @@ function WorkstationFormContent() {
         description: data.description.trim(),
         factory_id: data.factory_id ? Number(data.factory_id) : null,
         sequence_no: Number(data.sequence_no),
-        target_per_hour: Number(data.target_per_hour),
+        purchased_at: data.purchased_at || null,
         updated_by: Number(userId),
         machine_image:
           data.machine_image && data.machine_image.length > 0
@@ -260,7 +254,7 @@ function WorkstationFormContent() {
         description: data.description.trim(),
         factory_id: data.factory_id ? Number(data.factory_id) : null,
         sequence_no: Number(data.sequence_no),
-        target_per_hour: Number(data.target_per_hour),
+        purchased_at: data.purchased_at || null,
         created_by: Number(userId),
         machine_image: data.machine_image![0],
       };
@@ -340,7 +334,7 @@ function WorkstationFormContent() {
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {isEdit
-                ? "Update workstation configuration, scan type, and target rate"
+                ? "Update workstation configuration, scan type, and purchase date"
                 : "Add a new workstation to your vendor inventory"}
             </p>
           </div>
@@ -443,7 +437,7 @@ function WorkstationFormContent() {
               />
             </div>
 
-            {/* Row 2: Status, Scan Type, Sequence No, Target per Hour (4 items in 1 row) */}
+            {/* Row 2: Status, Scan Type, Sequence No, Purchased At (4 items in 1 row) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <FormField
                 control={form.control}
@@ -533,21 +527,18 @@ function WorkstationFormContent() {
 
               <FormField
                 control={form.control}
-                name="target_per_hour"
+                name="purchased_at"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Target per Hour (per Sqft){" "}
-                      <span className="text-destructive">*</span>
+                      Purchased At
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="e.g., 75"
-                        {...field}
-                        disabled={isSubmitting}
-                        min="1"
-                        className="h-10 text-sm"
+                      <CustomeDatePicker
+                        value={field.value || undefined}
+                        onChange={(value) => field.onChange(value ?? "")}
+                        restriction="pastOnly"
+                        className="h-10"
                       />
                     </FormControl>
                     <FormMessage />

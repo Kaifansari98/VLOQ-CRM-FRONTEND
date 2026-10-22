@@ -31,7 +31,7 @@ export function useProjectCutlistView(uniqueProjectId: string, fabrication: Fabr
     const user = useAppSelector((state) => state.auth.user);
     const vendorId = user?.vendor_id;
 
-    const query = useProjectCutList(Number(vendorId), uniqueProjectId);
+    const query = useProjectCutList(Number(vendorId), uniqueProjectId, fabrication);
     const response = query.data;
 
     const allRows: CutListRow[] = useMemo(() => response?.data ?? [], [response?.data]);

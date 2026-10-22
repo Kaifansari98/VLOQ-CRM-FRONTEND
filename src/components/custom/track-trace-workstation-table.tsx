@@ -51,6 +51,7 @@ import {
   Check,
   CheckCircle2,
   SlidersHorizontal,
+  Sheet,
   AlertCircle,
   Plus,
   Loader2,
@@ -827,6 +828,13 @@ export default function TrackTraceWorkstationTable({
                     CutList Rules
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onClick={() => router.push(`/dashboard/track-trace/master/workstation/${row.original.id}/mcp`)}
+                >
+                  <Sheet size={14} />
+                  Manage MCP
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

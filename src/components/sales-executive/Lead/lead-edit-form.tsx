@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { useAppSelector } from "@/redux/store";
 import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { updateCadbidCustomerWithToast } from "@/hooks/useCadbid";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   useSourceTypes,
@@ -1099,6 +1100,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         } as EditLeadPayload);
         if (shouldConvertDraft && result?.data?.lead?.is_draft !== false) {
           throw new Error("Lead is still a draft. Complete the required details and try again.");
+        }
+        // Backend skips leads before Designing or users without Cadbid linked
+        if (hasMainChanges) {
+          updateCadbidCustomerWithToast(leadData.id);
         }
       }
 

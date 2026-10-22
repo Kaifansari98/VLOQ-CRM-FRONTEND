@@ -135,6 +135,7 @@ export interface MachineData {
   factory_id?: number;
   sequence_no: number;
   target_per_hour: string;
+  purchased_at?: string | null;
   image_path: string;
   created_by: number;
   created_at: string;
@@ -169,7 +170,9 @@ export interface CreateMachinePayload {
   description: string;
   factory_id?: number | null;
   sequence_no: number;
-  target_per_hour: number;
+  target_per_hour?: number;
+  // "yyyy-MM-dd"
+  purchased_at?: string | null;
   created_by?: number;
   machine_image: File;
   updated_by?: number;
@@ -185,7 +188,9 @@ export interface UpdateMachinePayload {
   description: string;
   factory_id?: number | null;
   sequence_no: number;
-  target_per_hour: number;
+  target_per_hour?: number;
+  // "yyyy-MM-dd"; null clears it
+  purchased_at?: string | null;
   machine_image: File;
   updated_by: number;
 }
