@@ -397,7 +397,7 @@ export default function ProjectMachineDetailPage() {
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-blue-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Total Panels
+                  Total Items
                 </span>
                 <div className="flex size-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <Package className="size-4" />
@@ -422,7 +422,7 @@ export default function ProjectMachineDetailPage() {
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-emerald-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {isDispatch ? "Dispatched Panels" : "Scanned Panels"}
+                  {isDispatch ? "Dispatched items" : "Scanned items"}
                 </span>
                 <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="size-4" />
@@ -449,7 +449,7 @@ export default function ProjectMachineDetailPage() {
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-amber-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {isDispatch ? "Pending Dispatch" : "Pending Panels"}
+                  {isDispatch ? "Pending Dispatch" : "Pending items"}
                 </span>
                 <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   <Clock className="size-4" />
@@ -582,7 +582,7 @@ export default function ProjectMachineDetailPage() {
                   <Input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search panels, code, box..."
+                    placeholder="Search items code, box..."
                     className="h-9 w-full rounded-xl pl-9 pr-9 text-xs bg-background shadow-2xs border-border/80 focus-visible:ring-1"
                   />
                   {searchInput && (
@@ -753,15 +753,15 @@ export default function ProjectMachineDetailPage() {
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-foreground">
-                              No panels found
+                              No items found
                             </p>
                             <p className="text-xs text-muted-foreground max-w-sm">
                               {hasActiveFilters
-                                ? "No panels match the selected filters or search criteria."
+                                ? "No items match the selected filters or search criteria."
                                 : activeTab === "scanned"
-                                ? `No panels have been ${isDispatch ? "dispatched" : `scanned at ${currentMachineName}`} yet.`
+                                ? `No items have been ${isDispatch ? "dispatched" : `scanned at ${currentMachineName}`} yet.`
                                 : activeTab === "pending"
-                                ? `All panels are completed ${isDispatch ? "for dispatch" : `at ${currentMachineName}`}!`
+                                ? `All items are completed ${isDispatch ? "for dispatch" : `at ${currentMachineName}`}!`
                                 : `No items found.`}
                             </p>
                           </div>
