@@ -127,6 +127,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -3549,6 +3551,8 @@ export default function ProjectDetailPage() {
     ? (data.stats as ProjectDetailData["stats"] & ReceivedQuantityStats)
     : null;
 
+  const [activeSection, setActiveSection] = useState("overview");
+
   const machineIds = data
     ? data.machines
         .map((m) => ({
@@ -3921,6 +3925,61 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Packing method + product status ── */}
+            <Tabs value={activeSection} onValueChange={setActiveSection} className="gap-4">
+              <TabsList className="sticky top-0 z-10 grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl border border-border/80 bg-muted/80 p-1.5 shadow-xs backdrop-blur-md sm:grid-cols-4">
+                {[
+                  { id: "overview", label: "Overview", icon: SlidersHorizontal },
+                  { id: "boxes", label: "Boxes", icon: Package, count: data?.boxes?.length },
+                  { id: "receiving", label: "Dispatch & receiving", icon: TruckIcon },
+                  { id: "production", label: "Production", icon: Cpu, count: data?.machines?.length },
+                ].map((tab) => {
+                  const isActive = activeSection === tab.id;
+                  const Icon = tab.icon;
+
+                  return (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className={cn(
+                        "relative h-9 gap-2 rounded-lg text-xs sm:text-sm font-semibold select-none cursor-pointer transition-colors duration-200 z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                        isActive
+                          ? "text-primary-foreground font-bold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/40",
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeDetailsTabPill"
+                          transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                          className="absolute inset-0 rounded-lg bg-primary shadow-sm -z-10 pointer-events-none"
+                        />
+                      )}
+                      <Icon className="size-4 shrink-0" />
+                      <span>{tab.label}</span>
+                      {typeof tab.count === "number" && tab.count > 0 && (
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums transition-colors",
+                            isActive
+                              ? "bg-primary-foreground/20 text-primary-foreground"
+                              : "bg-muted-foreground/20 text-muted-foreground",
+                          )}
+                        >
+                          {tab.count}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              <TabsContent value="overview" className="mt-0 space-y-4 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
               {/* Left Side: Packing Method */}
               <div className="xl:col-span-4 rounded-2xl border bg-card p-5 space-y-4 flex flex-col justify-between h-full">
@@ -4180,6 +4239,15 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Boxes ── */}
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="boxes" className="mt-0 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                >
             {data && (
               <BoxesSection
                 boxes={data.boxes}
@@ -4199,6 +4267,17 @@ export default function ProjectDetailPage() {
                 onFilterChange={handleBoxesFilterChange}
               />
             )}
+
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="receiving" className="mt-0 space-y-4 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
 
             {/* ── Dispatch / site progress ── */}
             <div className="rounded-2xl border bg-card p-5 space-y-4">
@@ -4673,6 +4752,17 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="production" className="mt-0 space-y-4 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
+
             {/* ── Machine progress ── */}
             {data.machines.length > 0 && (
               <div className="rounded-2xl border bg-card p-5 space-y-4">
@@ -4743,6 +4833,9 @@ export default function ProjectDetailPage() {
               projectId={String(uniqueProjectId)}
               machineIds={machineIds}
             />
+                </motion.div>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>
