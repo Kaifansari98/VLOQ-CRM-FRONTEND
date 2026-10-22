@@ -46,7 +46,10 @@ export const createMachine = async (
 
   formData.append("sequence_no", String(payload.sequence_no));
 
-  formData.append("target_per_hour", String(payload.target_per_hour));
+  if (payload.target_per_hour !== undefined)
+    formData.append("target_per_hour", String(payload.target_per_hour));
+
+  if (payload.purchased_at) formData.append("purchased_at", payload.purchased_at);
 
   if (payload.factory_id !== undefined && payload.factory_id !== null)
     formData.append("factory_id", String(payload.factory_id));
@@ -76,7 +79,13 @@ export const updateMachine = async ({
   formData.append("scan_type", data.scan_type);
   formData.append("description", data.description);
   formData.append("sequence_no", String(data.sequence_no));
-  formData.append("target_per_hour", String(data.target_per_hour));
+  if (data.target_per_hour !== undefined) {
+    formData.append("target_per_hour", String(data.target_per_hour));
+  }
+  // An empty value clears the purchase date.
+  if (data.purchased_at !== undefined) {
+    formData.append("purchased_at", data.purchased_at ?? "");
+  }
   formData.append("updated_by", String(data.updated_by));
 
   if (data.factory_id !== undefined && data.factory_id !== null) {
