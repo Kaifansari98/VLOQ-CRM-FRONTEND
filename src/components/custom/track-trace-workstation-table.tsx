@@ -50,6 +50,7 @@ import {
   Copy,
   Check,
   SlidersHorizontal,
+  Sheet,
 } from "lucide-react";
 import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -606,6 +607,13 @@ export default function TrackTraceWorkstationTable({
                     CutList Rules
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onClick={() => router.push(`/dashboard/track-trace/master/workstation/${row.original.id}/mcp`)}
+                >
+                  <Sheet size={14} />
+                  Manage MCP
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
