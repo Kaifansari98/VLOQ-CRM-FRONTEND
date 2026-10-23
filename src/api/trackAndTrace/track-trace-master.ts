@@ -210,6 +210,7 @@ export const createTrackTraceProjectApi = async (
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
   if (payload.created_by) formData.append("created_by", String(payload.created_by));
+  if (payload.fabrication) formData.append("fabrication", payload.fabrication);
   if (payload.instance_id) formData.append("instance_id", String(payload.instance_id));
   if (payload.use_lead_project_name) formData.append("use_lead_project_name", "true");
   formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);

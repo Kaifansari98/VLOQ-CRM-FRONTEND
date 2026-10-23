@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,7 +16,13 @@ import TrackTraceProjectForm from "@/components/track-trace/TrackTraceProjectFor
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
-export default function CreateTrackTraceProjectPage() {
+function CreateProjectPageContent() {
+  const searchParams = useSearchParams();
+  const fabrication =
+    searchParams.get("fabrication")?.toUpperCase() === "METALWORK"
+      ? "METALWORK"
+      : "WOODWORK";
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -31,13 +39,24 @@ export default function CreateTrackTraceProjectPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard/track-trace/manage-project">
-                  Track & Trace Projects
+                <BreadcrumbLink
+                  href={
+                    fabrication === "METALWORK"
+                      ? "/dashboard/track-trace/metalwork-projects"
+                      : "/dashboard/track-trace/manage-project"
+                  }
+                >
+                  {fabrication === "METALWORK"
+                    ? "Metalwork Projects"
+                    : "Woodwork Projects"}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>Create Project</BreadcrumbPage>
+                <BreadcrumbPage>
+                  Create {fabrication === "METALWORK" ? "Metalwork" : "Woodwork"}{" "}
+                  Project
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -49,8 +68,20 @@ export default function CreateTrackTraceProjectPage() {
       </header>
 
       <div className="flex flex-col gap-6 p-6 w-full">
-        <TrackTraceProjectForm mode="create" />
+        <TrackTraceProjectForm mode="create" initialFabrication={fabrication} />
       </div>
     </>
+  );
+}
+
+export default function CreateTrackTraceProjectPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-muted-foreground">Loading form...</div>
+      }
+    >
+      <CreateProjectPageContent />
+    </Suspense>
   );
 }

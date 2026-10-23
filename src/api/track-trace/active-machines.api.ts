@@ -55,12 +55,14 @@ export const previewCutlistMachineMapping = async (
   vendorId: number,
   items: Array<Record<string, any>>,
   packingType?: string,
+  fabrication?: "WOODWORK" | "METALWORK",
 ): Promise<{ machines: PreviewMachineInfo[]; rowMappings: PreviewRowMapping[] }> => {
   const { data } = await apiClient.post<PreviewMachineMappingResponse>(
     `/track-trace-project/onboard/${vendorId}/preview-machine-mapping`,
     {
       items,
       packing_type: packingType,
+      fabrication,
     },
   );
 

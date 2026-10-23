@@ -375,6 +375,7 @@ export type CreateTrackTraceProjectRequest = {
   instance_id?: number | null;
   /** Let the backend name the project after the lead (Firstname-Lastname-LEADCODE[.index]). */
   use_lead_project_name?: boolean;
+  fabrication?: "WOODWORK" | "METALWORK";
 };
 
 export interface CreateTrackTraceProjectResponse {

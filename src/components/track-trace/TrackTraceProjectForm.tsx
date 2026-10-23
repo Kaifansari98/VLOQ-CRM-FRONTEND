@@ -6,7 +6,7 @@ import {
   previewCutlistMachineMapping,
   PreviewMachineInfo,
 } from "@/api/track-trace/active-machines.api";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -60,6 +60,8 @@ import {
   Upload,
   AlertCircle,
   FileSpreadsheet,
+  Hammer,
+  Wrench,
 } from "lucide-react";
 
 import {
@@ -112,6 +114,10 @@ const getProjectFormSchema = (mode: "create" | "edit" = "create") =>
         .min(1, "Project name is required")
         .min(3, "Project name must be at least 3 characters")
         .max(100, "Project name must not exceed 100 characters"),
+
+      fabrication: z
+        .enum(["WOODWORK", "METALWORK"])
+        .default("WOODWORK"),
 
       lead_id: z.number().nullable().optional(),
 
@@ -206,6 +212,7 @@ type ProjectFormData = z.output<typeof projectFormSchema>;
 type TrackTraceProjectFormProps = {
   mode: "create" | "edit";
   uniqueProjectId?: string;
+  initialFabrication?: "WOODWORK" | "METALWORK";
 };
 
 type ExtendedLeadOption = TrackTraceLeadOption & {
@@ -351,7 +358,8 @@ type CutlistPreview = {
 const buildCutlistPreview = async (
   file: File,
   vendorId: number,
-  packingType: PackingType = PackingType.DEFAULT
+  packingType: PackingType = PackingType.DEFAULT,
+  fabrication: "WOODWORK" | "METALWORK" = "WOODWORK"
 ): Promise<CutlistPreview> => {
   try {
     const ExcelJS = await import("exceljs");
@@ -650,7 +658,8 @@ const buildCutlistPreview = async (
         const mappingRes = await previewCutlistMachineMapping(
           vendorId,
           dataRows.map((r) => r.values),
-          packingType
+          packingType,
+          fabrication
         );
         previewMachines = mappingRes.machines || [];
         previewRowMappings = mappingRes.rowMappings || [];
@@ -896,8 +905,19 @@ function LeadSearchBox({
 export default function TrackTraceProjectForm({
   mode,
   uniqueProjectId,
+  initialFabrication,
 }: TrackTraceProjectFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryFabrication =
+    searchParams.get("fabrication")?.toUpperCase() === "METALWORK"
+      ? "METALWORK"
+      : searchParams.get("fabrication")?.toUpperCase() === "WOODWORK"
+        ? "WOODWORK"
+        : undefined;
+
+  const defaultFabrication: "WOODWORK" | "METALWORK" =
+    initialFabrication ?? queryFabrication ?? "WOODWORK";
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
 
@@ -942,6 +962,7 @@ export default function TrackTraceProjectForm({
     resolver: zodResolver(getProjectFormSchema(mode)),
     defaultValues: {
       projectName: "",
+      fabrication: defaultFabrication,
       lead_id: null,
       order_no: "",
       client_name: "",
@@ -1078,15 +1099,20 @@ export default function TrackTraceProjectForm({
     return true;
   };
 
-  const previewCutlistFile = async (files: File[]) => {
+  const previewCutlistFile = async (
+    files: File[],
+    overrideFabrication?: "WOODWORK" | "METALWORK"
+  ) => {
     const file = files[0];
     setCutlistPreview(null);
     if (!file) return;
 
     setIsPreviewingCutlist(true);
     const packingType = form.getValues("packing_type");
+    const fabrication =
+      overrideFabrication ?? form.getValues("fabrication") ?? defaultFabrication;
     const preview = vendorId
-      ? await buildCutlistPreview(file, Number(vendorId), packingType)
+      ? await buildCutlistPreview(file, Number(vendorId), packingType, fabrication)
       : { fileName: file.name, rowCount: 0, fields: [], rows: [], rowErrors: [], uniqueCodeMode: "all-blank" as const, parseError: "Vendor information not found." };
     setCutlistPreview(preview);
     setIsPreviewingCutlist(false);
@@ -1114,9 +1140,14 @@ export default function TrackTraceProjectForm({
     const persistedPackingType =
       project.packing_type ?? project.packingType ?? project.project_type;
     const normalizedPackingType = normalizePackingType(persistedPackingType);
+    const persistedFabrication =
+      (project as any)?.fabrication === "METALWORK"
+        ? "METALWORK"
+        : defaultFabrication;
 
     resetProjectForm({
       projectName: project.project_name || "",
+      fabrication: persistedFabrication,
       lead_id: project.lead_id || null,
       order_no: project.order_no || "",
       client_name: project.client_name || "",
@@ -1470,6 +1501,7 @@ export default function TrackTraceProjectForm({
       vendorId,
       lead_id: isCrmEnabled && data.lead_id ? Number(data.lead_id) : null,
       projectName: data.projectName.trim(),
+      fabrication: data.fabrication,
 
       order_no: data.order_no?.trim() || undefined,
       client_name: data.client_name?.trim() || undefined,
@@ -1540,9 +1572,13 @@ export default function TrackTraceProjectForm({
         });
 
         if (payload.is_multi_location && response.unique_project_id) {
-          router.push(`/dashboard/track-trace/manage-project/${response.unique_project_id}/locations`);
+          router.push(`/dashboard/track-trace/manage-project/${response.unique_project_id}/locations?fabrication=${data.fabrication}`);
         } else {
-          router.push("/dashboard/track-trace/manage-project");
+          router.push(
+            data.fabrication === "METALWORK"
+              ? "/dashboard/track-trace/metalwork-projects"
+              : "/dashboard/track-trace/manage-project"
+          );
         }
       },
 
@@ -1608,7 +1644,13 @@ export default function TrackTraceProjectForm({
           type="button"
           variant="outline"
           className="mt-4"
-          onClick={() => router.push("/dashboard/track-trace/manage-project")}
+          onClick={() =>
+            router.push(
+              form.getValues("fabrication") === "METALWORK"
+                ? "/dashboard/track-trace/metalwork-projects"
+                : "/dashboard/track-trace/manage-project"
+            )
+          }
         >
           Back to Projects
         </Button>
@@ -1622,7 +1664,9 @@ export default function TrackTraceProjectForm({
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">
-            {mode === "edit" ? "Edit Track & Trace Project" : "Create New Project"}
+            {mode === "edit"
+              ? `Edit ${form.watch("fabrication") === "METALWORK" ? "Metalwork" : "Woodwork"} Project`
+              : `Create New ${form.watch("fabrication") === "METALWORK" ? "Metalwork" : "Woodwork"} Project`}
           </h1>
           {mode === "edit" && (
             <Badge
@@ -2271,7 +2315,20 @@ export default function TrackTraceProjectForm({
                 <FileSpreadsheet className="size-6" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-lg">Review CutList Excel</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <DialogTitle className="text-lg">Review CutList Excel</DialogTitle>
+                  <Badge variant="outline" className="text-[11px] font-semibold gap-1">
+                    {form.watch("fabrication") === "METALWORK" ? (
+                      <>
+                        <Wrench className="size-3" /> Metalwork
+                      </>
+                    ) : (
+                      <>
+                        <Hammer className="size-3" /> Woodwork
+                      </>
+                    )}
+                  </Badge>
+                </div>
                 <DialogDescription className="mt-1 text-xs">
                   Check your Excel rows and required fields before uploading the project.
                 </DialogDescription>
