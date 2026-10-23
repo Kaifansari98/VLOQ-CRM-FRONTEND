@@ -361,7 +361,10 @@ function CostSheet({ sheet, title, descriptions, vendorId, machineId, tabs }: { 
               <div role="cell" className="relative min-w-0">
                 {/* Mirror the text so the row grows and shrinks with wrapping, edits, and viewport width. */}
                 <div aria-hidden="true" className="invisible min-h-8 whitespace-pre-wrap px-3 py-1.5 text-sm leading-5 [overflow-wrap:anywhere]">{`${row.description || (index === 0 ? "Enter a description" : "")} `}</div>
-                <textarea readOnly={wb.readOnly} rows={1} aria-label={`Description, row ${index + 1}`} className={`${cellClass} absolute inset-0 block resize-none overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]`} value={row.description} onChange={(event) => updateDescription(row.id, event.target.value)} onBlur={(event) => saveValue({ ...row, description: event.currentTarget.value })} maxLength={2000} placeholder={index === 0 ? "Enter a description" : ""} />
+                <textarea readOnly={wb.readOnly} rows={1} aria-label={`Description, row ${index + 1}`} className={`${cellClass} absolute inset-0 block resize-none overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]`} value={row.description} onChange={(event) => updateDescription(row.id, event.target.value)} onBlur={(event) => {
+                  // Only save when the description was edited; just tabbing through shouldn't save (or fail on a blank new row).
+                  if (saveStates[row.id]?.status === "dirty") saveValue({ ...row, description: event.currentTarget.value });
+                }} maxLength={2000} placeholder={index === 0 ? "Enter a description" : ""} />
               </div>
               <div
                 role="cell"
