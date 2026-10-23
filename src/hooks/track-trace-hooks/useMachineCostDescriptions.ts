@@ -12,7 +12,7 @@ export type MachineCostDescription = {
   value_format: "percent" | null;
 };
 
-export type MachineCostSheet = "MACHINE_COST" | "MACHINE_ELECTRICALS" | "MACHINE_MAINTENANCE" | "MACHINE_CAPACITY" | "MACHINE_TOOL_GLUE" | "MACHINE_LABOUR" | "GENERAL_DATA" | "PROCESS_COST";
+export type MachineCostSheet = "MACHINE_COST" | "MACHINE_ELECTRICALS" | "MACHINE_MAINTENANCE" | "MACHINE_CAPACITY" | "MACHINE_TOOL_GLUE" | "MACHINE_LABOUR" | "GENERAL_DATA" | "PROCESS_COST" | `CUSTOM_${string}`;
 
 export const machineCostDescriptionsKey = (vendorId: number | undefined, machineId: string, sheet: MachineCostSheet) =>
   ["machine-cost-descriptions", vendorId, machineId, sheet] as const;

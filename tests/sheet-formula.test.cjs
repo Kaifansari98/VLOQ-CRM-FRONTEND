@@ -84,3 +84,22 @@ test('text cells: arithmetic gives #VALUE!, functions skip them', () => {
   assert.equal(values.get(6).error, '#VALUE!', 'the error propagates');
   assert.equal(values.get(8).value, 0);
 });
+
+
+test('renamed sheets display new labels without changing stored references or results', () => {
+  const rows = sheet({ amount: '12' }, { formula: '=[r1]*2' });
+  const original = [{ title: 'Machine Cost', rows: [rows[0]] }, { title: 'Process Cost', rows: [rows[1]] }];
+  const renamed = [{ ...original[0], title: 'Equipment Cost' }, original[1]];
+  assert.equal(toDisplayFormula(rows[1].formula, renamed, 1), '=Equipment Cost.B1*2');
+  assert.equal(toStoredFormula('=Equipment Cost.B1*2', renamed, 1), rows[1].formula);
+  assert.equal(valueOf(rows, 2).value, 24);
+});
+
+
+test('custom sheets participate in cross-sheet formulas', () => {
+  const rows = sheet({ amount: '20', group: 'MACHINE_COST' }, { formula: '=[r1]*3', group: 'CUSTOM_1' });
+  const book = [{ title: 'Machine Cost', rows: [rows[0]] }, { title: 'Extra Costs', rows: [rows[1]] }];
+  assert.equal(toStoredFormula('=Machine Cost.B1*3', book, 1), '=[r1]*3');
+  assert.equal(toDisplayFormula('=[r2]', book, 0), '=Extra Costs.B1');
+  assert.equal(valueOf(rows, 2).value, 60);
+});
