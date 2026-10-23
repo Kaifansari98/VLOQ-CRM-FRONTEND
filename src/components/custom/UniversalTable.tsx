@@ -1941,7 +1941,7 @@ export function UniversalTable({
               ? "relative !border-l-4 !border-l-orange-500 bg-[linear-gradient(90deg,rgba(255,237,213,0.96)_0%,rgba(255,244,230,0.92)_38%,rgba(255,255,255,1)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_34px_-24px_rgba(234,88,12,0.58)] hover:bg-[linear-gradient(90deg,rgba(255,224,178,0.72)_0%,rgba(255,237,213,0.78)_42%,rgba(255,255,255,1)_100%)] dark:!border-l-orange-400 dark:bg-[linear-gradient(90deg,rgba(124,45,18,0.5)_0%,rgba(67,20,7,0.28)_36%,rgba(15,23,42,0.96)_100%)] dark:shadow-[inset_0_1px_0_rgba(251,146,60,0.08),0_18px_38px_-24px_rgba(249,115,22,0.45)] dark:hover:bg-[linear-gradient(90deg,rgba(154,52,18,0.62)_0%,rgba(88,28,12,0.34)_38%,rgba(15,23,42,0.98)_100%)]"
               : undefined
         }
-        className="pt-3 px-4 [&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r"
+        className="pt-3 px-4"
       >
         {/* 🖥️ DESKTOP FILTERS (Horizontal Layout) */}
         <div className="hidden md:flex justify-between items-end">
