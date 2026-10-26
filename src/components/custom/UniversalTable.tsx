@@ -1494,6 +1494,8 @@ export function UniversalTable({
           expanded.push(
             mapUniversalRow(lead, expanded.length, {
               rowKey: String(lead.id),
+              // Only a single-instance lead has an unambiguous instance to link to.
+              instanceId: instances.length === 1 ? instances[0]?.id : undefined,
               leadCodeSuffix: "",
               furnitureStructureOverride: structureTypes || undefined,
               type8StatusLoggedAt,
