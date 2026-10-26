@@ -262,7 +262,10 @@ export interface TimeZoneItem {
   id: number;
   name: string;
   time_zone_code: string;
+  time_zone_name?: string;
+  country?: string;
   is_active: boolean;
+  active?: boolean;
 }
 
 export const fetchTimeZones = async (params?: {

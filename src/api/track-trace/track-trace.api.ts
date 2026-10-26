@@ -44,6 +44,7 @@ export type TrackTraceProjectListRow =
     deleted_at?: string | null;
 
     created_at?: string;
+    vendor_time_zone?: string;
   };
 
 export interface ProjectPagination {
@@ -57,6 +58,7 @@ export interface ProjectPagination {
 
 export interface TrackTraceProjectsResponse {
   projects: TrackTraceProjectListRow[];
+  vendor_time_zone?: string;
 
   pagination: ProjectPagination;
 }

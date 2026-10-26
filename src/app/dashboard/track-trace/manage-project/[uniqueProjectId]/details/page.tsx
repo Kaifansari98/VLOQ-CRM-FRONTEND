@@ -22,6 +22,7 @@ import {
   revertBoxFactoryOut,
   FactoryOutRevertLogItem,
 } from "@/api/track-trace/track-trace-cutlist.api";
+import { useTimeZones } from "@/api/vendors";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -130,25 +131,72 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmtDateTime = (iso: string | null) => {
+const fmtDateTime = (
+  iso: string | null | undefined,
+  timeZone?: string | null,
+) => {
   if (!iso) return null;
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return null;
+
+  const targetTimeZone = timeZone?.trim() || "UTC";
+
+  try {
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: targetTimeZone,
+    });
+  } catch {
+    try {
+      return date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "UTC",
+      });
+    } catch {
+      return date.toISOString();
+    }
+  }
 };
 
-const fmtDate = (iso: string | null) => {
+const fmtDate = (
+  iso: string | null | undefined,
+  timeZone?: string | null,
+) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "—";
+
+  const targetTimeZone = timeZone?.trim() || "UTC";
+
+  try {
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: targetTimeZone,
+    });
+  } catch {
+    try {
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    } catch {
+      return "—";
+    }
+  }
 };
 
 const formatWeight = (value: unknown) => {
@@ -330,6 +378,7 @@ function BoxCard({
   downloading,
   packingType,
   viewMode = "grid",
+  timeZone,
 }: {
   box: ProjectDetailData["boxes"][0];
   onClick: () => void;
@@ -337,6 +386,7 @@ function BoxCard({
   downloading?: boolean;
   packingType: ProjectDetailData["project"]["packing_type"];
   viewMode?: BoxViewMode;
+  timeZone?: string;
 }) {
   const isPacked = getBoxStatus(box) === "packed";
   const itemCount = getBoxItemCount(box);
@@ -649,6 +699,7 @@ function BoxCard({
           by={box.factory_out_by}
           at={box.factory_out_at}
           Icon={TruckIcon}
+          timeZone={timeZone}
         />
 
         <div className="h-px w-6 shrink-0 bg-border" />
@@ -659,6 +710,7 @@ function BoxCard({
           by={box.site_in_by}
           at={box.site_in_at}
           Icon={MapPin}
+          timeZone={timeZone}
         />
 
         <ChevronRight
@@ -676,12 +728,14 @@ function DispatchStep({
   by,
   at,
   Icon,
+  timeZone,
 }: {
   label: string;
   done: boolean;
   by: string | null;
   at: string | null;
   Icon: any;
+  timeZone?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -703,7 +757,7 @@ function DispatchStep({
           {label}
         </p>
         {done && at && (
-          <p className="text-[9px] text-muted-foreground">{fmtDateTime(at)}</p>
+          <p className="text-[9px] text-muted-foreground">{fmtDateTime(at, timeZone)}</p>
         )}
         {done && by && (
           <p className="text-[9px] text-muted-foreground">by {by}</p>
@@ -747,6 +801,7 @@ function BoxesSection({
   onPrintBox,
   onDownloadDispatch,
   onFilterChange,
+  vendorTimeZone,
 }: {
   boxes: ProjectDetailData["boxes"];
   boxesPagination?: ProjectDetailData["boxes_pagination"];
@@ -766,6 +821,7 @@ function BoxesSection({
     page?: number;
     limit?: number;
   }) => void;
+  vendorTimeZone?: string;
 }) {
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState("all");
@@ -1254,6 +1310,7 @@ function BoxesSection({
                   downloading={downloadingBoxId === box.id}
                   onClick={() => onSelectBox(box)}
                   onDownload={() => onPrintBox(box)}
+                  timeZone={vendorTimeZone}
                 />
               ))}
             </div>
@@ -1377,6 +1434,7 @@ function BoxItemsDialog({
   boxName,
   userId,
   onBoxUpdated,
+  vendorTimeZone,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1387,11 +1445,21 @@ function BoxItemsDialog({
   boxName: string;
   userId: number;
   onBoxUpdated: () => void | Promise<void>;
+  vendorTimeZone?: string;
 }) {
+  const authUser = useAppSelector((state) => state.auth.user);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getBoxItems>
   > | null>(null);
+
+  const activeTimeZone =
+    vendorTimeZone ||
+    (data as any)?.vendor_time_zone ||
+    authUser?.vendor?.time_zone_master?.time_zone_name ||
+    authUser?.vendor?.time_zone_master?.time_zone_code ||
+    authUser?.vendor?.time_zone ||
+    "UTC";
   const [pendingStatus, setPendingStatus] =
     useState<TrackTraceBoxStatus | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -1667,7 +1735,7 @@ function BoxItemsDialog({
                       )}
                       <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 size={11} />
-                        {fmtDateTime(data.box.factory_out_at)}
+                        {fmtDateTime(data.box.factory_out_at, activeTimeZone)}
                       </span>
                     </span>
                   )}
@@ -1682,7 +1750,7 @@ function BoxItemsDialog({
                       )}
                       <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
                         <CheckCircle2 size={11} />
-                        {fmtDateTime(data.box.site_in_at)}
+                        {fmtDateTime(data.box.site_in_at, activeTimeZone)}
                       </span>
                     </span>
                   )}
@@ -1934,7 +2002,7 @@ function BoxItemsDialog({
                           {item.actual_in_at ? (
                             <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
                               <CheckCircle2 size={12} />
-                              {fmtDateTime(item.actual_in_at)}
+                              {fmtDateTime(item.actual_in_at, activeTimeZone)}
                             </span>
                           ) : (
                             <span className="text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[11px]">
@@ -1956,7 +2024,7 @@ function BoxItemsDialog({
                           {item.site_in_at ? (
                             <span className="text-blue-600 dark:text-blue-400 font-medium inline-flex items-center gap-1">
                               <CheckCircle2 size={12} />
-                              {fmtDateTime(item.site_in_at)}
+                              {fmtDateTime(item.site_in_at, activeTimeZone)}
                             </span>
                           ) : (
                             "—"
@@ -2102,7 +2170,7 @@ function BoxItemsDialog({
                 </span>
                 <span className="font-semibold text-foreground tabular-nums">
                   {data?.box.packed_at
-                    ? fmtDateTime(data.box.packed_at)
+                    ? fmtDateTime(data.box.packed_at, activeTimeZone)
                     : "N/A"}
                 </span>
               </div>
@@ -2123,7 +2191,7 @@ function BoxItemsDialog({
                 </span>
                 <span className="font-semibold text-foreground tabular-nums">
                   {(data?.box as any)?.created_date
-                    ? fmtDateTime((data?.box as any).created_date)
+                    ? fmtDateTime((data?.box as any).created_date, activeTimeZone)
                     : "N/A"}
                 </span>
               </div>
@@ -2318,7 +2386,7 @@ function BoxItemsDialog({
                 </span>
                 <span className="font-semibold text-foreground tabular-nums">
                   {data?.box.factory_out_at
-                    ? fmtDateTime(data.box.factory_out_at)
+                    ? fmtDateTime(data.box.factory_out_at, activeTimeZone)
                     : "N/A"}
                 </span>
               </div>
@@ -2395,6 +2463,7 @@ function CutListSection({
   vendorId,
   projectId,
   machineIds,
+  vendorTimeZone,
 }: {
   vendorId: number;
   projectId: string;
@@ -2403,7 +2472,9 @@ function CutListSection({
     name: string;
     sequence_no?: number;
   }[];
+  vendorTimeZone?: string;
 }) {
+  const authUser = useAppSelector((state) => state.auth.user);
   /*
   |--------------------------------------------------------------------------
   | Filter state
@@ -2466,6 +2537,14 @@ function CutListSection({
   const [cutListData, setCutListData] = useState<ProjectCutListResponse | null>(
     null,
   );
+
+  const activeTimeZone =
+    vendorTimeZone ||
+    (cutListData as any)?.vendor_time_zone ||
+    authUser?.vendor?.time_zone_master?.time_zone_name ||
+    authUser?.vendor?.time_zone_master?.time_zone_code ||
+    authUser?.vendor?.time_zone ||
+    "UTC";
 
   /*
   |--------------------------------------------------------------------------
@@ -3301,7 +3380,7 @@ function CutListSection({
                             {/* Received time */}
                             {item.received_at && (
                               <span className="text-[9px] text-muted-foreground">
-                                {fmtDateTime(item.received_at)}
+                                {fmtDateTime(item.received_at, activeTimeZone)}
                               </span>
                             )}
                           </div>
@@ -3347,7 +3426,7 @@ function CutListSection({
 
                                   {mapping.scanned_at && (
                                     <span className="text-[9px] text-muted-foreground">
-                                      {fmtDateTime(mapping.scanned_at)}
+                                      {fmtDateTime(mapping.scanned_at, activeTimeZone)}
                                     </span>
                                   )}
 
@@ -3487,7 +3566,25 @@ export default function ProjectDetailPage() {
   const vendorId = currentUser?.vendor_id;
   const { uniqueProjectId } = useParams<{ uniqueProjectId: string }>();
 
+  const { data: tzResponse } = useTimeZones();
+
+  const tzFromMaster = useMemo(() => {
+    const tzId = currentUser?.vendor?.time_zone_id;
+    if (!tzId || !tzResponse?.data) return undefined;
+    const match = tzResponse.data.find((tz) => tz.id === tzId);
+    return match?.time_zone_name || match?.time_zone_code;
+  }, [currentUser?.vendor?.time_zone_id, tzResponse?.data]);
+
   const [data, setData] = useState<ProjectDetailData | null>(null);
+
+  const vendorTimeZone =
+    (data as any)?.vendor_time_zone ||
+    tzFromMaster ||
+    currentUser?.vendor?.time_zone_master?.time_zone_name ||
+    currentUser?.vendor?.time_zone_master?.time_zone_code ||
+    currentUser?.vendor?.time_zone ||
+    "UTC";
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const activeBoxFiltersRef = useRef<
@@ -3789,6 +3886,7 @@ export default function ProjectDetailPage() {
                       <strong className="text-foreground font-semibold">
                         {fmtDate(
                           data.project.details.estimated_completion_date,
+                          vendorTimeZone,
                         )}
                       </strong>
                     </span>
@@ -4197,6 +4295,7 @@ export default function ProjectDetailPage() {
                 onPrintBox={handleDownloadBoxPdf}
                 onDownloadDispatch={handleDispatchDocumentClick}
                 onFilterChange={handleBoxesFilterChange}
+                vendorTimeZone={vendorTimeZone}
               />
             )}
 
@@ -4742,6 +4841,7 @@ export default function ProjectDetailPage() {
               vendorId={Number(vendorId)}
               projectId={String(uniqueProjectId)}
               machineIds={machineIds}
+              vendorTimeZone={vendorTimeZone}
             />
           </>
         )}
@@ -4864,6 +4964,7 @@ export default function ProjectDetailPage() {
           boxName={selectedBox.name}
           userId={currentUser.id}
           onBoxUpdated={refreshProjectDetail}
+          vendorTimeZone={vendorTimeZone}
         />
       )}
     </>

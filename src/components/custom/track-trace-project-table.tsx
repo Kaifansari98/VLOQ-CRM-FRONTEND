@@ -88,6 +88,42 @@ interface TrackTraceProjectTableProps {
   deletedFilter?: string;
   onDeletedChange?: (deleted: string) => void;
   onResetFilters?: () => void;
+  vendorTimeZone?: string;
+}
+
+function formatProjectCreatedDate(
+  dateString: string | null | undefined,
+  timeZone?: string | null
+): string {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+
+  const targetTimeZone = timeZone?.trim() || "UTC";
+
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: targetTimeZone,
+    }).format(date);
+  } catch {
+    try {
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(date);
+    } catch {
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+  }
 }
 
 function ProjectColumnHeader<TData, TValue>({
@@ -340,7 +376,15 @@ export default function TrackTraceProjectTable({
   deletedFilter = "active",
   onDeletedChange,
   onResetFilters,
+  vendorTimeZone,
 }: TrackTraceProjectTableProps) {
+  const authVendor = useAppSelector((state) => state.auth.user?.vendor);
+  const fallbackTimeZone =
+    vendorTimeZone ||
+    authVendor?.time_zone_master?.time_zone_name ||
+    authVendor?.time_zone ||
+    "UTC";
+
   const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
   const canDelete = userTypeId === 1 || userTypeId === 2;
 
@@ -510,17 +554,18 @@ export default function TrackTraceProjectTable({
             sortOrder={sortOrder}
           />
         ),
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap text-xs text-muted-foreground">
-            {row.original.created_at
-              ? new Date(row.original.created_at).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-              : "-"}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const timeZone =
+            row.original.vendor_time_zone ||
+            row.original.vendor?.time_zone ||
+            fallbackTimeZone;
+
+          return (
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {formatProjectCreatedDate(row.original.created_at, timeZone)}
+            </span>
+          );
+        },
       },
       {
         id: "action",
@@ -643,6 +688,7 @@ export default function TrackTraceProjectTable({
       onDeleteClick,
       canDelete,
       isDeleting,
+      fallbackTimeZone,
     ]
   );
 
@@ -686,16 +732,6 @@ export default function TrackTraceProjectTable({
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        const newState = updater({ pageIndex: page - 1, pageSize: limit });
-        if (newState.pageIndex !== page - 1) onPageChange?.(newState.pageIndex + 1);
-        if (newState.pageSize !== limit) onLimitChange?.(newState.pageSize);
-      } else {
-        if (updater.pageIndex !== page - 1) onPageChange?.(updater.pageIndex + 1);
-        if (updater.pageSize !== limit) onLimitChange?.(updater.pageSize);
-      }
-    },
     getRowId: (row) => String(row.unique_project_id ?? row.id),
   });
 
