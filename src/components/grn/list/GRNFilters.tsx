@@ -1,10 +1,13 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { RefreshCw, Search, X } from "lucide-react";
-
-const GRN_STATUSES = ["", "Draft", "Confirmed", "Closed"];
+import { Search, X, RefreshCw } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function GRNFilters({
   search,
@@ -22,69 +25,69 @@ export function GRNFilters({
   onRefresh: () => void;
 }) {
   return (
-    <div className="rounded-2xl border bg-card p-3 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-sm font-black">GRN Register</p>
-          <p className="text-xs text-muted-foreground">
-            Track goods received against approved purchase orders.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-72">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-
-            <input
-              value={search}
-              onChange={(e) => onSearch(e.target.value)}
-              placeholder="Search GRN, PO or supplier..."
-              className="h-9 w-full rounded-xl border bg-background pl-9 pr-8 text-xs outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
-            />
-
-            {search && (
-              <button
-                onClick={() => onSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {GRN_STATUSES.map((s) => (
-              <button
-                key={s || "All"}
-                onClick={() => onStatus(s)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all",
-                  status === s
-                    ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                    : "border-border text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30"
-                )}
-              >
-                {s || "All"}
-              </button>
-            ))}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            className="h-9 rounded-xl px-3"
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="relative w-72 md:w-80">
+        <Search
+          size={14}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder="Search GRN, PO or supplier..."
+          className="h-9 w-full rounded-lg border bg-background pl-9 pr-8 text-xs outline-none transition-colors hover:bg-muted/20 focus:border-foreground/30 focus:ring-1 focus:ring-foreground/20"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => onSearch("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw
-              size={14}
-              className={cn(loading && "animate-spin")}
-            />
-          </Button>
-        </div>
+            <X size={13} />
+          </button>
+        )}
       </div>
+
+      <Select
+        value={status || "all"}
+        onValueChange={(val) => onStatus(val === "all" ? "" : val)}
+      >
+        <SelectTrigger className="h-9 w-[150px] rounded-lg border bg-background text-xs font-medium">
+          <SelectValue placeholder="All Statuses" />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl border bg-popover text-xs shadow-lg">
+          <SelectItem value="all" className="text-xs">
+            All Statuses
+          </SelectItem>
+          <SelectItem value="Draft" className="text-xs">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
+              Draft
+            </span>
+          </SelectItem>
+          <SelectItem value="Confirmed" className="text-xs">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Confirmed
+            </span>
+          </SelectItem>
+          <SelectItem value="Closed" className="text-xs">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              Closed
+            </span>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <button
+        type="button"
+        onClick={onRefresh}
+        title="Refresh"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+      </button>
     </div>
   );
 }

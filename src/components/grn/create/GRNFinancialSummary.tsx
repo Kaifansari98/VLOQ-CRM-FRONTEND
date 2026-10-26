@@ -111,10 +111,10 @@ export function GRNFinancialSummary({
   ];
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm">
+    <div className="rounded-xl border bg-card shadow-2xs overflow-hidden">
       <div className="border-b bg-muted/20 px-4 py-3">
-        <p className="text-sm font-black">Amount Summary</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm font-semibold text-foreground">Amount Summary</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
           Preview based on accepted quantity and additional charges.
         </p>
       </div>
@@ -125,18 +125,20 @@ export function GRNFinancialSummary({
             key={card.label}
             className={
               card.highlight
-                ? "rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm dark:bg-indigo-950/20"
-                : "rounded-2xl border bg-muted/20 p-4 shadow-sm"
+                ? "rounded-xl border border-foreground/30 bg-muted/40 p-4 shadow-2xs"
+                : "rounded-xl border bg-background p-4 shadow-2xs"
             }
           >
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {card.label}
               </p>
-              <span className="text-indigo-600">{card.icon}</span>
+              <span className={card.highlight ? "text-foreground" : "text-muted-foreground"}>
+                {card.icon}
+              </span>
             </div>
 
-            <p className="text-lg font-black">{card.value}</p>
+            <p className="text-lg font-bold tracking-tight text-foreground">{card.value}</p>
           </div>
         ))}
       </div>

@@ -23,12 +23,20 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/store";
 import {
   Search,
   X,
   Plus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -61,6 +69,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { RaisePurchaseIntentModal } from "@/components/inventory/RaisePurchaseIntentModal";
 
 type StatusUi = {
   label: string;
@@ -72,47 +81,47 @@ type StatusUi = {
 const STATUS_CFG: Record<string, StatusUi> = {
   Draft: {
     label: "Draft",
-    color: "bg-slate-100 text-slate-700 border-slate-200",
+    color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700",
     soft: "bg-slate-50 text-slate-700",
     icon: Pencil,
   },
   PendingApproval: {
     label: "Pending Approval",
-    color: "bg-amber-100 text-amber-700 border-amber-200",
+    color: "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60",
     soft: "bg-amber-50 text-amber-700",
     icon: Clock,
   },
   Approved: {
     label: "Approved",
-    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60",
     soft: "bg-emerald-50 text-emerald-700",
     icon: CheckCircle2,
   },
   Rejected: {
     label: "Rejected",
-    color: "bg-red-100 text-red-700 border-red-200",
+    color: "bg-red-50 text-red-700 border-red-200/80 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/60",
     soft: "bg-red-50 text-red-700",
     icon: XCircle,
   },
   ConvertedToPO: {
     label: "Converted to PO",
-    color: "bg-muted text-foreground border-border",
-    soft: "bg-muted text-foreground",
+    color: "bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-800/60 dark:text-zinc-200 dark:border-zinc-700",
+    soft: "bg-zinc-50 text-zinc-800",
     icon: ShoppingCart,
   },
   Cancelled: {
     label: "Cancelled",
-    color: "bg-gray-100 text-gray-600 border-gray-200",
-    soft: "bg-gray-50 text-gray-600",
+    color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/60 dark:text-gray-300 dark:border-gray-700",
+    soft: "bg-gray-50 text-gray-700",
     icon: X,
   },
 };
 
 const PRIORITY_CFG: Record<PIPriority, string> = {
-  Low: "bg-muted text-muted-foreground border border-border",
-  Medium: "bg-muted text-foreground border border-border",
-  High: "bg-foreground text-background",
-  Urgent: "bg-foreground text-background font-bold",
+  Low: "bg-transparent text-muted-foreground border border-border/70",
+  Medium: "bg-transparent text-foreground border border-border",
+  High: "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold",
+  Urgent: "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold",
 };
 
 const ALL_STATUSES = Object.keys(STATUS_CFG) as PIStatus[];
@@ -207,11 +216,11 @@ function StatusBadge({ status }: { status: PIStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold",
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
         cfg.color
       )}
     >
-      <Icon size={12} />
+      <Icon size={12} className="shrink-0" />
       {cfg.label}
     </span>
   );
@@ -326,6 +335,30 @@ function SummaryCard({
       <Icon size={16} className="mb-2 text-muted-foreground" />
       <p className="text-[10px] font-bold uppercase text-muted-foreground">{label}</p>
       <div className="mt-1 text-base font-bold">{value}</div>
+    </div>
+  );
+}
+
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border bg-background p-5 shadow-xs">
+      <div className="flex items-center justify-between">
+        <Icon size={18} className="text-muted-foreground" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <p className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+        {value}
+      </p>
     </div>
   );
 }
@@ -1003,8 +1036,17 @@ export default function PurchaseIntentListPage() {
   const [statusFilter, setStatusFilter] = useState<PIStatus | "">("");
 
   const [deleteTarget, setDeleteTarget] = useState<PISummary | null>(null);
-
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showRaiseModal, setShowRaiseModal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("new") === "true" || params.get("raiseModal") === "true") {
+        setShowRaiseModal(true);
+      }
+    }
+  }, []);
 
   const openDetailsPage = (intentId: number) => {
     router.push(`/dashboard/inventory/purchase-intents/${intentId}`);
@@ -1116,7 +1158,7 @@ export default function PurchaseIntentListPage() {
           <Button
             size="sm"
             className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium"
-            onClick={() => router.push("/dashboard/inventory/purchase-intents/new")}
+            onClick={() => setShowRaiseModal(true)}
           >
             <Plus size={14} />
             Raise Enquiry
@@ -1128,136 +1170,124 @@ export default function PurchaseIntentListPage() {
       </header>
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-        <div className="flex w-full flex-col gap-4">
-          <div className="overflow-hidden rounded-md border bg-background shadow-sm">
-            <div className="p-4 md:p-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted/50 text-foreground">
-                    <ShoppingCart size={20} />
-                  </div>
+        <div className="flex w-full flex-col gap-5">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Purchase Enquiries
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Review purchase requirements, supplier quotations and conversion status.
+            </p>
+          </div>
 
-                  <div>
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      <Sparkles size={12} className="text-foreground" />
-                      Procurement Workspace
-                    </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard icon={ClipboardList} label="TOTAL ENQUIRIES" value={totals.count} />
+            <KpiCard icon={Pencil} label="DRAFTS ON PAGE" value={totals.draft} />
+            <KpiCard icon={ShoppingCart} label="CONVERTED ON PAGE" value={totals.converted} />
+            <KpiCard
+              icon={IndianRupee}
+              label="AMOUNT ON PAGE"
+              value={totals.amount > 0 ? fmtMoney(totals.amount) : "₹0.00"}
+            />
+          </div>
 
-                    <h1 className="text-xl font-bold tracking-tight">
-                      Purchase Enquiries
-                    </h1>
-
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Review purchase requirements, supplier quotations and conversion status.
-                    </p>
-                  </div>
-                </div>
-
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-72 md:w-80">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search enquiry no..."
+                className="h-9 w-full rounded-lg border bg-background pl-9 pr-8 text-xs outline-none transition-colors hover:bg-muted/20 focus:border-foreground/30 focus:ring-1 focus:ring-foreground/20"
+              />
+              {search && (
                 <button
                   type="button"
-                  onClick={fetchData}
-                  className="flex h-8 w-8 items-center justify-center rounded-md border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => handleSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                  <X size={13} />
                 </button>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <SummaryCard icon={ClipboardList} label="Total Enquiries" value={totals.count} />
-                <SummaryCard icon={Pencil} label="Drafts on Page" value={totals.draft} />
-                <SummaryCard
-                  icon={ShoppingCart}
-                  label="Converted on Page"
-                  value={totals.converted}
-                />
-                <SummaryCard
-                  icon={IndianRupee}
-                  label="Amount on Page"
-                  value={
-                    <span className="text-foreground">
-                      {totals.amount > 0 ? fmtMoney(totals.amount) : "—"}
-                    </span>
-                  }
-                />
-              </div>
+              )}
             </div>
+
+            <Select
+              value={statusFilter || "all"}
+              onValueChange={(val) =>
+                handleStatus(val === "all" ? "" : (val as PIStatus))
+              }
+            >
+              <SelectTrigger className="h-9 w-[170px] rounded-lg border bg-background text-xs font-medium">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border bg-popover text-xs shadow-lg">
+                <SelectItem value="all" className="text-xs">
+                  All Statuses
+                </SelectItem>
+                <SelectItem value="Draft" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                    Draft
+                  </span>
+                </SelectItem>
+                <SelectItem value="PendingApproval" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    Pending Approval
+                  </span>
+                </SelectItem>
+                <SelectItem value="Approved" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Approved
+                  </span>
+                </SelectItem>
+                <SelectItem value="ConvertedToPO" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-zinc-700 dark:bg-zinc-300" />
+                    Converted to PO
+                  </span>
+                </SelectItem>
+                <SelectItem value="Rejected" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Rejected
+                  </span>
+                </SelectItem>
+                <SelectItem value="Cancelled" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                    Cancelled
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <button
+              type="button"
+              onClick={fetchData}
+              title="Refresh"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            </button>
           </div>
 
-          <div className="rounded-md border bg-background p-3 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap gap-1.5">
-                {([["", "All"], ...ALL_STATUSES.map((s) => [s, getStatusCfg(s).label])] as [
-                  string,
-                  string,
-                ][]).map(([val, label]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => handleStatus(val as PIStatus | "")}
-                    className={cn(
-                      "rounded-md border px-2.5 py-1 text-xs font-medium transition-all",
-                      statusFilter === val
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative w-full lg:w-72">
-                <Search
-                  size={14}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-
-                <input
-                  value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Search enquiry no..."
-                  className="h-8 w-full rounded-md border bg-muted/30 pl-8 pr-8 text-xs outline-none focus:bg-background focus:ring-2 focus:ring-foreground/20"
-                />
-
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => handleSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-md border bg-background shadow-sm">
+          <div className="overflow-hidden rounded-xl border bg-background shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b bg-muted/40">
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase text-muted-foreground">
-                      Enquiry
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase text-muted-foreground">
-                      Amount
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase text-muted-foreground">
-                      Items
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase text-muted-foreground">
-                      Priority
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase text-muted-foreground">
-                      Created
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase text-muted-foreground">
-                      Actions
-                    </th>
+                  <tr className="border-b bg-muted/20 text-muted-foreground">
+                    <th className="px-4 py-3.5 text-left font-semibold">Enquiry</th>
+                    <th className="px-4 py-3.5 text-right font-semibold">Amount</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Items</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Status</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Priority</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Created</th>
+                    <th className="px-4 py-3.5 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
 
@@ -1265,16 +1295,16 @@ export default function PurchaseIntentListPage() {
                   {loading ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className="border-b">
-                        {Array.from({ length: 8 }).map((_, j) => (
-                          <td key={j} className="px-4 py-3">
-                            <Skeleton className="h-7 w-full rounded-md" />
+                        {Array.from({ length: 7 }).map((_, j) => (
+                          <td key={j} className="px-4 py-3.5">
+                            <Skeleton className="h-6 w-full rounded-md" />
                           </td>
                         ))}
                       </tr>
                     ))
                   ) : !data || data.intents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-20 text-center text-muted-foreground">
+                      <td colSpan={7} className="py-20 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <div className="flex h-12 w-12 items-center justify-center rounded-md bg-muted">
                             <ShoppingCart size={24} className="opacity-40" />
@@ -1291,77 +1321,79 @@ export default function PurchaseIntentListPage() {
                   ) : (
                     data.intents.map((intent: any) => {
                       const amount = getListAmount(intent);
+                      const itemCount = intent._count?.items ?? intent.items?.length ?? 0;
+                      const supplierCount =
+                        getFinancials(intent).supplierCount ||
+                        (intent.items ?? []).flatMap((it: any) => it.vendorMappings ?? []).length ||
+                        0;
 
                       return (
                         <tr
                           key={intent.id}
-                          className="group cursor-pointer border-b transition-colors hover:bg-muted/40"
+                          className="group cursor-pointer border-b transition-colors hover:bg-muted/30"
                           onClick={() => openDetailsPage(intent.id)}
                         >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-7 w-1 rounded-sm bg-foreground opacity-20 transition-opacity group-hover:opacity-100" />
-
-                              <div>
-                                <p className="font-mono text-xs font-bold text-foreground">
-                                  {intent.intent_no}
-                                </p>
-                                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                  by {intent.createdBy?.user_name ?? "—"}
-                                </p>
-                              </div>
-                            </div>
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-xs text-foreground">
+                              {intent.intent_no}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              by {intent.createdBy?.user_name ?? "—"}
+                            </p>
                           </td>
 
-                          <td className="px-4 py-3 text-right">
-                            <p className="text-sm font-bold text-foreground">
+                          <td className="px-4 py-3.5 text-right">
+                            <p className="font-bold text-xs text-foreground">
                               {fmtMoney(amount)}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
                               Grand total
                             </p>
                           </td>
 
-                          <td className="px-4 py-3">
-                            <div className="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1 border border-border/50">
-                              <Package size={13} className="text-muted-foreground" />
-                              <span className="text-xs font-bold">
-                                {intent._count?.items ?? intent.items?.length ?? 0} Products
+                          <td className="px-4 py-3.5">
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-3 py-1 text-xs text-muted-foreground">
+                              <Package size={13} className="shrink-0 text-muted-foreground" />
+                              <span className="font-medium text-foreground">
+                                {itemCount} Products
                               </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                · {getFinancials(intent).supplierCount || "—"} Suppliers
-                              </span>
+                              <span>·</span>
+                              <span>{supplierCount} Suppliers</span>
                             </div>
                           </td>
 
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             <StatusBadge status={intent.status} />
                           </td>
 
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             <span
                               className={cn(
-                                "rounded-md border px-2 py-0.5 text-xs font-medium",
-                                PRIORITY_CFG[intent.priority as PIPriority]
+                                "inline-block rounded-md px-2.5 py-0.5 text-xs font-semibold",
+                                PRIORITY_CFG[intent.priority as PIPriority] ??
+                                  "border border-border text-foreground"
                               )}
                             >
                               {intent.priority}
                             </span>
                           </td>
 
-                          <td className="px-4 py-3">
-                            <p className="text-xs font-semibold">{fmt(intent.created_at)}</p>
-                            <p className="text-[10px] text-muted-foreground">
+                          <td className="px-4 py-3.5">
+                            <p className="text-xs font-semibold text-foreground">
+                              {fmt(intent.created_at)}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
                               {fmtDt(intent.created_at)}
                             </p>
                           </td>
 
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5 text-right">
                             <div
                               className="flex items-center justify-end gap-1"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
+                                type="button"
                                 title="View details"
                                 onClick={() => openDetailsPage(intent.id)}
                                 className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -1370,50 +1402,43 @@ export default function PurchaseIntentListPage() {
                               </button>
 
                               {intent.status === "Draft" && (
-                                <button
-                                  title="Edit"
-                                  onClick={() =>
-                                    router.push(
-                                      `/dashboard/inventory/purchase-intents/${intent.id}/edit`
-                                    )
-                                  }
-                                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                >
-                                  <Pencil size={15} />
-                                </button>
-                              )}
+                                <>
+                                  <button
+                                    type="button"
+                                    title="Edit"
+                                    onClick={() =>
+                                      router.push(
+                                        `/dashboard/inventory/purchase-intents/${intent.id}/edit`
+                                      )
+                                    }
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
 
-                              {intent.status === "Draft" && (
-                                <button
-                                  title="Convert to Purchase Order"
-                                  onClick={() => {
-                                    router.push(
-                                      `/dashboard/inventory/purchase-intents/${intent.id}/convert-to-po`
-                                    );
-                                  }}
-                                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                >
-                                  <ShoppingCart size={15} />
-                                </button>
-                              )}
+                                  <button
+                                    type="button"
+                                    title="Convert to Purchase Order"
+                                    onClick={() => {
+                                      router.push(
+                                        `/dashboard/inventory/purchase-intents/${intent.id}/convert-to-po`
+                                      );
+                                    }}
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  >
+                                    <ShoppingCart size={15} />
+                                  </button>
 
-                              {["Draft", "Cancelled", "Rejected"].includes(intent.status) && (
-                                <button
-                                  title="Delete"
-                                  onClick={() => setDeleteTarget(intent)}
-                                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                  <button
+                                    type="button"
+                                    title="Delete"
+                                    onClick={() => setDeleteTarget(intent)}
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </>
                               )}
-
-                              {/* <button
-                                title="Open"
-                                onClick={() => setSelectedId(intent.id)}
-                                className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                              >
-                                <ArrowRight size={15} />
-                              </button> */}
                             </div>
                           </td>
                         </tr>
@@ -1497,6 +1522,23 @@ export default function PurchaseIntentListPage() {
           </div>
         </div>
       )}
+
+      <RaisePurchaseIntentModal
+        open={showRaiseModal}
+        onClose={() => {
+          setShowRaiseModal(false);
+          if (typeof window !== "undefined" && (window.location.search.includes("new=true") || window.location.search.includes("raiseModal=true"))) {
+            window.history.replaceState({}, "", "/dashboard/inventory/purchase-intents");
+          }
+        }}
+        onSuccess={() => {
+          setShowRaiseModal(false);
+          if (typeof window !== "undefined" && (window.location.search.includes("new=true") || window.location.search.includes("raiseModal=true"))) {
+            window.history.replaceState({}, "", "/dashboard/inventory/purchase-intents");
+          }
+          fetchData();
+        }}
+      />
     </>
   );
 }

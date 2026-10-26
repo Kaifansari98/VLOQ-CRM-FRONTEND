@@ -85,30 +85,10 @@ const fmtDt = (iso: string | null | undefined) => {
     });
 };
 
-function statusClass(status: string) {
-    switch (status) {
-        case "Draft":
-            return "bg-slate-100 text-slate-700 border-slate-200";
-        case "Approved":
-            return "bg-emerald-100 text-emerald-700 border-emerald-200";
-        case "PartiallyReceived":
-            return "bg-amber-100 text-amber-700 border-amber-200";
-        case "Received":
-            return "bg-blue-100 text-blue-700 border-blue-200";
-        case "Cancelled":
-            return "bg-red-100 text-red-700 border-red-200";
-        default:
-            return "bg-muted text-muted-foreground border-border";
-    }
-}
-
 function StatusBadge({ status }: { status: string }) {
     return (
-        <span
-            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${statusClass(
-                status
-            )}`}
-        >
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-foreground/60" />
             {status}
         </span>
     );
@@ -257,13 +237,14 @@ export default function PurchaseOrderDetailPage() {
 
             <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
                 <div className="w-full space-y-5">
-                    <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-col gap-4 rounded-xl border bg-background p-5 shadow-xs md:flex-row md:items-center md:justify-between">
                         <div>
                             <div className="mb-2 flex items-center gap-2">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
+                                    className="h-8 rounded-md text-xs font-medium px-3"
                                     onClick={() => router.push("/dashboard/inventory/purchase-orders")}
                                 >
                                     <ArrowLeft size={14} className="mr-1" />
@@ -273,87 +254,90 @@ export default function PurchaseOrderDetailPage() {
                                 {po && <StatusBadge status={po.status} />}
                             </div>
 
-                            <h1 className="text-xl font-bold">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                 {loading ? "Loading..." : po?.po_no || "Purchase Order"}
                             </h1>
 
                             {po && (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="mt-0.5 text-xs text-muted-foreground">
                                     Created {fmtDt(po.created_at)} by {po.createdBy?.user_name ?? "—"}
                                 </p>
                             )}
                         </div>
 
                         {po && (
-  <div className="flex flex-wrap gap-2">
-    {po.status === "Draft" && (
-      <>
-        <Button
-          type="button"
-          className="bg-emerald-600 hover:bg-emerald-700"
-          onClick={() => {
-            setStatusAction("Approved");
-            setStatusRemarks("");
-          }}
-        >
-          Approve
-        </Button>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {po.status === "Draft" && (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs px-4"
+                                            onClick={() => {
+                                                setStatusAction("Approved");
+                                                setStatusRemarks("");
+                                            }}
+                                        >
+                                            Approve
+                                        </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="border-red-200 text-red-600 hover:bg-red-50"
-          onClick={() => {
-            setStatusAction("Cancelled");
-            setStatusRemarks("");
-          }}
-        >
-          Cancel PO
-        </Button>
-      </>
-    )}
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-9 rounded-md border-border text-foreground hover:bg-muted font-medium text-xs px-4"
+                                            onClick={() => {
+                                                setStatusAction("Cancelled");
+                                                setStatusRemarks("");
+                                            }}
+                                        >
+                                            Cancel PO
+                                        </Button>
+                                    </>
+                                )}
 
-   
+                                {po.status === "Approved" && (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs px-4"
+                                            onClick={() =>
+                                                router.push(`/dashboard/inventory/purchase-orders/${poId}/create-grn`)
+                                            }
+                                        >
+                                            Create GRN
+                                        </Button>
 
-    {po.status === "Approved" && (
-  <>
-    <Button
-      type="button"
-      className="bg-indigo-600 hover:bg-indigo-700"
-      onClick={() =>
-        router.push(`/dashboard/inventory/purchase-orders/${poId}/create-grn`)
-      }
-    >
-      Create GRN
-    </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-9 rounded-md border-border text-foreground hover:bg-muted font-medium text-xs px-4"
+                                            onClick={() => {
+                                                setStatusAction("Cancelled");
+                                                setStatusRemarks("");
+                                            }}
+                                        >
+                                            Cancel PO
+                                        </Button>
+                                    </>
+                                )}
 
-    <Button
-      type="button"
-      variant="outline"
-      className="border-red-200 text-red-600 hover:bg-red-50"
-      onClick={() => {
-        setStatusAction("Cancelled");
-        setStatusRemarks("");
-      }}
-    >
-      Cancel PO
-    </Button>
-  </>
-)}
-
-{po.status === "PartiallyReceived" && (
-  <Button
-    type="button"
-    className="bg-indigo-600 hover:bg-indigo-700"
-    onClick={() =>
-      router.push(`/dashboard/inventory/purchase-orders/${poId}/create-grn`)
-    }
-  >
-    Create Another GRN
-  </Button>
-)}
-  </div>
-)}
+                                {po.status === "PartiallyReceived" && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs px-4"
+                                        onClick={() =>
+                                            router.push(`/dashboard/inventory/purchase-orders/${poId}/create-grn`)
+                                        }
+                                    >
+                                        Create Another GRN
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {loading ? (
@@ -399,13 +383,13 @@ export default function PurchaseOrderDetailPage() {
                                 />
                             </div>
 
-                            <div className="rounded-2xl border bg-background shadow-sm">
-                                <div className="border-b px-4 py-3">
-                                    <p className="font-bold">PO Information</p>
+                            <div className="rounded-xl border bg-background shadow-xs overflow-hidden">
+                                <div className="border-b bg-muted/15 px-4 py-3">
+                                    <h2 className="text-sm font-semibold tracking-tight text-foreground">PO Information</h2>
                                 </div>
 
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
+                                    <table className="w-full text-xs">
                                         <tbody>
                                             <InfoRow label="PO No" value={po.po_no} />
                                             <InfoRow label="Status" value={<StatusBadge status={po.status} />} />
@@ -440,28 +424,33 @@ export default function PurchaseOrderDetailPage() {
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border bg-background shadow-sm">
-                                <div className="border-b px-4 py-3">
-                                    <p className="font-bold">PO Items</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Tabular item, quantity, received quantity and pricing details.
-                                    </p>
+                            <div className="rounded-xl border bg-background shadow-xs overflow-hidden">
+                                <div className="flex items-center justify-between border-b bg-muted/15 px-4 py-3">
+                                    <div>
+                                        <h2 className="text-sm font-semibold tracking-tight text-foreground">PO Items</h2>
+                                        <p className="text-xs text-muted-foreground">
+                                            Tabular item, quantity, received quantity and pricing details.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-border/80 bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-foreground">
+                                        {po.items.length} {po.items.length === 1 ? "Item" : "Items"}
+                                    </span>
                                 </div>
 
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[1050px] text-xs">
-                                        <thead className="bg-muted/40">
+                                        <thead className="border-b bg-muted/30">
                                             <tr>
-                                                <th className="px-3 py-3 text-left">Product</th>
-                                                <th className="px-3 py-3 text-left">Code</th>
-                                                <th className="px-3 py-3 text-left">UOM</th>
-                                                <th className="px-3 py-3 text-right">Ordered Qty</th>
-                                                <th className="px-3 py-3 text-right">Received Qty</th>
-                                                <th className="px-3 py-3 text-right">Pending Qty</th>
-                                                <th className="px-3 py-3 text-right">Unit Price</th>
-                                                <th className="px-3 py-3 text-right">Amount</th>
-                                                <th className="px-3 py-3 text-left">Expected Delivery</th>
-                                                <th className="px-3 py-3 text-left">Remarks</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Product</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Code</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">UOM</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Ordered Qty</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Received Qty</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Pending Qty</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Unit Price</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Amount</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Expected Delivery</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Remarks</th>
                                             </tr>
                                         </thead>
 
@@ -470,7 +459,7 @@ export default function PurchaseOrderDetailPage() {
                                                 <tr>
                                                     <td
                                                         colSpan={10}
-                                                        className="px-3 py-8 text-center text-muted-foreground"
+                                                        className="px-3.5 py-8 text-center text-muted-foreground"
                                                     >
                                                         No items found.
                                                     </td>
@@ -483,35 +472,35 @@ export default function PurchaseOrderDetailPage() {
                                                     const amount = orderedQty * n(item.unit_price);
 
                                                     return (
-                                                        <tr key={item.id} className="border-t hover:bg-muted/30">
-                                                            <td className="px-3 py-3 font-semibold">
+                                                        <tr key={item.id} className="border-b last:border-b-0 transition-colors hover:bg-muted/20">
+                                                            <td className="px-3.5 py-2.5 font-semibold text-foreground">
                                                                 {item.product?.product_name ?? "—"}
                                                             </td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5 text-muted-foreground">
                                                                 {item.product?.article_code ?? "—"}
                                                             </td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5 text-muted-foreground">
                                                                 {item.uom || item.product?.unit_of_measure || "—"}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                                 {fmtQty(item.ordered_qty)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                                 {fmtQty(item.received_qty)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right font-semibold">
+                                                            <td className="px-3.5 py-2.5 text-right font-semibold text-foreground">
                                                                 {fmtQty(pendingQty)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right text-foreground">
                                                                 {fmtMoney(item.unit_price)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right font-bold text-indigo-600">
+                                                            <td className="px-3.5 py-2.5 text-right font-bold text-foreground">
                                                                 {fmtMoney(amount)}
                                                             </td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5 text-muted-foreground">
                                                                 {fmt(item.expected_delivery_date)}
                                                             </td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5 text-muted-foreground">
                                                                 {item.remarks || "—"}
                                                             </td>
                                                         </tr>
@@ -520,51 +509,56 @@ export default function PurchaseOrderDetailPage() {
                                             )}
                                         </tbody>
 
-                                        <tfoot className="border-t bg-muted/50 font-bold">
+                                        <tfoot className="border-t bg-muted/25 text-xs font-semibold">
                                             <tr>
-                                                <td className="px-3 py-3" colSpan={3}>
+                                                <td className="px-3.5 py-2.5 text-foreground" colSpan={3}>
                                                     Total
                                                 </td>
-                                                <td className="px-3 py-3 text-right">
+                                                <td className="px-3.5 py-2.5 text-right text-foreground">
                                                     {fmtQty(totals.orderedQty)}
                                                 </td>
-                                                <td className="px-3 py-3 text-right">
+                                                <td className="px-3.5 py-2.5 text-right text-foreground">
                                                     {fmtQty(totals.receivedQty)}
                                                 </td>
-                                                <td className="px-3 py-3" />
-                                                <td className="px-3 py-3" />
-                                                <td className="px-3 py-3 text-right text-indigo-600">
+                                                <td className="px-3.5 py-2.5" />
+                                                <td className="px-3.5 py-2.5" />
+                                                <td className="px-3.5 py-2.5 text-right font-bold text-foreground">
                                                     {fmtMoney(totals.amount)}
                                                 </td>
-                                                <td className="px-3 py-3" colSpan={2} />
+                                                <td className="px-3.5 py-2.5" colSpan={2} />
                                             </tr>
                                         </tfoot>
                                     </table>
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border bg-background shadow-sm">
-                                <div className="border-b px-4 py-3">
-                                    <p className="font-bold">GRN Details</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Goods receipt notes linked with this PO.
-                                    </p>
+                            <div className="rounded-xl border bg-background shadow-xs overflow-hidden">
+                                <div className="flex items-center justify-between border-b bg-muted/15 px-4 py-3">
+                                    <div>
+                                        <h2 className="text-sm font-semibold tracking-tight text-foreground">GRN Details</h2>
+                                        <p className="text-xs text-muted-foreground">
+                                            Goods receipt notes linked with this PO.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-border/80 bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-foreground">
+                                        {po.grns?.length ?? 0} {po.grns?.length === 1 ? "GRN" : "GRNs"}
+                                    </span>
                                 </div>
 
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[1100px] text-xs">
-                                        <thead className="bg-muted/40">
+                                        <thead className="border-b bg-muted/30">
                                             <tr>
-                                                <th className="px-3 py-3 text-left">GRN No</th>
-                                                <th className="px-3 py-3 text-left">Status</th>
-                                                <th className="px-3 py-3 text-left">Received Date</th>
-                                                <th className="px-3 py-3 text-left">Invoice No</th>
-                                                <th className="px-3 py-3 text-left">Vehicle No</th>
-                                                <th className="px-3 py-3 text-left">Gate Entry No</th>
-                                                <th className="px-3 py-3 text-left">Created By</th>
-                                                <th className="px-3 py-3 text-left">Confirmed By</th>
-                                                <th className="px-3 py-3 text-left">Confirmed At</th>
-                                                <th className="px-3 py-3 text-right">Items</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">GRN No</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Status</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Received Date</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Invoice No</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Vehicle No</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Gate Entry No</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Created By</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Confirmed By</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Confirmed At</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Items</th>
                                             </tr>
                                         </thead>
 
@@ -573,40 +567,45 @@ export default function PurchaseOrderDetailPage() {
                                                 <tr>
                                                     <td
                                                         colSpan={10}
-                                                        className="px-3 py-8 text-center text-muted-foreground"
+                                                        className="px-3.5 py-8 text-center text-muted-foreground"
                                                     >
                                                         No GRN created for this PO.
                                                     </td>
                                                 </tr>
                                             ) : (
                                                 po.grns.map((grn: any) => (
-                                                    <tr key={grn.id} className="border-t hover:bg-muted/30">
-                                                        <td className="px-3 py-3 font-semibold">
+                                                    <tr key={grn.id} className="border-b last:border-b-0 transition-colors hover:bg-muted/20">
+                                                        <td className="px-3.5 py-2.5 font-semibold text-foreground">
                                                             {grn.grn_no}
                                                         </td>
-                                                        <td className="px-3 py-3">{grn.status}</td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5">
+                                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-foreground/60" />
+                                                                {grn.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3.5 py-2.5 text-muted-foreground">
                                                             {fmt(grn.received_date)}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-foreground">
                                                             {grn.invoice_no || "—"}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-muted-foreground">
                                                             {grn.vehicle_no || "—"}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-muted-foreground">
                                                             {grn.gate_entry_no || "—"}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-foreground">
                                                             {grn.createdBy?.user_name ?? "—"}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-foreground">
                                                             {grn.confirmedBy?.user_name ?? "—"}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-muted-foreground">
                                                             {fmtDt(grn.confirmed_at)}
                                                         </td>
-                                                        <td className="px-3 py-3 text-right">
+                                                        <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                             {grn.items?.length ?? 0}
                                                         </td>
                                                     </tr>
@@ -618,24 +617,24 @@ export default function PurchaseOrderDetailPage() {
                             </div>
 
                             {po.grns?.length > 0 && (
-                                <div className="rounded-2xl border bg-background shadow-sm">
-                                    <div className="border-b px-4 py-3">
-                                        <p className="font-bold">GRN Item Details</p>
+                                <div className="rounded-xl border bg-background shadow-xs overflow-hidden">
+                                    <div className="border-b bg-muted/15 px-4 py-3">
+                                        <h2 className="text-sm font-semibold tracking-tight text-foreground">GRN Item Details</h2>
                                     </div>
 
                                     <div className="overflow-x-auto">
                                         <table className="w-full min-w-[1200px] text-xs">
-                                            <thead className="bg-muted/40">
+                                            <thead className="border-b bg-muted/30">
                                                 <tr>
-                                                    <th className="px-3 py-3 text-left">GRN No</th>
-                                                    <th className="px-3 py-3 text-left">Product</th>
-                                                    <th className="px-3 py-3 text-left">Code</th>
-                                                    <th className="px-3 py-3 text-right">Received</th>
-                                                    <th className="px-3 py-3 text-right">Accepted</th>
-                                                    <th className="px-3 py-3 text-right">Rejected</th>
-                                                    <th className="px-3 py-3 text-right">Unit Price</th>
-                                                    <th className="px-3 py-3 text-left">Status</th>
-                                                    <th className="px-3 py-3 text-left">Rejection Reason</th>
+                                                    <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">GRN No</th>
+                                                    <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Product</th>
+                                                    <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Code</th>
+                                                    <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Received</th>
+                                                    <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Accepted</th>
+                                                    <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Rejected</th>
+                                                    <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Unit Price</th>
+                                                    <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Status</th>
+                                                    <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Rejection Reason</th>
                                                 </tr>
                                             </thead>
 
@@ -644,31 +643,36 @@ export default function PurchaseOrderDetailPage() {
                                                     (grn.items ?? []).map((item: any) => (
                                                         <tr
                                                             key={`${grn.id}-${item.id}`}
-                                                            className="border-t hover:bg-muted/30"
+                                                            className="border-b last:border-b-0 transition-colors hover:bg-muted/20"
                                                         >
-                                                            <td className="px-3 py-3 font-semibold">
+                                                            <td className="px-3.5 py-2.5 font-semibold text-foreground">
                                                                 {grn.grn_no}
                                                             </td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5 font-medium text-foreground">
                                                                 {item.product?.product_name ?? "—"}
                                                             </td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5 text-muted-foreground">
                                                                 {item.product?.article_code ?? "—"}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                                 {fmtQty(item.received_qty)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                                 {fmtQty(item.accepted_qty)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                                 {fmtQty(item.rejected_qty)}
                                                             </td>
-                                                            <td className="px-3 py-3 text-right">
+                                                            <td className="px-3.5 py-2.5 text-right text-foreground">
                                                                 {fmtMoney(item.unit_price)}
                                                             </td>
-                                                            <td className="px-3 py-3">{item.status}</td>
-                                                            <td className="px-3 py-3">
+                                                            <td className="px-3.5 py-2.5">
+                                                                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                                                    <span className="h-1.5 w-1.5 rounded-full bg-foreground/60" />
+                                                                    {item.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-3.5 py-2.5 text-muted-foreground">
                                                                 {item.rejection_reason || "—"}
                                                             </td>
                                                         </tr>
@@ -684,88 +688,85 @@ export default function PurchaseOrderDetailPage() {
                 </div>
             </main>
             {statusAction && po && (
-  <div
-    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-    onClick={() => {
-      if (!statusLoading) {
-        setStatusAction(null);
-        setStatusRemarks("");
-      }
-    }}
-  >
-    <div
-      className="w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="mb-4">
-        <h3 className="text-base font-bold">
-          {statusAction === "Approved" ? "Approve PO" : "Cancel PO"}
-        </h3>
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+                    onClick={() => {
+                        if (!statusLoading) {
+                            setStatusAction(null);
+                            setStatusRemarks("");
+                        }
+                    }}
+                >
+                    <div
+                        className="w-full max-w-md rounded-xl border bg-background p-6 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-4">
+                            <h3 className="text-base font-bold text-foreground">
+                                {statusAction === "Approved" ? "Approve Purchase Order" : "Cancel Purchase Order"}
+                            </h3>
 
-        <p className="mt-1 text-xs text-muted-foreground">
-          {po.po_no}
-        </p>
-      </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                PO Number: <span className="font-semibold text-foreground">{po.po_no}</span>
+                            </p>
+                        </div>
 
-      <div>
-        <label className="text-xs font-semibold">
-          {statusAction === "Cancelled"
-            ? "Cancellation Reason *"
-            : "Remarks"}
-        </label>
+                        <div>
+                            <label className="text-xs font-semibold text-foreground">
+                                {statusAction === "Cancelled"
+                                    ? "Cancellation Reason *"
+                                    : "Remarks"}
+                            </label>
 
-        <textarea
-          autoFocus
-          value={statusRemarks}
-          onChange={(e) => setStatusRemarks(e.target.value)}
-          placeholder={
-            statusAction === "Cancelled"
-              ? "Enter cancellation reason..."
-              : "Optional remarks..."
-          }
-          rows={4}
-          className="mt-1 w-full resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
-        />
-      </div>
+                            <textarea
+                                autoFocus
+                                value={statusRemarks}
+                                onChange={(e) => setStatusRemarks(e.target.value)}
+                                placeholder={
+                                    statusAction === "Cancelled"
+                                        ? "Enter cancellation reason..."
+                                        : "Optional remarks..."
+                                }
+                                rows={4}
+                                className="mt-1.5 w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20"
+                            />
+                        </div>
 
-      <div className="mt-5 flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={statusLoading}
-          onClick={() => {
-            setStatusAction(null);
-            setStatusRemarks("");
-          }}
-        >
-          Close
-        </Button>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={statusLoading}
+                                className="h-9 rounded-md border-border text-foreground hover:bg-muted font-medium text-xs px-4"
+                                onClick={() => {
+                                    setStatusAction(null);
+                                    setStatusRemarks("");
+                                }}
+                            >
+                                Close
+                            </Button>
 
-        <Button
-          type="button"
-          size="sm"
-          disabled={
-            statusLoading ||
-            (statusAction === "Cancelled" && !statusRemarks.trim())
-          }
-          className={
-            statusAction === "Cancelled"
-              ? "bg-red-600 hover:bg-red-700"
-              : "bg-emerald-600 hover:bg-emerald-700"
-          }
-          onClick={handleStatusUpdate}
-        >
-          {statusLoading ? (
-            <Loader2 size={13} className="mr-1 animate-spin" />
-          ) : null}
+                            <Button
+                                type="button"
+                                size="sm"
+                                disabled={
+                                    statusLoading ||
+                                    (statusAction === "Cancelled" && !statusRemarks.trim())
+                                }
+                                className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs px-4"
+                                onClick={handleStatusUpdate}
+                            >
+                                {statusLoading ? (
+                                    <Loader2 size={13} className="mr-1 animate-spin" />
+                                ) : null}
 
-          {statusAction === "Approved" ? "Approve" : "Cancel PO"}
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
+                                {statusAction === "Approved" ? "Approve" : "Confirm Cancellation"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
@@ -780,12 +781,18 @@ function SummaryBox({
     value: React.ReactNode;
 }) {
     return (
-        <div className="rounded-2xl border bg-background p-4 shadow-sm">
-            <Icon size={17} className="mb-3 text-indigo-500" />
-            <p className="text-[10px] font-black uppercase text-muted-foreground">
-                {label}
-            </p>
-            <div className="mt-1 text-base font-black">{value}</div>
+        <div className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
+            <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-foreground">
+                    <Icon size={15} />
+                </div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+                    {label}
+                </p>
+            </div>
+            <div className="mt-2 text-lg font-bold tracking-tight text-foreground truncate">
+                {value}
+            </div>
         </div>
     );
 }
@@ -798,11 +805,13 @@ function InfoRow({
     value: React.ReactNode;
 }) {
     return (
-        <tr className="border-t first:border-t-0">
-            <td className="w-56 bg-muted/30 px-4 py-3 text-xs font-bold uppercase text-muted-foreground">
+        <tr className="border-b last:border-b-0 transition-colors hover:bg-muted/10">
+            <td className="w-52 border-r bg-muted/20 px-4 py-2.5 text-xs font-medium text-muted-foreground">
                 {label}
             </td>
-            <td className="px-4 py-3 text-sm">{value}</td>
+            <td className="px-4 py-2.5 text-xs font-medium text-foreground">
+                {value}
+            </td>
         </tr>
     );
 }

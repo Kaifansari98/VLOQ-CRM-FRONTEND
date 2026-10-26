@@ -19,7 +19,7 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-2xl border bg-card shadow-sm overflow-hidden",
+        "rounded-xl border bg-card shadow-2xs overflow-hidden",
         className
       )}
     >
@@ -27,13 +27,15 @@ export function SectionCard({
         <div className="flex items-start justify-between gap-4 border-b bg-muted/20 px-4 py-3">
           <div className="flex items-start gap-3">
             {icon && (
-              <div className="mt-0.5 rounded-xl bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/40">
+              <div className="mt-0.5 rounded-lg bg-muted p-2 text-foreground">
                 {icon}
               </div>
             )}
 
             <div>
-              {title && <h3 className="text-sm font-black">{title}</h3>}
+              {title && (
+                <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+              )}
               {description && (
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {description}

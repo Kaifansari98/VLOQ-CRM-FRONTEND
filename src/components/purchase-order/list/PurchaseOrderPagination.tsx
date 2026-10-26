@@ -47,7 +47,7 @@ export function PurchaseOrderPagination({
         <Button
           size="sm"
           variant="outline"
-          className="h-8 w-8 rounded-xl p-0"
+          className="h-8 w-8 rounded-md p-0"
           disabled={page === 1}
           onClick={() => onChange(page - 1)}
         >
@@ -64,7 +64,7 @@ export function PurchaseOrderPagination({
               key={p}
               size="sm"
               variant={p === page ? "default" : "outline"}
-              className="h-8 w-8 rounded-xl p-0 text-xs"
+              className="h-8 w-8 rounded-md p-0 text-xs"
               onClick={() => onChange(p as number)}
             >
               {p}
@@ -75,7 +75,7 @@ export function PurchaseOrderPagination({
         <Button
           size="sm"
           variant="outline"
-          className="h-8 w-8 rounded-xl p-0"
+          className="h-8 w-8 rounded-md p-0"
           disabled={page === totalPages || totalPages === 0}
           onClick={() => onChange(page + 1)}
         >

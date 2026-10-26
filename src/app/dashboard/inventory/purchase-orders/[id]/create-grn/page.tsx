@@ -29,6 +29,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createGRN } from "@/api/grn/grn";
+import CustomeDatePicker from "@/components/date-picker";
 
 type GRNItemRow = {
     po_item_id: number;
@@ -50,7 +51,7 @@ type GRNItemRow = {
 };
 
 const inputClass =
-    "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+    "h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs outline-none transition-colors focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20";
 
 const n = (value: any) => {
     const num = Number(value ?? 0);
@@ -355,13 +356,14 @@ export default function CreateGRNPage() {
 
             <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
                 <div className="w-full space-y-5">
-                    <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-col gap-4 rounded-xl border bg-background p-5 shadow-xs md:flex-row md:items-center md:justify-between">
                         <div>
                             <div className="mb-2">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
+                                    className="h-8 rounded-md text-xs font-medium px-3"
                                     onClick={() =>
                                         router.push(`/dashboard/inventory/purchase-orders/${poId}`)
                                     }
@@ -371,21 +373,21 @@ export default function CreateGRNPage() {
                                 </Button>
                             </div>
 
-                            <h1 className="text-xl font-bold">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                 Create GRN {po?.po_no ? `- ${po.po_no}` : ""}
                             </h1>
 
-                            <p className="text-sm text-muted-foreground">
+                            <p className="mt-0.5 text-xs text-muted-foreground">
                                 Receive ordered items and record accepted/rejected quantities.
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                            <div className="rounded-xl border bg-muted/30 px-4 py-2">
-                                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="rounded-xl border border-border/80 bg-muted/20 px-4 py-2 text-right">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                     Accepted Value
                                 </p>
-                                <p className="text-lg font-bold text-indigo-600">
+                                <p className="text-lg font-bold tracking-tight text-foreground">
                                     {fmtMoney(totals.amount)}
                                 </p>
                             </div>
@@ -393,6 +395,7 @@ export default function CreateGRNPage() {
                             <Button
                                 type="button"
                                 disabled={saving || rows.length === 0}
+                                className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs px-4"
                                 onClick={handleSubmit}
                             >
                                 {saving ? (
@@ -411,100 +414,113 @@ export default function CreateGRNPage() {
                             <Skeleton className="h-96 rounded-xl" />
                         </div>
                     ) : !po ? (
-                        <div className="rounded-2xl border bg-background p-10 text-center text-muted-foreground">
+                        <div className="rounded-xl border bg-background p-10 text-center text-muted-foreground">
                             Failed to load PO.
                         </div>
                     ) : rows.length === 0 ? (
-                        <div className="rounded-2xl border bg-background p-10 text-center text-muted-foreground">
+                        <div className="rounded-xl border bg-background p-10 text-center text-muted-foreground">
                             All PO items are already received. No pending quantity available.
                         </div>
                     ) : (
                         <>
-                            <div className="rounded-2xl border bg-background p-4 shadow-sm">
-                                <div className="grid gap-3 md:grid-cols-5">
-                                    <Field label="Received Date *">
-                                        <input
-                                            type="date"
-                                            value={receivedDate}
-                                            onChange={(e) => setReceivedDate(e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </Field>
-
-                                    <Field label="Invoice No">
-                                        <input
-                                            value={invoiceNo}
-                                            onChange={(e) => setInvoiceNo(e.target.value)}
-                                            className={inputClass}
-                                            placeholder="Invoice no"
-                                        />
-                                    </Field>
-
-                                    <Field label="Invoice Date">
-                                        <input
-                                            type="date"
-                                            value={invoiceDate}
-                                            onChange={(e) => setInvoiceDate(e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </Field>
-
-                                    <Field label="Vehicle No">
-                                        <input
-                                            value={vehicleNo}
-                                            onChange={(e) => setVehicleNo(e.target.value)}
-                                            className={inputClass}
-                                            placeholder="Vehicle no"
-                                        />
-                                    </Field>
-
-                                    <Field label="Gate Entry No">
-                                        <input
-                                            value={gateEntryNo}
-                                            onChange={(e) => setGateEntryNo(e.target.value)}
-                                            className={inputClass}
-                                            placeholder="Gate entry no"
-                                        />
-                                    </Field>
+                            <div className="rounded-xl border bg-background shadow-xs overflow-hidden">
+                                <div className="border-b bg-muted/15 px-4 py-3">
+                                    <h2 className="text-sm font-semibold tracking-tight text-foreground">Receipt Information</h2>
                                 </div>
 
-                                <div className="mt-3">
-                                    <Field label="Remarks">
-                                        <input
-                                            value={remarks}
-                                            onChange={(e) => setRemarks(e.target.value)}
-                                            className={inputClass}
-                                            placeholder="Optional remarks"
-                                        />
-                                    </Field>
+                                <div className="p-4">
+                                    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                                        <Field label="Received Date *">
+                                            <CustomeDatePicker
+                                                value={receivedDate}
+                                                onChange={(val) => setReceivedDate(val || "")}
+                                                dateFormat="dd MMM yyyy"
+                                                placeholder="Select Received Date"
+                                                className="h-9 w-full rounded-md border border-input bg-background text-xs"
+                                            />
+                                        </Field>
+
+                                        <Field label="Invoice No">
+                                            <input
+                                                value={invoiceNo}
+                                                onChange={(e) => setInvoiceNo(e.target.value)}
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20"
+                                                placeholder="Invoice no"
+                                            />
+                                        </Field>
+
+                                        <Field label="Invoice Date">
+                                            <CustomeDatePicker
+                                                value={invoiceDate}
+                                                onChange={(val) => setInvoiceDate(val || "")}
+                                                dateFormat="dd MMM yyyy"
+                                                placeholder="Select Invoice Date"
+                                                className="h-9 w-full rounded-md border border-input bg-background text-xs"
+                                            />
+                                        </Field>
+
+                                        <Field label="Vehicle No">
+                                            <input
+                                                value={vehicleNo}
+                                                onChange={(e) => setVehicleNo(e.target.value)}
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20"
+                                                placeholder="Vehicle no"
+                                            />
+                                        </Field>
+
+                                        <Field label="Gate Entry No">
+                                            <input
+                                                value={gateEntryNo}
+                                                onChange={(e) => setGateEntryNo(e.target.value)}
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20"
+                                                placeholder="Gate entry no"
+                                            />
+                                        </Field>
+                                    </div>
+
+                                    <div className="mt-3">
+                                        <Field label="Remarks">
+                                            <input
+                                                value={remarks}
+                                                onChange={(e) => setRemarks(e.target.value)}
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20"
+                                                placeholder="Optional remarks"
+                                            />
+                                        </Field>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border bg-background shadow-sm">
-                                <div className="border-b px-4 py-3">
-                                    <p className="font-bold">Receive Items</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Enter received, accepted and rejected quantities.
-                                    </p>
+                            <div className="rounded-xl border bg-background shadow-xs overflow-hidden">
+                                <div className="flex items-center justify-between border-b bg-muted/15 px-4 py-3">
+                                    <div>
+                                        <h2 className="text-sm font-semibold tracking-tight text-foreground">Receive Items</h2>
+                                        <p className="text-xs text-muted-foreground">
+                                            Enter received, accepted and rejected quantities.
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-border/80 bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-foreground">
+                                        {rows.length} {rows.length === 1 ? "Item" : "Items"} Pending
+                                    </span>
                                 </div>
 
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[1300px] text-xs">
-                                        <thead className="bg-muted/40">
+                                        <thead className="border-b bg-muted/30">
                                             <tr>
-                                                <th className="px-3 py-3 text-left">Product</th>
-                                                <th className="px-3 py-3 text-left">Code</th>
-                                                <th className="px-3 py-3 text-left">UOM</th>
-                                                <th className="px-3 py-3 text-right">Ordered</th>
-                                                <th className="px-3 py-3 text-right">Already Received</th>
-                                                <th className="px-3 py-3 text-right">Pending</th>
-                                                <th className="px-3 py-3 text-right">Receive Qty *</th>
-                                                <th className="px-3 py-3 text-right">Accepted Qty *</th>
-                                                <th className="px-3 py-3 text-right">Rejected Qty</th>
-                                                <th className="px-3 py-3 text-right">Unit Price</th>
-                                                <th className="px-3 py-3 text-right">Accepted Value</th>
-                                                <th className="px-3 py-3 text-left">Rejection Reason</th>
-                                                <th className="px-3 py-3 text-left">Remarks</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Product</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Code</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">UOM</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Ordered</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Already Received</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Pending</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Receive Qty *</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Accepted Qty *</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Rejected Qty</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Unit Price</th>
+                                                <th className="h-9 px-3.5 py-2 text-right font-semibold text-muted-foreground">Accepted Value</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Rejection Reason</th>
+                                                <th className="h-9 px-3.5 py-2 text-left font-semibold text-muted-foreground">Remarks</th>
                                             </tr>
                                         </thead>
 
@@ -513,62 +529,62 @@ export default function CreateGRNPage() {
                                                 const acceptedValue = n(row.accepted_qty) * n(row.unit_price);
 
                                                 return (
-                                                    <tr key={row.po_item_id} className="border-t hover:bg-muted/30">
-                                                        <td className="px-3 py-3 font-semibold">
+                                                    <tr key={row.po_item_id} className="border-b last:border-b-0 transition-colors hover:bg-muted/20">
+                                                        <td className="px-3.5 py-2.5 font-semibold text-foreground">
                                                             {row.product_name}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-muted-foreground">
                                                             {row.article_code || "—"}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5 text-muted-foreground">
                                                             {row.uom || "—"}
                                                         </td>
-                                                        <td className="px-3 py-3 text-right">
+                                                        <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                             {fmtQty(row.ordered_qty)}
                                                         </td>
-                                                        <td className="px-3 py-3 text-right">
+                                                        <td className="px-3.5 py-2.5 text-right font-medium text-foreground">
                                                             {fmtQty(row.received_qty_before)}
                                                         </td>
-                                                        <td className="px-3 py-3 text-right font-semibold">
+                                                        <td className="px-3.5 py-2.5 text-right font-semibold text-foreground">
                                                             {fmtQty(row.pending_qty)}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5">
                                                             <input
                                                                 type="number"
                                                                 value={row.received_qty}
                                                                 onChange={(e) =>
                                                                     updateRow(index, "received_qty", e.target.value)
                                                                 }
-                                                                className={inputClass}
+                                                                className={`${inputClass} text-right font-medium`}
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5">
                                                             <input
                                                                 type="number"
                                                                 value={row.accepted_qty}
                                                                 onChange={(e) =>
                                                                     updateRow(index, "accepted_qty", e.target.value)
                                                                 }
-                                                                className={inputClass}
+                                                                className={`${inputClass} text-right font-medium`}
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5">
                                                             <input
                                                                 type="number"
                                                                 value={row.rejected_qty}
                                                                 onChange={(e) =>
                                                                     updateRow(index, "rejected_qty", e.target.value)
                                                                 }
-                                                                className={inputClass}
+                                                                className={`${inputClass} text-right font-medium`}
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-3 text-right">
+                                                        <td className="px-3.5 py-2.5 text-right text-foreground">
                                                             {fmtMoney(row.unit_price)}
                                                         </td>
-                                                        <td className="px-3 py-3 text-right font-bold text-indigo-600">
+                                                        <td className="px-3.5 py-2.5 text-right font-bold text-foreground">
                                                             {fmtMoney(acceptedValue)}
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5">
                                                             <input
                                                                 value={row.rejection_reason}
                                                                 onChange={(e) =>
@@ -578,7 +594,7 @@ export default function CreateGRNPage() {
                                                                 placeholder="If rejected"
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-3">
+                                                        <td className="px-3.5 py-2.5">
                                                             <input
                                                                 value={row.remarks}
                                                                 onChange={(e) =>
@@ -593,22 +609,22 @@ export default function CreateGRNPage() {
                                             })}
                                         </tbody>
 
-                                        <tfoot className="border-t bg-muted/50 font-bold">
+                                        <tfoot className="border-t bg-muted/25 text-xs font-semibold">
                                             <tr>
-                                                <td className="px-3 py-3" colSpan={6}>
+                                                <td className="px-3.5 py-2.5 text-foreground" colSpan={6}>
                                                     Total
                                                 </td>
-                                                <td className="px-3 py-3 text-right">
+                                                <td className="px-3.5 py-2.5 text-right text-foreground">
                                                     {fmtQty(totals.received)}
                                                 </td>
-                                                <td className="px-3 py-3 text-right">
+                                                <td className="px-3.5 py-2.5 text-right text-foreground">
                                                     {fmtQty(totals.accepted)}
                                                 </td>
-                                                <td className="px-3 py-3 text-right">
+                                                <td className="px-3.5 py-2.5 text-right text-foreground">
                                                     {fmtQty(totals.rejected)}
                                                 </td>
                                                 <td />
-                                                <td className="px-3 py-3 text-right text-indigo-600">
+                                                <td className="px-3.5 py-2.5 text-right font-bold text-foreground">
                                                     {fmtMoney(totals.amount)}
                                                 </td>
                                                 <td colSpan={2} />
@@ -618,21 +634,23 @@ export default function CreateGRNPage() {
                                 </div>
                             </div>
 
-                            <div className="sticky bottom-4 z-20 rounded-2xl border bg-background p-4 shadow-xl">
+                            <div className="sticky bottom-4 z-20 rounded-xl border border-border/80 bg-background/95 p-4 shadow-xl backdrop-blur-md">
                                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                     <div>
-                                        <p className="text-sm font-bold">
-                                            Receiving {rows.length} item(s)
+                                        <p className="text-sm font-bold text-foreground">
+                                            Receiving {rows.length} {rows.length === 1 ? "item" : "items"}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            Accepted {fmtQty(totals.accepted)} · Rejected{" "}
-                                            {fmtQty(totals.rejected)} · Value {fmtMoney(totals.amount)}
+                                            Accepted: <span className="font-semibold text-foreground">{fmtQty(totals.accepted)}</span> · Rejected:{" "}
+                                            <span className="font-semibold text-foreground">{fmtQty(totals.rejected)}</span> · Accepted Value:{" "}
+                                            <span className="font-semibold text-foreground">{fmtMoney(totals.amount)}</span>
                                         </p>
                                     </div>
 
                                     <Button
                                         type="button"
                                         disabled={saving || rows.length === 0}
+                                        className="h-9 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs px-5 shadow-xs"
                                         onClick={handleSubmit}
                                     >
                                         {saving ? (
@@ -661,7 +679,7 @@ function Field({
 }) {
     return (
         <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase text-muted-foreground">
+            <label className="mb-1.5 block text-xs font-semibold text-foreground">
                 {label}
             </label>
             {children}

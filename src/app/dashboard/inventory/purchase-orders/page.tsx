@@ -85,38 +85,24 @@ const router = useRouter();
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
         <div className="flex w-full flex-col gap-5">
-          <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
-            <div className="relative p-5 md:p-6">
-              <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-indigo-500/10" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Purchase Orders
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Track supplier orders, delivery status, receipts and financial totals.
+            </p>
+          </div>
 
-              <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950">
-                    <ShoppingCart size={22} />
-                  </div>
-
-                  <div>
-                    <h1 className="text-2xl font-black tracking-tight">
-                      Purchase Orders
-                    </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Track supplier orders, delivery status, receipts and financial totals.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Stat icon={ClipboardList} label="Total POs" value={stats.count} />
-                <Stat icon={PackageCheck} label="Approved on Page" value={stats.approved} />
-                <Stat icon={ShoppingCart} label="Received on Page" value={stats.received} />
-                <Stat
-                  icon={IndianRupee}
-                  label="Amount on Page"
-                  value={<span className="text-indigo-600">{fmtMoney(stats.amount)}</span>}
-                />
-              </div>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard icon={ClipboardList} label="TOTAL POS" value={stats.count} />
+            <KpiCard icon={PackageCheck} label="APPROVED ON PAGE" value={stats.approved} />
+            <KpiCard icon={ShoppingCart} label="RECEIVED ON PAGE" value={stats.received} />
+            <KpiCard
+              icon={IndianRupee}
+              label="AMOUNT ON PAGE"
+              value={stats.amount > 0 ? fmtMoney(stats.amount) : "₹0.00"}
+            />
           </div>
 
           <PurchaseOrderFilters
@@ -157,22 +143,26 @@ const router = useRouter();
   );
 }
 
-function Stat({
+function KpiCard({
   icon: Icon,
   label,
   value,
 }: {
-  icon: any;
+  icon: React.ElementType;
   label: string;
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-muted/30 p-4">
-      <Icon size={17} className="mb-3 text-indigo-500" />
-      <p className="text-[10px] font-black uppercase text-muted-foreground">
-        {label}
+    <div className="rounded-xl border bg-background p-5 shadow-xs">
+      <div className="flex items-center justify-between">
+        <Icon size={18} className="text-muted-foreground" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <p className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+        {value}
       </p>
-      <div className="mt-1 text-xl font-black">{value}</div>
     </div>
   );
 }
