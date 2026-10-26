@@ -197,7 +197,7 @@ function OnboardVendorFormContent() {
         pincode: v.pincode || "",
         city: v.city || "",
         state_id: v.state_id || (v.state?.id ?? null),
-        time_zone_id: v.time_zone_id || (displayTimeZones.find((t) => t.time_zone_code === v.time_zone)?.id ?? (null as any)),
+        time_zone_id: v.time_zone_id || (displayTimeZones.find((t) => t.time_zone_name === v.time_zone)?.id ?? (null as any)),
       });
     }
   }, [vendorDetailResponse, displayTimeZones]);
@@ -322,7 +322,7 @@ function OnboardVendorFormContent() {
         formData.append("status", validatedForm.data.status);
         formData.append("time_zone_id", String(validatedForm.data.time_zone_id));
         const selectedTz = displayTimeZones.find((t) => t.id === validatedForm.data.time_zone_id);
-        formData.append("time_zone", selectedTz?.time_zone_code || "Asia/Kolkata");
+        formData.append("time_zone", selectedTz?.time_zone_name || "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
@@ -371,7 +371,7 @@ function OnboardVendorFormContent() {
         formData.append("status", validatedForm.data.status);
         formData.append("time_zone_id", String(validatedForm.data.time_zone_id));
         const selectedTz = displayTimeZones.find((t) => t.id === validatedForm.data.time_zone_id);
-        formData.append("time_zone", selectedTz?.time_zone_code || "Asia/Kolkata");
+        formData.append("time_zone", selectedTz?.time_zone_name || "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
@@ -743,7 +743,7 @@ function OnboardVendorFormContent() {
                     <option value="">Select Time Zone</option>
                     {displayTimeZones.map((tz) => (
                       <option key={tz.id} value={tz.id}>
-                        {tz.name} ({tz.time_zone_code}){!tz.is_active ? " - (Inactive)" : ""}
+                        {tz.country} ({tz.time_zone_name}){!tz.active ? " - (Inactive)" : ""}
                       </option>
                     ))}
                   </select>

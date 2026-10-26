@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
   CreateCategoryPayload,
@@ -31,6 +31,8 @@ export function useProjectCategories(
     queryFn: () => getProjectCategories(vendorId!, filters),
     enabled: !!vendorId,
     staleTime: 30_000,
+    // Keep the current page visible while the next page loads.
+    placeholderData: keepPreviousData,
   });
 }
 

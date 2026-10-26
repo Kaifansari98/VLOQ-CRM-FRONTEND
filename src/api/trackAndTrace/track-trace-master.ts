@@ -35,6 +35,7 @@ export const createMachine = async (
   const formData = new FormData();
 
   formData.append("vendor_id", String(payload.vendor_id));
+  formData.append("fabrication", payload.fabrication ?? "WOODWORK");
   formData.append("machine_name", payload.machine_name);
   formData.append("machine_code", payload.machine_code);
   formData.append("machine_type_id", String(payload.machine_type_id));
@@ -45,7 +46,10 @@ export const createMachine = async (
 
   formData.append("sequence_no", String(payload.sequence_no));
 
-  formData.append("target_per_hour", String(payload.target_per_hour));
+  if (payload.target_per_hour !== undefined)
+    formData.append("target_per_hour", String(payload.target_per_hour));
+
+  if (payload.purchased_at) formData.append("purchased_at", payload.purchased_at);
 
   if (payload.factory_id !== undefined && payload.factory_id !== null)
     formData.append("factory_id", String(payload.factory_id));
@@ -67,6 +71,7 @@ export const updateMachine = async ({
 }: UpdateMachineParams) => {
   const formData = new FormData();
 
+  if (data.fabrication) formData.append("fabrication", data.fabrication);
   formData.append("machine_name", data.machine_name);
   formData.append("machine_code", data.machine_code);
   formData.append("machine_type_id",String(data.machine_type_id));
@@ -74,7 +79,13 @@ export const updateMachine = async ({
   formData.append("scan_type", data.scan_type);
   formData.append("description", data.description);
   formData.append("sequence_no", String(data.sequence_no));
-  formData.append("target_per_hour", String(data.target_per_hour));
+  if (data.target_per_hour !== undefined) {
+    formData.append("target_per_hour", String(data.target_per_hour));
+  }
+  // An empty value clears the purchase date.
+  if (data.purchased_at !== undefined) {
+    formData.append("purchased_at", data.purchased_at ?? "");
+  }
   formData.append("updated_by", String(data.updated_by));
 
   if (data.factory_id !== undefined && data.factory_id !== null) {
@@ -198,6 +209,9 @@ export const createTrackTraceProjectApi = async (
 
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
+  if (payload.created_by) formData.append("created_by", String(payload.created_by));
+  if (payload.instance_id) formData.append("instance_id", String(payload.instance_id));
+  if (payload.use_lead_project_name) formData.append("use_lead_project_name", "true");
   formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
   formData.append("is_multi_location", String(payload.is_multi_location ?? false));
   formData.append("no_of_boxes", String(Number((payload as any).no_of_boxes || 0)));

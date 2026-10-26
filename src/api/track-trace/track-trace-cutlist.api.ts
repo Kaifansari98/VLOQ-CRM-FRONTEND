@@ -9,14 +9,17 @@ export interface CutListSavePayload {
   machine_name: string;
   assigned: boolean;
   user_role?: string;
+  user_id?: number;
 }
 
 export const getProjectCutList = async (
   vendorId: Number,
   projectId: string,
+  fabrication?: "WOODWORK" | "METALWORK",
 ) => {
   const { data } = await apiClient.get(
     `/track-trace/cut-list-machine/${vendorId}/${projectId}`,
+    { params: { fabrication } },
   );
 
   return data.data.cutlist;

@@ -50,6 +50,7 @@ import {
   Copy,
   Check,
   SlidersHorizontal,
+  Sheet,
 } from "lucide-react";
 import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -591,7 +592,7 @@ export default function TrackTraceWorkstationTable({
                   Assign Users
                 </DropdownMenuItem>
 
-                {(cutlistConfiguration === "rule manage" || cutlistConfiguration === "rule_manage") && (
+                {(cutlistConfiguration.trim().toLowerCase().replace(/_/g, " ") === "rule manage") && (
                   <DropdownMenuItem
                     className="cursor-pointer gap-2"
                     onClick={() => {
@@ -606,6 +607,13 @@ export default function TrackTraceWorkstationTable({
                     CutList Rules
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onClick={() => router.push(`/dashboard/track-trace/master/workstation/${row.original.id}/mcp`)}
+                >
+                  <Sheet size={14} />
+                  Manage MCP
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -711,7 +719,9 @@ export default function TrackTraceWorkstationTable({
       <DataTable
         table={tableInstance}
         showPagination={true}
-        onRowDoubleClick={(row) => onEditClick(row)}
+        onRowDoubleClick={(row) =>
+          router.push(`/dashboard/track-trace/master/workstation/details?id=${row.id}`)
+        }
         rowClassName={() => "hover:bg-primary/5 cursor-pointer"}
         className={cn("pt-1 px-4", className)}
       />

@@ -22,6 +22,7 @@ import {
   Megaphone,
   Magnet,
   TriangleAlert,
+  CalendarCheck,
 } from "lucide-react";
 
 import { MetaIcon } from "@/components/icons/meta-icon";
@@ -330,8 +331,12 @@ const data = {
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
         { title: "Workstations", url: "/dashboard/track-trace/machines" },
         {
-          title: "Projects",
+          title: "Woodwork Projects",
           url: "/dashboard/track-trace/manage-project",
+        },
+        {
+          title: "Metalwork Projects",
+          url: "/dashboard/track-trace/metalwork-projects",
         },
         {
           title: "Defects",
@@ -531,6 +536,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "vloq master" ||
     userType === "masteradmin" ||
     userType === "master_admin";
+  const isHrmsAdmin =
+    userType === "hrms-admin" ||
+    userType === "hrms admin" ||
+    userType === "hrmsadmin" ||
+    userType === "hrms_admin";
   const shouldBootstrapFranchise =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -663,6 +673,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Dashboard",
             url: "/dashboard",
             icon: LayoutDashboard,
+          },
+        ],
+        trackTraceItems: [],
+        inventoryItems: [],
+        inventoryMasterItems: [],
+        mastersItems: [],
+        integrationItems: [],
+      };
+    }
+
+    // HRMS Admin only sees Attendance section
+    if (isHrmsAdmin) {
+      return {
+        navItems: [
+          {
+            title: "Attendance",
+            url: "/dashboard/attendance",
+            icon: CalendarCheck,
           },
         ],
         trackTraceItems: [],
@@ -1131,6 +1159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,
     isHrmsMasterEnabled,
+    isHrmsAdmin,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
     handlesLargeScaleProjects,
@@ -1223,7 +1252,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           mastersItems={mastersItems}
           inventoryMasterItems={inventoryMasterItems}
           integrationItems={integrationItems}
-          crmGroupLabel={userType === "employee" ? "HRMS" : undefined}
+          crmGroupLabel={userType === "employee" || isHrmsAdmin ? "HRMS" : undefined}
         />
       </SidebarContent>
 

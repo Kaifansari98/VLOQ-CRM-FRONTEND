@@ -225,13 +225,14 @@ export const useUpdateVendor = () => {
   });
 };
 
-export const useVendorById = (vendorId?: number) => {
+export const useVendorById = (vendorId?: number, options?: { refetchOnWindowFocus?: boolean | "always"; refetchOnMount?: boolean | "always" }) => {
   return useQuery({
     queryKey: ["vendor", vendorId],
     queryFn: () => fetchVendorById(vendorId as number),
     enabled: !!vendorId,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    refetchOnMount: options?.refetchOnMount,
   });
 };
 
@@ -275,7 +276,7 @@ export const fetchTimeZones = async (params?: {
   data: TimeZoneItem[];
 }> => {
   const query =
-    params?.is_active !== undefined ? `?is_active=${params.is_active}` : "";
+    params?.is_active !== undefined ? `?active=${params.is_active}` : "";
   const { data } = await apiClient.get(`/time-zones${query}`);
   return data;
 };

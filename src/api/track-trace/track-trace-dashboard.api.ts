@@ -1,5 +1,6 @@
 // track-trace-dashboard.api.ts
 import { apiClient } from "@/lib/apiClient";
+import type { MachineFabrication } from "@/types/track-trace";
 
 export interface MachineScanStatus {
   machine_id: number;
@@ -36,7 +37,7 @@ export interface TraceTraceDashboardResponse {
 export const getTraceTraceDashboard = async (
   vendorId: number,
   status: string = "all",
-  scope: { lead_id?: number; project_id?: number } = {}
+  scope: { lead_id?: number; project_id?: number; fabrication?: MachineFabrication } = {}
 ): Promise<TraceTraceDashboardResponse> => {
   const { data } = await apiClient.get(
     `/track-trace/dashboard/${vendorId}`,

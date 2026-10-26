@@ -21,7 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useMetalCutlist, useSaveMetalCutlist } from "@/api/production/production-api";
 import { cn } from "@/lib/utils";
 import type { MetalCutlistResult } from "@/lib/metal-cutlist-parser";
-import SavedMetalCutlist from "./SavedMetalCutlist";
+import ProjectCutlistTable from "@/components/track-trace/ProjectCutlistTable";
 
 const COUNT_COLUMNS = [
   { key: "partsCount", label: "Parts" },
@@ -30,7 +30,7 @@ const COUNT_COLUMNS = [
   { key: "processed", label: "Processed" },
 ] as const;
 
-export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: boolean; leadId: number }) {
+export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { canUpload: boolean; leadId: number; instanceId?: number | null }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId);
@@ -79,7 +79,7 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
   const warnings = result?.warnings ?? [];
   const project = saved?.project ?? null;
   const savedCount = saved?.rows.length ?? 0;
-  const canSave = canUpload && !!project && kept.length > 0 && !!userId;
+  const canSave = canUpload && !!vendorId && kept.length > 0 && !!userId && !savedLoading;
 
   async function saveCutlist() {
     if (!canSave) return;
@@ -98,24 +98,24 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
       }
       formData.append("parts", JSON.stringify(parts));
       formData.append("created_by", String(userId));
+      if (instanceId) formData.append("instance_id", String(instanceId));
 
-      await saveMetalCutlist(formData);
-      toastManager.add({ title: "Metal cutlist uploaded successfully!", type: "success" });
+      const response = await saveMetalCutlist(formData);
+      toastManager.add({ title: response?.data?.projectCreated ? "Metalwork Cutlist uploaded and Track & Trace project created!" : "Metalwork Cutlist uploaded successfully!", type: "success" });
       setConfirmOpen(false);
       setOpen(false);
       setResult(null);
       setRemoved([]);
     } catch (error: any) {
       toastManager.add({
-        title: error?.response?.data?.message || error?.message || "Failed to upload metal cutlist.",
+        title: error?.response?.data?.message || error?.message || "Failed to upload Metalwork Cutlist.",
         type: "error",
       });
     }
   }
 
   const uploadButton = (size: "sm" | "default" = "sm") => (
-    <Button type="button" size={size} disabled={!canSave || saving} onClick={() => setConfirmOpen(true)}
-      title={!project ? "Create the Track & Trace project first" : undefined}>
+    <Button type="button" size={size} disabled={!canSave || saving} onClick={() => setConfirmOpen(true)}>
       {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CloudUpload className="mr-2 size-4" />}
       Upload cutlist
     </Button>
@@ -127,12 +127,12 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
         <div className="flex items-start gap-3">
           <FileText className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
           <div>
-            <h3 className="text-sm font-semibold">Metal cutlist PDF</h3>
+            <h3 className="text-sm font-semibold">Metalwork Cutlist PDF</h3>
             <p className="mt-1 text-xs text-muted-foreground">Upload a nesting PDF to review its Part Info table, then upload it to the Track & Trace project.</p>
           </div>
         </div>
         {canUpload && <>
-          <input ref={input} type="file" accept=".pdf,application/pdf" className="hidden" aria-label="Upload metal cutlist PDF" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void readPdf(file); }} />
+          <input ref={input} type="file" accept=".pdf,application/pdf" className="hidden" aria-label="Upload Metalwork Cutlist PDF" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void readPdf(file); }} />
           <Button type="button" size="sm" disabled={busy} onClick={() => input.current?.click()}>
             {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
             {busy ? "Extracting…" : "Upload PDF"}
@@ -142,7 +142,7 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
       {!savedLoading && !project && (
         <div role="status" className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <p>No Track & Trace project exists for this lead yet. Upload the woodwork cutlist first to create it — you can still preview a metal cutlist PDF.</p>
+          <p>Submitting this Metalwork Cutlist will create a Track & Trace project for this lead.</p>
         </div>
       )}
       {busy && <p role="status" className="text-sm text-muted-foreground">{progress}</p>}
@@ -165,7 +165,7 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle>Metal Cutlist — Part Info</DialogTitle>
+                  <DialogTitle>Metalwork Cutlist — Part Info</DialogTitle>
                   {warnings.length ? (
                     <Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                       <AlertTriangle className="size-3" />Needs review
@@ -271,7 +271,7 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
           {/* Footer */}
           <div className="flex flex-col-reverse gap-3 border-t bg-muted/30 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              {project ? "Not uploaded yet — review the rows, then upload." : "Upload is unavailable until a Track & Trace project exists for this lead."}
+              Review the rows, then upload. A Track & Trace project will be created if needed.
             </p>
             <div className="flex items-center justify-end gap-2">
               {!!removed.length && <>
@@ -290,17 +290,17 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
       <AlertDialog open={confirmOpen} onOpenChange={next => { if (!saving) setConfirmOpen(next); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Upload metal cutlist?</AlertDialogTitle>
+            <AlertDialogTitle>Upload Metalwork Cutlist?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
                   {kept.length} part rows ({total} pieces) will be added to the cutlist of
-                  {" "}<span className="font-medium text-foreground">{project?.project_name}</span> as metalwork, with their part images.
+                  {" "}<span className="font-medium text-foreground">{project?.project_name ?? `a new Track & Trace project for Lead #${leadId}`}</span> as metalwork, with their part images.
                 </p>
                 {!!removed.length && <p>{removed.length} removed {removed.length === 1 ? "row" : "rows"} will not be uploaded.</p>}
                 {!!savedCount && (
                   <p className="font-medium text-amber-700 dark:text-amber-400">
-                    This replaces the {savedCount} metal cutlist {savedCount === 1 ? "row" : "rows"} uploaded earlier.
+                    This replaces the {savedCount} Metalwork Cutlist {savedCount === 1 ? "row" : "rows"} uploaded earlier.
                   </p>
                 )}
               </div>
@@ -316,7 +316,13 @@ export default function MetalCutlistUpload({ canUpload, leadId }: { canUpload: b
         </AlertDialogContent>
       </AlertDialog>
 
-      <SavedMetalCutlist rows={saved?.rows ?? []} loading={savedLoading} />
+      {project && (
+        <ProjectCutlistTable
+          uniqueProjectId={project.unique_project_id}
+          fabrication="METALWORK"
+          emptyDescription="Upload a nesting PDF above and confirm the upload to add parts to this project."
+        />
+      )}
     </div>
   );
 }

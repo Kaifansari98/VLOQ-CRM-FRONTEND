@@ -122,6 +122,17 @@ function isUrlActive(
   if (searchParams.get("source") === "material-issue") {
     return urlPath === "/dashboard/inventory/material-issue/projects";
   }
+  const woodworkProjectsPath = "/dashboard/track-trace/manage-project";
+  const metalworkProjectsPath = "/dashboard/track-trace/metalwork-projects";
+  if (
+    (pathname === woodworkProjectsPath || pathname.startsWith(`${woodworkProjectsPath}/`)) &&
+    (urlPath === woodworkProjectsPath || urlPath === metalworkProjectsPath)
+  ) {
+    const activeProjectsPath = searchParams.get("fabrication") === "METALWORK"
+      ? metalworkProjectsPath
+      : woodworkProjectsPath;
+    return urlPath === activeProjectsPath;
+  }
   if (!pathname.startsWith(urlPath)) return false;
   if (!urlQuery) {
     const tabParam = searchParams.get("tab");

@@ -65,6 +65,7 @@ export default function EmployeeDashboard() {
   const activeTimeZone =
     todayData?.vendor_time_zone ||
     todayData?.attendance?.vendor_time_zone ||
+    user?.vendor?.time_zone_master?.time_zone_name ||
     user?.vendor?.time_zone_master?.time_zone_code ||
     user?.vendor?.time_zone ||
     (user as any)?.user_timezone ||

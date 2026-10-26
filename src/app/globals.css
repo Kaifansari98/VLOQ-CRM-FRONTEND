@@ -223,116 +223,92 @@
   -ms-user-select: none;
 }
 
-/* Sticky table header for cutlist */
+/* Cutlist table: one scroll container with sticky header and pinned columns */
 .cutlist-table-container {
-  max-height: calc(100vh - 250px);
+  /* Tall enough that, once the summary cards scroll away, the table fills the screen */
+  max-height: calc(100vh - 200px);
+  min-height: 320px;
   overflow: auto;
+  position: relative;
 }
 
+.cutlist-table-container--fullscreen {
+  max-height: none;
+  min-height: 0;
+}
+
+/* Let the outer container own scrolling and the border */
+.cutlist-table-container > div,
+.cutlist-table-container .overflow-hidden,
 .cutlist-table-container [data-slot="table-container"] {
   overflow: visible !important;
 }
 
-/* Remove overflow from DataTable's flex container */
-.cutlist-table-container > div {
-  overflow: visible !important;
-}
-
-/* Make the border container scrollable */
 .cutlist-table-container .overflow-hidden {
-  overflow: visible !important;
-}
-
-.cutlist-table-container table thead {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  border: 0 !important;
+  border-radius: 0 !important;
 }
 
 .cutlist-table-container table thead th {
-  position: sticky; /* ✅ Changed from fixed to sticky */
+  position: sticky;
   top: 0;
-  background: hsl(var(--muted));
   z-index: 30;
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  font-size: 0.75rem;
+  font-weight: 600 !important;
+  box-shadow: inset 0 -1px 0 var(--border);
+  vertical-align: middle;
 }
 
-/* Pinned columns in header */
 .cutlist-table-container table thead th[style*="left"] {
   z-index: 35;
-  background: hsl(var(--muted));
 }
 
-/* Pinned columns in body */
+/* Vertical grid lines between columns */
+.cutlist-table-container table th,
+.cutlist-table-container table td {
+  border-right: 1px solid var(--border);
+}
+
+.cutlist-table-container table th:last-child,
+.cutlist-table-container table td:last-child {
+  border-right: 0;
+}
+
+/* Pinned body cells must be opaque (DataTable sets an inline white background) */
 .cutlist-table-container table tbody td[style*="left"] {
-  background: hsl(var(--background));
   z-index: 10;
+  background: var(--background) !important;
 }
 
-/* Custom scrollbars */
+.cutlist-table-container table tbody tr:hover td[style*="left"] {
+  background: color-mix(in oklab, var(--muted) 50%, var(--background)) !important;
+}
+
+.cutlist-table-container table tbody tr[data-state="selected"] td[style*="left"] {
+  background: var(--muted) !important;
+}
+
 .cutlist-table-container::-webkit-scrollbar {
   height: 10px;
   width: 10px;
 }
 
 .cutlist-table-container::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: transparent;
 }
 
 .cutlist-table-container::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 4px;
+  background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .cutlist-table-container::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
-
-/* Fullscreen table container */
-.cutlist-table-container-fullscreen {
-  max-height: calc(100vh - 100px) !important;
-  overflow: auto !important;
-  position: relative !important;
-  display: block !important;
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.375rem;
-}
-
-.cutlist-table-container-fullscreen > div {
-  overflow: visible !important;
-  max-height: none !important;
-  display: block !important;
-}
-
-.cutlist-table-container-fullscreen .overflow-hidden {
-  overflow: visible !important;
-  max-height: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-}
-
-.cutlist-table-container-fullscreen [data-slot="table-container"] {
-  overflow: visible !important;
-}
-
-.cutlist-table-container-fullscreen table thead th:not([style*="left"]) {
-  position: sticky !important;
-  top: 0 !important;
-  background: #F5F5F5 !important; 
-  z-index: 20 !important;
-  border-bottom: 1px solid hsl(var(--border)) !important;
-}
-
-.cutlist-table-container-fullscreen table thead th[style*="left"] {
-  position: sticky !important;
-  top: 0 !important;
-  /* background: hsl(var(--muted)) !important;  */
-  z-index: 999 !important;
-  border-bottom: 1px solid hsl(var(--border)) !important;
-}
-
-.cutlist-table-container-fullscreen table tbody td[style*="left"] {
-  /* background: hsl(var(--background)) !important; */
-  z-index: 10 !important;
+  background: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+  background-clip: padding-box;
 }
 
 /* Custom scrollbar for sidebar content */

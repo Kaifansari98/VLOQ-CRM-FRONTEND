@@ -33,6 +33,7 @@ import Loader from "@/components/utils/loader";
 import { Badge } from "@/components/ui/badge";
 import { useB2BRequirementTypes, useProductTypes } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { CadbidQuotesSection } from "@/components/cadbid/CadbidQuotesSection";
 
 const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
   docs: T[],
@@ -254,10 +255,13 @@ const QuotationTab = () => {
   // ✅ Empty state (if not B2B)
   if (!isB2b && (!designQuotationDocs || designQuotationDocs.length === 0) && !handlesLargeScaleProjects) {
     return (
-      <ComingSoon
-        heading="No Quotations Found"
-        description="Quotation documents will appear here once they are added."
-      />
+      <div>
+        <CadbidQuotesSection leadId={leadId} className="mb-6 px-1" />
+        <ComingSoon
+          heading="No Quotations Found"
+          description="Quotation documents will appear here once they are added."
+        />
+      </div>
     );
   }
 
@@ -348,6 +352,7 @@ const QuotationTab = () => {
                   </div>
 
                   <div className="p-4">
+                    <CadbidQuotesSection leadId={leadId} className="mb-4" />
                     {type.docs.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
                         <Package className="h-8 w-8 opacity-40 mb-2" />
@@ -407,34 +412,40 @@ const QuotationTab = () => {
                 </button>
               ))}
             </div>
-          ) : (selectedGroup ? selectedGroup.docs : sortedQuotationDocs).length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).map(
-                (doc: any, index: number) => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={{
-                      id: doc.id,
-                      originalName: doc.doc_og_name,
-                      created_at: doc.created_at,
-                      signedUrl: doc.signedUrl,
-                    }}
-                    isLatest={index === 0}
-                    canDelete={canDelete}
-                    onDelete={(id) => setConfirmDelete(id)}
-                  />
-                ),
-              )}
-            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Images size={42} className="text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {handlesLargeScaleProjects && selectedGroup
-                  ? "No quotations found for this product type."
-                  : "No quotations found."}
-              </p>
-            </div>
+            <>
+              {/* Same Cadbid quotes on every instance until Cadbid quotes carry an instance link */}
+              <CadbidQuotesSection leadId={leadId} className="mb-6" />
+              {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).map(
+                  (doc: any, index: number) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        originalName: doc.doc_og_name,
+                        created_at: doc.created_at,
+                        signedUrl: doc.signedUrl,
+                      }}
+                      isLatest={index === 0}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(id)}
+                    />
+                  ),
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Images size={42} className="text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {handlesLargeScaleProjects && selectedGroup
+                    ? "No quotations found for this product type."
+                    : "No quotations found."}
+                </p>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>

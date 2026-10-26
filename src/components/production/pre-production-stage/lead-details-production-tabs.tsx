@@ -227,6 +227,30 @@ export default function LeadDetailsProductionUtil({
         />
       ),
     },
+    ...(showMachineMatrix
+      ? [
+          {
+            id: "requiredProductionMaterials",
+            title: "Required Production Materials",
+            color: "bg-zinc-900 hover:bg-zinc-900",
+            disabled: !canViewProductionFiles,
+            disabledReason:
+              normalizedUserType === "custom"
+                ? "You don’t have permission to access Required Production Materials."
+                : "Only super-admin and factory can access this tab.",
+            cardContent: (
+              <ProductionFilesSection
+                showRequiredMaterials
+                viewOnly
+                hideDeliveryDateBanner
+                leadId={leadId}
+                accountId={accountId ?? null}
+                instanceId={effectiveInstanceId}
+              />
+            ),
+          },
+        ]
+      : []),
     ...(showPreProductionTab
       ? [
           {
