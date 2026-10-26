@@ -4,7 +4,10 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import PreProductionDetails from "./PreProductionDetails";
 import ProductionMachineMatrix from "@/components/track-trace/ProductionMachineMatrix";
 import PostProductionDetails from "./PostProductionDetails";
-import { useCheckPostProductionReady } from "@/api/production/production-api";
+import {
+  useCheckPostProductionReady,
+  useMetalCutlist,
+} from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -119,6 +122,14 @@ export default function LeadDetailsProductionUtil({
 
 
   console.log("data: ", data)
+
+  // The lead's Track & Trace project only exists once a woodwork or metalwork
+  // cutlist has been uploaded in Pre-Production Files.
+  const { data: leadCutlist } = useMetalCutlist(
+    isTrackTraceLargeScale ? vendorId : undefined,
+    leadId,
+  );
+  const hasTrackTraceProject = isTrackTraceLargeScale && !!leadCutlist?.project;
 
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadId,
@@ -319,13 +330,17 @@ export default function LeadDetailsProductionUtil({
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled:
         !canViewPostProduction ||
-        (!readyForPostProduction &&
-          !["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
-            normalizedUserType ?? "",
-          )),
+        (isTrackTraceLargeScale
+          ? !hasTrackTraceProject
+          : !readyForPostProduction &&
+            !["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
+              normalizedUserType ?? "",
+            )),
       disabledReason: !canViewPostProduction
         ? "You don’t have permission to access Post Production."
-        : "You can access Post Production only after completing Under-Production.",
+        : isTrackTraceLargeScale
+          ? "Upload a Woodwork or Metalwork cutlist in Pre-Production Files to create the Track & Trace project first."
+          : "You can access Post Production only after completing Under-Production.",
       cardContent: (
         <PostProductionDetails
           leadId={leadId}
@@ -351,6 +366,7 @@ export default function LeadDetailsProductionUtil({
     isOrderLoginFilled,
     canViewPostProduction,
     readyForPostProduction,
+    hasTrackTraceProject,
   ]);
 
   const showInstanceTabs =
