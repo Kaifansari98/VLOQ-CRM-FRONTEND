@@ -43,6 +43,12 @@ export default function LeadDetailsProductionUtil({
     (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true &&
       s.auth.user?.vendor?.is_inventory_enabled === true,
   );
+  // Track & Trace large-scale vendors: Order Login is optional, so Under
+  // Production shows the live matrix directly.
+  const isTrackTraceLargeScale = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+      s.auth.user?.vendor?.is_tracktrace_enabled === true,
+  );
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
@@ -278,15 +284,19 @@ export default function LeadDetailsProductionUtil({
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled:
         !canAccessUnderProduction ||
-        (shouldRequirePreProduction && !readyForUnderProduction),
+        (!isTrackTraceLargeScale &&
+          shouldRequirePreProduction &&
+          !readyForUnderProduction),
       disabledReason: !canAccessUnderProduction
         ? normalizedUserType === "custom"
           ? "You don’t have permission to access Under Production."
           : "Only super-admin and factory can access this tab."
-        : shouldRequirePreProduction
+        : shouldRequirePreProduction && !isTrackTraceLargeScale
           ? "Complete Order Login first to enable Under Production."
           : "",
-      cardContent: isOrderLoginFilled ? (
+      cardContent: isTrackTraceLargeScale ? (
+        <ProductionMachineMatrix vendorId={vendorId} leadId={leadId} />
+      ) : isOrderLoginFilled ? (
         showMachineMatrix ? (
           <ProductionMachineMatrix vendorId={vendorId} leadId={leadId} />
         ) : (
@@ -326,6 +336,7 @@ export default function LeadDetailsProductionUtil({
     },
   ], [
     showMachineMatrix,
+    isTrackTraceLargeScale,
     vendorId,
     shouldRequirePreProduction,
     canViewProductionFiles,
