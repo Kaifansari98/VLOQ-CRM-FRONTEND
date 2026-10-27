@@ -1359,6 +1359,11 @@ export function UniversalTable({
     const isType8 = normalizedType === "type 8";
     const isType9 = normalizedType === "type 9";
     const isType10 = normalizedType === "type 10";
+    const isLaterStage = /^type (1[1-7])$/.test(normalizedType);
+    const isLargeScaleLead = (lead: any) =>
+      handlesLargeScaleProjectsFromAuth ||
+      lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+      lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
     const primarySort = activeSorting[0];
     const shouldSortByCreatedAt = primarySort?.id === "createdAt";
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
@@ -1401,7 +1406,7 @@ export function UniversalTable({
 
     let rows: LeadColumn[];
 
-    if (!isType8 && !isType9 && !isType10) {
+    if (!isType8 && !isType9 && !isType10 && !(isLaterStage && filteredActiveData.some(isLargeScaleLead))) {
       const isDesc = primarySort ? createdAtDirection === "desc" : true;
       const baseData = [...filteredActiveData].sort((a, b) => {
         if (normalizedType === "type 1" && isOnlineLeadFeatureEnabled) {
@@ -1458,11 +1463,7 @@ export function UniversalTable({
       const expanded: LeadColumn[] = [];
 
       filteredActiveData.forEach((lead) => {
-        const handlesLargeScaleProjects =
-          handlesLargeScaleProjectsFromAuth ||
-          (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects ===
-            true ||
-          (lead as any)?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+        const handlesLargeScaleProjects = isLargeScaleLead(lead);
 
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
           normalizedType,
@@ -1473,8 +1474,12 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        // Large-scale leads stay grouped only in Tech Check; Order Login and
-        // Production use the eligible instance rows below.
+        if (isLaterStage && !handlesLargeScaleProjects) {
+          expanded.push(mapUniversalRow(lead, expanded.length, { rowKey: String(lead.id), type8StatusLoggedAt }));
+          return;
+        }
+
+        // Large-scale leads stay grouped only in Tech Check.
         if (handlesLargeScaleProjects && isType8) {
           const structureTypes = Array.from(
             new Set(
@@ -1504,7 +1509,15 @@ export function UniversalTable({
         }
 
         let instanceRows = instances;
-        if (isType8) {
+        if (isLaterStage) {
+          // Downstream workflow status belongs to the lead, not the instance.
+          instanceRows = instances.filter((instance: any) => instance?.is_archived !== true);
+          if (!instanceRows.length) {
+            // Keep legacy leads without any instances accessible.
+            if (!instances.length) expanded.push(mapUniversalRow(lead, expanded.length, { rowKey: String(lead.id), type8StatusLoggedAt }));
+            return;
+          }
+        } else if (isType8) {
           instanceRows = instances.filter(
             (instance: any) => instance?.is_tech_check_completed !== true,
           );
