@@ -28,6 +28,7 @@ export function PurchaseOrderTable({
   pageSize,
   totalPages,
   onPageChange,
+  onPageSizeChange,
   onOpen,
 }: {
   loading: boolean;
@@ -37,6 +38,7 @@ export function PurchaseOrderTable({
   pageSize: number;
   totalPages: number;
   onPageChange: (p: number) => void;
+  onPageSizeChange?: (s: number) => void;
   onOpen: (id: number) => void;
 }) {
   return (
@@ -166,15 +168,14 @@ export function PurchaseOrderTable({
         </table>
       </div>
 
-      {totalPages > 0 && (
-        <PurchaseOrderPagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={pageSize}
-          onChange={onPageChange}
-        />
-      )}
+      <PurchaseOrderPagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   );
 }

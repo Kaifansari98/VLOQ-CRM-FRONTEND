@@ -514,19 +514,19 @@ function CategoryFormContent() {
         {/* Clean Header Row */}
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {isEdit ? "Edit Category" : "Create New Category"}
             </h1>
             {isEdit && (
               <Badge
                 variant="secondary"
-                className="text-xs font-semibold bg-primary/10 text-primary border-primary/20"
+                className="text-[10px] font-semibold bg-muted text-foreground border"
               >
                 Edit Mode
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             {isEdit
               ? "Update category details, module assignments, and sub-categories"
               : "Define a new category, assign modules, and add sub-categories"}
@@ -728,7 +728,7 @@ function CategoryFormContent() {
               {/* Header with Icon, Title, and Delimiter Selector */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3.5">
                 <div className="flex items-start gap-2.5">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 mt-0.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground border mt-0.5">
                     <SlidersHorizontal className="size-4" />
                   </div>
                   <div>
@@ -764,11 +764,11 @@ function CategoryFormContent() {
               </div>
 
               {/* Live Preview Box */}
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors">
+              <div className="rounded-xl border bg-muted/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors">
                 <div className="flex flex-col gap-1.5 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="size-3.5 text-primary" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                    <Sparkles className="size-3.5 text-foreground" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Live Format Preview
                     </span>
                   </div>
@@ -785,7 +785,7 @@ function CategoryFormContent() {
                               {sample}
                             </span>
                             {idx < selectedFields.length - 1 && (
-                              <span className="font-mono text-xs font-extrabold text-primary px-0.5">
+                              <span className="font-mono text-xs font-extrabold text-foreground px-0.5">
                                 {delimiter === " " ? "␣" : delimiter}
                               </span>
                             )}
@@ -820,7 +820,7 @@ function CategoryFormContent() {
                         type: "success",
                       });
                     }}
-                    className="h-7.5 px-2.5 text-xs gap-1.5 shrink-0 bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                    className="h-7.5 px-2.5 text-xs gap-1.5 shrink-0 bg-background hover:bg-muted hover:text-foreground"
                   >
                     <Copy className="size-3.5" />
                     <span>Copy Sample</span>
@@ -841,7 +841,7 @@ function CategoryFormContent() {
                       onClick={() =>
                         setSelectedFields(STRUCTURE_ATTRIBUTES.map((a) => a.key))
                       }
-                      className="text-[11px] text-muted-foreground hover:text-primary font-medium transition-colors"
+                      className="text-[11px] text-muted-foreground hover:text-foreground font-medium transition-colors"
                     >
                       Select All
                     </button>
@@ -851,7 +851,7 @@ function CategoryFormContent() {
                       onClick={() =>
                         setSelectedFields([...DEFAULT_STRUCTURE_FIELDS])
                       }
-                      className="text-[11px] text-muted-foreground hover:text-primary font-medium transition-colors flex items-center gap-1"
+                      className="text-[11px] text-muted-foreground hover:text-foreground font-medium transition-colors flex items-center gap-1"
                     >
                       <RotateCcw className="size-3" />
                       Reset Defaults
@@ -886,7 +886,7 @@ function CategoryFormContent() {
                         className={cn(
                           "group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border cursor-pointer select-none",
                           isSelected
-                            ? "bg-primary text-primary-foreground border-primary shadow-xs hover:bg-primary/90"
+                            ? "bg-foreground text-background border-foreground shadow-xs hover:bg-foreground/90"
                             : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted hover:text-foreground hover:border-border"
                         )}
                       >
@@ -907,8 +907,8 @@ function CategoryFormContent() {
                 <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2.5">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-1.5">
-                      <GripVertical className="size-3.5 text-primary" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                      <GripVertical className="size-3.5 text-foreground" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
                         Active Field Sequence
                       </span>
                     </div>
@@ -932,9 +932,9 @@ function CategoryFormContent() {
                             onDrop={(e) => handleDrop(e, idx)}
                             onDragEnd={() => setDraggedIndex(null)}
                             className={cn(
-                              "flex items-center gap-1.5 bg-background border border-border/80 rounded-lg pl-2 pr-1.5 py-1 text-xs font-semibold shadow-2xs transition-all select-none hover:border-primary/50 group",
+                              "flex items-center gap-1.5 bg-background border border-border/80 rounded-lg pl-2 pr-1.5 py-1 text-xs font-semibold shadow-2xs transition-all select-none hover:border-foreground/50 group",
                               draggedIndex === idx &&
-                                "opacity-40 border-dashed border-primary scale-95"
+                                "opacity-40 border-dashed border-foreground scale-95"
                             )}
                           >
                             <span className="size-4 rounded-full bg-muted text-muted-foreground font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -948,7 +948,7 @@ function CategoryFormContent() {
                                 <button
                                   type="button"
                                   title="Move Left"
-                                  className="p-0.5 rounded hover:bg-muted hover:text-primary transition-colors"
+                                  className="p-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
                                   onClick={() => {
                                     const arr = [...selectedFields];
                                     const temp = arr[idx - 1];
@@ -964,7 +964,7 @@ function CategoryFormContent() {
                                 <button
                                   type="button"
                                   title="Move Right"
-                                  className="p-0.5 rounded hover:bg-muted hover:text-primary transition-colors"
+                                  className="p-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
                                   onClick={() => {
                                     const arr = [...selectedFields];
                                     const temp = arr[idx + 1];
@@ -1010,10 +1010,10 @@ function CategoryFormContent() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label
                 className={cn(
-                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-primary/50",
+                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
                   includeInPacking
-                    ? "bg-amber-500/5 border-amber-500/50 ring-1 ring-amber-500/20"
-                    : "bg-card hover:bg-muted/40"
+                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
+                    : "bg-card hover:bg-muted/30"
                 )}
               >
                 <Checkbox
@@ -1033,7 +1033,7 @@ function CategoryFormContent() {
                       Include in Packing
                     </span>
                     {scanPackValidate && (
-                      <span className="text-[10px] font-medium text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      <span className="text-[10px] font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded border">
                         Required
                       </span>
                     )}
@@ -1046,10 +1046,10 @@ function CategoryFormContent() {
 
               <label
                 className={cn(
-                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-primary/50",
+                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
                   scanPackValidate
-                    ? "bg-blue-500/5 border-blue-500/50 ring-1 ring-blue-500/20"
-                    : "bg-card hover:bg-muted/40"
+                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
+                    : "bg-card hover:bg-muted/30"
                 )}
               >
                 <Checkbox
@@ -1075,10 +1075,10 @@ function CategoryFormContent() {
 
               <label
                 className={cn(
-                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-primary/50",
+                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
                   useInAssembledPacking
-                    ? "bg-purple-500/5 border-purple-500/50 ring-1 ring-purple-500/20"
-                    : "bg-card hover:bg-muted/40"
+                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
+                    : "bg-card hover:bg-muted/30"
                 )}
               >
                 <Checkbox
@@ -1109,7 +1109,7 @@ function CategoryFormContent() {
                   {subCategories.filter((s) => s.status !== "No").length > 0 && (
                     <Badge
                       variant="secondary"
-                      className="text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                      className="text-xs font-bold bg-muted text-foreground border"
                     >
                       {subCategories.filter((s) => s.status !== "No").length}
                     </Badge>
@@ -1129,9 +1129,9 @@ function CategoryFormContent() {
               {subCategories.filter((s) => s.status !== "No").length === 0 ? (
                 <div
                   onClick={addSubCategory}
-                  className="rounded-xl border border-dashed border-muted-foreground/30 p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-all flex flex-col items-center justify-center gap-2"
+                  className="rounded-xl border border-dashed border-muted-foreground/30 p-6 text-center cursor-pointer hover:border-foreground/50 hover:bg-muted/30 transition-all flex flex-col items-center justify-center gap-2"
                 >
-                  <div className="rounded-full bg-emerald-500/10 p-2.5 text-emerald-600 dark:text-emerald-400">
+                  <div className="rounded-full bg-muted p-2.5 text-foreground">
                     <GitBranch className="size-5" />
                   </div>
                   <p className="text-sm font-semibold text-foreground">
@@ -1139,7 +1139,7 @@ function CategoryFormContent() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Click{" "}
-                    <span className="font-semibold text-primary">
+                    <span className="font-semibold text-foreground">
                       Add Sub Category
                     </span>{" "}
                     to define sub-items under this category
@@ -1161,7 +1161,7 @@ function CategoryFormContent() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                            <span className="size-2 rounded-full bg-emerald-500" />
+                            <span className="size-2 rounded-full bg-foreground" />
                             Sub Category {index + 1}
                           </span>
                           <Button
@@ -1226,9 +1226,8 @@ function CategoryFormContent() {
               type="button"
               onClick={handleSubmit}
               disabled={isPending || isSubmitting}
-              className="gap-2 px-6"
+              className="gap-2 px-6 bg-foreground text-background hover:bg-foreground/90 font-medium"
             >
-
               <Save className="size-4" />
               {isPending || isSubmitting
                 ? "Saving..."

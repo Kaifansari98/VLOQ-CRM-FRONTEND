@@ -1,86 +1,128 @@
 "use client";
 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+interface PurchaseOrderPaginationProps {
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  pageSizeOptions?: number[];
+  onChange: (p: number) => void;
+  onPageSizeChange?: (s: number) => void;
+  className?: string;
+}
 
 export function PurchaseOrderPagination({
   page,
   totalPages,
   total,
   pageSize,
+  pageSizeOptions = [10, 20, 30, 40, 50],
   onChange,
-}: {
-  page: number;
-  totalPages: number;
-  total: number;
-  pageSize: number;
-  onChange: (p: number) => void;
-}) {
+  onPageSizeChange,
+  className,
+}: PurchaseOrderPaginationProps) {
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
-
-  const pages = (() => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    if (page <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
-    if (page >= totalPages - 3) {
-      return [
-        1,
-        "...",
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-        totalPages,
-      ];
-    }
-    return [1, "...", page - 1, page, page + 1, "...", totalPages];
-  })();
+  const displayTotalPages = totalPages || 0;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
-      <p className="text-xs text-muted-foreground">
-        Showing <span className="font-semibold text-foreground">{start}–{end}</span> of{" "}
-        <span className="font-semibold text-foreground">{total}</span> POs
-      </p>
-
-      <div className="flex items-center gap-1">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 w-8 rounded-md p-0"
-          disabled={page === 1}
-          onClick={() => onChange(page - 1)}
-        >
-          <ChevronLeft size={14} />
-        </Button>
-
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`d${i}`} className="px-1 text-sm text-muted-foreground">
-              …
-            </span>
-          ) : (
-            <Button
-              key={p}
-              size="sm"
-              variant={p === page ? "default" : "outline"}
-              className="h-8 w-8 rounded-md p-0 text-xs"
-              onClick={() => onChange(p as number)}
-            >
-              {p}
-            </Button>
-          )
-        )}
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 w-8 rounded-md p-0"
-          disabled={page === totalPages || totalPages === 0}
-          onClick={() => onChange(page + 1)}
-        >
-          <ChevronRight size={14} />
-        </Button>
+    <div
+      className={cn(
+        "flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto border-t bg-background px-4 py-3 sm:flex-row sm:gap-8",
+        className
+      )}
+    >
+      <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
+        Showing{" "}
+        <span className="font-semibold text-foreground">
+          {start}–{end}
+        </span>{" "}
+        of <span className="font-semibold text-foreground">{total}</span>{" "}
+        purchase order{total === 1 ? "" : "s"}
+      </div>
+      <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
+        <div className="flex items-center space-x-2">
+          <p className="whitespace-nowrap text-sm font-medium">Rows per page</p>
+          <Select
+            value={`${pageSize}`}
+            onValueChange={(val) => {
+              onPageSizeChange?.(Number(val));
+            }}
+          >
+            <SelectTrigger className="h-8 w-[4.5rem] [&[data-size]]:h-8">
+              <SelectValue placeholder={`${pageSize}`} />
+            </SelectTrigger>
+            <SelectContent side="top">
+              {pageSizeOptions.map((size) => (
+                <SelectItem key={size} value={`${size}`}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-center text-sm font-medium">
+          Page {total === 0 ? "1 of 0" : `${page} of ${displayTotalPages}`}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            aria-label="Go to first page"
+            variant="outline"
+            size="icon"
+            className="hidden size-8 lg:flex"
+            onClick={() => onChange(1)}
+            disabled={page <= 1}
+          >
+            <ChevronsLeft className="size-4" />
+          </Button>
+          <Button
+            aria-label="Go to previous page"
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={() => onChange(page - 1)}
+            disabled={page <= 1}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            aria-label="Go to next page"
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={() => onChange(page + 1)}
+            disabled={page >= displayTotalPages || displayTotalPages === 0}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button
+            aria-label="Go to last page"
+            variant="outline"
+            size="icon"
+            className="hidden size-8 lg:flex"
+            onClick={() => onChange(displayTotalPages)}
+            disabled={page >= displayTotalPages || displayTotalPages === 0}
+          >
+            <ChevronsRight className="size-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

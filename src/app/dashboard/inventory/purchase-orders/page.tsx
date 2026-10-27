@@ -45,11 +45,12 @@ const router = useRouter();
       page,
       search: search || undefined,
       status: statusFilter || undefined,
+      limit: pageSize,
     })
       .then((res) => {
         setPurchaseOrders(res.purchase_orders ?? []);
         setTotal(res.total ?? 0);
-        setPageSize(res.page_size ?? 20);
+        setPageSize(res.page_size ?? pageSize);
         setTotalPages(res.total_pages ?? 0);
       })
       .catch(() => {
@@ -59,7 +60,7 @@ const router = useRouter();
         });
       })
       .finally(() => setLoading(false));
-  }, [vendorId, page, search, statusFilter]);
+  }, [vendorId, page, pageSize, search, statusFilter]);
 
   useEffect(() => {
     fetchData();
@@ -133,6 +134,10 @@ const router = useRouter();
                 top: 0,
                 behavior: "smooth",
               });
+            }}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
             }}
             onOpen={(id) => router.push(`/dashboard/inventory/purchase-orders/${id}`)}
           />

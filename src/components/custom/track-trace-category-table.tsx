@@ -177,7 +177,7 @@ function StatusQuickFilter({
   const isFiltered = value !== "all";
   const options = [
     { value: "all", label: "All Status", dot: null },
-    { value: "Yes", label: "Active", dot: "bg-emerald-500" },
+    { value: "Yes", label: "Active", dot: "bg-foreground" },
     { value: "No", label: "Inactive", dot: "bg-slate-400" },
   ];
   const selectedOption = options.find((o) => o.value === value);
@@ -330,7 +330,7 @@ function IOSSwitch({
       }}
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-emerald-500" : "bg-muted-foreground/30"
+        checked ? "bg-foreground" : "bg-muted-foreground/30"
       )}
       title={checked ? "Deactivate Category" : "Activate Category"}
     >
@@ -419,7 +419,7 @@ export default function TrackTraceCategoryTable({
             <div className="min-w-[200px] space-y-0.5">
               <div className="flex items-center gap-1.5 flex-wrap">
                 {isSubCategory && (
-                  <GitBranch className="size-3.5 text-indigo-500/70 shrink-0" />
+                  <GitBranch className="size-3.5 text-muted-foreground/70 shrink-0" />
                 )}
                 <span className="font-semibold text-sm text-foreground">
                   {category.category_name}
@@ -427,7 +427,7 @@ export default function TrackTraceCategoryTable({
                 {isSubCategory && (
                   <Badge
                     variant="secondary"
-                    className="text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 px-1.5 py-0"
+                    className="text-[10px] font-semibold bg-muted text-muted-foreground border-border/50 px-1.5 py-0"
                   >
                     Sub
                   </Badge>
@@ -536,7 +536,7 @@ export default function TrackTraceCategoryTable({
               {includeInPacking && (
                 <Badge
                   variant="secondary"
-                  className="text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 gap-1 px-2 py-0.5"
+                  className="text-[10px] font-semibold bg-muted text-muted-foreground border-border/50 gap-1 px-2 py-0.5"
                 >
                   <Package className="size-3" /> Include in Packing
                 </Badge>
@@ -544,7 +544,7 @@ export default function TrackTraceCategoryTable({
               {scanPackValidate && (
                 <Badge
                   variant="secondary"
-                  className="text-[10px] font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20 gap-1 px-2 py-0.5"
+                  className="text-[10px] font-semibold bg-muted text-muted-foreground border-border/50 gap-1 px-2 py-0.5"
                 >
                   <PackageCheck className="size-3" /> Scan & Pack
                 </Badge>
@@ -552,7 +552,7 @@ export default function TrackTraceCategoryTable({
               {useInAssembledPacking && (
                 <Badge
                   variant="secondary"
-                  className="text-[10px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20 gap-1 px-2 py-0.5"
+                  className="text-[10px] font-semibold bg-muted text-muted-foreground border-border/50 gap-1 px-2 py-0.5"
                 >
                   <Boxes className="size-3" /> Assembled
                 </Badge>
@@ -580,10 +580,10 @@ export default function TrackTraceCategoryTable({
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize w-[65px] justify-center",
+                  "text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize w-[68px] justify-center shadow-2xs",
                   isActive
-                    ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/30"
-                    : "bg-muted text-muted-foreground border-border"
+                    ? "bg-foreground/10 text-foreground border-foreground/25"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
                 )}
               >
                 {isActive ? "Active" : "Inactive"}

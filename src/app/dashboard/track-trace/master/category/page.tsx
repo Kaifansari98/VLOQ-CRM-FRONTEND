@@ -239,16 +239,15 @@ export default function ProjectCategoriesPage() {
         </div>
       </header>
 
-      {/* ── Main Content ── */}
-      <main className="flex-1 overflow-x-hidden py-4">
-        <div className="flex flex-col gap-4 px-4">
+      <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 dark:bg-zinc-950 p-4 md:p-6">
+        <div className="flex w-full flex-col gap-5">
           {/* Header Title & Actions */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Project Categories
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Search, filter, and configure project categories, prefixes, and module mappings.
               </p>
             </div>
@@ -277,7 +276,7 @@ export default function ProjectCategoriesPage() {
                 onClick={() =>
                   router.push("/dashboard/track-trace/master/category/create")
                 }
-                className="gap-2 text-xs h-8"
+                className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs h-8"
               >
                 <Plus size={15} />
                 <span>New Category</span>
@@ -287,42 +286,34 @@ export default function ProjectCategoriesPage() {
 
           {/* Connect account notice */}
           {hasToken === false && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+            <div className="rounded-xl border border-border/50 bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
               ⚡ Connect your CadBid account to enable automatic category sync.
             </div>
           )}
 
           {/* KPI Stat Cards */}
           {!isLoading && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Total Categories"
-                value={allCategories.length}
-                Icon={Layers}
-                iconColor="text-blue-600 dark:text-blue-400"
-                sub="All main & sub categories"
-              />
-              <StatCard
-                label="Active Categories"
-                value={activeCount}
-                Icon={CheckCircle2}
-                iconColor="text-emerald-600 dark:text-emerald-400"
-                sub="Currently operational"
-              />
-              <StatCard
-                label="Inactive Categories"
-                value={inactiveCount}
-                Icon={XCircle}
-                iconColor="text-muted-foreground"
-                sub="Disabled from system"
-              />
-              <StatCard
-                label="Sub Categories"
-                value={subCount}
-                Icon={GitBranch}
-                iconColor="text-indigo-600 dark:text-indigo-400"
-                sub="Under parent categories"
-              />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border bg-background px-4 py-3 shadow-xs">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Categories</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{allCategories.length}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">All main &amp; sub categories</p>
+              </div>
+              <div className="rounded-xl border bg-background px-4 py-3 shadow-xs">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Categories</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{activeCount}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Currently operational</p>
+              </div>
+              <div className="rounded-xl border bg-background px-4 py-3 shadow-xs">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Inactive Categories</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{inactiveCount}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Disabled from system</p>
+              </div>
+              <div className="rounded-xl border bg-background px-4 py-3 shadow-xs">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sub Categories</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{subCount}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Under parent categories</p>
+              </div>
             </div>
           )}
 
@@ -396,7 +387,7 @@ export default function ProjectCategoriesPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <GitBranch className="size-5 text-indigo-500" />
+              <GitBranch className="size-5 text-foreground" />
               Edit Sub Category
             </DialogTitle>
             {subCategoryToEdit?.parent && (
