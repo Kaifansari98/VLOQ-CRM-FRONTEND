@@ -520,12 +520,20 @@ export type MetalCutlistData = {
   rows: MetalCutlistRow[];
 };
 
-export const useMetalCutlist = (vendorId?: number, leadId?: number) => {
+/** The lead's Track & Trace project; with an instanceId, that instance's own project. */
+export const useMetalCutlist = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["metalCutlist", vendorId, leadId],
+    queryKey: ["metalCutlist", vendorId, leadId, instanceId ?? "all"],
     queryFn: async (): Promise<MetalCutlistData> => {
       const { data } = await apiClient.get(
-        `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/metal-cutlist`
+        `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/metal-cutlist`,
+        {
+          params: instanceId ? { instance_id: instanceId } : undefined,
+        }
       );
       return data?.data ?? { project: null, rows: [] };
     },

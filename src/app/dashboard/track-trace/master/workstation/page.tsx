@@ -17,13 +17,14 @@ import type { MachineFabrication } from "@/types/track-trace";
 import { Button } from "@/components/ui/button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Sparkles } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useVendorById } from "@/api/vendors";
 import { useMachinesByVendor } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import type { MachineData } from "@/types/track-trace";
 import TrackTraceWorkstationTable from "@/components/custom/track-trace-workstation-table";
 import { UserMachineAssignModal } from "@/components/track-trace/UserMachineAssignModal";
+import { GenerateDefaultRulesModal } from "@/components/track-trace/GenerateDefaultRulesModal";
 
 export default function MachineMasterPage() {
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function MachineMasterPage() {
   const { data: machines, isLoading, error, isFetching } = useMachinesByVendor(vendorId!);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignMachineId, setAssignMachineId] = useState<number | null>(null);
+  const [isDefaultRulesModalOpen, setIsDefaultRulesModalOpen] = useState(false);
 
   const handleEdit = (machine: MachineData) => {
     router.push(`/dashboard/track-trace/master/workstation/create?id=${machine.id}`);
@@ -108,16 +110,30 @@ export default function MachineMasterPage() {
             </p>
           </div>
 
-          <Button
-            size="sm"
-            className="gap-2 shrink-0"
-            onClick={() =>
-              router.push(`/dashboard/track-trace/master/workstation/create?fabrication=${fabrication}`)
-            }
-          >
-            <Plus size={15} />
-            Create Workstation
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {(cutlistConfiguration === "rule manage" || cutlistConfiguration === "rule_manage") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shadow-2xs"
+                onClick={() => setIsDefaultRulesModalOpen(true)}
+              >
+                <Sparkles size={14} />
+                Generate Default Rules
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={() =>
+                router.push(`/dashboard/track-trace/master/workstation/create?fabrication=${fabrication}`)
+              }
+            >
+              <Plus size={15} />
+              Create Workstation
+            </Button>
+          </div>
         </div>
 
         <Tabs value={fabrication} onValueChange={(value) => setFabrication(value as MachineFabrication)} className="px-4 mb-4">
@@ -176,6 +192,14 @@ export default function MachineMasterPage() {
           if (!val) setAssignMachineId(null);
         }}
         machineId={assignMachineId}
+        vendorId={vendorId!}
+        userId={userId!}
+      />
+
+      {/* Generate Default Rules Modal */}
+      <GenerateDefaultRulesModal
+        open={isDefaultRulesModalOpen}
+        onOpenChange={setIsDefaultRulesModalOpen}
         vendorId={vendorId!}
         userId={userId!}
       />

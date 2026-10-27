@@ -2,7 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getCutlistHeaderMappings } from "@/api/cutlist-headers";
-import { useRouter } from "next/navigation";
+import {
+  previewCutlistMachineMapping,
+  PreviewMachineInfo,
+} from "@/api/track-trace/active-machines.api";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -56,6 +60,8 @@ import {
   Upload,
   AlertCircle,
   FileSpreadsheet,
+  Hammer,
+  Wrench,
 } from "lucide-react";
 
 import {
@@ -108,6 +114,10 @@ const getProjectFormSchema = (mode: "create" | "edit" = "create") =>
         .min(1, "Project name is required")
         .min(3, "Project name must be at least 3 characters")
         .max(100, "Project name must not exceed 100 characters"),
+
+      fabrication: z
+        .enum(["WOODWORK", "METALWORK"])
+        .default("WOODWORK"),
 
       lead_id: z.number().nullable().optional(),
 
@@ -202,6 +212,7 @@ type ProjectFormData = z.output<typeof projectFormSchema>;
 type TrackTraceProjectFormProps = {
   mode: "create" | "edit";
   uniqueProjectId?: string;
+  initialFabrication?: "WOODWORK" | "METALWORK";
 };
 
 type ExtendedLeadOption = TrackTraceLeadOption & {
@@ -324,11 +335,21 @@ type CutlistPreviewField = {
   missingRows: number[];
 };
 
+type CutlistPreviewRow = {
+  row: number;
+  values: Record<string, string>;
+  missing: string[];
+  duplicates: string[];
+  machineAssignments?: Record<string, boolean>;
+  assignedMachineCodes?: string[];
+};
+
 type CutlistPreview = {
   fileName: string;
   rowCount: number;
   fields: CutlistPreviewField[];
-  rows: Array<{ row: number; values: Record<string, string>; missing: string[]; duplicates: string[] }>;
+  machines?: PreviewMachineInfo[];
+  rows: CutlistPreviewRow[];
   rowErrors: Array<{ row: number; missing: string[]; duplicates: string[] }>;
   uniqueCodeMode: "all-filled" | "all-blank" | "mixed";
   parseError?: string;
@@ -337,7 +358,8 @@ type CutlistPreview = {
 const buildCutlistPreview = async (
   file: File,
   vendorId: number,
-  packingType: PackingType = PackingType.DEFAULT
+  packingType: PackingType = PackingType.DEFAULT,
+  fabrication: "WOODWORK" | "METALWORK" = "WOODWORK"
 ): Promise<CutlistPreview> => {
   try {
     const ExcelJS = await import("exceljs");
@@ -396,16 +418,9 @@ const buildCutlistPreview = async (
 
     const KNOWN_FIELDS_DEF = [
       {
-        key: "group_name",
-        label: "Group Name",
-        aliases: ["group name", "group"],
-        required: true,
-        alwaysInclude: true,
-      },
-      {
-        key: "category_name",
-        label: "Category Name",
-        aliases: ["category name", "category"],
+        key: "item_name",
+        label: "Item Name",
+        aliases: ["item name", "name", "description"],
         required: true,
         alwaysInclude: true,
       },
@@ -417,16 +432,16 @@ const buildCutlistPreview = async (
         alwaysInclude: true,
       },
       {
-        key: "item_name",
-        label: "Item Name",
-        aliases: ["item name", "name", "description"],
+        key: "category_name",
+        label: "Category Name",
+        aliases: ["category name", "category"],
         required: true,
         alwaysInclude: true,
       },
       {
-        key: "qty",
-        label: "Quantity",
-        aliases: ["qty", "quantity"],
+        key: "group_name",
+        label: "Group Name",
+        aliases: ["group name", "group"],
         required: true,
         alwaysInclude: true,
       },
@@ -449,6 +464,13 @@ const buildCutlistPreview = async (
         label: "Thickness",
         aliases: ["thickness", "l3"],
         required: false,
+        alwaysInclude: true,
+      },
+      {
+        key: "qty",
+        label: "Quantity",
+        aliases: ["qty", "quantity"],
+        required: true,
         alwaysInclude: true,
       },
       {
@@ -483,31 +505,59 @@ const buildCutlistPreview = async (
         required: false,
       },
       {
-        key: "sl3",
-        label: "SL3",
-        aliases: ["sl3", "sl 3"],
-        required: false,
-      },
-      {
         key: "weight",
         label: "Weight",
-        aliases: ["weight", "wt", "wt.", "weight kg", "weight (kg)", "total weight", "totalweight"],
+        aliases: [
+          "weight",
+          "wt",
+          "wt.",
+          "weight kg",
+          "weight (kg)",
+          "total weight",
+          "totalweight",
+        ],
         required: false,
       },
       {
         key: "custom_packing_group",
         label: "Custom Packing Group",
-        aliases: ["custom packing group", "custom_packing_group", "custom packing", "packing group"],
+        aliases: [
+          "custom packing group",
+          "custom_packing_group",
+          "custom packing",
+          "packing group",
+        ],
         required: isCustomGroup,
         alwaysInclude: isCustomGroup,
       },
+      {
+        key: "top_drill",
+        label: "Top Drill",
+        aliases: ["top drill", "topdrill", "top_drill"],
+        required: false,
+      },
+      {
+        key: "bottom_drill",
+        label: "Bottom Drill",
+        aliases: [
+          "bottom drill",
+          "bottomdrill",
+          "bottom_drill",
+          "btm drill",
+          "btmdrill",
+        ],
+        required: false,
+      },
+      {
+        key: "is_drill",
+        label: "Is Drill",
+        aliases: ["is drill", "isdrill", "is_drill", "drill"],
+        required: false,
+      },
     ];
-
-    const matchedColumnNumbers = new Set<number>();
 
     const matchedKnownFields = KNOWN_FIELDS_DEF.map((def) => {
       const column = getColumnForAliases(def.key, def.aliases);
-      if (column > 0) matchedColumnNumbers.add(column);
       return {
         key: def.key,
         label: def.label,
@@ -517,20 +567,17 @@ const buildCutlistPreview = async (
       };
     });
 
-    const extraPresentFields = excelHeaders
-      .filter((h) => !matchedColumnNumbers.has(h.column))
-      .map((h) => ({
-        key: `extra_${h.column}_${h.normalized.replace(/[^a-z0-9]+/g, "_")}`,
-        label: h.header,
-        required: false,
-        alwaysInclude: false,
-        column: h.column,
-      }));
-
-    const activePreviewFields = [
-      ...matchedKnownFields.filter((f) => f.alwaysInclude || f.column > 0),
-      ...extraPresentFields,
-    ];
+    // Show only the columns that exist in our Excel template
+    const activePreviewFields = matchedKnownFields
+      .filter((f) => f.alwaysInclude || f.column > 0)
+      .sort((a, b) => {
+        if (a.column > 0 && b.column > 0) {
+          return a.column - b.column;
+        }
+        if (a.column > 0) return -1;
+        if (b.column > 0) return 1;
+        return 0;
+      });
 
     const dataRows: Array<{ row: number; values: Record<string, string> }> = [];
     let dataRowIndex = 1;
@@ -598,7 +645,30 @@ const buildCutlistPreview = async (
       }
     });
 
-    const rows = dataRows.map((row) => {
+    let previewMachines: PreviewMachineInfo[] = [];
+    let previewRowMappings: Array<{
+      rowIndex: number;
+      assignedMachineIds: number[];
+      assignedMachineCodes: string[];
+      machineAssignments: Record<string, boolean>;
+    }> = [];
+
+    if (vendorId && dataRows.length > 0) {
+      try {
+        const mappingRes = await previewCutlistMachineMapping(
+          vendorId,
+          dataRows.map((r) => r.values),
+          packingType,
+          fabrication
+        );
+        previewMachines = mappingRes.machines || [];
+        previewRowMappings = mappingRes.rowMappings || [];
+      } catch (err) {
+        console.warn("Could not preview machine mappings:", err);
+      }
+    }
+
+    const rows: CutlistPreviewRow[] = dataRows.map((row, idx) => {
       const missing = fields
         .filter(
           (field) =>
@@ -617,7 +687,18 @@ const buildCutlistPreview = async (
         (codeCounts.get(row.values.unique_code) ?? 0) > 1
           ? ["Unique Code"]
           : [];
-      return { ...row, missing, duplicates };
+
+      const mapping = previewRowMappings[idx];
+      const machineAssignments = mapping?.machineAssignments || {};
+      const assignedMachineCodes = mapping?.assignedMachineCodes || [];
+
+      return {
+        ...row,
+        missing,
+        duplicates,
+        machineAssignments,
+        assignedMachineCodes,
+      };
     });
 
     const rowErrors = rows
@@ -628,6 +709,7 @@ const buildCutlistPreview = async (
       fileName: file.name,
       rowCount: dataRows.length,
       fields,
+      machines: previewMachines,
       rows,
       rowErrors,
       uniqueCodeMode,
@@ -823,8 +905,19 @@ function LeadSearchBox({
 export default function TrackTraceProjectForm({
   mode,
   uniqueProjectId,
+  initialFabrication,
 }: TrackTraceProjectFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryFabrication =
+    searchParams.get("fabrication")?.toUpperCase() === "METALWORK"
+      ? "METALWORK"
+      : searchParams.get("fabrication")?.toUpperCase() === "WOODWORK"
+        ? "WOODWORK"
+        : undefined;
+
+  const defaultFabrication: "WOODWORK" | "METALWORK" =
+    initialFabrication ?? queryFabrication ?? "WOODWORK";
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
 
@@ -869,6 +962,7 @@ export default function TrackTraceProjectForm({
     resolver: zodResolver(getProjectFormSchema(mode)),
     defaultValues: {
       projectName: "",
+      fabrication: defaultFabrication,
       lead_id: null,
       order_no: "",
       client_name: "",
@@ -1005,15 +1099,20 @@ export default function TrackTraceProjectForm({
     return true;
   };
 
-  const previewCutlistFile = async (files: File[]) => {
+  const previewCutlistFile = async (
+    files: File[],
+    overrideFabrication?: "WOODWORK" | "METALWORK"
+  ) => {
     const file = files[0];
     setCutlistPreview(null);
     if (!file) return;
 
     setIsPreviewingCutlist(true);
     const packingType = form.getValues("packing_type");
+    const fabrication =
+      overrideFabrication ?? form.getValues("fabrication") ?? defaultFabrication;
     const preview = vendorId
-      ? await buildCutlistPreview(file, Number(vendorId), packingType)
+      ? await buildCutlistPreview(file, Number(vendorId), packingType, fabrication)
       : { fileName: file.name, rowCount: 0, fields: [], rows: [], rowErrors: [], uniqueCodeMode: "all-blank" as const, parseError: "Vendor information not found." };
     setCutlistPreview(preview);
     setIsPreviewingCutlist(false);
@@ -1041,9 +1140,14 @@ export default function TrackTraceProjectForm({
     const persistedPackingType =
       project.packing_type ?? project.packingType ?? project.project_type;
     const normalizedPackingType = normalizePackingType(persistedPackingType);
+    const persistedFabrication =
+      (project as any)?.fabrication === "METALWORK"
+        ? "METALWORK"
+        : defaultFabrication;
 
     resetProjectForm({
       projectName: project.project_name || "",
+      fabrication: persistedFabrication,
       lead_id: project.lead_id || null,
       order_no: project.order_no || "",
       client_name: project.client_name || "",
@@ -1098,7 +1202,7 @@ export default function TrackTraceProjectForm({
   const handleDownloadTemplate = () => {
     try {
       const link = document.createElement("a");
-      link.href = "/TrackTrace_Project_Template.xlsx";
+      link.href = `/TrackTrace_Project_Template.xlsx?v=${Date.now()}`;
       link.download = "TrackTrace_Project_Template.xlsx";
       document.body.appendChild(link);
       link.click();
@@ -1397,6 +1501,7 @@ export default function TrackTraceProjectForm({
       vendorId,
       lead_id: isCrmEnabled && data.lead_id ? Number(data.lead_id) : null,
       projectName: data.projectName.trim(),
+      fabrication: data.fabrication,
 
       order_no: data.order_no?.trim() || undefined,
       client_name: data.client_name?.trim() || undefined,
@@ -1467,9 +1572,13 @@ export default function TrackTraceProjectForm({
         });
 
         if (payload.is_multi_location && response.unique_project_id) {
-          router.push(`/dashboard/track-trace/manage-project/${response.unique_project_id}/locations`);
+          router.push(`/dashboard/track-trace/manage-project/${response.unique_project_id}/locations?fabrication=${data.fabrication}`);
         } else {
-          router.push("/dashboard/track-trace/manage-project");
+          router.push(
+            data.fabrication === "METALWORK"
+              ? "/dashboard/track-trace/metalwork-projects"
+              : "/dashboard/track-trace/manage-project"
+          );
         }
       },
 
@@ -1535,7 +1644,13 @@ export default function TrackTraceProjectForm({
           type="button"
           variant="outline"
           className="mt-4"
-          onClick={() => router.push("/dashboard/track-trace/manage-project")}
+          onClick={() =>
+            router.push(
+              form.getValues("fabrication") === "METALWORK"
+                ? "/dashboard/track-trace/metalwork-projects"
+                : "/dashboard/track-trace/manage-project"
+            )
+          }
         >
           Back to Projects
         </Button>
@@ -1549,7 +1664,9 @@ export default function TrackTraceProjectForm({
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">
-            {mode === "edit" ? "Edit Track & Trace Project" : "Create New Project"}
+            {mode === "edit"
+              ? `Edit ${form.watch("fabrication") === "METALWORK" ? "Metalwork" : "Woodwork"} Project`
+              : `Create New ${form.watch("fabrication") === "METALWORK" ? "Metalwork" : "Woodwork"} Project`}
           </h1>
           {mode === "edit" && (
             <Badge
@@ -2198,7 +2315,20 @@ export default function TrackTraceProjectForm({
                 <FileSpreadsheet className="size-6" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-lg">Review CutList Excel</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <DialogTitle className="text-lg">Review CutList Excel</DialogTitle>
+                  <Badge variant="outline" className="text-[11px] font-semibold gap-1">
+                    {form.watch("fabrication") === "METALWORK" ? (
+                      <>
+                        <Wrench className="size-3" /> Metalwork
+                      </>
+                    ) : (
+                      <>
+                        <Hammer className="size-3" /> Woodwork
+                      </>
+                    )}
+                  </Badge>
+                </div>
                 <DialogDescription className="mt-1 text-xs">
                   Check your Excel rows and required fields before uploading the project.
                 </DialogDescription>
@@ -2209,7 +2339,7 @@ export default function TrackTraceProjectForm({
 
           {cutlistPreview && (
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-              <div className="grid gap-2 sm:grid-cols-5">
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
                 <div className="rounded-md border bg-muted/20 px-3 py-2">
                   <p className="text-xs text-muted-foreground">File</p>
                   <p className="mt-0.5 truncate text-xs font-medium">{cutlistPreview.fileName}</p>
@@ -2232,6 +2362,14 @@ export default function TrackTraceProjectForm({
                   <p className="text-xs text-muted-foreground">Needs attention</p>
                   <p className={cn("mt-0.5 text-xs font-semibold", previewInvalidRows.length ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>{previewInvalidRows.length}</p>
                 </div>
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Machine routing</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+                    {cutlistPreview.machines && cutlistPreview.machines.length > 0
+                      ? `${cutlistPreview.machines.length} machine${cutlistPreview.machines.length > 1 ? "s" : ""} active`
+                      : "No machines"}
+                  </p>
+                </div>
               </div>
 
               {cutlistPreview.parseError ? (
@@ -2241,15 +2379,19 @@ export default function TrackTraceProjectForm({
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-3 rounded-t-md border border-b-0 bg-slate-50 px-3 py-2 dark:bg-slate-900/70">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-md border border-b-0 bg-slate-50 px-3 py-2 dark:bg-slate-900/70">
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span className="font-semibold text-foreground">Rows preview</span>
                       <span>{previewRows.length} item{previewRows.length === 1 ? "" : "s"}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-destructive" />Missing</span>
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Duplicate</span>
                       <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Passed</span>
+                      <span className="hidden sm:inline h-3 w-px bg-border" />
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">Machines:</span>
+                      <span className="inline-flex items-center gap-1"><span className="inline-flex size-3.5 items-center justify-center rounded bg-rose-600 text-[9px] font-bold text-white shadow-xs">✕</span> Not routed</span>
+                      <span className="inline-flex items-center gap-1"><span className="inline-flex size-3.5 items-center justify-center rounded bg-emerald-600 text-[9px] font-bold text-white shadow-xs">✓</span> Routed</span>
                     </div>
                   </div>
                   <div className="max-h-[430px] overflow-auto rounded-b-md border bg-background shadow-sm">
@@ -2261,6 +2403,29 @@ export default function TrackTraceProjectForm({
                           {cutlistPreview.fields.map((field) => (
                             <th key={field.key} className="min-w-[110px] whitespace-nowrap border-r px-2.5 py-2">{field.label}</th>
                           ))}
+                          {cutlistPreview.machines?.map((machine, mIdx) => {
+                            const routedCount = cutlistPreview.rows.filter(
+                              (r) => r.machineAssignments?.[machine.machine_code]
+                            ).length;
+                            return (
+                              <th
+                                key={machine.id}
+                                className="min-w-[125px] whitespace-nowrap border-r bg-slate-200/70 px-2.5 py-2 text-center dark:bg-slate-800/80"
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="rounded bg-background px-1 font-mono text-[9px] text-muted-foreground ring-1 ring-border">
+                                    {String(mIdx + 1).padStart(2, "0")}
+                                  </span>
+                                  <span className="font-semibold text-foreground">
+                                    {machine.machine_code}
+                                  </span>
+                                </div>
+                                <div className="mt-0.5 text-[9px] font-normal normal-case text-muted-foreground">
+                                  {routedCount}/{cutlistPreview.rows.length} routed
+                                </div>
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -2303,6 +2468,35 @@ export default function TrackTraceProjectForm({
                                         ? "Missing"
                                         : row.values[field.key] || ""}
                                     {duplicate && <span className="ml-1">(duplicate)</span>}
+                                  </td>
+                                );
+                              })}
+                              {cutlistPreview.machines?.map((machine) => {
+                                const isAssigned = Boolean(row.machineAssignments?.[machine.machine_code]);
+                                return (
+                                  <td
+                                    key={machine.id}
+                                    className={cn(
+                                      "border-r px-2.5 py-2 text-center transition-colors",
+                                      isAssigned
+                                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+                                        : ""
+                                    )}
+                                    title={
+                                      isAssigned
+                                        ? `Will route to ${machine.machine_code}`
+                                        : `Not routed to ${machine.machine_code}`
+                                    }
+                                  >
+                                    {isAssigned ? (
+                                      <span className="inline-flex size-5 items-center justify-center rounded bg-emerald-600 text-[11px] font-bold text-white shadow-xs dark:bg-emerald-500 dark:text-emerald-950">
+                                        ✓
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex size-5 items-center justify-center rounded bg-rose-600 text-[11px] font-bold text-white shadow-xs dark:bg-rose-600 dark:text-white">
+                                        ✕
+                                      </span>
+                                    )}
                                   </td>
                                 );
                               })}

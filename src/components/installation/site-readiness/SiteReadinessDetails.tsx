@@ -46,14 +46,12 @@ interface ChecklistItem {
   remark: string;
 }
 
-const CHECKLIST_ITEMS = [
-  { type: "1st_layer_paint", label: "1st Layer of Paint" },
-  { type: "dust_free_area", label: "Dust free working area" },
-  { type: "cept_completion", label: "CEPT Completion Status" },
-  { type: "appliances_on_site", label: "Appliances on site" },
-  { type: "client_scope_material", label: "Client's scope material" },
-  { type: "counter_top_material", label: "Counter Top Material" },
-];
+function checklistFromResponse(response: { questions: { key: string; label: string }[]; records: { id: number; type: string; value: boolean | null; remark?: string }[] }): ChecklistItem[] {
+  return response.questions.map((question) => {
+    const existing = response.records.find((record) => record.type === question.key);
+    return { type: question.key, label: question.label, id: existing?.id, value: existing?.value ?? null, remark: existing?.remark ?? "" };
+  });
+}
 
 export default function SiteReadinessDetails({
   leadId,
@@ -69,14 +67,7 @@ export default function SiteReadinessDetails({
     (state) => state.customPrivileges.codes,
   );
 
-  const [checklistData, setChecklistData] = useState<ChecklistItem[]>(
-    CHECKLIST_ITEMS.map((item) => ({
-      type: item.type,
-      label: item.label,
-      value: null,
-      remark: "",
-    })),
-  );
+  const [checklistData, setChecklistData] = useState<ChecklistItem[]>([]);
 
   const { data: leadData } = useLeadStatus(leadId, vendor_id);
   const leadStatus = leadData?.status;
@@ -107,73 +98,29 @@ export default function SiteReadinessDetails({
   });
 
   useEffect(() => {
+    let cancelled = false;
     const fetchRecords = async () => {
       if (!vendor_id || !leadId) return;
-
+      setFetchLoading(true);
+      setError(null);
+      setChecklistData([]);
       try {
-        setFetchLoading(true);
-        const response = await getSiteReadinessRecords(
-          vendor_id,
-          leadId,
-          accountId,
-        );
-
-        if (response?.records && response.records.length > 0) {
-          const updatedChecklist = checklistData.map((item) => {
-            const existing = response.records.find(
-              (r: any) => r.type === item.type,
-            );
-            return existing
-              ? {
-                ...item,
-                id: existing.id,
-                value: existing.value,
-                remark: existing.remark || "",
-              }
-              : item;
-          });
-          setChecklistData(updatedChecklist);
-        }
-      } catch (err) {
-        console.error("Error fetching records:", err);
+        const response = await getSiteReadinessRecords(vendor_id, leadId, accountId);
+        if (!cancelled) setChecklistData(checklistFromResponse(response));
+      } catch {
+        if (!cancelled) setError("Failed to load the site readiness checklist. Please retry.");
       } finally {
-        setFetchLoading(false);
+        if (!cancelled) setFetchLoading(false);
       }
     };
-
-    fetchRecords();
+    void fetchRecords();
+    return () => { cancelled = true; };
   }, [vendor_id, leadId, accountId]);
 
   const refetchRecords = async () => {
     if (!vendor_id || !leadId) return;
-
-    const response = await getSiteReadinessRecords(
-      vendor_id,
-      leadId,
-      accountId,
-    );
-    if (response?.records) {
-      const updated = CHECKLIST_ITEMS.map((item) => {
-        const existing = response.records.find(
-          (r: any) => r.type === item.type,
-        );
-        return existing
-          ? {
-            type: item.type,
-            label: item.label,
-            id: existing.id,
-            value: existing.value,
-            remark: existing.remark || "",
-          }
-          : {
-            type: item.type,
-            label: item.label,
-            value: null,
-            remark: "",
-          };
-      });
-      setChecklistData(updated);
-    }
+    const response = await getSiteReadinessRecords(vendor_id, leadId, accountId);
+    setChecklistData(checklistFromResponse(response));
   };
 
   const handleChecklistChange = (
@@ -259,7 +206,7 @@ export default function SiteReadinessDetails({
   ).length;
 
   const totalCount = checklistData.length;
-  const completionPercentage = Math.round((completedCount / totalCount) * 100);
+  const completionPercentage = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
 
   if (fetchLoading) {
     return (
@@ -296,7 +243,7 @@ export default function SiteReadinessDetails({
       {error && (
         <Alert variant="destructive" className="py-2">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">{error}</AlertDescription>
+          <AlertDescription className="text-sm">{error}{!checklistData.length && <Button variant="link" onClick={() => refetchRecords().then(() => setError(null)).catch(() => setError("Failed to load the site readiness checklist. Please retry."))}>Retry</Button>}</AlertDescription>
         </Alert>
       )}
 
@@ -344,7 +291,7 @@ export default function SiteReadinessDetails({
                   >
                     <Button
                       onClick={handleSubmit}
-                      disabled={loading || !canEditChecklist}
+                      disabled={loading || !canEditChecklist || !checklistData.length}
                       size="sm"
                     >
                       {loading ? (

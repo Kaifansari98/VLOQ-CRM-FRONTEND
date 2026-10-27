@@ -102,7 +102,7 @@ export default function TrackTraceProjectsPage({ fabrication }: { fabrication: "
 
   const handleEditProject = (row: TrackTraceProjectListRow) => {
     if (row.isDeleted) return;
-    router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}/edit`);
+    router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}/edit?fabrication=${fabrication}`);
   };
 
   const handlePackaging = (row: TrackTraceProjectListRow) => {
@@ -219,7 +219,7 @@ export default function TrackTraceProjectsPage({ fabrication }: { fabrication: "
           <Button
             size="sm"
             className="gap-2 shrink-0"
-            onClick={() => router.push("/dashboard/track-trace/manage-project/create")}
+            onClick={() => router.push(`/dashboard/track-trace/manage-project/create?fabrication=${fabrication}`)}
           >
             <Plus size={15} />
             Create New Project

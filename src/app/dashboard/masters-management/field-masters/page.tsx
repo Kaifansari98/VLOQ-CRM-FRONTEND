@@ -22,6 +22,7 @@ import SimpleCompanyVendorMastersTable from "@/components/custom/SimpleCompanyVe
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
+import SiteReadinessQuestionMasters from "@/components/custom/SiteReadinessQuestionMasters";
 import WalkinQuestionMasters from "@/components/custom/WalkinQuestionMasters";
 import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import * as React from "react";
@@ -152,6 +153,9 @@ export default function FieldMastersPage() {
             cardContent: <WalkinQuestionMasters />,
           },
         ]
+      : []),
+    ...(isVendorUser && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
+      ? [{ id: "site-readiness-list", title: "Site Readiness List", color: "bg-black hover:bg-black", cardContent: <SiteReadinessQuestionMasters /> }]
       : []),
     ...(showBroadcastMaster
       ? [

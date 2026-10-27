@@ -64,6 +64,9 @@ const WOODWORK_ONLY_COLUMNS = [
   "elb",
   "esl",
   "esr",
+  "top_drill",
+  "bottom_drill",
+  "is_drill",
 ];
 
 const SEARCH_FIELDS = [
@@ -73,6 +76,8 @@ const SEARCH_FIELDS = [
   "group_name",
   "category_name",
   "material_details",
+  "top_drill",
+  "bottom_drill",
 ];
 
 const searchRows: FilterFn<CutListRow> = (row, _columnId, filterValue) => {

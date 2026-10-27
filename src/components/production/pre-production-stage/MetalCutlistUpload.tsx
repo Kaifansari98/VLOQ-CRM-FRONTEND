@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, CloudUpload, Eye, FileText, Loader2, RotateCcw, Search, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
-import { useMetalCutlist, useSaveMetalCutlist } from "@/api/production/production-api";
+import { useMetalCutlist, useSaveMetalCutlist, useUploadPreProductionFiles } from "@/api/production/production-api";
 import { cn } from "@/lib/utils";
 import type { MetalCutlistResult } from "@/lib/metal-cutlist-parser";
 import ProjectCutlistTable from "@/components/track-trace/ProjectCutlistTable";
@@ -33,8 +34,12 @@ const COUNT_COLUMNS = [
 export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { canUpload: boolean; leadId: number; instanceId?: number | null }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId);
+  const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId, instanceId);
   const { mutateAsync: saveMetalCutlist, isPending: saving } = useSaveMetalCutlist(vendorId, leadId);
+  const queryClient = useQueryClient();
+  const { mutateAsync: uploadSource, isPending: uploadingSource } = useUploadPreProductionFiles(vendorId, leadId, instanceId);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const sourceDocumentId = useRef<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<MetalCutlistResult | null>(null);
@@ -55,6 +60,8 @@ export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { 
       const { extractMetalCutlist } = await import("@/lib/extract-metal-cutlist");
       const extracted = await extractMetalCutlist(file, setProgress);
       setResult(extracted);
+      setSourceFile(file);
+      sourceDocumentId.current = null;
       setFileName(file.name);
       setRemoved([]);
       setQuery("");
@@ -79,12 +86,23 @@ export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { 
   const warnings = result?.warnings ?? [];
   const project = saved?.project ?? null;
   const savedCount = saved?.rows.length ?? 0;
-  const canSave = canUpload && !!vendorId && kept.length > 0 && !!userId && !savedLoading;
+  const canSave = canUpload && !!sourceFile && !uploadingSource && !!vendorId && kept.length > 0 && !!userId && !savedLoading;
 
   async function saveCutlist() {
-    if (!canSave) return;
+    if (!canSave || !sourceFile) return;
     try {
+      if (!sourceDocumentId.current) {
+        const source = new FormData();
+        source.append("files", sourceFile);
+        source.append("created_by", String(userId));
+        const uploaded = await uploadSource(source);
+        sourceDocumentId.current = uploaded?.data?.[0]?.id ?? null;
+        if (!sourceDocumentId.current) throw new Error("Could not save the source PDF.");
+        queryClient.invalidateQueries({ queryKey: ["preProductionFiles", vendorId, leadId] });
+        queryClient.invalidateQueries({ queryKey: ["preProductionFilesReady", vendorId, leadId] });
+      }
       const formData = new FormData();
+      formData.append("source_document_id", String(sourceDocumentId.current));
       let imageCount = 0;
       const parts = [];
       for (const { part } of kept) {
@@ -105,6 +123,8 @@ export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { 
       setConfirmOpen(false);
       setOpen(false);
       setResult(null);
+      setSourceFile(null);
+      sourceDocumentId.current = null;
       setRemoved([]);
     } catch (error: any) {
       toastManager.add({

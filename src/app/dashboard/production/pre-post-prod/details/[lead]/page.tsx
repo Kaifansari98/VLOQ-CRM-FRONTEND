@@ -84,6 +84,7 @@ import {
   useLatestOrderLoginByLead,
   useMarkProductionCompleted,
   usePostProductionCompleteness,
+  usePreProductionFiles,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -116,6 +117,15 @@ export default function ProductionLeadDetails() {
     instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const usesPreProductionCompletion = useAppSelector((state) =>
+    state.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+    state.auth.user?.vendor?.is_tracktrace_enabled === true,
+  );
+  const { data: preProductionFiles, isSuccess: preProductionFilesLoaded } = usePreProductionFiles(
+    usesPreProductionCompletion && validInstanceId ? vendorId : undefined,
+    leadIdNum,
+    validInstanceId,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
@@ -394,7 +404,11 @@ export default function ProductionLeadDetails() {
   const missingDocsOrRemarks: string[] = [];
 
   if (validInstanceId) {
-    if (isSmallOrderSingleUploadFlow) {
+    if (usesPreProductionCompletion) {
+      if (!preProductionFilesLoaded || !Array.isArray(preProductionFiles) || preProductionFiles.length === 0) {
+        missingDocsOrRemarks.push("Upload a Woodwork or Metalwork file in Pre-Production Files for this instance");
+      }
+    } else if (isSmallOrderSingleUploadFlow) {
       const hasAnyPostProductionUpload =
         !!instanceCompleteness?.qc_photos ||
         !!instanceCompleteness?.hardware_docs ||
@@ -419,7 +433,7 @@ export default function ProductionLeadDetails() {
   }
 
   if (validInstanceId && currentInstance) {
-    if (!currentInstance?.no_of_boxes || currentInstance?.no_of_boxes <= 0) {
+    if (!usesPreProductionCompletion && (!currentInstance?.no_of_boxes || currentInstance?.no_of_boxes <= 0)) {
       missingPrerequisites.push("Set No. of Boxes");
     }
 
@@ -430,11 +444,12 @@ export default function ProductionLeadDetails() {
 
   const canMarkProductionCompleted =
     !!validInstanceId &&
+    !!currentInstance &&
     !currentInstance?.is_production_completed &&
     missingDocsOrRemarks.length === 0 &&
     missingPrerequisites.length === 0;
 
-  const pendingProductionRequirements = isSmallOrderSingleUploadFlow
+  const pendingProductionRequirements = isSmallOrderSingleUploadFlow && !usesPreProductionCompletion
     ? [
         ...((missingDocsOrRemarks.length > 0
           ? [

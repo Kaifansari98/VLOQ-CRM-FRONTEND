@@ -1513,6 +1513,10 @@ export const useDeleteDocument = (leadId?: number) => {
         exact: false,
       });
 
+      for (const key of ["preProductionFilesReady", "metalCutlist", "track-trace-cutlist", "track-trace-projects", "track-trace-project", "track-trace-leads", "noOfBoxes"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+
       queryClient.invalidateQueries({
         queryKey: ["currentSitePhotosAtSiteReadiness"],
         exact: false,

@@ -13,21 +13,32 @@ import { Input } from "@/components/ui/input";
 export default function ProductionMachineMatrix({
   vendorId,
   leadId,
+  projectId,
 }: {
   vendorId?: number;
   leadId: number;
+  /** Narrows to one instance's project; null means the instance has no project yet. */
+  projectId?: number | null;
 }) {
   const [search, setSearch] = useState("");
   const [defectsOpen, setDefectsOpen] = useState(false);
+  const hasNoProject = projectId === null;
   const { data, isPending, isError, isFetching, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["production-machine-matrix", "lead-scoped", vendorId, leadId],
-    queryFn: () => getTraceTraceDashboard(vendorId!, "all", { lead_id: leadId }),
-    enabled: !!vendorId && leadId > 0,
+    queryKey: ["production-machine-matrix", "lead-scoped", vendorId, leadId, projectId ?? "all"],
+    queryFn: () =>
+      getTraceTraceDashboard(vendorId!, "all", {
+        lead_id: leadId,
+        ...(projectId ? { project_id: projectId } : {}),
+      }),
+    enabled: !!vendorId && leadId > 0 && !hasNoProject,
     refetchInterval: 30_000,
   });
-  // Never render another lead's projects, even if an API returns an unscoped payload.
+  // Never render another lead's (or instance's) projects, even if an API returns an unscoped payload.
   const projects = [...(data?.active ?? []), ...(data?.archived ?? [])].filter(
-    (project) => project.lead_id != null && Number(project.lead_id) === leadId,
+    (project) =>
+      project.lead_id != null &&
+      Number(project.lead_id) === leadId &&
+      (!projectId || Number(project.project_id) === projectId),
   );
   const rows = projects.flatMap((project) =>
     project.machines.map((machine) => ({ project, machine })),
@@ -61,7 +72,13 @@ export default function ProductionMachineMatrix({
           Unable to refresh machine progress. {data ? "Showing the last available data." : "Please try Refresh again."}
         </div>
       )}
-      {!vendorId || isPending ? (
+      {hasNoProject ? (
+        <div className="px-6 py-16 text-center">
+          <Factory className="mx-auto mb-3 size-8 text-muted-foreground" />
+          <h3 className="font-medium">No Track &amp; Trace project for this instance yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Upload a Woodwork or Metalwork cutlist in Pre-Production Files to create it.</p>
+        </div>
+      ) : !vendorId || isPending ? (
         <div role="status" className="space-y-4 p-6" aria-label="Loading machine progress">
           {[1, 2, 3].map((row) => <div key={row} className="h-14 animate-pulse rounded-lg bg-muted" />)}
         </div>
