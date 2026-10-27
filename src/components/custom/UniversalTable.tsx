@@ -1473,10 +1473,9 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (
-          handlesLargeScaleProjects &&
-          (!isType9 || materialIssueReadyOnly || materialIssueCompletedOnly)
-        ) {
+        // Large-scale leads stay grouped only in Tech Check; Order Login and
+        // Production use the eligible instance rows below.
+        if (handlesLargeScaleProjects && isType8) {
           const structureTypes = Array.from(
             new Set(
               instances
