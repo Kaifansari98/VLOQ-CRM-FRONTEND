@@ -397,7 +397,7 @@ export default function ProjectMachineDetailPage() {
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-blue-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Total Panels
+                  Total Items
                 </span>
                 <div className="flex size-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <Package className="size-4" />
@@ -422,7 +422,7 @@ export default function ProjectMachineDetailPage() {
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-emerald-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {isDispatch ? "Dispatched Panels" : "Scanned Panels"}
+                  {isDispatch ? "Dispatched items" : "Scanned items"}
                 </span>
                 <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="size-4" />
@@ -449,7 +449,7 @@ export default function ProjectMachineDetailPage() {
             <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4.5 shadow-xs transition-all hover:border-amber-500/30 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {isDispatch ? "Pending Dispatch" : "Pending Panels"}
+                  {isDispatch ? "Pending Dispatch" : "Pending items"}
                 </span>
                 <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   <Clock className="size-4" />
@@ -582,7 +582,7 @@ export default function ProjectMachineDetailPage() {
                   <Input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search panels, code, box..."
+                    placeholder="Search items code, box..."
                     className="h-9 w-full rounded-xl pl-9 pr-9 text-xs bg-background shadow-2xs border-border/80 focus-visible:ring-1"
                   />
                   {searchInput && (
@@ -619,70 +619,70 @@ export default function ProjectMachineDetailPage() {
                   <TableRow className="border-b hover:bg-transparent">
                     {isDispatch ? (
                       <>
-                        <TableHead className="w-12 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="w-14 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground pl-6 pr-3 py-4">
                           #
                         </TableHead>
-                        <TableHead className="min-w-[200px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Panel / Item Details
+                        <TableHead className="min-w-[260px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
+                         Item Details
                         </TableHead>
-                        <TableHead className="min-w-[140px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[190px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Dimensions &amp; Specs
                         </TableHead>
-                        <TableHead className="min-w-[120px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[160px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Category &amp; Group
                         </TableHead>
-                        <TableHead className="w-16 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="w-20 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-4 py-4">
                           Qty
                         </TableHead>
-                        <TableHead className="min-w-[120px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[170px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Packing / Box
                         </TableHead>
-                        <TableHead className="min-w-[130px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Packed By
                         </TableHead>
-                        <TableHead className="min-w-[140px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Factory Out By
                         </TableHead>
-                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[160px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Factory Out At
                         </TableHead>
-                        <TableHead className="min-w-[140px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Site By
                         </TableHead>
-                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[160px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Site At
                         </TableHead>
-                        <TableHead className="min-w-[120px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[140px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground pl-5 pr-6 py-4">
                           Status
                         </TableHead>
                       </>
                     ) : (
                       <>
-                        <TableHead className="w-12 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="w-14 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground pl-6 pr-3 py-4">
                           #
                         </TableHead>
-                        <TableHead className="min-w-[220px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Panel / Item Details
+                        <TableHead className="min-w-[280px] w-[22%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
+                         Item Details
                         </TableHead>
-                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[200px] w-[14%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Dimensions &amp; Specs
                         </TableHead>
-                        <TableHead className="min-w-[120px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[170px] w-[13%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Category &amp; Group
                         </TableHead>
-                        <TableHead className="w-16 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="w-20 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-4 py-4">
                           Qty
                         </TableHead>
-                        <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[180px] w-[13%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Status at {currentMachineName}
                         </TableHead>
-                        <TableHead className="min-w-[160px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[180px] w-[13%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           Packing / Box
                         </TableHead>
-                        <TableHead className="min-w-[130px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[160px] w-[11%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-5 py-4">
                           {isPackagingMachine ? "Packed By" : "Scanned By"}
                         </TableHead>
-                        <TableHead className="min-w-[240px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="min-w-[260px] w-[14%] text-[11px] font-bold uppercase tracking-wider text-muted-foreground pl-5 pr-6 py-4">
                           Machine Production Flow
                         </TableHead>
                       </>
@@ -695,45 +695,45 @@ export default function ProjectMachineDetailPage() {
                     // Skeleton Rows
                     Array.from({ length: 6 }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`} className="border-b">
-                        <TableCell className="text-center">
+                        <TableCell className="text-center pl-6 pr-3 py-4">
                           <Skeleton className="mx-auto h-4 w-4" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5 py-4">
                           <div className="space-y-1.5">
                             <Skeleton className="h-4 w-36" />
                             <Skeleton className="h-3 w-24" />
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5 py-4">
                           <Skeleton className="h-4 w-28" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5 py-4">
                           <Skeleton className="h-4 w-20" />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center px-4 py-4">
                           <Skeleton className="mx-auto h-4 w-6" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5 py-4">
                           <Skeleton className="h-6 w-20 rounded-lg" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5 py-4">
                           <Skeleton className="h-6 w-24 rounded-full" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5 py-4">
                           <Skeleton className="h-6 w-20 rounded-full" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={cn("py-4", isDispatch ? "px-5" : "pl-5 pr-6")}>
                           <Skeleton className="h-6 w-24 rounded-lg" />
                         </TableCell>
                         {isDispatch && (
                           <>
-                            <TableCell>
+                            <TableCell className="px-5 py-4">
                               <Skeleton className="h-6 w-24 rounded-full" />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="px-5 py-4">
                               <Skeleton className="h-6 w-24 rounded-lg" />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="pl-5 pr-6 py-4">
                               <Skeleton className="h-6 w-20 rounded-full" />
                             </TableCell>
                           </>
@@ -753,15 +753,15 @@ export default function ProjectMachineDetailPage() {
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-foreground">
-                              No panels found
+                              No items found
                             </p>
                             <p className="text-xs text-muted-foreground max-w-sm">
                               {hasActiveFilters
-                                ? "No panels match the selected filters or search criteria."
+                                ? "No items match the selected filters or search criteria."
                                 : activeTab === "scanned"
-                                ? `No panels have been ${isDispatch ? "dispatched" : `scanned at ${currentMachineName}`} yet.`
+                                ? `No items have been ${isDispatch ? "dispatched" : `scanned at ${currentMachineName}`} yet.`
                                 : activeTab === "pending"
-                                ? `All panels are completed ${isDispatch ? "for dispatch" : `at ${currentMachineName}`}!`
+                                ? `All items are completed ${isDispatch ? "for dispatch" : `at ${currentMachineName}`}!`
                                 : `No items found.`}
                             </p>
                           </div>
@@ -832,12 +832,12 @@ export default function ProjectMachineDetailPage() {
                           className="border-b transition-colors hover:bg-muted/30"
                         >
                           {/* Row # */}
-                          <TableCell className="text-center text-xs font-bold tabular-nums text-muted-foreground">
+                          <TableCell className="text-center text-xs font-bold tabular-nums text-muted-foreground pl-6 pr-3 py-4">
                             {rowNum}
                           </TableCell>
 
                           {/* Panel / Item Details */}
-                          <TableCell className="py-3.5">
+                          <TableCell className="px-5 py-4">
                             <div className="flex flex-col space-y-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-bold text-xs text-foreground leading-snug">
@@ -873,7 +873,7 @@ export default function ProjectMachineDetailPage() {
                           </TableCell>
 
                           {/* Dimensions & Specs */}
-                          <TableCell className="py-3.5 text-xs">
+                          <TableCell className="px-5 py-4 text-xs">
                             <div className="space-y-1">
                               {item.length || item.width || item.thickness ? (
                                 <div className="flex items-center gap-1.5 font-medium tabular-nums text-foreground">
@@ -895,7 +895,7 @@ export default function ProjectMachineDetailPage() {
                                   </span>
                                 )}
                                 {item.material_details && (
-                                  <span className="truncate max-w-[120px]" title={item.material_details}>
+                                  <span className="truncate max-w-[140px]" title={item.material_details}>
                                     {item.material_details}
                                   </span>
                                 )}
@@ -904,18 +904,18 @@ export default function ProjectMachineDetailPage() {
                           </TableCell>
 
                           {/* Category & Group */}
-                          <TableCell className="py-3.5 text-xs">
+                          <TableCell className="px-5 py-4 text-xs">
                             <div className="space-y-1">
                               {item.category_name && (
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] font-semibold py-0 truncate max-w-[120px]"
+                                  className="text-[10px] font-semibold py-0 truncate max-w-[150px]"
                                 >
                                   {item.category_name}
                                 </Badge>
                               )}
                               {item.group_name && (
-                                <p className="text-[11px] font-medium text-muted-foreground truncate max-w-[120px]">
+                                <p className="text-[11px] font-medium text-muted-foreground truncate max-w-[150px]">
                                   {item.group_name}
                                 </p>
                               )}
@@ -923,14 +923,14 @@ export default function ProjectMachineDetailPage() {
                           </TableCell>
 
                           {/* Quantity */}
-                          <TableCell className="text-center font-bold text-xs tabular-nums text-foreground">
+                          <TableCell className="text-center font-bold text-xs tabular-nums text-foreground px-4 py-4">
                             {item.qty}
                           </TableCell>
 
                           {isDispatch ? (
                             <>
                               {/* Packing / Box */}
-                              <TableCell className="py-3.5">
+                              <TableCell className="px-5 py-4">
                                 {item.boxes && item.boxes.length > 0 ? (
                                   <div className="flex flex-wrap items-center gap-1.5">
                                     {item.boxes.map((b) => (
@@ -966,7 +966,7 @@ export default function ProjectMachineDetailPage() {
                               </TableCell>
 
                               {/* Packed By */}
-                              <TableCell className="py-3.5 text-xs">
+                              <TableCell className="px-5 py-4 text-xs">
                                 {packedBy ? (
                                   packedAt ? (
                                     <Tooltip>
@@ -995,7 +995,7 @@ export default function ProjectMachineDetailPage() {
                               </TableCell>
 
                               {/* Factory Out By */}
-                              <TableCell className="py-3.5 text-xs">
+                              <TableCell className="px-5 py-4 text-xs">
                                 {factoryOutBy ? (
                                   <div className="flex items-center gap-1.5 font-medium text-foreground">
                                     <User className="size-3 text-muted-foreground shrink-0" />
@@ -1007,7 +1007,7 @@ export default function ProjectMachineDetailPage() {
                               </TableCell>
 
                               {/* Factory Out At */}
-                              <TableCell className="py-3.5 text-xs">
+                              <TableCell className="px-5 py-4 text-xs">
                                 {factoryOutAt ? (
                                   <div className="flex items-center gap-1.5 font-medium text-foreground">
                                     <Calendar className="size-3 text-muted-foreground shrink-0" />
@@ -1026,7 +1026,7 @@ export default function ProjectMachineDetailPage() {
                               </TableCell>
 
                               {/* Site By */}
-                              <TableCell className="py-3.5 text-xs">
+                              <TableCell className="px-5 py-4 text-xs">
                                 {siteVerifyBy ? (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1069,7 +1069,7 @@ export default function ProjectMachineDetailPage() {
                               </TableCell>
 
                               {/* Site At (Item Site Verify Time) */}
-                              <TableCell className="py-3.5 text-xs">
+                              <TableCell className="px-5 py-4 text-xs">
                                 {siteVerifyAt ? (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1126,7 +1126,7 @@ export default function ProjectMachineDetailPage() {
                               </TableCell>
 
                               {/* Status */}
-                              <TableCell className="py-3.5">
+                              <TableCell className="pl-5 pr-6 py-4">
                                 {siteVerifyAt ? (
                                   <Badge
                                     variant="outline"
@@ -1165,7 +1165,7 @@ export default function ProjectMachineDetailPage() {
                           ) : (
                             <>
                               {/* Status at this machine */}
-                          <TableCell className="py-3.5">
+                          <TableCell className="px-5 py-4">
                             {isPackagingMachine && item.boxes && item.boxes.length > 1 ? (
                               <div className="flex flex-col gap-1.5 items-start">
                                 {item.boxes.map((b) => (
@@ -1294,7 +1294,7 @@ export default function ProjectMachineDetailPage() {
                           </TableCell>
 
                           {/* Packing / Box Details */}
-                          <TableCell className="py-3.5">
+                          <TableCell className="px-5 py-4">
                             {item.boxes && item.boxes.length > 0 ? (
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {item.boxes.map((b) => (
@@ -1341,7 +1341,7 @@ export default function ProjectMachineDetailPage() {
                           </TableCell>
 
                           {/* Packed By / Scanned By */}
-                          <TableCell className="py-3.5 text-xs">
+                          <TableCell className="px-5 py-4 text-xs">
                             {operatorName ? (
                               operatorAt ? (
                                 <Tooltip>
@@ -1370,7 +1370,7 @@ export default function ProjectMachineDetailPage() {
                           </TableCell>
 
                           {/* Machine Production Flow Timeline (WITHOUT HARSH BLACK BORDER) */}
-                          <TableCell className="py-3.5">
+                          <TableCell className="pl-5 pr-6 py-4">
                             <div className="flex flex-wrap items-center gap-1.5">
                               {item.machines.map((m) => {
                                 const isCurrent = m.machine_id === machineIdParam;

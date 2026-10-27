@@ -50,6 +50,7 @@ import {
   Filter,
   Zap,
   Sparkles,
+  Wand2,
   Code2,
   CheckCircle2,
   Copy,
@@ -387,6 +388,239 @@ function CategoryMultiSelect({
   );
 }
 
+function getCuttingCategoryIds(categories: any[]): number[] {
+  return (categories || [])
+    .filter((cat: any) => {
+      const mappings = cat.projectCategoriesMasterVendorMapping || [];
+      const typeIds: number[] = mappings
+        .map((m: any) =>
+          Number(
+            m.project_categories_type_master_id ??
+              m.projectCategoriesTypeMaster?.id
+          )
+        )
+        .filter((id: number) => !isNaN(id) && id > 0);
+
+      const hasType4 = typeIds.includes(4);
+      const hasType3 = typeIds.includes(3);
+      const hasType1Or2 = typeIds.some((t) => t === 1 || t === 2);
+      const isNormalFlow = hasType1Or2 || typeIds.length === 0;
+
+      // Exclude Type 4 (Hardware / Non-Production Outsource)
+      if (hasType4) return false;
+      // Exclude Type 3-only (Non-Production / Scan & Pack only)
+      if (hasType3 && !isNormalFlow) return false;
+
+      return true;
+    })
+    .map((cat: any) => Number(cat.id));
+}
+
+function getMachineDefaultRuleFormState(
+  machine: any,
+  vendorActions: any[],
+  categories: any[] = []
+): {
+  ruleName: string;
+  ruleCode: string;
+  selectedActionId: number | "";
+  conditionGroups: ConditionGroupFormState[];
+} {
+  const typeId = Number(machine?.machine_type_id);
+  const typeName = (
+    machine?.machine_type ||
+    machine?.machine_name ||
+    ""
+  ).toLowerCase();
+
+  const isEdgeBander =
+    typeId === 11 ||
+    typeName.includes("edge");
+
+  const isCncOrDrill =
+    typeId === 6 ||
+    typeId === 7 ||
+    typeId === 8 ||
+    typeName.includes("cnc") ||
+    typeName.includes("router") ||
+    typeName.includes("drill");
+
+  const isQc =
+    typeId === 17 ||
+    typeName.includes("qc") ||
+    typeName.includes("quality");
+
+  const isPackaging =
+    typeId === 18 ||
+    typeName.includes("pack");
+
+  const isPanelSaw =
+    typeId === 3 ||
+    typeName.includes("saw") ||
+    typeName.includes("cutting") ||
+    typeName.includes("nesting") ||
+    typeName.includes("beam") ||
+    typeName.includes("panel");
+
+  const sendAction =
+    vendorActions.find((a) => a.action_code === "SEND_TO_MACHINE") ||
+    vendorActions[0];
+  const actionId = sendAction?.id || "";
+
+  const doNotSendAction =
+    vendorActions.find((a) => a.action_code === "DO_NOT_SEND_TO_MACHINE");
+
+  const cleanCode = (machine?.machine_code || machine?.machine_name || "RULE")
+    .trim()
+    .replace(/[\s\W]+/g, "_")
+    .toUpperCase();
+
+  let ruleName = `${machine?.machine_name || "Workstation"} - Standard Cutlist Routing`;
+  let ruleCode = `${cleanCode}_DEFAULT`;
+  let selectedActionId: number | "" = actionId ? Number(actionId) : "";
+  let conditionGroups: ConditionGroupFormState[] = [];
+
+  if (isEdgeBander) {
+    ruleName = `${machine?.machine_name || "Edge Bander"} - Edgebanding Required`;
+    conditionGroups = [
+      {
+        logical_operator: "OR",
+        conditions: [
+          {
+            condition_type: "COLUMN",
+            field_key: "elf",
+            operator: "IS_NOT_BLANK",
+            value: "",
+            logical_operator: "OR",
+          },
+          {
+            condition_type: "COLUMN",
+            field_key: "elb",
+            operator: "IS_NOT_BLANK",
+            value: "",
+            logical_operator: "OR",
+          },
+          {
+            condition_type: "COLUMN",
+            field_key: "esl",
+            operator: "IS_NOT_BLANK",
+            value: "",
+            logical_operator: "OR",
+          },
+          {
+            condition_type: "COLUMN",
+            field_key: "esr",
+            operator: "IS_NOT_BLANK",
+            value: "",
+            logical_operator: "AND",
+          },
+        ],
+      },
+    ];
+  } else if (isCncOrDrill) {
+    ruleName = machine?.machine_name || "Horizontal CNC";
+    ruleCode = machine?.machine_code || machine?.machine_name || "Horizontal CNC";
+    if (doNotSendAction?.id) {
+      selectedActionId = Number(doNotSendAction.id);
+    }
+    conditionGroups = [
+      {
+        logical_operator: "OR",
+        conditions: [
+          {
+            condition_type: "COLUMN",
+            field_key: "thickness",
+            operator: "LESS_THAN",
+            value: 8,
+            logical_operator: "OR",
+          },
+          {
+            condition_type: "COLUMN",
+            field_key: "item_name",
+            operator: "CONTAINS",
+            value: "back",
+            logical_operator: "AND",
+          },
+        ],
+      },
+    ];
+  } else if (isQc) {
+    ruleName = `${machine?.machine_name || "QC Station"} - Quality Check Validation`;
+    conditionGroups = [
+      {
+        logical_operator: "OR",
+        conditions: [
+          {
+            condition_type: "ALL_CATEGORY",
+            field_key: "",
+            operator: "IN",
+            value: "ALL",
+            logical_operator: "AND",
+          },
+        ],
+      },
+    ];
+  } else if (isPackaging) {
+    ruleName = `${machine?.machine_name || "Packaging"} - Packaging Station Flow`;
+    conditionGroups = [
+      {
+        logical_operator: "OR",
+        conditions: [
+          {
+            condition_type: "ALL_CATEGORY",
+            field_key: "",
+            operator: "IN",
+            value: "ALL",
+            logical_operator: "AND",
+          },
+        ],
+      },
+    ];
+  } else if (isPanelSaw) {
+    ruleName = `${machine?.machine_name || "Panel Saw"} - Standard Cutting Flow`;
+    const validCategoryIds = getCuttingCategoryIds(categories);
+
+    conditionGroups = [
+      {
+        logical_operator: "OR",
+        conditions: [
+          {
+            condition_type: "CATEGORY",
+            field_key: "",
+            operator: "IN",
+            value: validCategoryIds,
+            logical_operator: "AND",
+          },
+        ],
+      },
+    ];
+  } else {
+    // Saws, Presses, Sanding, or General workstations
+    ruleName = `${machine?.machine_name || "Workstation"} - Standard Cutlist Routing`;
+    conditionGroups = [
+      {
+        logical_operator: "OR",
+        conditions: [
+          {
+            condition_type: "ALL_CATEGORY",
+            field_key: "",
+            operator: "IN",
+            value: "ALL",
+            logical_operator: "AND",
+          },
+        ],
+      },
+    ];
+  }
+
+  return {
+    ruleName,
+    ruleCode,
+    selectedActionId,
+    conditionGroups,
+  };
+}
+
 function RuleEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -404,6 +638,9 @@ function RuleEditorContent() {
   const { data: machines = [] } = useMachinesByVendor(vendorId ?? 0);
   const { data: ruleFields = [], isLoading: fieldsLoading } = useRuleFields();
   const { data: vendorActions = [], isLoading: actionsLoading } = useVendorRuleActions(vendorId);
+  const availableActions = useMemo(() => {
+    return vendorActions.filter((a) => a.action_code !== "REPLACE_MACHINE");
+  }, [vendorActions]);
   const { data: projectCategoriesData, isLoading: categoriesLoading } = useProjectCategories(vendorId);
   const projectCategories = useMemo(() => {
     return projectCategoriesData?.categories ?? [];
@@ -446,7 +683,32 @@ function RuleEditorContent() {
 
   // Selected Action State
   const [selectedActionId, setSelectedActionId] = useState<number | "">("");
-  const [replacementMachineId, setReplacementMachineId] = useState<string>("");
+
+  const handleLoadDefaultRule = () => {
+    if (!currentMachine) {
+      toastManager.add({ title: "No workstation selected", type: "error" });
+      return;
+    }
+    const defaultState = getMachineDefaultRuleFormState(
+      currentMachine,
+      vendorActions,
+      projectCategories
+    );
+    setRuleName(defaultState.ruleName);
+    setRuleCode(defaultState.ruleCode);
+    setPriority(1);
+    setStatus("ACTIVE");
+    if (defaultState.selectedActionId) {
+      setSelectedActionId(defaultState.selectedActionId);
+    }
+    setConditionGroups(defaultState.conditionGroups);
+
+    toastManager.add({
+      title: "Default rule template loaded",
+      description: `Applied hardcoded baseline rule for ${currentMachine.machine_name}. You can customize conditions and save.`,
+      type: "success",
+    });
+  };
 
   // Condition Groups State
   const [conditionGroups, setConditionGroups] = useState<ConditionGroupFormState[]>([
@@ -484,14 +746,6 @@ function RuleEditorContent() {
           act.actionId ||
           (act.actionMaster ? act.actionMaster.id : 0);
         if (actId) setSelectedActionId(actId);
-
-        const actVal = act.action_value ?? act.actionValue;
-        if (actVal) {
-          const valObj = typeof actVal === "object" && actVal !== null ? actVal : {};
-          setReplacementMachineId(
-            String(valObj.machine_id || valObj.machineId || actVal || "")
-          );
-        }
       }
 
       const rawGroups =
@@ -778,16 +1032,11 @@ function RuleEditorContent() {
 
   // Selected Action Details
   const selectedAction = useMemo(() => {
-    return vendorActions.find((a) => a.id === Number(selectedActionId)) || null;
-  }, [vendorActions, selectedActionId]);
+    return availableActions.find((a) => a.id === Number(selectedActionId)) || null;
+  }, [availableActions, selectedActionId]);
 
   // Live JSON Preview Construction
   const liveJsonPreview = useMemo(() => {
-    const actionVal =
-      selectedAction?.action_code === "REPLACE_MACHINE" && replacementMachineId
-        ? { machine_id: Number(replacementMachineId) }
-        : null;
-
     const finalRuleName = (ruleName.trim() || currentMachine?.machine_name || "Untitled Rule").trim();
     const finalRuleCode = (ruleCode.trim() || currentMachine?.machine_name || "UNTITLED_RULE").trim();
 
@@ -849,7 +1098,7 @@ function RuleEditorContent() {
           action_id: Number(selectedActionId),
           action_code: selectedAction?.action_code || "",
           action_name: selectedAction?.action_name || "",
-          action_value: actionVal,
+          action_value: null,
         },
       ],
     };
@@ -862,7 +1111,6 @@ function RuleEditorContent() {
     conditionGroups,
     selectedActionId,
     selectedAction,
-    replacementMachineId,
     ruleFields,
   ]);
 
@@ -1132,10 +1380,7 @@ function RuleEditorContent() {
       actions: [
         {
           action_id: Number(selectedActionId),
-          action_value:
-            selectedAction?.action_code === "REPLACE_MACHINE" && replacementMachineId
-              ? { machine_id: Number(replacementMachineId) }
-              : null,
+          action_value: null,
           sequence_no: 1,
         },
       ],
@@ -1246,12 +1491,24 @@ function RuleEditorContent() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 px-4 text-xs font-medium"
+                className="h-9 px-3 gap-1.5 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 transition-colors shadow-2xs"
+                onClick={handleLoadDefaultRule}
+                title="Fill form with hardcoded system baseline routing for this workstation"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Use Default Rule</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 px-3.5 text-xs font-medium"
                 onClick={() =>
                   router.push("/dashboard/track-trace/master/workstation")
                 }
@@ -1282,7 +1539,38 @@ function RuleEditorContent() {
           )}
 
           {!ruleDetailsLoading && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <>
+              {/* Notice Banner when machine has no rule */}
+              {!isEdit && existingMachineRules.length === 0 && (
+                <div className="mb-6 rounded-xl border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0 shadow-2xs">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground flex items-center gap-2">
+                        No active routing rule for {currentMachine?.machine_name || "this workstation"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        In &quot;Rule Manage&quot; mode, workstations only receive panels when rules exist. Click &quot;Use Default Rule&quot; to auto-fill the system baseline so you can review and save.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 text-xs font-semibold gap-1.5 shadow-xs"
+                      onClick={handleLoadDefaultRule}
+                    >
+                      <Wand2 size={13} />
+                      Use Default Rule
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* LEFT COLUMN: Rule Details + Conditions + Actions (2 cols) */}
               <div className="lg:col-span-2 space-y-6">
                 {/* 1. Rule Status Card */}
@@ -1852,13 +2140,13 @@ function RuleEditorContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="max-w-md">
                     <div>
                       <label className="text-xs font-medium text-foreground/80 block mb-1.5">
                         Select Action <span className="text-destructive">*</span>
                       </label>
                       <Select
-                        key={`action-select-${selectedActionId}-${vendorActions.length}-${actionsLoading}`}
+                        key={`action-select-${selectedActionId}-${availableActions.length}-${actionsLoading}`}
                         value={String(selectedActionId)}
                         onValueChange={(val) => setSelectedActionId(Number(val))}
                       >
@@ -1866,7 +2154,7 @@ function RuleEditorContent() {
                           <SelectValue placeholder="Select Action" />
                         </SelectTrigger>
                         <SelectContent>
-                          {vendorActions.map((act) => (
+                          {availableActions.map((act) => (
                             <SelectItem key={act.id} value={String(act.id)}>
                               {act.action_name}
                             </SelectItem>
@@ -1874,32 +2162,6 @@ function RuleEditorContent() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {selectedAction?.action_code === "REPLACE_MACHINE" && (
-                      <div>
-                        <label className="text-xs font-medium text-foreground/80 block mb-1.5">
-                          Target Replacement Machine <span className="text-destructive">*</span>
-                        </label>
-                        <Select
-                          key={`machine-select-${replacementMachineId}-${machines.length}`}
-                          value={replacementMachineId}
-                          onValueChange={(val) => setReplacementMachineId(val)}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Select machine" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {machines
-                              .filter((m) => m.id !== machineId)
-                              .map((m) => (
-                                <SelectItem key={m.id} value={String(m.id)}>
-                                  {m.machine_name} ({m.machine_code})
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -2007,6 +2269,7 @@ function RuleEditorContent() {
                 </div>
               </div>
             </div>
+            </>
           )}
         </form>
       </main>
