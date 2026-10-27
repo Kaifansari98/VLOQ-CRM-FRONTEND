@@ -21,10 +21,15 @@ import { toastManager } from "@/components/ui/toast";
 
 export const CADBID_STATUS_QUERY_KEY = ["cadbid-status"] as const;
 
+// CADX Studio and the Cadbid account link are hidden in production for now.
+export const isCadbidEnabled =
+  (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "").toUpperCase() !== "PRODUCTION";
+
 export const useCadbidStatus = () => {
   return useQuery<CadbidStatusData>({
     queryKey: CADBID_STATUS_QUERY_KEY,
     queryFn: getCadbidStatus,
+    enabled: isCadbidEnabled,
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
   });

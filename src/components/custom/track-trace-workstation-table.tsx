@@ -950,7 +950,9 @@ export default function TrackTraceWorkstationTable({
       <DataTable
         table={tableInstance}
         showPagination={true}
-        onRowDoubleClick={(row) => onEditClick(row)}
+        onRowDoubleClick={(row) =>
+          router.push(`/dashboard/track-trace/master/workstation/details?id=${row.id}`)
+        }
         rowClassName={() => "hover:bg-primary/5 cursor-pointer"}
         className={cn("pt-1 px-4", className)}
       />

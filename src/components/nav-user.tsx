@@ -41,7 +41,7 @@ import {
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { CadbidConnectionModal } from "@/components/cadbid/CadbidConnectionModal";
-import { useCadbidStatus, useLaunchStudio } from "@/hooks/useCadbid";
+import { isCadbidEnabled, useCadbidStatus, useLaunchStudio } from "@/hooks/useCadbid";
 
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
@@ -198,6 +198,8 @@ export function NavUser({
 
               <DropdownMenuSeparator />
 
+              {isCadbidEnabled && (
+              <>
               <DropdownMenuGroup>
                 {/* CADX Studio SSO Launcher */}
                 {cadbidStatus?.connected && cadbidStatus?.studioAccess && (
@@ -249,6 +251,8 @@ export function NavUser({
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
+              </>
+              )}
 
               {/* Open logout confirmation */}
               {/* <DropdownMenuGroup> */}
@@ -312,10 +316,12 @@ export function NavUser({
       </SidebarMenu>
 
       {/* Cadbid Connection Modal */}
-      <CadbidConnectionModal
-        open={cadbidModalOpen}
-        onOpenChange={setCadbidModalOpen}
-      />
+      {isCadbidEnabled && (
+        <CadbidConnectionModal
+          open={cadbidModalOpen}
+          onOpenChange={setCadbidModalOpen}
+        />
+      )}
 
       {/* Logout confirmation dialog */}
       <ChangePasswordModal
