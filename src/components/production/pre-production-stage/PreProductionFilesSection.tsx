@@ -118,10 +118,11 @@ export default function PreProductionFilesSection({
   const { mutateAsync: createTrackTraceProject, isPending: isCreatingProject } =
     useCreateTrackTraceProject();
 
-  // The lead's Track & Trace project (shared by the woodwork and metalwork cutlists).
+  // This instance's Track & Trace project (shared by its woodwork and metalwork cutlists).
   const { data: leadCutlist } = useMetalCutlist(
     isTrackTraceUploadFlow ? vendorId : undefined,
     leadId,
+    effectiveInstanceId,
   );
   const trackTraceProjectId = leadCutlist?.project?.unique_project_id;
 

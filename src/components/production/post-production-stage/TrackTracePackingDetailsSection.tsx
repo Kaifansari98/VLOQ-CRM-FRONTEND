@@ -90,16 +90,19 @@ const getBoxDisplayNumber = (box: ProjectBox) => {
 
 interface TrackTracePackingDetailsSectionProps {
   leadId: number;
+  instanceId?: number | null;
 }
 
-/** View-only list of the boxes in the lead's Track & Trace project. */
+/** View-only list of the boxes in the lead instance's Track & Trace project. */
 export default function TrackTracePackingDetailsSection({
   leadId,
+  instanceId,
 }: TrackTracePackingDetailsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data: leadCutlist, isLoading: projectLoading } = useMetalCutlist(
     vendorId,
     leadId,
+    instanceId,
   );
   const projectId = leadCutlist?.project?.unique_project_id;
 

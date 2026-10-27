@@ -123,14 +123,6 @@ export default function LeadDetailsProductionUtil({
 
   console.log("data: ", data)
 
-  // The lead's Track & Trace project only exists once a woodwork or metalwork
-  // cutlist has been uploaded in Pre-Production Files.
-  const { data: leadCutlist } = useMetalCutlist(
-    isTrackTraceLargeScale ? vendorId : undefined,
-    leadId,
-  );
-  const hasTrackTraceProject = isTrackTraceLargeScale && !!leadCutlist?.project;
-
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -158,6 +150,16 @@ export default function LeadDetailsProductionUtil({
         ? structureInstances[0]
         : null;
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? scopedInstanceId;
+
+  // Each instance has its own Track & Trace project, which only exists once a
+  // woodwork or metalwork cutlist has been uploaded in its Pre-Production Files.
+  const { data: leadCutlist } = useMetalCutlist(
+    isTrackTraceLargeScale ? vendorId : undefined,
+    leadId,
+    effectiveInstanceId,
+  );
+  const trackTraceProject = isTrackTraceLargeScale ? leadCutlist?.project : null;
+  const hasTrackTraceProject = !!trackTraceProject;
   const isOrderLoginFilled =
     resolvedCurrentInstance?.is_order_login_filled === true;
   const readyForUnderProduction =
@@ -306,7 +308,11 @@ export default function LeadDetailsProductionUtil({
           ? "Complete Order Login first to enable Under Production."
           : "",
       cardContent: isTrackTraceLargeScale ? (
-        <ProductionMachineMatrix vendorId={vendorId} leadId={leadId} />
+        <ProductionMachineMatrix
+          vendorId={vendorId}
+          leadId={leadId}
+          projectId={trackTraceProject?.id ?? null}
+        />
       ) : isOrderLoginFilled ? (
         showMachineMatrix ? (
           <ProductionMachineMatrix vendorId={vendorId} leadId={leadId} />
@@ -367,6 +373,7 @@ export default function LeadDetailsProductionUtil({
     canViewPostProduction,
     readyForPostProduction,
     hasTrackTraceProject,
+    trackTraceProject?.id,
   ]);
 
   const showInstanceTabs =

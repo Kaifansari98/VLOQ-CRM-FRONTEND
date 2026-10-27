@@ -218,7 +218,7 @@ const {
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
-      cardContent: <TrackTracePackingDetailsSection leadId={leadId} />,
+      cardContent: <TrackTracePackingDetailsSection leadId={leadId} instanceId={instanceId} />,
     },
     qcTab,
   ] : [

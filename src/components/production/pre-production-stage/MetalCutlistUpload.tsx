@@ -33,7 +33,7 @@ const COUNT_COLUMNS = [
 export default function MetalCutlistUpload({ canUpload, leadId, instanceId }: { canUpload: boolean; leadId: number; instanceId?: number | null }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId);
+  const { data: saved, isLoading: savedLoading } = useMetalCutlist(vendorId, leadId, instanceId);
   const { mutateAsync: saveMetalCutlist, isPending: saving } = useSaveMetalCutlist(vendorId, leadId);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
