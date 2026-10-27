@@ -373,6 +373,7 @@ export type CreateTrackTraceProjectRequest = {
   remove_box_ids?: number[];
   created_by?: number;
   instance_id?: number | null;
+  source_document_id?: number;
   /** Let the backend name the project after the lead (Firstname-Lastname-LEADCODE[.index]). */
   use_lead_project_name?: boolean;
   fabrication?: "WOODWORK" | "METALWORK";

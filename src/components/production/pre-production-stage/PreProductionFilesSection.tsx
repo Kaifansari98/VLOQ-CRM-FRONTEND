@@ -258,7 +258,7 @@ export default function PreProductionFilesSection({
       formData.append("created_by", String(userId || 0));
       if (accountId) formData.append("account_id", String(accountId));
 
-      await uploadFiles(formData);
+      const response = await uploadFiles(formData);
       toastManager.add({
         title: "Pre-production files uploaded successfully!",
         type: "success",
@@ -280,7 +280,7 @@ export default function PreProductionFilesSection({
           effectiveInstanceId ?? "all",
         ],
       });
-      return true;
+      return response.data as { id: number; doc_og_name: string }[];
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.error ||
@@ -329,7 +329,8 @@ export default function PreProductionFilesSection({
     setShowPackingModal(false);
 
     const uploaded = await performUpload(filesToProcess);
-    if (uploaded) setSelectedFiles([]);
+    if (!uploaded) return;
+    setSelectedFiles([]);
 
     const fileForImport = filesToProcess.find((file) =>
       file.name.toLowerCase().endsWith(".xlsx"),
@@ -353,6 +354,7 @@ export default function PreProductionFilesSection({
         lead_id: leadId,
         created_by: userId,
         instance_id: effectiveInstanceId,
+        source_document_id: uploaded.find((doc) => doc.doc_og_name === fileForImport.name)?.id,
         use_lead_project_name: true,
         packing_type: packingType,
         no_of_boxes: noOfBoxes,
@@ -421,19 +423,26 @@ export default function PreProductionFilesSection({
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
-      deleteDocument({
-        vendorId: vendorId!,
-        documentId: confirmDelete,
-        deleted_by: userId!,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "preProductionFilesReady",
-          vendorId,
-          leadId,
-          effectiveInstanceId ?? "all",
-        ],
-      });
+      deleteDocument(
+        {
+          vendorId: vendorId!,
+          documentId: confirmDelete,
+          deleted_by: userId!,
+        },
+        {
+          // The backend also removes the file's cutlist rows and machine mappings,
+          // and the instance's Track & Trace project once no file remains.
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["preProductionFiles", vendorId, leadId] });
+            queryClient.invalidateQueries({ queryKey: ["preProductionFilesReady", vendorId, leadId] });
+            queryClient.invalidateQueries({ queryKey: ["metalCutlist", vendorId, leadId] });
+            queryClient.invalidateQueries({ queryKey: ["track-trace-cutlist"] });
+            queryClient.invalidateQueries({ queryKey: ["production-machine-matrix"] });
+            queryClient.invalidateQueries({ queryKey: ["track-trace-packing-boxes", vendorId] });
+            queryClient.invalidateQueries({ queryKey: ["track-trace-projects"] });
+          },
+        },
+      );
       setConfirmDelete(null);
     }
   };
