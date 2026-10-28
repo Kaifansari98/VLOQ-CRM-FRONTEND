@@ -13,11 +13,16 @@ interface ReadyToDispatchDetailsProps {
 export default function ReadyToDispatchDetails({
   leadId,
   accountId,
+  instanceId,
 }: ReadyToDispatchDetailsProps) {
   return (
     <div className="py-2 space-y-4">
       <ClientRequiredDeliveryDateBanner leadId={leadId} />
-      <CurrentSitePhotosSection leadId={leadId} accountId={accountId} />
+      <CurrentSitePhotosSection
+        leadId={leadId}
+        accountId={accountId}
+        instanceId={instanceId}
+      />
     </div>
   );
 }

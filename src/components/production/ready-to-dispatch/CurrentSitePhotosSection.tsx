@@ -38,9 +38,12 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 export default function CurrentSitePhotosSection({
   leadId,
   accountId,
+  instanceId,
 }: {
   leadId: number;
   accountId: number | null;
+  /** Photos are uploaded to and listed for this product instance. */
+  instanceId?: number | null;
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -55,7 +58,8 @@ export default function CurrentSitePhotosSection({
 
   const { data: sitePhotos, isLoading } = useCurrentSitePhotos(
     vendorId,
-    leadId
+    leadId,
+    instanceId
   );
 
   const { data: leadResponse } = useLeadById(
@@ -151,6 +155,7 @@ const canDeleteDocuments =
       selectedFiles.forEach((file) => formData.append("files", file));
       formData.append("created_by", String(userId || 0));
       if (accountId) formData.append("account_id", String(accountId));
+      if (instanceId) formData.append("instance_id", String(instanceId));
 
       await uploadPhotos(formData);
       toastManager.add({ title: "Current Site Photos uploaded successfully!", type: "success" });
@@ -180,11 +185,20 @@ const canDeleteDocuments =
   const handleConfirmDelete = () => {
     if (!confirmDelete) return;
 
-    deleteDocument({
-      vendorId: vendorId!,
-      documentId: confirmDelete,
-      deleted_by: userId!,
-    });
+    deleteDocument(
+      {
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["currentSitePhotosCount", vendorId, leadId],
+          });
+        },
+      },
+    );
 
     setConfirmDelete(null);
   };

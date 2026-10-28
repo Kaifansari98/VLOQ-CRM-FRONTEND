@@ -161,8 +161,16 @@ export default function ReadyToDispatchLeadDetails() {
     }
   }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
+  // Large-scale vendors complete Site Readiness (checklist + photos) per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const { data: readinessStatus, isLoading: checkingStatus } =
-    useCheckSiteReadinessCompletion(vendorId, leadIdNum);
+    useCheckSiteReadinessCompletion(
+      vendorId,
+      leadIdNum,
+      handlesLargeScaleProjects ? validInstanceId : null,
+    );
 
   const moveToDispatchMutation = useMoveLeadToDispatchPlanning();
 

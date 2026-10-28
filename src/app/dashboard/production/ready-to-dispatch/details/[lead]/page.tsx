@@ -96,6 +96,11 @@ export default function ReadyToDispatchLeadDetails() {
   const validInstanceId = instanceIdParam && !Number.isNaN(Number(instanceIdParam)) ? Number(instanceIdParam) : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  // Large-scale vendors upload site photos and assign Site Readiness per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const siteReadinessInstanceId = handlesLargeScaleProjects ? validInstanceId : null;
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
@@ -124,6 +129,7 @@ export default function ReadyToDispatchLeadDetails() {
   const { data: sitePhotoCountData } = useCurrentSitePhotosCount(
     vendorId,
     leadIdNum,
+    siteReadinessInstanceId,
   );
   const hasSitePhotos = sitePhotoCountData?.hasPhotos;
 
@@ -635,6 +641,7 @@ export default function ReadyToDispatchLeadDetails() {
           furniture_type: lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A"
         }}
         userType={userType}
+        instanceId={siteReadinessInstanceId}
       />
 
       <ActivityStatusModal
