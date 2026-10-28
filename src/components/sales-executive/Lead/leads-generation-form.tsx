@@ -889,10 +889,11 @@ export default function LeadsGenerationForm({
       vendorCustomUserTypeMode === true
         ? {
             assigneeUserType: "custom",
-            requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
+            requiredPrivilegeCode: "leads.designing_stage.designs.upload",
           }
         : {
           assigneeUserType: "designer",
+          requiredPrivilegeCode: "leads.designing_stage.designs.upload",
         },
     );
   const designersList = Array.isArray(designerUsers?.data)
