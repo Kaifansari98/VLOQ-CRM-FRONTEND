@@ -119,11 +119,14 @@ interface DispatchStageDetailsProps {
   leadId: number;
   accountId: number;
   name?: string;
+  /** Large-scale vendors: snapshot, details, documents and pending materials of this instance. */
+  instanceId?: number | null;
 }
 
 const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   leadId,
   accountId,
+  instanceId = null,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
@@ -154,15 +157,20 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   // ── API Hooks ──────────────────────────────────────────────────────────────
   const { data: requiredDateData, isLoading: loadingRequiredDate } =
-    useRequiredDateForDispatch(vendorId, leadId);
+    useRequiredDateForDispatch(vendorId, leadId, instanceId);
   const { data: dispatchDetails, isLoading: loadingDispatchDetails } =
-    useDispatchDetails(vendorId, leadId);
-  const { data: dispatchPlanningInfo } = useDispatchPlanningInfo(vendorId, leadId);
+    useDispatchDetails(vendorId, leadId, instanceId);
+  const { data: dispatchPlanningInfo } = useDispatchPlanningInfo(
+    vendorId,
+    leadId,
+    instanceId,
+  );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const { data: tasks = [], isLoading } = usePendingMaterialTasks(
     vendorId,
     leadId,
+    instanceId,
   );
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -214,9 +222,13 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   console.log("dispatch details data>>>>>: ", requiredDateData);
 
   React.useEffect(() => {
-    const instances = Array.isArray(instancesResponse?.data)
+    const allInstances = Array.isArray(instancesResponse?.data)
       ? instancesResponse?.data
       : instancesResponse?.data?.data || [];
+    // Per-instance dispatch: only this instance's boxes.
+    const instances = instanceId
+      ? allInstances.filter((instance: any) => Number(instance.id) === instanceId)
+      : allInstances;
 
     if (instances.length > 0) {
       setInstanceBoxes(
@@ -228,10 +240,14 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         })),
       );
     }
-  }, [instancesResponse]);
+  }, [instancesResponse, instanceId]);
 
   const onSubmit = form.handleSubmit((values) => {
-    addDispatchMutation.mutate({ vendorId, leadId, payload: values });
+    addDispatchMutation.mutate({
+      vendorId,
+      leadId,
+      payload: instanceId ? { ...values, instance_id: instanceId } : values,
+    });
   });
 
   const handleConfirmDelete = () => {
@@ -294,7 +310,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     : canViewAndWorkDispatchStage(userType, leadStatus);
 
   const leadLevelBoxes = Number(requiredDateData?.no_of_boxes || 0);
-  const useLeadLevelBoxes = leadLevelBoxes > 0;
+  const useLeadLevelBoxes = !instanceId && leadLevelBoxes > 0;
   const totalInstanceBoxes = instanceBoxes.reduce((sum, item) => {
     const val = Number(item.value || 0);
     return sum + (Number.isFinite(val) ? val : 0);
@@ -845,6 +861,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   <UploadDispatchDocument
                     leadId={leadId}
                     accountId={accountId}
+                    instanceId={instanceId}
                     disabled={canUploadDispatchDocuments && !shouldDisableBlockedActions}
                   />
                 </span>
@@ -861,6 +878,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 <PendingMaterialDetails
                   leadId={leadId}
                   accountId={accountId}
+                  instanceId={instanceId}
                   disabled={effectiveCanManagePendingMaterial}
                 />
               </span>

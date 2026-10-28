@@ -34,12 +34,15 @@ interface UploadDispatchDocumentProps {
   leadId: number;
   accountId: number;
   disabled: boolean;
+  /** Large-scale vendors: documents are uploaded to and listed for this instance. */
+  instanceId?: number | null;
 }
 
 export default function UploadDispatchDocument({
   leadId,
   accountId,
   disabled,
+  instanceId = null,
 }: UploadDispatchDocumentProps) {
   /* -----------------------------------------------------------
      🔹 ALL HOOKS MUST STAY HERE (TOP ONLY)
@@ -52,7 +55,11 @@ export default function UploadDispatchDocument({
   );
   const queryClient = useQueryClient();
 
-  const { data: docsData, isLoading } = useDispatchDocuments(vendorId, leadId);
+  const { data: docsData, isLoading } = useDispatchDocuments(
+    vendorId,
+    leadId,
+    instanceId,
+  );
   const docs = Array.isArray(docsData) ? docsData : [];
 
   const uploadDocsMutation = useUploadDispatchDocuments();
@@ -116,6 +123,7 @@ export default function UploadDispatchDocument({
           files: selectedFiles,
           account_id: accountId,
           created_by: userId,
+          instance_id: instanceId,
         },
       });
 

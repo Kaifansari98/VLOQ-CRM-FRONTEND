@@ -127,7 +127,15 @@ export default function DispatchPlanningLeadDetails() {
 
   const updateStatusMutation = useUpdateActivityStatus();
 
-  const { data: readiness } = useCheckReadyForPostDispatch(vendorId, leadIdNum);
+  // Large-scale vendors run the Dispatch stage per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const { data: readiness } = useCheckReadyForPostDispatch(
+    vendorId,
+    leadIdNum,
+    handlesLargeScaleProjects ? validInstanceId : null,
+  );
 
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
