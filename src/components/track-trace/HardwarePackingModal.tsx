@@ -47,6 +47,7 @@ import {
 } from "@/api/track-trace/packaging-scanner.api";
 import {
   useAddManualPackingItem,
+  useAddManualQualityItem,
   useManualPackingItems,
   useCreatePackagingBox,
   usePackagingBoxes,
@@ -57,6 +58,7 @@ interface HardwarePackingModalProps {
   onClose: () => void;
   vendorId?: number;
   projectId?: number;
+  qualityMachineId?: number;
   selectedBox?: PackagingBox;
   userId?: number;
   packingType?: "DEFAULT" | "GROUPWISE" | "CUSTOM_GROUP";
@@ -76,6 +78,7 @@ export function HardwarePackingModal({
   onClose,
   vendorId,
   projectId,
+  qualityMachineId,
   selectedBox,
   userId,
   packingType,
@@ -87,6 +90,7 @@ export function HardwarePackingModal({
   isMultiLocation = false,
   locations = [],
 }: HardwarePackingModalProps) {
+  const isQcMode = Boolean(qualityMachineId);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [packQuantities, setPackQuantities] = useState<Record<number, number>>({});
@@ -130,12 +134,17 @@ export function HardwarePackingModal({
     isError,
     refetch,
     isFetching,
-  } = useManualPackingItems(vendorId, projectId, Boolean(isOpen && vendorId && projectId));
+  } = useManualPackingItems(
+    vendorId,
+    projectId,
+    Boolean(isOpen && vendorId && projectId),
+    qualityMachineId,
+  );
 
   const { data: boxesData } = usePackagingBoxes(
     vendorId,
     projectId,
-    Boolean(isOpen && vendorId && projectId && packingType === "CUSTOM_GROUP")
+    Boolean(isOpen && vendorId && projectId && packingType === "CUSTOM_GROUP" && !isQcMode)
   );
 
   const availableCustomBoxes = useMemo(() => {
@@ -144,6 +153,11 @@ export function HardwarePackingModal({
   }, [boxesData]);
 
   const addManualItemMutation = useAddManualPackingItem(vendorId, projectId);
+  const addManualQualityItemMutation = useAddManualQualityItem(
+    vendorId,
+    projectId,
+    qualityMachineId,
+  );
   const createBoxMutation = useCreatePackagingBox(vendorId, projectId);
 
   const items = manualData?.items ?? [];
@@ -181,9 +195,68 @@ export function HardwarePackingModal({
     if (itemsToPack.length === 0) {
       toastManager.add({
         title: "No items selected",
-        description: "Please increase the quantity for at least one item to pack.",
+        description: isQcMode
+          ? "Please increase the quantity for at least one item to pass QC."
+          : "Please increase the quantity for at least one item to pack.",
         type: "warning",
       });
+      return;
+    }
+
+    if (isQcMode) {
+      if (!userId || !projectId || !vendorId || !qualityMachineId) {
+        toastManager.add({
+          title: "Context missing",
+          description: "Valid project, vendor, and user context is required.",
+          type: "error",
+        });
+        return;
+      }
+
+      setIsPackingMultiple(true);
+      try {
+        let successCount = 0;
+        for (const item of itemsToPack) {
+          const qtyToPass = getItemInputQty(item);
+          if (qtyToPass > 0 && qtyToPass <= item.pending_qty) {
+            setPackingItemId(item.id);
+            await addManualQualityItemMutation.mutateAsync({
+              project_id: projectId,
+              vendor_id: vendorId,
+              machine_id: qualityMachineId,
+              cut_list_id: item.id,
+              qty: qtyToPass,
+              user_id: userId,
+            });
+            successCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          toastManager.add({
+            title: "Quality check passed",
+            description: `Successfully passed quality check for ${successCount} item(s). Quantities are now unlocked for packing.`,
+            type: "success",
+          });
+          setPackQuantities({});
+          onItemPacked?.();
+        }
+      } catch (error: any) {
+        const errorMsg =
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Failed to pass quality check";
+
+        toastManager.add({
+          title: "Quality check failed",
+          description: errorMsg,
+          type: "error",
+        });
+      } finally {
+        setIsPackingMultiple(false);
+        setPackingItemId(null);
+      }
       return;
     }
 
@@ -326,11 +399,19 @@ export function HardwarePackingModal({
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       // Filter by status
-      if (statusFilter === "pending" && item.pending_qty <= 0) {
-        return false;
+      if (statusFilter === "pending") {
+        if (isQcMode) {
+          if (item.pending_qty <= 0) return false;
+        } else {
+          if (item.packed_qty >= item.total_qty) return false;
+        }
       }
-      if (statusFilter === "packed" && item.pending_qty > 0) {
-        return false;
+      if (statusFilter === "packed") {
+        if (isQcMode) {
+          if (item.pending_qty > 0) return false;
+        } else {
+          if (item.packed_qty < item.total_qty) return false;
+        }
       }
 
       // Filter by search query
@@ -346,7 +427,7 @@ export function HardwarePackingModal({
         item.unique_code?.toLowerCase().includes(query)
       );
     });
-  }, [items, searchQuery, statusFilter]);
+  }, [items, searchQuery, statusFilter, isQcMode]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -356,15 +437,30 @@ export function HardwarePackingModal({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <Wrench className="size-5" />
+                <div
+                  className={cn(
+                    "p-2 rounded-xl",
+                    isQcMode
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-primary/10 text-primary",
+                  )}
+                >
+                  {isQcMode ? (
+                    <CheckCircle2 className="size-5" />
+                  ) : (
+                    <Wrench className="size-5" />
+                  )}
                 </div>
                 <div>
                   <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                    Hardware & Manual Packing
+                    {isQcMode
+                      ? "Quality Check - Hardware"
+                      : "Hardware & Manual Packing"}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground">
-                    Pack hardware and non-scanned accessories directly into destination boxes.
+                    {isQcMode
+                      ? "Verify and pass hardware / non-scanned cutlist items so approved quantity moves forward to packaging."
+                      : "Pack hardware and non-scanned accessories directly into destination boxes."}
                   </DialogDescription>
                 </div>
               </div>
@@ -385,100 +481,115 @@ export function HardwarePackingModal({
             </div>
           </div>
 
-          {/* Context Strip: Target Box & Packing Mode */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            {packingType === "CUSTOM_GROUP" ? (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 font-medium shadow-2xs">
-                <Box className="size-3.5 text-primary shrink-0" />
-                <span>Target Box:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  Will Auto-Create New Box
-                </span>
+          {/* Context Strip: Target Box & Packing Mode or QC Station */}
+          {isQcMode ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-400 font-semibold shadow-2xs">
+                <CheckCircle2 className="size-3.5 shrink-0" />
+                <span>Workstation:</span>
+                <span>Quality Check Station</span>
               </div>
-            ) : (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 font-medium shadow-2xs">
-                <Box className="size-3.5 text-primary shrink-0" />
-                <span>Target Box:</span>
-                {selectedBox ? (
-                  <span className="font-bold text-foreground truncate max-w-[150px] sm:max-w-[200px]">{selectedBox.box_name}</span>
-                ) : (
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">
-                    No box selected
+              {projectName && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-muted-foreground shadow-2xs">
+                  <span>Project:</span>
+                  <span className="font-semibold text-foreground truncate max-w-[200px]">
+                    {projectName}
                   </span>
-                )}
-                {selectedBox && (
-                  <span
-                    className={cn(
-                      "ml-1 rounded-full px-1.5 py-0.2 text-[10px] font-semibold uppercase shrink-0",
-                      selectedBox.box_status === "packed"
-                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                        : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-                    )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              {packingType === "CUSTOM_GROUP" ? (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 font-medium shadow-2xs">
+                  <Box className="size-3.5 text-primary shrink-0" />
+                  <span>Target Box:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    Will Auto-Create New Box
+                  </span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 font-medium shadow-2xs">
+                  <Box className="size-3.5 text-primary shrink-0" />
+                  <span>Target Box:</span>
+                  {selectedBox ? (
+                    <span className="font-bold text-foreground truncate max-w-[150px] sm:max-w-[200px]">{selectedBox.box_name}</span>
+                  ) : (
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      No box selected
+                    </span>
+                  )}
+                  {selectedBox && (
+                    <span
+                      className={cn(
+                        "ml-1 rounded-full px-1.5 py-0.2 text-[10px] font-semibold uppercase shrink-0",
+                        selectedBox.box_status === "packed"
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                          : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+                      )}
+                    >
+                      {selectedBox.box_status}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {packingType && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-muted-foreground shadow-2xs">
+                  <Layers className="size-3.5 text-primary/70" />
+                  <span>Packing Mode:</span>
+                  <span className="font-semibold text-foreground">{packingType}</span>
+                </div>
+              )}
+
+              {packingType === "GROUPWISE" && selectedBoxGroup && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/5 px-2.5 py-1 text-primary shadow-2xs">
+                  <Layers className="size-3.5" />
+                  <span>Box group:</span>
+                  <span className="font-bold">{selectedBoxGroup}</span>
+                </div>
+              )}
+
+              {projectName && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-muted-foreground shadow-2xs">
+                  <span>Project:</span>
+                  <span className="font-semibold text-foreground truncate max-w-[200px]">
+                    {projectName}
+                  </span>
+                </div>
+              )}
+              {isMultiLocation && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-emerald-700 shadow-2xs dark:bg-emerald-500/10 dark:text-emerald-400">
+                  <MapPin className="size-3.5 shrink-0" />
+                  <span className="font-medium text-emerald-800 dark:text-emerald-300">Loc:</span>
+                  <Select
+                    value={selectedLocation}
+                    onValueChange={setSelectedLocation}
+                    disabled={isPackingMultiple}
                   >
-                    {selectedBox.box_status}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {packingType && (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-muted-foreground shadow-2xs">
-                <Layers className="size-3.5 text-primary/70" />
-                <span>Packing Mode:</span>
-                <span className="font-semibold text-foreground">{packingType}</span>
-              </div>
-            )}
-
-            {packingType === "GROUPWISE" && selectedBoxGroup && (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/5 px-2.5 py-1 text-primary shadow-2xs">
-                <Layers className="size-3.5" />
-                <span>Box group:</span>
-                <span className="font-bold">{selectedBoxGroup}</span>
-              </div>
-            )}
-
-            {projectName && (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-muted-foreground shadow-2xs">
-                <span>Project:</span>
-                <span className="font-semibold text-foreground truncate max-w-[200px]">
-                  {projectName}
-                </span>
-              </div>
-            )}
-            {isMultiLocation && (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-emerald-700 shadow-2xs dark:bg-emerald-500/10 dark:text-emerald-400">
-                <MapPin className="size-3.5 shrink-0" />
-                <span className="font-medium text-emerald-800 dark:text-emerald-300">Loc:</span>
-                <Select
-                  value={selectedLocation}
-                  onValueChange={setSelectedLocation}
-                  disabled={isPackingMultiple}
-                >
-                  <SelectTrigger className="h-6 w-[140px] border-none bg-transparent px-1.5 py-0 text-xs font-bold text-emerald-900 shadow-none focus:ring-0 dark:text-emerald-100 data-[placeholder]:text-emerald-600/70">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-emerald-500/20 shadow-xl">
-                    {locations.map((location) => (
-                      <SelectItem 
-                        key={location.location_name} 
-                        value={location.location_name}
-                        className="text-xs font-medium cursor-pointer rounded-lg focus:bg-emerald-500/10 focus:text-emerald-900 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-100"
-                      >
-                        {location.location_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
+                    <SelectTrigger className="h-6 w-[140px] border-none bg-transparent px-1.5 py-0 text-xs font-bold text-emerald-900 shadow-none focus:ring-0 dark:text-emerald-100 data-[placeholder]:text-emerald-600/70">
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-emerald-500/20 shadow-xl">
+                      {locations.map((location) => (
+                        <SelectItem 
+                          key={location.location_name} 
+                          value={location.location_name}
+                          className="text-xs font-medium cursor-pointer rounded-lg focus:bg-emerald-500/10 focus:text-emerald-900 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-100"
+                        >
+                          {location.location_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-
-
-
-        {/* Warning if no box selected or box is packed */}
-        {packingType !== "CUSTOM_GROUP" && (!selectedBox || selectedBox.box_status === "packed") && (
+        {/* Warning if no box selected or box is packed (Packing mode only) */}
+        {!isQcMode && packingType !== "CUSTOM_GROUP" && (!selectedBox || selectedBox.box_status === "packed") && (
           <div className="px-4 sm:px-6 pt-4">
             <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200">
               <AlertCircle className="size-4.5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -498,7 +609,7 @@ export function HardwarePackingModal({
           </div>
         )}
 
-        {packingType === "GROUPWISE" && selectedBox && selectedBoxGroup && (
+        {!isQcMode && packingType === "GROUPWISE" && selectedBox && selectedBoxGroup && (
           <div className="px-4 sm:px-6 pt-3">
             <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-primary">
               <Layers className="size-4.5 mt-0.5 shrink-0" />
@@ -530,7 +641,7 @@ export function HardwarePackingModal({
               </div>
               <div className="rounded-xl border bg-card p-2.5 shadow-2xs">
                 <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                  Packed Quantity
+                  {isQcMode ? "Passed QC" : "Packed Quantity"}
                 </p>
                 <p className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-400">
                   {summary.packed_qty}
@@ -538,7 +649,7 @@ export function HardwarePackingModal({
               </div>
               <div className="rounded-xl border bg-card p-2.5 shadow-2xs">
                 <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                  Pending Quantity
+                  {isQcMode ? "Pending QC" : "Pending Quantity"}
                 </p>
                 <p className="text-base sm:text-lg font-bold text-amber-700 dark:text-amber-400">
                   {summary.pending_qty}
@@ -577,7 +688,7 @@ export function HardwarePackingModal({
               className="h-8 rounded-lg text-xs font-semibold px-3"
               onClick={() => setStatusFilter("pending")}
             >
-              Pending ({items.filter((i) => i.pending_qty > 0).length})
+              Pending ({items.filter((i) => isQcMode ? i.pending_qty > 0 : i.packed_qty < i.total_qty).length})
             </Button>
             <Button
               type="button"
@@ -595,7 +706,7 @@ export function HardwarePackingModal({
               className="h-8 rounded-lg text-xs font-semibold px-3"
               onClick={() => setStatusFilter("packed")}
             >
-              Packed ({items.filter((i) => i.pending_qty <= 0).length})
+              {isQcMode ? "Passed" : "Packed"} ({items.filter((i) => isQcMode ? i.pending_qty <= 0 : i.packed_qty >= i.total_qty).length})
             </Button>
           </div>
         </div>
@@ -635,7 +746,9 @@ export function HardwarePackingModal({
               <Package className="size-10 mb-2 opacity-50" />
               <p className="font-semibold text-foreground text-sm">No hardware items found</p>
               <p className="text-xs mt-1 max-w-md">
-                No items marked for manual packing (include_in_packing = true and scan_pack = false) were found for this project.
+                {isQcMode
+                  ? "No hardware or manual cutlist items are routed to this Quality Check workstation."
+                  : "No items marked for manual packing (include_in_packing = true and scan_pack = false) were found for this project."}
               </p>
             </div>
           )}
@@ -649,11 +762,17 @@ export function HardwarePackingModal({
           )}
 
           {!isLoading && !isError && filteredItems.map((item) => {
-            const isFullyPacked = item.pending_qty <= 0;
+            const isFullyPacked = item.packed_qty >= item.total_qty;
+            const isPendingQc =
+              !isQcMode &&
+              Boolean(item.is_qc_routed) &&
+              (!item.qc_passed_qty || item.qc_passed_qty <= item.packed_qty);
             const currentInputQty = getItemInputQty(item);
             const isItemLoading = packingItemId === item.id;
             const isWrongGroup =
-              packingType === "GROUPWISE" && !isItemAllowedForSelectedBox(item);
+              !isQcMode &&
+              packingType === "GROUPWISE" &&
+              !isItemAllowedForSelectedBox(item);
 
             return (
               <div
@@ -697,12 +816,17 @@ export function HardwarePackingModal({
                     {isFullyPacked ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="size-3" />
-                        Packed
+                        {isQcMode ? "Passed QC" : "Packed"}
+                      </span>
+                    ) : isPendingQc ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                        <Clock3 className="size-3" />
+                        Pending QC
                       </span>
                     ) : item.packed_qty > 0 ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
                         <Clock3 className="size-3" />
-                        Partially Packed
+                        {isQcMode ? "Partially Checked" : "Partially Packed"}
                       </span>
                     ) : null}
                   </div>
@@ -722,20 +846,31 @@ export function HardwarePackingModal({
                   )}
 
                   {/* Quantity Breakdown */}
-                  <div className="flex items-center gap-3 pt-0.5 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-0.5 text-xs text-muted-foreground">
                     <span>
                       Total: <strong className="text-foreground">{item.total_qty}</strong>
                     </span>
                     <span>•</span>
+                    {!isQcMode && item.is_qc_routed && (
+                      <>
+                        <span>
+                          QC Passed:{" "}
+                          <strong className="text-foreground font-semibold">
+                            {item.qc_passed_qty || 0}
+                          </strong>
+                        </span>
+                        <span>•</span>
+                      </>
+                    )}
                     <span>
-                      Packed:{" "}
+                      {isQcMode ? "Passed QC: " : "Packed: "}
                       <strong className="text-emerald-600 dark:text-emerald-400">
                         {item.packed_qty}
                       </strong>
                     </span>
                     <span>•</span>
                     <span>
-                      Pending:{" "}
+                      {isQcMode ? "Pending QC: " : "Ready to Pack: "}
                       <strong className="text-amber-600 dark:text-amber-400 font-bold">
                         {item.pending_qty}
                       </strong>
@@ -743,9 +878,18 @@ export function HardwarePackingModal({
                   </div>
                 </div>
 
-                {/* Pack Action Controls */}
+                {/* Pack / QC Action Controls */}
                 <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0">
-                  {!isFullyPacked ? (
+                  {isFullyPacked ? (
+                    <span className="text-xs font-medium text-muted-foreground italic pr-2">
+                      Completed
+                    </span>
+                  ) : !isQcMode && item.is_qc_routed && item.pending_qty <= 0 ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+                      <Clock3 className="size-3.5" />
+                      Awaiting QC check ({item.qc_passed_qty || 0}/{item.total_qty} passed)
+                    </span>
+                  ) : (
                     <>
                       {/* Quantity Stepper */}
                       <div className="flex items-center rounded-lg border bg-muted/20 p-0.5">
@@ -810,10 +954,6 @@ export function HardwarePackingModal({
                         )}
                       </div>
                     </>
-                  ) : (
-                    <span className="text-xs font-medium text-muted-foreground italic pr-2">
-                      Completed
-                    </span>
                   )}
                 </div>
               </div>
@@ -824,7 +964,9 @@ export function HardwarePackingModal({
         {/* Footer */}
         <div className="px-4 py-2.5 border-t bg-muted/20 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {packingType === "CUSTOM_GROUP" ? (
+            {isQcMode ? (
+              <span>Pass inspection for selected items to authorize packaging.</span>
+            ) : packingType === "CUSTOM_GROUP" ? (
               <>
                 Active target: <strong>{activeCustomBox ? activeCustomBox.box_name : "Will auto-create new box"}</strong>
               </>
@@ -854,19 +996,26 @@ export function HardwarePackingModal({
               disabled={
                 isPackingMultiple ||
                 items.filter(i => getItemInputQty(i) > 0).length === 0 ||
-                (isMultiLocation && !selectedLocation)
+                (!isQcMode && isMultiLocation && !selectedLocation)
               }
-              className="rounded-xl text-xs h-9 px-6 font-bold shadow-2xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
+              className={cn(
+                "rounded-xl text-xs h-9 px-6 font-bold shadow-2xs gap-1.5",
+                isQcMode
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground",
+              )}
             >
               {isPackingMultiple ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Packing...
+                  {isQcMode ? "Passing QC..." : "Packing..."}
                 </>
               ) : (
                 <>
                   <PackageCheck className="size-3.5" />
-                  {isMultiLocation && !selectedLocation
+                  {isQcMode
+                    ? `Pass Selected (${items.filter(i => getItemInputQty(i) > 0).length})`
+                    : isMultiLocation && !selectedLocation
                     ? "Select Location First"
                     : `Pack Selected (${items.filter(i => getItemInputQty(i) > 0).length})`}
                 </>
