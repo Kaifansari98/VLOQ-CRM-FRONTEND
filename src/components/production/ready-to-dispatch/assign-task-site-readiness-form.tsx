@@ -107,6 +107,8 @@ interface Props {
   };
   onlyFollowUp?: boolean;
   userType?: string;
+  /** Large-scale vendors move this instance (not the whole lead) to Site Readiness. */
+  instanceId?: number | null;
 }
 
 const AssignTaskSiteReadinessForm: React.FC<Props> = ({
@@ -114,6 +116,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   onOpenChange,
   data,
   userType,
+  instanceId,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const loggedInUserType = useAppSelector(
@@ -145,6 +148,11 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (state) => state.auth.user?.user_name ?? "",
   );
   const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  // Site Readiness runs per instance only for large-scale vendors.
+  const scopedInstanceId = handlesLargeScaleProjects ? instanceId ?? null : null;
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
@@ -187,11 +195,11 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const {
     data: currentSitePhotosCount,
     isLoading: isLoadingCurrentSitePhotosCount,
-  } = useCurrentSitePhotosCount(vendorId, leadId);
+  } = useCurrentSitePhotosCount(vendorId, leadId, scopedInstanceId);
   const {
     data: taskConflicts,
     isLoading: isLoadingSiteReadinessTaskConflicts,
-  } = useSiteReadinessTaskConflicts(leadId);
+  } = useSiteReadinessTaskConflicts(leadId, scopedInstanceId);
 
   const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
   const siteReadinessTaskConflicts =
@@ -438,7 +446,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     ? "Checking existing tasks"
     : isSiteReadinessConflictLocked
       ? "Site Readiness task already created and not completed"
-      : "Please upload current site photos before moving this lead to Site Readiness.";
+      : scopedInstanceId
+        ? "Please upload current site photos for this instance before moving it to Site Readiness."
+        : "Please upload current site photos before moving this lead to Site Readiness.";
 
   React.useEffect(() => {
     if (!open || isLoadingCurrentSitePhotosCount) return;
@@ -635,6 +645,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       remark: values.remark,
       user_id: values.assign_lead_to!,
       created_by: userId!,
+      instance_id: scopedInstanceId,
     };
 
     mutation.mutate(payload, {
@@ -644,6 +655,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           type: "success",
         });
         queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+        queryClient.invalidateQueries({
+          queryKey: ["siteReadinessTaskConflicts", leadId],
+        });
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
           exact: false,

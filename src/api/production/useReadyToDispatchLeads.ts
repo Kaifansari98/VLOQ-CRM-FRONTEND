@@ -125,6 +125,8 @@ export interface AssignToSiteReadinessPayload {
   remark?: string;
   user_id: number;
   created_by: number;
+  /** Large-scale vendors: the instance that moves to Site Readiness. */
+  instance_id?: number | null;
 }
 
 export interface SiteReadinessTaskConflict {
@@ -155,13 +157,7 @@ export interface SiteReadinessFollowUpTaskConflict {
  */
 export const assignSiteReadinessTask = async (
   leadId: number,
-  payload: {
-    task_type: string;
-    due_date: string;
-    remark?: string;
-    user_id: number;
-    created_by: number;
-  }
+  payload: AssignToSiteReadinessPayload
 ) => {
   const { data } = await apiClient.post(
     `/leads/production/ready-to-dispatch/leadId/${leadId}/tasks/assign-site-readiness`,
@@ -175,13 +171,8 @@ export const assignSiteReadinessTask = async (
  */
 export const useAssignSiteReadinessTask = (leadId: number) => {
   return useMutation({
-    mutationFn: (payload: {
-      task_type: string;
-      due_date: string;
-      remark?: string;
-      user_id: number;
-      created_by: number;
-    }) => assignSiteReadinessTask(leadId, payload),
+    mutationFn: (payload: AssignToSiteReadinessPayload) =>
+      assignSiteReadinessTask(leadId, payload),
   });
 };
 
@@ -189,9 +180,14 @@ export const useAssignToSiteReadiness = (leadId: number) => {
   return useAssignSiteReadinessTask(leadId);
 };
 
-export const getSiteReadinessTaskConflicts = async (leadId: number) => {
+// With an instanceId, large-scale vendors only see that instance's open Site Readiness task.
+export const getSiteReadinessTaskConflicts = async (
+  leadId: number,
+  instanceId?: number | null
+) => {
   const { data } = await apiClient.get(
-    `/leads/production/ready-to-dispatch/leadId/${leadId}/task-conflicts`
+    `/leads/production/ready-to-dispatch/leadId/${leadId}/task-conflicts`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
 
   return {
@@ -230,13 +226,16 @@ export const useCurrentSitePhotosCount = (
   });
 };
 
-export const useSiteReadinessTaskConflicts = (leadId?: number) => {
+export const useSiteReadinessTaskConflicts = (
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery<{
     restrictedTaskConflicts: SiteReadinessTaskConflict[];
     followUpConflicts: SiteReadinessFollowUpTaskConflict[];
   }>({
-    queryKey: ["siteReadinessTaskConflicts", leadId],
-    queryFn: () => getSiteReadinessTaskConflicts(leadId!),
+    queryKey: ["siteReadinessTaskConflicts", leadId, instanceId ?? "all"],
+    queryFn: () => getSiteReadinessTaskConflicts(leadId!, instanceId),
     enabled: !!leadId,
     staleTime: 1000 * 30,
     refetchOnWindowFocus: false,
