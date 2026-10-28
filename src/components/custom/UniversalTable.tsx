@@ -1510,8 +1510,11 @@ export function UniversalTable({
 
         let instanceRows = instances;
         if (isLaterStage) {
-          // Downstream workflow status belongs to the lead, not the instance.
-          instanceRows = instances.filter((instance: any) => instance?.is_archived !== true);
+          instanceRows = instances.filter((instance: any) => {
+            if (instance?.is_archived === true) return false;
+            const stageTag = instance?.stageStatus?.tag ?? lead?.statusType?.tag;
+            return !stageTag || stageTag.toLowerCase() === normalizedType;
+          });
           if (!instanceRows.length) {
             // Keep legacy leads without any instances accessible.
             if (!instances.length) expanded.push(mapUniversalRow(lead, expanded.length, { rowKey: String(lead.id), type8StatusLoggedAt }));
@@ -1532,6 +1535,13 @@ export function UniversalTable({
             (instance: any) =>
               instance?.is_tech_check_completed === true &&
               instance?.is_order_login_completed === true,
+          );
+        }
+
+        if (handlesLargeScaleProjects && (isType9 || isType10)) {
+          instanceRows = instanceRows.filter((instance: any) =>
+            instance?.is_archived !== true &&
+            (!instance?.stageStatus?.tag || ["Type 8", "Type 9", "Type 10"].includes(instance.stageStatus.tag)),
           );
         }
 
