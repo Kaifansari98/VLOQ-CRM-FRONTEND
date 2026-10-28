@@ -163,7 +163,7 @@ export interface ManualPackingItem {
   total_qty: number;
   packed_qty: number;
   pending_qty: number;
-  packing_status: "Pending" | "Partially Packed" | "Packed";
+  packing_status: "Pending" | "Partially Packed" | "Packed" | "Pending QC";
   unique_code: string | null;
   unique_code_2: string | null;
   length: number | null;
@@ -177,6 +177,9 @@ export interface ManualPackingItem {
   use_in_assembled_packing?: boolean;
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
+  qc_passed_qty?: number;
+  is_qc_routed?: boolean;
+  effective_max_qty?: number;
 }
 
 export interface ManualPackingSummary {
@@ -217,9 +220,25 @@ export interface AddManualPackingItemResponse {
   data?: any;
 }
 
+export interface AddManualQualityItemPayload {
+  project_id: number;
+  vendor_id: number;
+  machine_id: number;
+  cut_list_id: number;
+  qty: number;
+  user_id: number;
+}
+
+export interface AddManualQualityItemResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
 export const getManualPackingItems = async (
   vendorId: number,
   projectId: number,
+  machineId?: number,
 ) => {
   const { data } = await apiClient.get<ManualPackingApiResponse>(
     "/track-trace/boxes/packing/manual-items",
@@ -227,6 +246,7 @@ export const getManualPackingItems = async (
       params: {
         vendor_id: vendorId,
         project_id: projectId,
+        ...(machineId ? { machine_id: machineId } : {}),
       },
     },
   );
@@ -244,4 +264,16 @@ export const addManualPackingItem = async (
 
   return data;
 };
+
+export const addManualQualityItem = async (
+  payload: AddManualQualityItemPayload,
+) => {
+  const { data } = await apiClient.post<AddManualQualityItemResponse>(
+    "/track-trace/quality/manual-items",
+    payload,
+  );
+
+  return data;
+};
+
 

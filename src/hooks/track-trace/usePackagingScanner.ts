@@ -7,6 +7,8 @@ import {
   getManualPackingItems,
   addManualPackingItem,
   AddManualPackingItemPayload,
+  addManualQualityItem,
+  AddManualQualityItemPayload,
 } from "@/api/track-trace/packaging-scanner.api";
 
 export const usePackagingProjectContext = (
@@ -52,10 +54,11 @@ export const useManualPackingItems = (
   vendorId?: number,
   projectId?: number,
   enabled = true,
+  machineId?: number,
 ) =>
   useQuery({
-    queryKey: ["manual-packing-items", vendorId, projectId],
-    queryFn: () => getManualPackingItems(vendorId!, projectId!),
+    queryKey: ["manual-packing-items", vendorId, projectId, machineId],
+    queryFn: () => getManualPackingItems(vendorId!, projectId!, machineId),
     enabled: Boolean(enabled && vendorId && projectId),
   });
 
@@ -80,4 +83,34 @@ export const useAddManualPackingItem = (
     },
   });
 };
+
+export const useAddManualQualityItem = (
+  vendorId?: number,
+  projectId?: number,
+  machineId?: number,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: AddManualQualityItemPayload) =>
+      addManualQualityItem(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["manual-packing-items", vendorId, projectId, machineId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["manual-packing-items", vendorId, projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["packaging-boxes", vendorId, projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-cutlist"],
+        }),
+      ]);
+    },
+  });
+};
+
 

@@ -39,11 +39,12 @@ export const useReadyToDispatchLeads = (
 export const moveLeadToReadyToDispatch = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
+  instance_id?: number,
 ) => {
   const { data } = await apiClient.put(
     `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/move-to-ready-to-dispatch`,
-    { updated_by }
+    { updated_by, instance_id }
   );
   return data;
 };
@@ -54,11 +55,13 @@ export const useMoveLeadToReadyToDispatch = () => {
       vendorId,
       leadId,
       updated_by,
+      instance_id,
     }: {
       vendorId: number;
       leadId: number;
       updated_by: number;
-    }) => moveLeadToReadyToDispatch(vendorId, leadId, updated_by),
+      instance_id?: number;
+    }) => moveLeadToReadyToDispatch(vendorId, leadId, updated_by, instance_id),
   });
 };
 

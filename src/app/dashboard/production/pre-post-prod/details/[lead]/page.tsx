@@ -117,6 +117,7 @@ export default function ProductionLeadDetails() {
     instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const handlesLargeScaleProjects = useAppSelector((state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true);
   const usesPreProductionCompletion = useAppSelector((state) =>
     state.auth.user?.vendor?.handlesLargeScaleProjects === true &&
     state.auth.user?.vendor?.is_tracktrace_enabled === true,
@@ -391,9 +392,11 @@ export default function ProductionLeadDetails() {
   );
 
   const hasInstances = instances.length > 0;
-  const allInstancesCompleted = hasInstances
-    ? incompleteInstances.length === 0
-    : true;
+  const readyToDispatchEligible = handlesLargeScaleProjects
+    ? !!validInstanceId && currentInstance?.is_archived !== true &&
+      currentInstance?.is_production_completed === true &&
+      (!currentInstance?.stageStatus?.tag || ["Type 8", "Type 9", "Type 10"].includes(currentInstance.stageStatus.tag))
+    : !hasInstances || incompleteInstances.length === 0;
 
   const incompleteTitles =
     incompleteInstances
@@ -607,6 +610,7 @@ export default function ProductionLeadDetails() {
       return;
     }
 
+    if (!readyToDispatchEligible) return;
     setOpenReadyToDispatch(true);
   };
 
@@ -713,7 +717,7 @@ export default function ProductionLeadDetails() {
               <CustomeTooltip
                 value={blockedTooltip}
                 truncateValue={
-                  allInstancesCompleted ? (
+                  readyToDispatchEligible ? (
                     <Button
                       size="sm"
                       className="hidden md:flex"
@@ -733,7 +737,7 @@ export default function ProductionLeadDetails() {
                   )
                 }
               />
-            ) : allInstancesCompleted ? (
+            ) : readyToDispatchEligible ? (
               <Button
                 size="sm"
                 className="hidden md:flex"
@@ -838,13 +842,13 @@ export default function ProductionLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="md:hidden" disabled>
                         <Truck size={20} />
-                        {allInstancesCompleted
+                        {readyToDispatchEligible
                           ? "Ready To Dispatch"
                           : "Mark Completed"}
                       </DropdownMenuItem>
                     }
                   />
-                ) : allInstancesCompleted ? (
+                ) : readyToDispatchEligible ? (
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={handleReadyToDispatchClick}
@@ -1222,14 +1226,16 @@ export default function ProductionLeadDetails() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isSmallOrderLead
+              {(isSmallOrderLead && !handlesLargeScaleProjects)
                 ? "Move to Dispatch Planning?"
                 : "Move to Ready To Dispatch?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isSmallOrderLead
+              {(isSmallOrderLead && !handlesLargeScaleProjects)
                 ? "This will move the small-order lead from Production directly to the Dispatch Planning stage. Are you sure you want to continue?"
-                : "This will move the lead from Production to the Ready-To-Dispatch stage. Are you sure you want to continue?"}
+                : handlesLargeScaleProjects
+                  ? `This will move only "${instanceName || "this instance"}" to Ready To Dispatch. Other instances will remain in their current stages.`
+                  : "This will move the lead from Production to the Ready-To-Dispatch stage. Are you sure you want to continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1240,7 +1246,7 @@ export default function ProductionLeadDetails() {
                 moveLeadToDispatchPlanningMutation.isPending
               }
               onClick={async () => {
-                if (!vendorId || !userId || !leadIdNum) {
+                if (!vendorId || !userId || !leadIdNum || !readyToDispatchEligible) {
                   toastManager.add({
                     title: "Missing vendor or user information!",
                     type: "error",
@@ -1249,7 +1255,7 @@ export default function ProductionLeadDetails() {
                 }
 
                 try {
-                  if (isSmallOrderLead) {
+                  if ((isSmallOrderLead && !handlesLargeScaleProjects)) {
                     await moveLeadToDispatchPlanningMutation.mutateAsync({
                       vendorId,
                       leadId: leadIdNum,
@@ -1265,10 +1271,11 @@ export default function ProductionLeadDetails() {
                       vendorId,
                       leadId: leadIdNum,
                       updated_by: userId,
+                      instance_id: handlesLargeScaleProjects ? validInstanceId ?? undefined : undefined,
                     });
 
                     toastManager.add({
-                      title: "Lead moved to Ready-To-Dispatch successfully!",
+                      title: handlesLargeScaleProjects ? "Instance moved to Ready-To-Dispatch successfully!" : "Lead moved to Ready-To-Dispatch successfully!",
                       type: "success",
                     });
                   }
@@ -1288,7 +1295,7 @@ export default function ProductionLeadDetails() {
 
                   setTimeout(() => {
                     router.push(
-                      isSmallOrderLead
+                      (isSmallOrderLead && !handlesLargeScaleProjects)
                         ? "/dashboard/installation/dispatch-planning"
                         : "/dashboard/production/ready-to-dispatch",
                     );
@@ -1298,7 +1305,7 @@ export default function ProductionLeadDetails() {
                     title:
                       err?.response?.data?.message ||
                       err?.message ||
-                      (isSmallOrderLead
+                      ((isSmallOrderLead && !handlesLargeScaleProjects)
                         ? "Failed to move lead to Dispatch Planning"
                         : "Failed to move lead to Ready-To-Dispatch"),
                     type: "error",
