@@ -136,6 +136,7 @@ export interface UniversalStageLead {
   source: SourceInfo | null;
 
   assignedTo?: AssignedUser | null;
+  statusType?: { tag?: string | null } | null;
   smallOrderRequest?: {
     is_request_resolved?: boolean;
     request_source?: string | null;
