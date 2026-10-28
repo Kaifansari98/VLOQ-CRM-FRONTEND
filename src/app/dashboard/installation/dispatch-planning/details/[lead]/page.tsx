@@ -742,9 +742,15 @@ const isBlockActionPending =
       <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Move to Dispatch</AlertDialogTitle>
+            <AlertDialogTitle>
+              {dispatchPlanningInstanceId
+                ? "Confirm Move Instance to Dispatch"
+                : "Confirm Move to Dispatch"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to move this lead to the Dispatch stage?
+              {dispatchPlanningInstanceId
+                ? "Are you sure you want to move this instance to the Dispatch stage? Only this instance moves; the lead's other instances stay where they are."
+                : "Are you sure you want to move this lead to the Dispatch stage?"}
               <br />
               Once moved, this action cannot be undone.
             </AlertDialogDescription>
@@ -765,7 +771,9 @@ const isBlockActionPending =
                     },
                   });
                   toastManager.add({
-                    title: "Lead successfully moved to Dispatch stage 🚚",
+                    title: dispatchPlanningInstanceId
+                      ? "Instance successfully moved to Dispatch stage 🚚"
+                      : "Lead successfully moved to Dispatch stage 🚚",
                     type: "success",
                   });
                   queryClient.invalidateQueries({ queryKey: ["leadStats"] });
