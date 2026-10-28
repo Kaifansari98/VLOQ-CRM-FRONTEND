@@ -536,8 +536,8 @@ export interface CreateProductItemCodeMasterPayload {
   item_code: string;
   product_structure_id: number;
   sub_product_structure_id: number;
-  description: string;
-  specification: string;
+  description?: string;
+  specification?: string;
 }
 
 export interface UpdateSourceTypeMasterPayload {

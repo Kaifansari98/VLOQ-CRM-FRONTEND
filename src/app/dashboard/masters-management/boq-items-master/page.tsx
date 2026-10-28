@@ -561,7 +561,6 @@ export default function BoqItemsMasterPage() {
 
     if (
       !itemCode ||
-      !description ||
       !vendorId ||
       !subStructureId ||
       !productStructureId
@@ -830,7 +829,8 @@ export default function BoqItemsMasterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="item-code-description">
-                Description <span className="text-red-500">*</span>
+                Description{" "}
+                <span className="text-xs text-muted-foreground font-normal">(optional)</span>
               </Label>
               <Textarea
                 id="item-code-description"
@@ -870,7 +870,6 @@ export default function BoqItemsMasterPage() {
                 isSavingItemCode ||
                 !itemCodeValue.trim() ||
                 !itemCodeSubStructureId ||
-                !itemCodeDescription.trim() ||
                 !vendorId
               }
             >

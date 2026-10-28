@@ -105,11 +105,14 @@ const renameLeadSitePhotoFiles = ({
   clientName,
   targetLabel,
   uploadDate,
+  prefix = "CSP",
 }: {
   files: File[];
   clientName: string;
   targetLabel: string;
   uploadDate: string;
+  /** CSP = Current Site Photos, CSD = Current Site Dimension */
+  prefix?: "CSP" | "CSD";
 }) => {
   const safeClientName = sanitizeFileSegment(clientName || "Client");
   const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
@@ -118,7 +121,7 @@ const renameLeadSitePhotoFiles = ({
     (file, index) =>
       new File(
         [file],
-        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        `${prefix}${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
           file.name,
         )}`,
         {
@@ -322,6 +325,8 @@ export default function LeadsGenerationForm({
   draftInOpenLeads = false,
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
+  // Large-scale vendors: Current Site Dimension documents (named CSD like CSP).
+  const [siteDimensionFiles, setSiteDimensionFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);
   const vendorCustomUserTypeMode = useAppSelector(
@@ -930,9 +935,11 @@ export default function LeadsGenerationForm({
     mutationFn: ({
       payload,
       files,
+      siteDimensionFiles = [],
     }: {
       payload: any;
       files: File[];
+      siteDimensionFiles?: File[];
     }) => {
       if (mode === "lead-pool") {
         const walkInPayload = {
@@ -958,7 +965,7 @@ export default function LeadsGenerationForm({
         };
         return createWalkInLead(walkInPayload);
       }
-      return createLead(payload, files);
+      return createLead(payload, files, undefined, siteDimensionFiles);
     },
     onSuccess: async (data: any) => {
       if (mode === "lead-pool") {
@@ -966,6 +973,7 @@ export default function LeadsGenerationForm({
         await invalidateLeadTableQueries();
         form.reset();
         setFiles([]);
+      setSiteDimensionFiles([]);
         onClose();
         if (typeof window !== "undefined") {
           if (window.location.pathname.includes("/dashboard/lead-pool")) {
@@ -1002,6 +1010,7 @@ export default function LeadsGenerationForm({
       await invalidateLeadTableQueries();
       form.reset();
       setFiles([]);
+      setSiteDimensionFiles([]);
       onClose();
       router.push("/dashboard/leads/leadstable");
     },
@@ -1015,8 +1024,15 @@ export default function LeadsGenerationForm({
   });
 
   const saveDraftMutation = useMutation({
-    mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
-      createLead(payload, files),
+    mutationFn: ({
+      payload,
+      files,
+      siteDimensionFiles = [],
+    }: {
+      payload: any;
+      files: File[];
+      siteDimensionFiles?: File[];
+    }) => createLead(payload, files, undefined, siteDimensionFiles),
     onSuccess: async (data: any) => {
       const selectedDesignerId = form.getValues("designer_id");
       const createdLead = data?.data?.lead || data?.data || data;
@@ -1044,6 +1060,7 @@ export default function LeadsGenerationForm({
       });
       form.reset();
       setFiles([]);
+      setSiteDimensionFiles([]);
       onClose();
       router.push(
         draftInOpenLeads
@@ -1250,6 +1267,36 @@ export default function LeadsGenerationForm({
     structureQuantityItems,
   ]);
 
+  // Current Site Dimension files follow the Site Photos naming, with CSD for CSP.
+  const buildRenamedSiteDimensionFiles = useCallback(() => {
+    if (!handlesLargeScaleProjects || isB2b) return [];
+    if (!(isCustomVendorFlow || isCustomDocNomenclatureEnabled)) {
+      return siteDimensionFiles;
+    }
+    const clientName = `${form.getValues("firstname") || ""} ${form.getValues("lastname") || ""
+      }`.trim();
+    const furnitureTypeName =
+      productTypes?.data?.find(
+        (type: any) => String(type.id) === selectedProductTypes?.[0],
+      )?.type || "Furniture Type";
+    return renameLeadSitePhotoFiles({
+      files: siteDimensionFiles,
+      clientName,
+      targetLabel: furnitureTypeName,
+      uploadDate: formatFileDate(new Date()),
+      prefix: "CSD",
+    });
+  }, [
+    form,
+    handlesLargeScaleProjects,
+    isB2b,
+    isCustomDocNomenclatureEnabled,
+    isCustomVendorFlow,
+    productTypes?.data,
+    selectedProductTypes,
+    siteDimensionFiles,
+  ]);
+
   function onSubmit(values: FormValues) {
     const walkinSubmission = walkinQuestions.prepare();
     if (!walkinSubmission.ok) return;
@@ -1340,14 +1387,16 @@ export default function LeadsGenerationForm({
     };
 
     // ── Pre-flight validation ──────────────────────────────────────────────
-    if (files.length > 40) {
+    // Site Photos and Current Site Dimension upload together (40 files total).
+    const allUploadFiles = [...files, ...siteDimensionFiles];
+    if (allUploadFiles.length > 40) {
       toastManager.add({
         title: "Maximum 40 files allowed. Please remove some files.",
         type: "error",
       });
       return;
     }
-    const totalSizeBytes = files.reduce((sum, f) => sum + f.size, 0);
+    const totalSizeBytes = allUploadFiles.reduce((sum, f) => sum + f.size, 0);
     const MAX_TOTAL_MB = 400;
     if (totalSizeBytes > MAX_TOTAL_MB * 1024 * 1024) {
       toastManager.add({
@@ -1358,7 +1407,11 @@ export default function LeadsGenerationForm({
     }
 
     createLeadMutation.mutate(
-      { payload, files: buildRenamedSitePhotoFiles() },
+      {
+        payload,
+        files: buildRenamedSitePhotoFiles(),
+        siteDimensionFiles: buildRenamedSiteDimensionFiles(),
+      },
       {
         onSuccess: async () => {
           await invalidateLeadTableQueries();
@@ -1466,7 +1519,11 @@ export default function LeadsGenerationForm({
       draft_in_open_leads: draftInOpenLeads,
     };
 
-    saveDraftMutation.mutate({ payload, files: buildRenamedSitePhotoFiles() });
+    saveDraftMutation.mutate({
+      payload,
+      files: buildRenamedSitePhotoFiles(),
+      siteDimensionFiles: buildRenamedSiteDimensionFiles(),
+    });
   }
 
   return (
@@ -2460,6 +2517,24 @@ export default function LeadsGenerationForm({
               </FormItem>
             )}
           />
+        )}
+
+        {handlesLargeScaleProjects && !isB2b && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium leading-none">
+              Current Site Dimension
+            </p>
+            <FileUploadField
+              value={siteDimensionFiles}
+              onChange={setSiteDimensionFiles}
+              multiple={true}
+              maxFiles={40}
+              maxSizeMB={400}
+            />
+            <p className="text-xs text-muted-foreground">
+              Upload site dimension drawings or documents.
+            </p>
+          </div>
         )}
 
         <AlertDialog

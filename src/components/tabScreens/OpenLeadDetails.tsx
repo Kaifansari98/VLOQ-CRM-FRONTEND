@@ -62,6 +62,7 @@ import {
 import { useMemo, useRef, useState, useEffect } from "react";
 import { ImageComponent } from "../utils/ImageCard";
 import DocumentCard from "../utils/documentCard";
+import CurrentSiteDimensionSection from "./CurrentSiteDimensionSection";
 import { Button } from "@/components/ui/button";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -250,11 +251,14 @@ const renameLeadSitePhotoFiles = ({
   clientName,
   targetLabel,
   uploadDate,
+  prefix = "CSP",
 }: {
   files: File[];
   clientName: string;
   targetLabel: string;
   uploadDate: string;
+  /** CSP = Current Site Photos, CSD = Current Site Dimension */
+  prefix?: "CSP" | "CSD";
 }) => {
   const safeClientName = sanitizeFileSegment(clientName || "Client");
   const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
@@ -263,7 +267,7 @@ const renameLeadSitePhotoFiles = ({
     (file, index) =>
       new File(
         [file],
-        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        `${prefix}${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
           file.name,
         )}`,
         {
@@ -3502,6 +3506,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               )}
             </motion.div>
           </motion.section>
+          )}
+
+          {/* Current Site Dimension (large-scale vendors) */}
+          {handlesLargeScaleProjects && !isB2b && vendorId && userId && (
+            <motion.div variants={itemVariants}>
+              <CurrentSiteDimensionSection
+                vendorId={vendorId}
+                leadId={leadId}
+                userId={userId}
+                canManage={canUploadSitePhotos}
+                shouldDisableBlockedActions={shouldDisableBlockedActions}
+                blockedTooltip={blockedTooltip}
+                renameFiles={(files) =>
+                  isCustomDocNomenclatureEnabled
+                    ? renameLeadSitePhotoFiles({
+                      files,
+                      clientName: `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim(),
+                      targetLabel: currentProductTypeLabel || "Furniture Type",
+                      uploadDate: formatFileDate(new Date()),
+                      prefix: "CSD",
+                    })
+                    : files
+                }
+              />
+            </motion.div>
           )}
 
           <WalkinLeadAnswers

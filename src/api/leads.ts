@@ -435,6 +435,71 @@ export const uploadMoreSitePhotos = async ({
   return response.data;
 };
 
+/** Upload Current Site Dimension documents (large-scale vendors). */
+export const uploadSiteDimensionDocuments = async ({
+  vendorId,
+  leadId,
+  createdBy,
+  files,
+}: {
+  vendorId: number;
+  leadId: number;
+  createdBy: number;
+  files: File[];
+}) => {
+  const formData = new FormData();
+  formData.append("vendor_id", vendorId.toString());
+  formData.append("lead_id", leadId.toString());
+  formData.append("created_by", createdBy.toString());
+  files.forEach((file) => formData.append("documents", file));
+
+  const response = await apiClient.post(
+    "/leads/upload-site-dimension-documents",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+
+  return response.data;
+};
+
+export const getSiteDimensionDocuments = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/site-dimension-documents`,
+  );
+  return data?.data ?? [];
+};
+
+export const useSiteDimensionDocuments = (
+  vendorId?: number,
+  leadId?: number,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ["siteDimensionDocuments", vendorId, leadId],
+    queryFn: () => getSiteDimensionDocuments(vendorId!, leadId!),
+    enabled: enabled && !!vendorId && !!leadId,
+  });
+};
+
+export const useUploadSiteDimensionDocuments = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: uploadSiteDimensionDocuments,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "siteDimensionDocuments",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+  });
+};
+
 export const createSmallOrderRequest = async (
   payload: CreateSmallOrderRequestPayload,
 ) => {
@@ -742,6 +807,8 @@ export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = [],
   onUploadProgress?: (info: UploadProgressInfo) => void,
+  /** Large-scale vendors: Current Site Dimension documents. */
+  siteDimensionFiles: File[] = [],
 ) => {
   const formData = new FormData();
 
@@ -766,9 +833,15 @@ export const createLead = async (
   files.forEach((file) => {
     formData.append("documents", file);
   });
+  siteDimensionFiles.forEach((file) => {
+    formData.append("site_dimension_documents", file);
+  });
 
   // Pre-calculate total file bytes for accurate progress reporting
-  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const totalBytes = [...files, ...siteDimensionFiles].reduce(
+    (sum, f) => sum + f.size,
+    0,
+  );
 
   try {
     const response = await apiClient.post("leads/create", formData, {
@@ -1397,6 +1470,7 @@ export const useDeleteDocument = (leadId?: number) => {
 
       // ✅ Invalidate both queries safely
       queryClient.invalidateQueries({ queryKey: ["lead"] });
+      queryClient.invalidateQueries({ queryKey: ["siteDimensionDocuments"] });
 
       if (leadId) {
         queryClient.invalidateQueries({
