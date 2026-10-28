@@ -118,8 +118,16 @@ export default function DispatchPlanningLeadDetails() {
   const isChatNotification = useIsChatNotification();
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
+  // Large-scale vendors plan dispatch per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const dispatchPlanningInstanceId = handlesLargeScaleProjects
+    ? validInstanceId
+    : null;
+
   const { data: readinessStatus, isLoading: readinessLoading } =
-    useDispatchReadinessStatus(vendorId, leadIdNum);
+    useDispatchReadinessStatus(vendorId, leadIdNum, dispatchPlanningInstanceId);
   const moveMutation = useMoveLeadToDispatch();
 
   const isReadyForDispatch = readinessStatus?.is_ready_for_dispatch ?? false;
@@ -749,7 +757,12 @@ const isBlockActionPending =
                   await moveMutation.mutateAsync({
                     vendorId: vendorId!,
                     leadId: leadIdNum,
-                    payload: { updated_by: userId! },
+                    payload: {
+                      updated_by: userId!,
+                      ...(dispatchPlanningInstanceId
+                        ? { instance_id: dispatchPlanningInstanceId }
+                        : {}),
+                    },
                   });
                   toastManager.add({
                     title: "Lead successfully moved to Dispatch stage 🚚",
