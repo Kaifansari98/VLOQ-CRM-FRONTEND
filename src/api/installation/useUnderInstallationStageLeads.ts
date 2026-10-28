@@ -262,10 +262,11 @@ export const moveLeadToUnderInstallation = async (
   vendorId: number,
   leadId: number,
   updated_by: number,
+  instanceId?: number | null,
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-under-installation`,
-    { updated_by },
+    { updated_by, ...(instanceId ? { instance_id: instanceId } : {}) },
   );
   return data?.data;
 };
@@ -281,11 +282,14 @@ export const useMoveLeadToUnderInstallation = () => {
       vendorId,
       leadId,
       updated_by,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       updated_by: number;
-    }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
+      /** Large-scale vendors: move only this instance. */
+      instanceId?: number | null;
+    }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by, instanceId),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
