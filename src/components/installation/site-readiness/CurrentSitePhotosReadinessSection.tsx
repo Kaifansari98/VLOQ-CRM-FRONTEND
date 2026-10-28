@@ -35,11 +35,14 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 interface CurrentSitePhotosReadinessSectionProps {
   leadId: number;
   accountId: number | null;
+  /** Large-scale vendors: photos are uploaded to and listed for this instance. */
+  instanceId?: number | null;
 }
 
 export default function CurrentSitePhotosReadinessSection({
   leadId,
   accountId,
+  instanceId,
 }: CurrentSitePhotosReadinessSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -53,6 +56,7 @@ export default function CurrentSitePhotosReadinessSection({
   const { data: sitePhotos, isLoading } = useCurrentSitePhotosAtSiteReadiness(
     vendorId,
     leadId,
+    instanceId,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -123,6 +127,7 @@ const {
         accountId: accountId || 0,
         createdBy: userId,
         files: selectedFiles,
+        instanceId,
       });
 
       toastManager.add({
