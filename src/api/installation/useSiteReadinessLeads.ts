@@ -295,14 +295,16 @@ export const useCheckSiteReadinessCompletion = (
    🔹 8️⃣ Move Lead to Dispatch Planning Stage
    @route PUT /leads/installation/site-readiness/vendorId/:vendorId/leadId/:leadId/move-to-dispatch-planning
    ========================================================== */
+// instanceId: large-scale vendors move one product instance, not the whole lead.
 export const moveLeadToDispatchPlanning = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/move-to-dispatch-planning`,
-    { updated_by }
+    { updated_by, ...(instanceId ? { instance_id: instanceId } : {}) }
   );
   return data?.data;
 };
@@ -313,11 +315,13 @@ export const useMoveLeadToDispatchPlanning = () => {
       vendorId,
       leadId,
       updated_by,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       updated_by: number;
-    }) => moveLeadToDispatchPlanning(vendorId, leadId, updated_by),
+      instanceId?: number | null;
+    }) => moveLeadToDispatchPlanning(vendorId, leadId, updated_by, instanceId),
   });
 };
 
