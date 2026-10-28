@@ -66,21 +66,28 @@ export const useMoveLeadToReadyToDispatch = () => {
 };
 
 // ✅ --- Fetch Current Site Photos (Ready-To-Dispatch)
+// Without an instanceId this returns the photos of every instance of the lead.
 export const getCurrentSitePhotos = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos`
+    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data || [];
 };
 
 // ✅ --- React Query Hook
-export const useCurrentSitePhotos = (vendorId?: number, leadId?: number) => {
+export const useCurrentSitePhotos = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["currentSitePhotos", vendorId, leadId],
-    queryFn: () => getCurrentSitePhotos(vendorId!, leadId!),
+    queryKey: ["currentSitePhotos", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getCurrentSitePhotos(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -196,12 +203,15 @@ export const getSiteReadinessTaskConflicts = async (leadId: number) => {
 };
 
 // ✅ --- Get Current Site Photos COUNT + Flag (Ready-To-Dispatch)
+// Without an instanceId this counts the photos of every instance of the lead.
 export const getCurrentSitePhotosCount = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ): Promise<{ count: number; hasPhotos: boolean }> => {
   const { data } = await apiClient.get(
-    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos/count`
+    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos/count`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
 
   return data?.data || { count: 0, hasPhotos: false };
@@ -210,11 +220,12 @@ export const getCurrentSitePhotosCount = async (
 // ✅ --- React Query Hook
 export const useCurrentSitePhotosCount = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["currentSitePhotosCount", vendorId, leadId],
-    queryFn: () => getCurrentSitePhotosCount(vendorId!, leadId!),
+    queryKey: ["currentSitePhotosCount", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getCurrentSitePhotosCount(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
