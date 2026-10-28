@@ -91,6 +91,17 @@ export default function LeadDetailsGrouped({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector((state) => state.auth?.user?.user_type?.user_type);
+  // Large-scale vendors work per instance in every stage: a page passes the
+  // instance only for its own stage, so earlier stages' tabs fall back to the
+  // instance in the URL instead of loading (empty) lead-level data.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const urlInstanceParam = Number(searchParams.get("instance_id"));
+  const urlInstanceId =
+    handlesLargeScaleProjects && urlInstanceParam > 0 ? urlInstanceParam : null;
+  const stageInstanceId = (instanceId?: number | null) =>
+    instanceId ?? urlInstanceId;
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
   const lead = leadResponse?.data?.lead;
   const servicingSource = searchParams.get("source");
@@ -170,7 +181,7 @@ export default function LeadDetailsGrouped({
         component: (
           <TechCheckDetails
             leadId={leadId}
-            instanceId={techCheckInstanceId}
+            instanceId={stageInstanceId(techCheckInstanceId)}
             selectedProductTypeId={selectedProductTypeId}
             onProductTypeChange={onProductTypeChange}
           />
@@ -184,7 +195,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
-            instanceId={orderLoginInstanceId}
+            instanceId={stageInstanceId(orderLoginInstanceId)}
           />
         ),
       },
@@ -195,7 +206,7 @@ export default function LeadDetailsGrouped({
           <LeadDetailsProductionUtil
             leadId={leadId}
             accountId={accountId}
-            instanceId={productionInstanceId}
+            instanceId={stageInstanceId(productionInstanceId)}
           />
         ),
       },
@@ -206,7 +217,7 @@ export default function LeadDetailsGrouped({
           <ReadyToDispatchDetails
             leadId={leadId}
             accountId={accountId}
-            instanceId={readyToDispatchInstanceId}
+            instanceId={stageInstanceId(readyToDispatchInstanceId)}
           />
         ),
       },
@@ -220,7 +231,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
-            instanceId={siteReadinessInstanceId}
+            instanceId={stageInstanceId(siteReadinessInstanceId)}
           />
         ),
       },
@@ -231,7 +242,7 @@ export default function LeadDetailsGrouped({
           <DispatchPlanningDetails
             leadId={leadId}
             accountId={accountId}
-            instanceId={dispatchPlanningInstanceId}
+            instanceId={stageInstanceId(dispatchPlanningInstanceId)}
           />
         ),
       },
@@ -243,7 +254,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
-            instanceId={dispatchInstanceId}
+            instanceId={stageInstanceId(dispatchInstanceId)}
           />
         ),
       },
@@ -255,7 +266,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
-            instanceId={underInstallationInstanceId}
+            instanceId={stageInstanceId(underInstallationInstanceId)}
           />
         ),
       },
@@ -266,7 +277,7 @@ export default function LeadDetailsGrouped({
           <FinalHandoverWrapper
             leadId={leadId}
             accountId={accountId}
-            instanceId={finalHandoverInstanceId}
+            instanceId={stageInstanceId(finalHandoverInstanceId)}
           />
         ),
       },
@@ -379,6 +390,17 @@ export default function LeadDetailsGrouped({
     smallOrderRequestSource,
     status,
     isMiscUser,
+    // the stage components carry the instance; rebuild them when it changes
+    urlInstanceId,
+    techCheckInstanceId,
+    orderLoginInstanceId,
+    productionInstanceId,
+    readyToDispatchInstanceId,
+    siteReadinessInstanceId,
+    dispatchPlanningInstanceId,
+    dispatchInstanceId,
+    underInstallationInstanceId,
+    finalHandoverInstanceId,
   ]);
 
   React.useEffect(() => {
