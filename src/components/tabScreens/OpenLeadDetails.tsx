@@ -1036,9 +1036,44 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   }, [boqDisplaySearch]);
 
   const filteredBoqItemCodes = useMemo(() => {
+    // Helper: returns true if a status string is "active" (or absent)
+    const isActive = (status?: string | null) =>
+      (status ?? "active").toLowerCase() === "active";
+
+    // Exclude items that are inactive at ANY level in the hierarchy:
+    // Item Code → Sub-Item Category → Item Category → Item Group
+    const activeItems = productItemCodes.filter((item: any) => {
+      // 1. Item Code itself
+      if (!isActive(item.status)) return false;
+
+      // 2. Sub-Item Category (subProductStructure)
+      const sub = item.subProductStructure;
+      if (sub) {
+        if (!isActive(sub.status)) return false;
+        // 3. Item Category via subProductStructure path
+        const cat = sub.productStructure;
+        if (cat) {
+          if (!isActive(cat.status)) return false;
+          // 4. Item Group via subProductStructure path
+          if (!isActive(cat.productType?.status)) return false;
+        }
+      } else {
+        // 3. Item Category directly on item
+        const cat = item.productStructure;
+        if (cat) {
+          if (!isActive(cat.status)) return false;
+          // 4. Item Group via productStructure path
+          if (!isActive(cat.productType?.status)) return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Then apply search filter
     const search = boqSearch.trim().toLowerCase();
-    if (!search) return productItemCodes;
-    return productItemCodes.filter((item: any) => {
+    if (!search) return activeItems;
+    return activeItems.filter((item: any) => {
       const haystack = [
         item.item_code,
         item.description,

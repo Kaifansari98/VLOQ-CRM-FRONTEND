@@ -95,6 +95,10 @@ import {
   toggleProcessBriefStatusApi,
   fetchProcessBriefMachineMappingsApi,
   saveProcessBriefMachineMappingsApi,
+  updateProductTypeStatus,
+  updateProductStructureStatus,
+  updateProductSubStructureStatus,
+  updateProductItemCodeStatus,
 } from "@/api/typesMasterApi"
 import { useAppSelector } from "@/redux/store" // assuming you have typed hooks
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -498,6 +502,112 @@ export const useUpdateProductItemCode = (vendorIdOverride?: number) => {
     },
   });
 }
+
+export const useUpdateProductTypeStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      updateProductTypeStatus(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productTypes", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["productStructureTypes", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["productSubStructures", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({
+        title: "Product type status updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to update product type status.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useUpdateProductStructureStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      updateProductStructureStatus(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productStructureTypes", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["productSubStructures", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({
+        title: "Product structure status updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to update product structure status.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useUpdateProductSubStructureStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      updateProductSubStructureStatus(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productSubStructures", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({
+        title: "Product sub structure status updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to update product sub structure status.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useUpdateProductItemCodeStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      updateProductItemCodeStatus(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({
+        title: "Product item code status updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to update product item code status.",
+        type: "error",
+      });
+    },
+  });
+};
 
 export const useProductStructureTypes = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)

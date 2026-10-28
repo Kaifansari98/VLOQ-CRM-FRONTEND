@@ -14,7 +14,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Button } from "@/components/ui/button";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
@@ -46,9 +46,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import {
   useCreateProductItemCode,
-  useUpdateProductItemCode,
   useCreateProductSubStructure,
   useCreateProductType,
   useCreateProductStructure,
@@ -56,6 +57,10 @@ import {
   useProductSubStructures,
   useProductStructureTypes,
   useProductTypes,
+  useUpdateProductTypeStatus,
+  useUpdateProductStructureStatus,
+  useUpdateProductSubStructureStatus,
+  useUpdateProductItemCodeStatus,
 } from "@/hooks/useTypesMaster";
 import { useAppSelector } from "@/redux/store";
 
@@ -68,6 +73,7 @@ type MasterRow = {
   description?: string | null;
   specification?: string | null;
   status: string;
+  _parentIsActive?: boolean;
 };
 
 function MasterListingTable({
@@ -83,7 +89,9 @@ function MasterListingTable({
   isError,
   errorMessage,
   onAction,
-  onEdit,
+  onToggleStatus,
+  isTogglingStatus = false,
+  togglingId = null,
 }: {
   title: string;
   description: string;
@@ -97,7 +105,9 @@ function MasterListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction?: () => void;
-  onEdit?: (row: MasterRow) => void;
+  onToggleStatus?: (row: MasterRow, nextChecked: boolean) => void;
+  isTogglingStatus?: boolean;
+  togglingId?: number | null;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -150,38 +160,51 @@ function MasterListingTable({
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          const status = row.original.status || "—";
+          const status = (row.original.status || "active").toLowerCase();
+          const isActive = status === "active";
+          const isRowToggling = isTogglingStatus && togglingId === row.original.id;
+
           return (
-            <span className="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium">
-              {status}
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize transition-colors",
+                  isActive
+                    ? "border-emerald-200 bg-emerald-500/10 text-emerald-600 dark:border-emerald-800/40 dark:bg-emerald-500/20 dark:text-emerald-400"
+                    : "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-400",
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full transition-colors",
+                    isActive ? "bg-emerald-500" : "bg-zinc-400",
+                  )}
+                />
+                {status}
+              </span>
+              {onToggleStatus && (
+                <Switch
+                  checked={isActive}
+                  disabled={isRowToggling || row.original._parentIsActive === false}
+                  onCheckedChange={(checked) => onToggleStatus(row.original, checked)}
+                  className={cn(
+                    "transition-colors",
+                    row.original._parentIsActive === false
+                      ? "opacity-40 cursor-not-allowed"
+                      : "",
+                    isActive
+                      ? "bg-emerald-600 hover:bg-emerald-600"
+                      : "bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400",
+                  )}
+                  aria-label={`Toggle status for ${row.original.name}`}
+                />
+              )}
+            </div>
           );
         },
       },
-      ...(onEdit
-        ? [
-            {
-              id: "actions",
-              header: "Actions",
-              enableSorting: false,
-              enableHiding: false,
-              cell: ({ row }) => (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit(row.original)}
-                  aria-label={`Edit item code ${row.original.name}`}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Button>
-              ),
-            } satisfies ColumnDef<MasterRow>,
-          ]
-        : []),
     ],
-    [showDescription, showParent, showSpecification, onEdit],
+    [showDescription, showParent, showSpecification, onToggleStatus, isTogglingStatus, togglingId],
   );
 
   const table = useReactTable({
@@ -257,10 +280,20 @@ function MasterListingTable({
 export default function BoqItemsMasterPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createProductItemCodeMutation = useCreateProductItemCode();
-  const updateProductItemCodeMutation = useUpdateProductItemCode();
   const createProductTypeMutation = useCreateProductType();
   const createProductStructureMutation = useCreateProductStructure();
   const createProductSubStructureMutation = useCreateProductSubStructure();
+
+  const updateProductTypeStatusMutation = useUpdateProductTypeStatus();
+  const updateProductStructureStatusMutation = useUpdateProductStructureStatus();
+  const updateProductSubStructureStatusMutation = useUpdateProductSubStructureStatus();
+  const updateProductItemCodeStatusMutation = useUpdateProductItemCodeStatus();
+
+  const [togglingItemGroupId, setTogglingItemGroupId] = React.useState<number | null>(null);
+  const [togglingItemCategoryId, setTogglingItemCategoryId] = React.useState<number | null>(null);
+  const [togglingSubItemCategoryId, setTogglingSubItemCategoryId] = React.useState<number | null>(null);
+  const [togglingItemCodeId, setTogglingItemCodeId] = React.useState<number | null>(null);
+
   const {
     data: productItemCodes,
     isLoading: isProductItemCodesLoading,
@@ -286,6 +319,7 @@ export default function BoqItemsMasterPage() {
     error: productSubStructuresError,
   } = useProductSubStructures();
 
+  // 1. Item Group Rows (All Item Groups are displayed)
   const productTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (productTypes?.data ?? []).map((item: any, index: number) => ({
@@ -298,44 +332,167 @@ export default function BoqItemsMasterPage() {
     [productTypes?.data],
   );
 
-  const productItemCodeRows = React.useMemo<MasterRow[]>(
-    () =>
-      (productItemCodes?.data ?? []).map((item: any, index: number) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.item_code,
-        subStructureId: item.sub_product_structure_id ?? item.subProductStructure?.id,
-        parent: item.subProductStructure?.type ?? null,
-        description: item.description ?? null,
-        specification: item.specification ?? null,
-        status: item.status ?? "active",
-      })),
-    [productItemCodes?.data],
-  );
+  // Set of Active Item Group IDs
+  const activeProductTypeIds = React.useMemo(() => {
+    return new Set(
+      (productTypes?.data ?? [])
+        .filter((item: any) => (item.status ?? "active").toLowerCase() === "active")
+        .map((item: any) => item.id),
+    );
+  }, [productTypes?.data]);
 
+  // 2. Item Category Rows: ALL shown, but effective status is "inactive" if parent Item Group is inactive
   const productStructureRows = React.useMemo<MasterRow[]>(
     () =>
-      (productStructures?.data ?? []).map((item: any, index: number) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.type,
-        parent: item.productType?.type ?? item.parent ?? null,
-        status: item.status ?? "active",
-      })),
-    [productStructures?.data],
+      (productStructures?.data ?? []).map((item: any, index: number) => {
+        const parentTypeId = item.product_type_id ?? item.productType?.id;
+        const parentIsActive =
+          parentTypeId === undefined || parentTypeId === null
+            ? true
+            : activeProductTypeIds.has(parentTypeId);
+        const selfStatus = (item.status ?? "active").toLowerCase();
+        const effectiveStatus = parentIsActive ? selfStatus : "inactive";
+        return {
+          srNo: index + 1,
+          id: item.id,
+          name: item.type,
+          parent: item.productType?.type ?? item.parent ?? null,
+          status: effectiveStatus,
+          // Store whether the parent is active so we can disable the toggle
+          _parentIsActive: parentIsActive,
+        } as MasterRow & { _parentIsActive: boolean };
+      }),
+    [productStructures?.data, activeProductTypeIds],
   );
 
+  // Set of Active Item Category IDs (self is active AND parent Item Group is active)
+  const activeProductStructureIds = React.useMemo(() => {
+    return new Set(
+      (productStructures?.data ?? [])
+        .filter((item: any) => {
+          const parentTypeId = item.product_type_id ?? item.productType?.id;
+          const parentIsActive =
+            parentTypeId === undefined || parentTypeId === null
+              ? true
+              : activeProductTypeIds.has(parentTypeId);
+          return parentIsActive && (item.status ?? "active").toLowerCase() === "active";
+        })
+        .map((item: any) => item.id),
+    );
+  }, [productStructures?.data, activeProductTypeIds]);
+
+  // 3. Sub-Item Category Rows: ALL shown, but effective status is "inactive" if any ancestor is inactive
   const productSubStructureRows = React.useMemo<MasterRow[]>(
     () =>
-      (productSubStructures?.data ?? []).map((item: any, index: number) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.type,
-        parent: item.productStructure?.type ?? null,
-        status: item.status ?? "active",
-      })),
-    [productSubStructures?.data],
+      (productSubStructures?.data ?? []).map((item: any, index: number) => {
+        const parentStructureId =
+          item.product_structure_id ?? item.productStructure?.id;
+        const parentIsActive =
+          parentStructureId === undefined || parentStructureId === null
+            ? true
+            : activeProductStructureIds.has(parentStructureId);
+        const selfStatus = (item.status ?? "active").toLowerCase();
+        const effectiveStatus = parentIsActive ? selfStatus : "inactive";
+        return {
+          srNo: index + 1,
+          id: item.id,
+          name: item.type,
+          parent: item.productStructure?.type ?? null,
+          status: effectiveStatus,
+          _parentIsActive: parentIsActive,
+        } as MasterRow & { _parentIsActive: boolean };
+      }),
+    [productSubStructures?.data, activeProductStructureIds],
   );
+
+  // Set of Active Sub-Item Category IDs (self is active AND ancestors are active)
+  const activeProductSubStructureIds = React.useMemo(() => {
+    return new Set(
+      (productSubStructures?.data ?? [])
+        .filter((item: any) => {
+          const parentStructureId =
+            item.product_structure_id ?? item.productStructure?.id;
+          const parentIsActive =
+            parentStructureId === undefined || parentStructureId === null
+              ? true
+              : activeProductStructureIds.has(parentStructureId);
+          return parentIsActive && (item.status ?? "active").toLowerCase() === "active";
+        })
+        .map((item: any) => item.id),
+    );
+  }, [productSubStructures?.data, activeProductStructureIds]);
+
+  // 4. Item Code Rows: ALL shown, but effective status is "inactive" if any ancestor is inactive
+  const productItemCodeRows = React.useMemo<MasterRow[]>(
+    () =>
+      (productItemCodes?.data ?? []).map((item: any, index: number) => {
+        const subStructureId =
+          item.sub_product_structure_id ?? item.subProductStructure?.id;
+        const structureId =
+          item.product_structure_id ?? item.productStructure?.id;
+        let parentIsActive = true;
+        if (subStructureId !== undefined && subStructureId !== null) {
+          parentIsActive = activeProductSubStructureIds.has(subStructureId);
+        } else if (structureId !== undefined && structureId !== null) {
+          parentIsActive = activeProductStructureIds.has(structureId);
+        }
+        const selfStatus = (item.status ?? "active").toLowerCase();
+        const effectiveStatus = parentIsActive ? selfStatus : "inactive";
+        return {
+          srNo: index + 1,
+          id: item.id,
+          name: item.item_code,
+          subStructureId,
+          parent: item.subProductStructure?.type ?? null,
+          description: item.description ?? null,
+          specification: item.specification ?? null,
+          status: effectiveStatus,
+          _parentIsActive: parentIsActive,
+        } as MasterRow & { _parentIsActive: boolean };
+      }),
+    [productItemCodes?.data, activeProductSubStructureIds, activeProductStructureIds],
+  );
+
+  // Toggle Status Handlers
+  const handleToggleItemGroupStatus = (row: MasterRow, checked: boolean) => {
+    setTogglingItemGroupId(row.id);
+    updateProductTypeStatusMutation.mutate(
+      { id: row.id, status: checked ? "active" : "inactive" },
+      {
+        onSettled: () => setTogglingItemGroupId(null),
+      },
+    );
+  };
+
+  const handleToggleItemCategoryStatus = (row: MasterRow, checked: boolean) => {
+    setTogglingItemCategoryId(row.id);
+    updateProductStructureStatusMutation.mutate(
+      { id: row.id, status: checked ? "active" : "inactive" },
+      {
+        onSettled: () => setTogglingItemCategoryId(null),
+      },
+    );
+  };
+
+  const handleToggleSubItemCategoryStatus = (row: MasterRow, checked: boolean) => {
+    setTogglingSubItemCategoryId(row.id);
+    updateProductSubStructureStatusMutation.mutate(
+      { id: row.id, status: checked ? "active" : "inactive" },
+      {
+        onSettled: () => setTogglingSubItemCategoryId(null),
+      },
+    );
+  };
+
+  const handleToggleItemCodeStatus = (row: MasterRow, checked: boolean) => {
+    setTogglingItemCodeId(row.id);
+    updateProductItemCodeStatusMutation.mutate(
+      { id: row.id, status: checked ? "active" : "inactive" },
+      {
+        onSettled: () => setTogglingItemCodeId(null),
+      },
+    );
+  };
   const [openCreateItemGroupModal, setOpenCreateItemGroupModal] =
     React.useState(false);
   const [openCreateItemCodeModal, setOpenCreateItemCodeModal] =
@@ -345,8 +502,7 @@ export default function BoqItemsMasterPage() {
   const [openCreateSubItemCategoryModal, setOpenCreateSubItemCategoryModal] =
     React.useState(false);
   const [itemGroupTypeValue, setItemGroupTypeValue] = React.useState("");
-  const [editingItemCodeId, setEditingItemCodeId] = React.useState<number | null>(null);
-  const isSavingItemCode = createProductItemCodeMutation.isPending || updateProductItemCodeMutation.isPending;
+  const isSavingItemCode = createProductItemCodeMutation.isPending;
   const [itemCodeValue, setItemCodeValue] = React.useState("");
   const [itemCodeSubStructureId, setItemCodeSubStructureId] = React.useState("");
   const [itemCodeDescription, setItemCodeDescription] = React.useState("");
@@ -378,7 +534,6 @@ export default function BoqItemsMasterPage() {
   };
 
   const resetItemCodeForm = () => {
-    setEditingItemCodeId(null);
     setItemCodeValue("");
     setItemCodeSubStructureId("");
     setItemCodeDescription("");
@@ -389,15 +544,6 @@ export default function BoqItemsMasterPage() {
     if (isSavingItemCode) return;
     setOpenCreateItemCodeModal(open);
     if (!open) resetItemCodeForm();
-  };
-
-  const handleEditItemCode = (row: MasterRow) => {
-    setEditingItemCodeId(row.id);
-    setItemCodeValue(row.name);
-    setItemCodeSubStructureId(row.subStructureId ? String(row.subStructureId) : "");
-    setItemCodeDescription(row.description ?? "");
-    setItemCodeSpecification(row.specification ?? "");
-    setOpenCreateItemCodeModal(true);
   };
 
   const handleSaveItemCode = () => {
@@ -416,7 +562,6 @@ export default function BoqItemsMasterPage() {
     if (
       !itemCode ||
       !description ||
-      !specification ||
       !vendorId ||
       !subStructureId ||
       !productStructureId
@@ -439,11 +584,7 @@ export default function BoqItemsMasterPage() {
       },
     };
 
-    if (editingItemCodeId !== null) {
-      updateProductItemCodeMutation.mutate({ id: editingItemCodeId, ...payload }, options);
-    } else {
-      createProductItemCodeMutation.mutate(payload, options);
-    }
+    createProductItemCodeMutation.mutate(payload, options);
   };
 
   const handleCreateItemCategory = () => {
@@ -555,7 +696,9 @@ export default function BoqItemsMasterPage() {
                     resetItemCodeForm();
                     setOpenCreateItemCodeModal(true);
                   }}
-                  onEdit={handleEditItemCode}
+                  onToggleStatus={handleToggleItemCodeStatus}
+                  isTogglingStatus={updateProductItemCodeStatusMutation.isPending}
+                  togglingId={togglingItemCodeId}
                 />
               ),
             },
@@ -577,6 +720,9 @@ export default function BoqItemsMasterPage() {
                     (productSubStructuresError as any)?.response?.data?.error
                   }
                   onAction={() => setOpenCreateSubItemCategoryModal(true)}
+                  onToggleStatus={handleToggleSubItemCategoryStatus}
+                  isTogglingStatus={updateProductSubStructureStatusMutation.isPending}
+                  togglingId={togglingSubItemCategoryId}
                 />
               ),
             },
@@ -598,6 +744,9 @@ export default function BoqItemsMasterPage() {
                     (productStructuresError as any)?.response?.data?.error
                   }
                   onAction={() => setOpenCreateItemCategoryModal(true)}
+                  onToggleStatus={handleToggleItemCategoryStatus}
+                  isTogglingStatus={updateProductStructureStatusMutation.isPending}
+                  togglingId={togglingItemCategoryId}
                 />
               ),
             },
@@ -616,6 +765,9 @@ export default function BoqItemsMasterPage() {
                   isError={isProductTypesError}
                   errorMessage={(productTypesError as any)?.response?.data?.error}
                   onAction={() => setOpenCreateItemGroupModal(true)}
+                  onToggleStatus={handleToggleItemGroupStatus}
+                  isTogglingStatus={updateProductTypeStatusMutation.isPending}
+                  togglingId={togglingItemGroupId}
                 />
               ),
             },
@@ -631,46 +783,55 @@ export default function BoqItemsMasterPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingItemCodeId !== null ? "Edit Item Code" : "Add Item Code"}</DialogTitle>
+            <DialogTitle>Add Item Code</DialogTitle>
             <DialogDescription>
-              {editingItemCodeId !== null
-                ? "Update the item code and its sub-item category, description, and specification."
-                : "Create a new item code and link it to a sub-item category."}
+              Create a new item code and link it to a sub-item category.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="item-code-name">Item Code</Label>
-              <Input
-                id="item-code-name"
-                value={itemCodeValue}
-                onChange={(e) => setItemCodeValue(e.target.value)}
-                placeholder="Enter item code"
-              />
+            {/* Row: Item Code + Sub-Item Category side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="item-code-name">
+                  Item Code <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="item-code-name"
+                  value={itemCodeValue}
+                  onChange={(e) => setItemCodeValue(e.target.value)}
+                  placeholder="Enter item code"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Sub-Item Category <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={itemCodeSubStructureId}
+                  onValueChange={setItemCodeSubStructureId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select sub-item category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(productSubStructures?.data ?? [])
+                      .filter((item: any) => activeProductSubStructureIds.has(item.id))
+                      .map((item: any) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          {item.type}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Sub-Item Category</Label>
-              <Select
-                value={itemCodeSubStructureId}
-                onValueChange={setItemCodeSubStructureId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sub-item category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(productSubStructures?.data ?? []).map((item: any) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="item-code-description">Description</Label>
+              <Label htmlFor="item-code-description">
+                Description <span className="text-red-500">*</span>
+              </Label>
               <Textarea
                 id="item-code-description"
                 value={itemCodeDescription}
@@ -681,7 +842,10 @@ export default function BoqItemsMasterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-code-specification">Specification</Label>
+              <Label htmlFor="item-code-specification">
+                Specification{" "}
+                <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+              </Label>
               <Textarea
                 id="item-code-specification"
                 value={itemCodeSpecification}
@@ -707,15 +871,13 @@ export default function BoqItemsMasterPage() {
                 !itemCodeValue.trim() ||
                 !itemCodeSubStructureId ||
                 !itemCodeDescription.trim() ||
-                !itemCodeSpecification.trim() ||
                 !vendorId
               }
             >
-              {isSavingItemCode
-                ? editingItemCodeId !== null ? "Saving..." : "Creating..."
-                : editingItemCodeId !== null ? "Save Changes" : "Create"}
+              {isSavingItemCode ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
@@ -752,11 +914,13 @@ export default function BoqItemsMasterPage() {
                   <SelectValue placeholder="Select item category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(productStructures?.data ?? []).map((item: any) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.type}
-                    </SelectItem>
-                  ))}
+                  {(productStructures?.data ?? [])
+                    .filter((item: any) => activeProductStructureIds.has(item.id))
+                    .map((item: any) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.type}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -823,11 +987,13 @@ export default function BoqItemsMasterPage() {
                   <SelectValue placeholder="Select product type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(productTypes?.data ?? []).map((item: any) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.type}
-                    </SelectItem>
-                  ))}
+                  {(productTypes?.data ?? [])
+                    .filter((item: any) => (item.status ?? "active").toLowerCase() === "active")
+                    .map((item: any) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.type}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

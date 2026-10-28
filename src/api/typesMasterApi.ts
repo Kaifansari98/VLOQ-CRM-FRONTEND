@@ -1452,6 +1452,38 @@ export const updateProductItemCode = async (
   return res.data;
 }
 
+export const updateProductTypeStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-type-status/${id}`, payload);
+  return res.data;
+};
+
+export const updateProductStructureStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-productStructure-status/${id}`, payload);
+  return res.data;
+};
+
+export const updateProductSubStructureStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-sub-structure-status/${id}`, payload);
+  return res.data;
+};
+
+export const updateProductItemCodeStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-item-code-status/${id}`, payload);
+  return res.data;
+};
+
 export const fetchSmallOrderRequestTypes = async (vendorId: number) => {
   const res = await apiClient.get(
     `/leads/get-all-small-order-request-types/${vendorId}`,
