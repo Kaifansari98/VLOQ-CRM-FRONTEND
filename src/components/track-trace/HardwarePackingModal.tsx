@@ -887,7 +887,7 @@ export function HardwarePackingModal({
                   ) : !isQcMode && item.is_qc_routed && item.pending_qty <= 0 ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
                       <Clock3 className="size-3.5" />
-                      Awaiting QC inspection ({item.qc_passed_qty || 0}/{item.total_qty} passed)
+                      Awaiting QC check ({item.qc_passed_qty || 0}/{item.total_qty} passed)
                     </span>
                   ) : (
                     <>
