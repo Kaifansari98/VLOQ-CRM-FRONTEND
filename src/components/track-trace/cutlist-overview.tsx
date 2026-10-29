@@ -64,13 +64,28 @@ export type MachineStat = {
 export function computeCutlistStats(rows: CutListRow[], machineColumns: string[]) {
     let routedPieces = 0;
     let scannedPieces = 0;
+
+    const isManualHardwareRow = (row: CutListRow) =>
+        row.scan_pack_validate === false ||
+        (row.scan_pack_validate == null && row.category?.scan_pack_validate === false);
+
+    // Only panel rows participate in woodwork/metalwork machine routing & production piece counts.
+    // Hardware items (scan_pack_validate = false) are manual accessories packed into boxes.
+    const panelRows = rows.filter((r) => !isManualHardwareRow(r));
+    const effectiveRows = panelRows.length > 0 ? panelRows : rows;
+
     const machines: MachineStat[] = machineColumns.map((name, index) => {
         const stat: MachineStat = { name, step: index + 1, routedRows: 0, doneRows: 0, totalPieces: 0, scannedPieces: 0 };
-        rows.forEach((row) => {
+        const machineTypeId = rows.find((r) => r[name]?.machine_type_id != null)?.[name]?.machine_type_id;
+        const isQcOrPackaging = machineTypeId === 17 || machineTypeId === 18;
+        const targetRows = isQcOrPackaging ? rows : effectiveRows;
+
+        targetRows.forEach((row) => {
             const cell = row[name];
             if (!cell?.assigned) return;
-            const total = cell.total ?? 0;
-            const scanned = cell.scanned ?? 0;
+            const rowQty = Math.max(1, Number(row.qty) || 1);
+            const total = Math.min(rowQty, cell.total ?? 0);
+            const scanned = Math.min(total, cell.scanned ?? 0);
             stat.routedRows += 1;
             stat.totalPieces += total;
             stat.scannedPieces += scanned;
@@ -85,6 +100,7 @@ export function computeCutlistStats(rows: CutListRow[], machineColumns: string[]
         totalPieces: rows.reduce((sum, row) => sum + (Number(row.qty) || 0), 0),
         routedRows: rows.filter((row) => machineColumns.some((machine) => row[machine]?.assigned)).length,
         withImages: rows.filter((row) => row.image_url).length,
+        panelRowCount: panelRows.length,
         routedPieces,
         scannedPieces,
         machines: machines.filter((machine) => machine.routedRows > 0),
@@ -336,11 +352,12 @@ export function CutlistKpis({
     }
 
     const shareOfProject = percent(rows.length, allRowCount);
-    const avgPieces = rows.length ? stats.totalPieces / rows.length : 0;
+    const totalRoutableRows = rows.length;
+    const avgPieces = totalRoutableRows ? stats.totalPieces / totalRoutableRows : 0;
     const coverage = fabrication === "METALWORK"
         ? { label: "Part images", icon: ImageIcon, part: stats.withImages, unit: "have a shape" }
         : { label: "Machine coverage", icon: Route, part: stats.routedRows, unit: "rows routed" };
-    const coveragePercent = percent(coverage.part, rows.length);
+    const coveragePercent = percent(coverage.part, totalRoutableRows);
     const progress = percent(stats.scannedPieces, stats.routedPieces);
 
     return (
@@ -366,7 +383,7 @@ export function CutlistKpis({
                 </p>
                 <div className="mt-2 space-y-1.5">
                     <Bar value={coveragePercent} className="bg-emerald-500" />
-                    <p className="text-xs text-muted-foreground tabular-nums">{coverage.part} of {rows.length} {coverage.unit}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">{coverage.part} of {totalRoutableRows} {coverage.unit}</p>
                 </div>
             </KpiCard>
 

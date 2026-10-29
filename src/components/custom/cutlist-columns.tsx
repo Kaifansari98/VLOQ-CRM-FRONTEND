@@ -214,6 +214,7 @@ function StatusPill({ status }: { status?: string | null }) {
 type MachineCell = {
   assigned?: boolean;
   machineId?: number;
+  machine_type_id?: number | null;
   /** Pieces routed to this machine (one mapping per piece). */
   total?: number;
   /** Pieces already scanned at this machine. */
@@ -222,10 +223,11 @@ type MachineCell = {
 
 type RouteState = "none" | "pending" | "progress" | "done";
 
-const routeStateOf = (cell?: MachineCell): RouteState => {
+const routeStateOf = (cell?: MachineCell, maxQty?: number): RouteState => {
   if (!cell?.assigned) return "none";
-  const total = cell.total ?? 0;
-  const scanned = cell.scanned ?? 0;
+  const rowLimit = maxQty != null ? Math.max(1, maxQty) : Number.MAX_SAFE_INTEGER;
+  const total = Math.min(rowLimit, cell.total ?? 0);
+  const scanned = Math.min(total, cell.scanned ?? 0);
   if (total > 0 && scanned >= total) return "done";
   if (scanned > 0) return "progress";
   return "pending";
@@ -650,11 +652,31 @@ export function getCutListColumns(
     textColumn("is_drill", "Is Drill", 100, "font-mono text-xs"),
 
     ...machineColumns.map((machineName, machineIndex): ColumnDef<any> => {
-      const states = rows.map((row) => routeStateOf(row[machineName]));
+      const isManualRow = (r: any) =>
+        r.scan_pack_validate === false ||
+        (r.scan_pack_validate == null && r.category?.scan_pack_validate === false);
+
+      const sampleCell = rows.find((r) => r[machineName]?.machine_type_id != null)?.[machineName];
+      const machineTypeId = sampleCell?.machine_type_id;
+      const isQcOrPackaging = machineTypeId === 17 || machineTypeId === 18;
+
+      // Fabrication machines (cutting, edge banding, CNC) only apply to panel rows.
+      // QC Station (17) and Packaging (18) apply to all rows (panels + hardware).
+      const routableRows = isQcOrPackaging
+        ? rows
+        : rows.filter((r) => !isManualRow(r));
+      const routableCount = routableRows.length > 0 ? routableRows.length : rows.length;
+
+      const states = rows.map((row) => {
+        const isManual = isManualRow(row);
+        if (isManual && !isQcOrPackaging) return "none";
+        const rowQty = Math.max(1, Number(row.qty) || 1);
+        return routeStateOf(row[machineName], rowQty);
+      });
       const routedCount = states.filter((state) => state !== "none").length;
       const doneCount = states.filter((state) => state === "done").length;
-      const routedPercent = rows.length ? (routedCount / rows.length) * 100 : 0;
-      const donePercent = rows.length ? (doneCount / rows.length) * 100 : 0;
+      const routedPercent = routableCount ? (routedCount / routableCount) * 100 : 0;
+      const donePercent = routableCount ? (doneCount / routableCount) * 100 : 0;
       return {
         accessorKey: machineName,
         header: ({ column }) => {
@@ -703,25 +725,31 @@ export function getCutListColumns(
               </div>
               <div
                 className="relative h-1 overflow-hidden rounded-full bg-border"
-                title={`${routedCount} of ${rows.length} rows routed · ${doneCount} completed`}
+                title={`${routedCount} of ${routableCount} rows routed · ${doneCount} completed`}
               >
                 <div className="absolute inset-y-0 left-0 rounded-full bg-emerald-500/30" style={{ width: `${routedPercent}%` }} />
                 <div className="absolute inset-y-0 left-0 rounded-full bg-emerald-500" style={{ width: `${donePercent}%` }} />
               </div>
               <span className="px-0.5 text-[10px] font-normal text-muted-foreground tabular-nums">
-                {routedCount}/{rows.length} routed{doneCount > 0 && ` · ${doneCount} done`}
+                {routedCount}/{routableCount} routed{doneCount > 0 && ` · ${doneCount} done`}
               </span>
             </div>
           );
         },
         cell: ({ row }) => {
+          const isManualHardware = isManualRow(row.original);
           const machineData = row.getValue<MachineCell | undefined>(machineName);
-          const state = routeStateOf(machineData);
+          const cellMachineTypeId = machineData?.machine_type_id ?? machineTypeId;
+          const isQcOrPackagingCell = cellMachineTypeId === 17 || cellMachineTypeId === 18;
+          const isFabricationNotApplicable = isManualHardware && !isQcOrPackagingCell;
+
+          const rowQty = Math.max(1, Number(row.original?.qty) || 1);
+          const state = isFabricationNotApplicable ? "none" : routeStateOf(machineData, rowQty);
           const machineId = machineData?.machineId;
           const isAssigned = state !== "none";
-          const total = machineData?.total ?? 0;
-          const scanned = machineData?.scanned ?? 0;
-          const editable = !isAssignmentDisabled && !!machineId && !(isAssigned && scanned > 0);
+          const total = Math.min(rowQty, machineData?.total ?? 0);
+          const scanned = Math.min(total, machineData?.scanned ?? 0);
+          const editable = !isFabricationNotApplicable && !isAssignmentDisabled && !!machineId && !(isAssigned && scanned > 0);
           const progressLabel = total > 1 ? `${scanned}/${total}` : null;
 
           return (
@@ -731,11 +759,13 @@ export function getCutListColumns(
               aria-pressed={isAssigned}
               aria-label={`${machineName}: ${ROUTE_STATES[state].label}. ${isAssigned ? "Unassign" : "Assign"}`}
               title={
-                isAssignmentDisabled
-                  ? `${ROUTE_STATES[state].label} — ${LOCKED_MESSAGE}`
-                  : isAssigned && scanned > 0
-                    ? `Cannot unassign: item already scanned at ${machineName}`
-                    : `${ROUTE_STATES[state].label}${total ? ` (${scanned}/${total} scanned)` : ""} · click to ${isAssigned ? "unassign" : "assign"}`
+                isFabricationNotApplicable
+                  ? "Hardware item: fabrication machine not applicable"
+                  : isAssignmentDisabled
+                    ? `${ROUTE_STATES[state].label} — ${LOCKED_MESSAGE}`
+                    : isAssigned && scanned > 0
+                      ? `Cannot unassign: item already scanned at ${machineName}`
+                      : `${ROUTE_STATES[state].label}${total ? ` (${scanned}/${total} scanned)` : ""} · click to ${isAssigned ? "unassign" : "assign"}`
               }
               onClick={() => {
                 if (editable && machineId && onMachineCellClick) {
