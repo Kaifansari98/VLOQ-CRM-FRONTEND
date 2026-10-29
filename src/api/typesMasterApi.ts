@@ -172,6 +172,7 @@ export interface PrivilegeMasterResponse {
 
 export interface CarcassTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
   can_do_fast_production?: boolean;
@@ -190,6 +191,7 @@ export interface ShutterSubTypeMasterEntry {
 
 export interface ShutterTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
   subTypes?: ShutterSubTypeMasterEntry[];
@@ -202,6 +204,7 @@ export interface ShutterTypeMasterResponse {
 
 export interface CarcasMaterialFinishMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   carcas_material_id: number;
   material?: { id: number; name: string };
@@ -214,6 +217,7 @@ export interface CarcasMaterialFinishMasterResponse {
 
 export interface CarcasMaterialMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
 }
@@ -225,6 +229,7 @@ export interface CarcasMaterialMasterResponse {
 
 export interface ShutterOuterFinishMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   shutter_material_id: number;
   material?: { id: number; name: string };
@@ -233,6 +238,7 @@ export interface ShutterOuterFinishMasterEntry {
 
 export interface ShutterInnerFinishMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   shutter_material_id: number;
   material?: { id: number; name: string };
@@ -251,6 +257,7 @@ export interface ShutterInnerFinishMasterResponse {
 
 export interface ShutterMaterialMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
 }
@@ -262,6 +269,7 @@ export interface ShutterMaterialMasterResponse {
 
 export interface HardwareItemOptionMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   hardware_type_id: number;
   hardware_item_id: number;
   name: string;
@@ -275,6 +283,7 @@ export interface HardwareItemOptionMasterResponse {
 
 export interface HardwareItemMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   hardware_type_id: number;
   inScope: boolean;
@@ -288,6 +297,7 @@ export interface HardwareItemMasterResponse {
 
 export interface HardwareTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
 }
@@ -310,6 +320,7 @@ export interface HandleTypeMasterResponse {
 
 export interface LightCarcasTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   type: string;
   vendor_id: number;
 }
@@ -321,6 +332,7 @@ export interface LightCarcasTypeMasterResponse {
 
 export interface LightCarcasUnitMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   type: string;
   vendor_id: number;
   light_carcas_type_id: number;
@@ -336,6 +348,7 @@ export const OTHER_APPLIANCE_TYPES = ["Appliances", "Stone", "Sinks", "Faucets"]
 
 export interface OtherAppliancesMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   vendor_id: number;
   type: string;
   article_number: string;

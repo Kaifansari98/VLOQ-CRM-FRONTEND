@@ -201,6 +201,24 @@ const makeBlankCarcassRow = (): CarcassRow => ({
   carcass_material_finish_id: "",
 });
 
+const isActiveEntry = (status?: string | null) =>
+  (status ?? "active").toLowerCase() === "active";
+
+/**
+ * Dropdown options: active entries under an active parent, plus the value already
+ * saved on the row (so an entry switched off later still shows where it is used).
+ */
+const selectableEntries = <T extends { id: number; status?: string }>(
+  entries: T[],
+  selectedId: string,
+  parentActive = true,
+) =>
+  entries.filter(
+    (entry) =>
+      (parentActive && isActiveEntry(entry.status)) ||
+      (selectedId !== "" && String(entry.id) === selectedId),
+  );
+
 const makeBlankShutterRow = (): ShutterRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   shutter_type_id: "",
@@ -443,6 +461,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const carcasMaterials = carcasMaterialsData?.data ?? [];
   const shutterTypes = shutterTypesData?.data ?? [];
   const shutterMaterials = shutterMaterialsData?.data ?? [];
+  const activeCarcasMaterialIds = React.useMemo(
+    () => new Set(carcasMaterials.filter((m) => isActiveEntry(m.status)).map((m) => m.id)),
+    [carcasMaterials],
+  );
+  const activeShutterMaterialIds = React.useMemo(
+    () => new Set(shutterMaterials.filter((m) => isActiveEntry(m.status)).map((m) => m.id)),
+    [shutterMaterials],
+  );
   // Hardware tables are shown per hardware type, in the order the types were created.
   const sortedHardwareTypes = React.useMemo(
     () => [...(hardwareTypesData?.data ?? [])].sort((a, b) => a.id - b.id),
@@ -461,6 +487,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       lightCarcasTypes.filter(
         (type) => type.type.trim().toLowerCase() !== "custom",
       ),
+    [lightCarcasTypes],
+  );
+  const activeLightTypeIds = React.useMemo(
+    () => new Set(lightCarcasTypes.filter((t) => isActiveEntry(t.status)).map((t) => t.id)),
     [lightCarcasTypes],
   );
   const otherAppliancesByType = React.useMemo(() => {
@@ -1693,7 +1723,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           Number(value),
         );
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
-          void saveHardwareRowIfComplete(nextRow, optionsResult.data.length);
+          // Only active options can be chosen, so only they make the option required.
+          void saveHardwareRowIfComplete(
+            nextRow,
+            optionsResult.data.filter((option) => isActiveEntry(option.status)).length,
+          );
         }
       }
     },
@@ -2634,7 +2668,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {carcassRows.map((row, index) => {
-                      const finishOptions = finishQueries[index]?.data?.data ?? [];
+                      const finishOptions = selectableEntries(
+                        finishQueries[index]?.data?.data ?? [],
+                        row.carcass_material_finish_id,
+                        activeCarcasMaterialIds.has(Number(row.carcas_material_id)),
+                      );
                       const persistedRow = row.id
                         ? carcassMappings.find((item) => item.id === row.id)
                         : undefined;
@@ -2661,7 +2699,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           >
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={carcassTypes.map((type) => ({
+	                              data={selectableEntries(carcassTypes, row.carcass_type_id).map((type) => ({
 	                                id: type.id,
 	                                label: type.name,
 	                              }))}
@@ -2684,7 +2722,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={carcasMaterials.map((material) => ({
+	                              data={selectableEntries(carcasMaterials, row.carcas_material_id).map((material) => ({
 	                                id: material.id,
 	                                label: material.name,
 	                              }))}
@@ -2833,10 +2871,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {shutterRows.map((row, index) => {
-                      const finishOptions =
-                        shutterFinishQueries[index]?.data?.data ?? [];
-                      const innerFinishOptions =
-                        shutterInnerFinishQueries[index]?.data?.data ?? [];
+                      const isShutterMaterialActive = activeShutterMaterialIds.has(
+                        Number(row.shutter_material_id),
+                      );
+                      const finishOptions = selectableEntries(
+                        shutterFinishQueries[index]?.data?.data ?? [],
+                        row.shutter_outer_finish_id,
+                        isShutterMaterialActive,
+                      );
+                      const innerFinishOptions = selectableEntries(
+                        shutterInnerFinishQueries[index]?.data?.data ?? [],
+                        row.shutter_inner_finish_id,
+                        isShutterMaterialActive,
+                      );
                       const persistedRow = row.id
                         ? shutterMappings.find((item) => item.id === row.id)
                         : undefined;
@@ -2863,7 +2910,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           >
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={shutterTypes.map((type) => ({
+	                              data={selectableEntries(shutterTypes, row.shutter_type_id).map((type) => ({
 	                                id: type.id,
 	                                label: type.name,
 	                              }))}
@@ -2887,7 +2934,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={shutterMaterials.map((material) => ({
+	                              data={selectableEntries(shutterMaterials, row.shutter_material_id).map((material) => ({
 	                                id: material.id,
 	                                label: material.name,
 	                              }))}
@@ -3043,7 +3090,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   No hardware types found. Add them in Specs Master → Hardware.
                 </p>
               )}
-              {sortedHardwareTypes.map((hardwareType) => (
+              {sortedHardwareTypes
+                .filter(
+                  (hardwareType) =>
+                    isActiveEntry(hardwareType.status) ||
+                    hardwareRows.some(
+                      (row) => row.id && row.hardware_type_id === String(hardwareType.id),
+                    ),
+                )
+                .map((hardwareType) => (
                 <div key={hardwareType.id}>
                   <div className="flex items-center justify-between gap-3 mb-2 mt-6">
                     <h3 className="text-sm font-semibold">{hardwareType.name}</h3>
@@ -3080,10 +3135,21 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <tbody>
                         {hardwareRows.map((row, index) => {
                           if (row.hardware_type_id !== String(hardwareType.id)) return null;
-                          const hardwareItemOptions =
-                            hardwareItemQueries[index]?.data?.data ?? [];
-                          const itemOptions =
-                            optionQueries[index]?.data?.data ?? [];
+                          const isHardwareTypeActive = isActiveEntry(hardwareType.status);
+                          const hardwareItemOptions = selectableEntries(
+                            hardwareItemQueries[index]?.data?.data ?? [],
+                            row.hardware_item_id,
+                            isHardwareTypeActive,
+                          );
+                          const chosenHardwareItem = hardwareItemOptions.find(
+                            (option) => String(option.id) === row.hardware_item_id,
+                          );
+                          const itemOptions = selectableEntries(
+                            optionQueries[index]?.data?.data ?? [],
+                            row.hardware_item_option_id,
+                            isHardwareTypeActive &&
+                              (!chosenHardwareItem || isActiveEntry(chosenHardwareItem.status)),
+                          );
                           const selectedHardwareItem = hardwareItemOptions.find(
                             (option) =>
                               String(option.id) === row.hardware_item_id,
@@ -3307,8 +3373,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {lightRows.map((row, index) => {
-                      const unitOptions =
-                        lightUnitQueries[index]?.data?.data ?? [];
+                      const unitOptions = selectableEntries(
+                        lightUnitQueries[index]?.data?.data ?? [],
+                        row.light_carcas_unit_master_id,
+                        activeLightTypeIds.has(Number(row.light_carcas_type_id)),
+                      );
                       const lightTypeOptions =
                         isCustomLightsMode && customLightCarcasType
                           ? [
@@ -3317,7 +3386,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 label: customLightCarcasType.type,
                               },
                             ]
-                          : selectableLightCarcasTypes.map((type) => ({
+                          : selectableEntries(
+                              selectableLightCarcasTypes,
+                              row.light_carcas_type_id,
+                            ).map((type) => ({
                               id: type.id,
                               label: type.type,
                             }));
@@ -3603,7 +3675,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     />, reviewTooltipRemark || undefined)
                                   ) : (
                                     <AssignToPicker
-                                      data={options.map((option) => ({
+                                      data={selectableEntries(
+                                        options,
+                                        row.other_appliances_master_id,
+                                      ).map((option) => ({
                                         id: option.id,
                                         label: option.article_number,
                                       }))}

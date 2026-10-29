@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useSaveSpecsMaster } from "@/hooks/useSaveSpecsMaster";
+import {
+  useSaveSpecsMaster,
+  useUpdateSpecsMasterStatus,
+  type SpecsMasterKind,
+} from "@/hooks/useSaveSpecsMaster";
+import { Switch } from "@/components/ui/switch";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -110,7 +115,113 @@ type MasterRow = {
   entries?: Array<{ id: number; name: string; label?: string }>;
   /** Shown as pills in the name column instead of plain text. */
   pills?: string[];
+  /** The entry's own status (the switch); `status` is what is displayed. */
+  active?: boolean;
+  /** A parent is inactive, so this entry is inactive too and cannot be switched on. */
+  parentInactive?: boolean;
 };
+
+const isActiveStatus = (status?: string | null) =>
+  (status ?? "active").toLowerCase() === "active";
+
+/** Displayed status of an entry: inactive itself, or under an inactive parent. */
+const entryStatus = (self?: string | null, parentActive = true) => ({
+  status: parentActive && isActiveStatus(self) ? "active" : "inactive",
+  active: isActiveStatus(self),
+  parentInactive: !parentActive,
+});
+
+/** Status of a row standing for several entries (e.g. one hardware item under several types). */
+const groupStatus = (entries: Array<{ self: boolean; parent: boolean }>) => {
+  const effective = entries.map((entry) => entry.self && entry.parent);
+  return {
+    status: effective.every(Boolean)
+      ? "active"
+      : effective.some(Boolean)
+        ? "partly active"
+        : "inactive",
+    active: entries.every((entry) => entry.self),
+    parentInactive: entries.every((entry) => !entry.parent),
+  };
+};
+
+/** What the status column needs from a row. */
+type StatusRow = Pick<MasterRow, "id" | "status" | "active" | "parentInactive" | "entries"> & {
+  name?: string;
+};
+
+type StatusToggle = {
+  onToggleStatus: (row: StatusRow, checked: boolean) => void;
+  pendingIds: number[];
+};
+
+/** Active / inactive switch for one specs master; grouped rows switch all their entries. */
+function useStatusToggle(kind: SpecsMasterKind): StatusToggle {
+  const mutation = useUpdateSpecsMasterStatus(kind);
+  return {
+    onToggleStatus: (row, checked) =>
+      mutation.mutate({
+        ids: row.entries?.map((entry) => entry.id) ?? [row.id],
+        status: checked ? "active" : "inactive",
+      }),
+    pendingIds: mutation.isPending ? (mutation.variables?.ids ?? []) : [],
+  };
+}
+
+function StatusCell({
+  row,
+  statusToggle,
+}: {
+  row: StatusRow;
+  statusToggle?: StatusToggle;
+}) {
+  const status = (row.status || "active").toLowerCase();
+  const isActive = status === "active";
+  const isPartly = status === "partly active";
+  const isPending =
+    !!statusToggle &&
+    (row.entries?.map((entry) => entry.id) ?? [row.id]).some((id) =>
+      statusToggle.pendingIds.includes(id),
+    );
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize transition-colors",
+          isActive
+            ? "border-emerald-200 bg-emerald-500/10 text-emerald-600 dark:border-emerald-800/40 dark:bg-emerald-500/20 dark:text-emerald-400"
+            : isPartly
+              ? "border-amber-200 bg-amber-500/10 text-amber-700 dark:border-amber-800/40 dark:bg-amber-500/20 dark:text-amber-400"
+              : "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-400",
+        )}
+      >
+        <span
+          className={cn(
+            "h-1.5 w-1.5 rounded-full transition-colors",
+            isActive ? "bg-emerald-500" : isPartly ? "bg-amber-500" : "bg-zinc-400",
+          )}
+        />
+        {status}
+      </span>
+      {statusToggle && (
+        <Switch
+          checked={row.active ?? isActive}
+          disabled={isPending || row.parentInactive === true}
+          onCheckedChange={(checked) => statusToggle.onToggleStatus(row, checked)}
+          className={cn(
+            "transition-colors",
+            row.parentInactive === true ? "opacity-40 cursor-not-allowed" : "",
+            (row.active ?? isActive)
+              ? "bg-emerald-600 hover:bg-emerald-600"
+              : "bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400",
+          )}
+          aria-label={`Toggle status for ${row.name ?? "entry"}`}
+        />
+      )}
+    </div>
+  );
+}
 
 /** "A, B and C" */
 const joinNames = (names: string[]) =>
@@ -824,6 +935,7 @@ function MasterListingTable({
   onAction,
   onEdit,
   extraActions,
+  statusToggle,
 }: {
   title: string;
   description: string;
@@ -843,6 +955,8 @@ function MasterListingTable({
   onAction?: () => void;
   onEdit: (row: MasterRow) => void;
   extraActions?: React.ReactNode;
+  /** Shows an active / inactive switch in the status column. */
+  statusToggle?: StatusToggle;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -906,14 +1020,9 @@ function MasterListingTable({
       {
         accessorKey: "status",
         header: "Status",
-        cell: ({ row }) => {
-          const status = row.original.status || "—";
-          return (
-            <span className="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium">
-              {status}
-            </span>
-          );
-        },
+        cell: ({ row }) => (
+          <StatusCell row={row.original} statusToggle={statusToggle} />
+        ),
       },
       {
         id: "actions",
@@ -956,7 +1065,7 @@ function MasterListingTable({
         },
       },
     ];
-  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit]);
+  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit, statusToggle]);
 
   const table = useReactTable({
     data: rows,
@@ -1061,39 +1170,46 @@ function CarcassMastersSection() {
   const uploadCarcassMaterialFinishes = useUploadCarcassMaterialFinishes();
   const createCarcassMaterialFinish = useSaveSpecsMaster("carcass-material-finish", editingId);
 
+  const carcassTypeStatusToggle = useStatusToggle("carcass-type");
   const carcassTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (carcassTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [carcassTypes?.data],
   );
 
+  const carcasMaterialStatusToggle = useStatusToggle("carcas-material");
   const carcasMaterialRows = React.useMemo<MasterRow[]>(
     () =>
       (carcasMaterials?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [carcasMaterials?.data],
   );
 
-  const carcassMaterialFinishRows = React.useMemo<MasterRow[]>(
-    () =>
-      (carcassMaterialFinishes?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.material?.name ?? null,
-        status: "active",
-      })),
-    [carcassMaterialFinishes?.data],
-  );
+  const carcassMaterialFinishStatusToggle = useStatusToggle("carcass-material-finish");
+  const carcassMaterialFinishRows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive parent, an entry is inactive too.
+    const activeParentIds = new Set(
+      (carcasMaterials?.data ?? [])
+        .filter((parent) => isActiveStatus(parent.status))
+        .map((parent) => parent.id),
+    );
+    return (carcassMaterialFinishes?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.material?.name ?? null,
+      ...entryStatus(item.status, activeParentIds.has(item.carcas_material_id)),
+    }));
+  }, [carcassMaterialFinishes?.data, carcasMaterials?.data]);
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
   const [typeName, setTypeName] = React.useState("");
@@ -1265,6 +1381,7 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass material finish..."
             actionLabel="Add Carcass Material Finish"
             rows={carcassMaterialFinishRows}
+            statusToggle={carcassMaterialFinishStatusToggle}
             onEdit={(row) => {
               const item = carcassMaterialFinishes?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -1311,6 +1428,7 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass material..."
             actionLabel="Add Carcass Material"
             rows={carcasMaterialRows}
+            statusToggle={carcasMaterialStatusToggle}
             onEdit={(row) => {
               const item = carcasMaterials?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -1330,6 +1448,7 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass type..."
             actionLabel="Add Carcass Type"
             rows={carcassTypeRows}
+            statusToggle={carcassTypeStatusToggle}
             onEdit={(row) => {
               const item = carcassTypes?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -1677,39 +1796,46 @@ function ShutterMastersSection() {
   const uploadShutterOuterFinishes = useUploadShutterOuterFinishes();
   const createShutterOuterFinish = useSaveSpecsMaster("shutter-outer-finish", editingId);
 
+  const shutterTypeStatusToggle = useStatusToggle("shutter-type");
   const shutterTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (shutterTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [shutterTypes?.data],
   );
 
+  const shutterMaterialStatusToggle = useStatusToggle("shutter-material");
   const shutterMaterialRows = React.useMemo<MasterRow[]>(
     () =>
       (shutterMaterials?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [shutterMaterials?.data],
   );
 
-  const shutterOuterFinishRows = React.useMemo<MasterRow[]>(
-    () =>
-      (shutterOuterFinishes?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.material?.name ?? null,
-        status: "active",
-      })),
-    [shutterOuterFinishes?.data],
-  );
+  const shutterOuterFinishStatusToggle = useStatusToggle("shutter-outer-finish");
+  const shutterOuterFinishRows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive parent, an entry is inactive too.
+    const activeParentIds = new Set(
+      (shutterMaterials?.data ?? [])
+        .filter((parent) => isActiveStatus(parent.status))
+        .map((parent) => parent.id),
+    );
+    return (shutterOuterFinishes?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.material?.name ?? null,
+      ...entryStatus(item.status, activeParentIds.has(item.shutter_material_id)),
+    }));
+  }, [shutterOuterFinishes?.data, shutterMaterials?.data]);
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
   const [typeName, setTypeName] = React.useState("");
@@ -1882,6 +2008,7 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter outer finish..."
             actionLabel="Add Shutter Outer Finish"
             rows={shutterOuterFinishRows}
+            statusToggle={shutterOuterFinishStatusToggle}
             onEdit={(row) => {
               const item = shutterOuterFinishes?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -1935,6 +2062,7 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter material..."
             actionLabel="Add Shutter Material"
             rows={shutterMaterialRows}
+            statusToggle={shutterMaterialStatusToggle}
             onEdit={(row) => {
               const item = shutterMaterials?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -1977,6 +2105,7 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter type..."
             actionLabel="Add Shutter Type"
             rows={shutterTypeRows}
+            statusToggle={shutterTypeStatusToggle}
             onEdit={(row) => {
               const item = shutterTypes?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -2325,7 +2454,7 @@ function ShutterInnerFinishTab({
   shutterMaterials,
 }: {
   shutterTypes: Array<{ id: number; name: string }>;
-  shutterMaterials: Array<{ id: number; name: string }>;
+  shutterMaterials: Array<{ id: number; name: string; status?: string }>;
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const [editingId, setEditingId] = React.useState<number | null>(null);
@@ -2339,17 +2468,22 @@ function ShutterInnerFinishTab({
   const createShutterInnerFinish = useSaveSpecsMaster("shutter-inner-finish", editingId);
   const uploadShutterInnerFinishes = useUploadShutterInnerFinishes();
 
-  const rows = React.useMemo<MasterRow[]>(
-    () =>
-      (shutterInnerFinishes?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.material?.name ?? null,
-        status: "active",
-      })),
-    [shutterInnerFinishes?.data],
-  );
+  const statusToggle = useStatusToggle("shutter-inner-finish");
+  const rows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive material, an inner finish is inactive too.
+    const activeMaterialIds = new Set(
+      shutterMaterials
+        .filter((material) => isActiveStatus(material.status))
+        .map((material) => material.id),
+    );
+    return (shutterInnerFinishes?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.material?.name ?? null,
+      ...entryStatus(item.status, activeMaterialIds.has(item.shutter_material_id)),
+    }));
+  }, [shutterInnerFinishes?.data, shutterMaterials]);
 
   const [openFinishModal, setOpenFinishModal] = React.useState(false);
   const [finishName, setFinishName] = React.useState("");
@@ -2476,6 +2610,7 @@ function ShutterInnerFinishTab({
         searchPlaceholder="Search shutter inner finish..."
         actionLabel="Add Shutter Inner Finish"
         rows={rows}
+        statusToggle={statusToggle}
         onEdit={(row) => {
           const item = shutterInnerFinishes?.data?.find((entry) => entry.id === row.id);
           if (!item) return;
@@ -2722,19 +2857,27 @@ function HardwareMastersSection() {
   const createHardwareItemOption = useSaveSpecsMaster("hardware-item-option", editingId);
   const uploadHardwareItemOptions = useUploadHardwareItemOptions();
 
+  const hardwareTypeStatusToggle = useStatusToggle("hardware-type");
   const hardwareTypeRows = React.useMemo<MasterRow[]>(
     () =>
       newestFirst(hardwareTypes?.data).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [hardwareTypes?.data],
   );
 
+  const hardwareItemStatusToggle = useStatusToggle("hardware-item");
   const hardwareItemRows = React.useMemo<MasterRow[]>(() => {
     type ItemEntry = NonNullable<typeof hardwareItems>["data"][number];
+
+    const activeTypeIds = new Set(
+      (hardwareTypes?.data ?? [])
+        .filter((type) => isActiveStatus(type.status))
+        .map((type) => type.id),
+    );
 
     // One row per hardware item name, listing every hardware type it is under.
     const rows = new Map<string, ItemEntry[]>();
@@ -2752,7 +2895,12 @@ function HardwareMastersSection() {
         id: items[0].id,
         name: items[0].name,
         parent: byTypeAge.map((item) => item.hardwareType?.name ?? "—").join(" / "),
-        status: "active",
+        ...groupStatus(
+          items.map((item) => ({
+            self: isActiveStatus(item.status),
+            parent: activeTypeIds.has(item.hardware_type_id),
+          })),
+        ),
         entries: items.map((item) => ({
           id: item.id,
           name: item.name,
@@ -2760,13 +2908,29 @@ function HardwareMastersSection() {
         })),
       };
     });
-  }, [hardwareItems?.data]);
+  }, [hardwareItems?.data, hardwareTypes?.data]);
 
+  const hardwareItemOptionStatusToggle = useStatusToggle("hardware-item-option");
   const hardwareItemOptionRows = React.useMemo<MasterRow[]>(() => {
     const hardwareTypeNames = new Map(
       (hardwareTypes?.data ?? []).map((type) => [type.id, type.name]),
     );
     type OptionEntry = NonNullable<typeof hardwareItemOptions>["data"][number];
+
+    const activeTypeIds = new Set(
+      (hardwareTypes?.data ?? [])
+        .filter((type) => isActiveStatus(type.status))
+        .map((type) => type.id),
+    );
+    // An item is usable only while it and its hardware type are active.
+    const activeItemIds = new Set(
+      (hardwareItems?.data ?? [])
+        .filter(
+          (item) =>
+            isActiveStatus(item.status) && activeTypeIds.has(item.hardware_type_id),
+        )
+        .map((item) => item.id),
+    );
 
     // 1) Options of each hardware item (an item belongs to one hardware type).
     const byItem = new Map<number, OptionEntry[]>();
@@ -2813,7 +2977,12 @@ function HardwareMastersSection() {
           pills: row.optionNames,
           parent: row.itemName,
           grandParent: typeNames.join(" / "),
-          status: "active",
+          ...groupStatus(
+            row.options.map((option) => ({
+              self: isActiveStatus(option.status),
+              parent: activeItemIds.has(option.hardware_item_id),
+            })),
+          ),
           entries: row.options.map((option) => ({
             id: option.id,
             name: option.name,
@@ -2824,7 +2993,7 @@ function HardwareMastersSection() {
           })),
         };
       });
-  }, [hardwareItemOptions?.data, hardwareTypes?.data]);
+  }, [hardwareItemOptions?.data, hardwareTypes?.data, hardwareItems?.data]);
 
   const [openHardwareTypeModal, setOpenHardwareTypeModal] = React.useState(false);
   const [hardwareTypeName, setHardwareTypeName] = React.useState("");
@@ -3073,6 +3242,7 @@ function HardwareMastersSection() {
             searchPlaceholder="Search hardware item options..."
             actionLabel="Add Hardware Item Option"
             rows={hardwareItemOptionRows}
+            statusToggle={hardwareItemOptionStatusToggle}
             onEdit={(row) => {
               const item = hardwareItemOptions?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -3120,6 +3290,7 @@ function HardwareMastersSection() {
             searchPlaceholder="Search hardware item..."
             actionLabel="Add Hardware Item"
             rows={hardwareItemRows}
+            statusToggle={hardwareItemStatusToggle}
             onEdit={(row) => {
               const item = hardwareItems?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -3165,6 +3336,7 @@ function HardwareMastersSection() {
             searchPlaceholder="Search hardware type..."
             actionLabel="Add Hardware Type"
             rows={hardwareTypeRows}
+            statusToggle={hardwareTypeStatusToggle}
             nameHeader="Hardware Type"
             onEdit={(row) => {
               const item = hardwareTypes?.data?.find(item => item.id === row.id);
@@ -3614,28 +3786,34 @@ function LightMastersSection() {
   const createLightCarcasUnit = useSaveSpecsMaster("light-carcas-unit", editingId);
   const uploadLightCarcasUnits = useUploadLightCarcasUnits();
 
+  const lightCarcasTypeStatusToggle = useStatusToggle("light-carcas-type");
   const lightCarcasTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (lightCarcasTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.type,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [lightCarcasTypes?.data],
   );
 
-  const lightCarcasUnitRows = React.useMemo<MasterRow[]>(
-    () =>
-      (lightCarcasUnits?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.type,
-        parent: item.lightCarcasType?.type ?? null,
-        status: "active",
-      })),
-    [lightCarcasUnits?.data],
-  );
+  const lightCarcasUnitStatusToggle = useStatusToggle("light-carcas-unit");
+  const lightCarcasUnitRows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive parent, an entry is inactive too.
+    const activeParentIds = new Set(
+      (lightCarcasTypes?.data ?? [])
+        .filter((parent) => isActiveStatus(parent.status))
+        .map((parent) => parent.id),
+    );
+    return (lightCarcasUnits?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.type,
+      parent: item.lightCarcasType?.type ?? null,
+      ...entryStatus(item.status, activeParentIds.has(item.light_carcas_type_id)),
+    }));
+  }, [lightCarcasUnits?.data, lightCarcasTypes?.data]);
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
   const [typeName, setTypeName] = React.useState("");
@@ -3786,6 +3964,7 @@ function LightMastersSection() {
             searchPlaceholder="Search light unit..."
             actionLabel="Add Light Unit"
             rows={lightCarcasUnitRows}
+            statusToggle={lightCarcasUnitStatusToggle}
             onEdit={(row) => {
               const item = lightCarcasUnits?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -3830,6 +4009,7 @@ function LightMastersSection() {
             searchPlaceholder="Search light carcas type..."
             actionLabel="Add Light Carcas Type"
             rows={lightCarcasTypeRows}
+            statusToggle={lightCarcasTypeStatusToggle}
             onEdit={(row) => {
               const item = lightCarcasTypes?.data?.find(item => item.id === row.id);
               if (!item) return;
@@ -4119,6 +4299,8 @@ type OtherApplianceMasterRow = {
   id: number;
   article_number: string;
   description: string;
+  status: string;
+  active?: boolean;
 };
 
 function OtherAppliancesListingTable({
@@ -4132,6 +4314,7 @@ function OtherAppliancesListingTable({
   onTemplateDownload,
   onImportClick,
   isDownloading,
+  statusToggle,
 }: {
   type: string;
   rows: OtherApplianceMasterRow[];
@@ -4143,6 +4326,7 @@ function OtherAppliancesListingTable({
   onTemplateDownload: () => void;
   onImportClick: () => void;
   isDownloading?: boolean;
+  statusToggle?: StatusToggle;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -4167,6 +4351,16 @@ function OtherAppliancesListingTable({
         cell: ({ row }) => row.original.description,
       },
       {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusCell
+            row={{ ...row.original, name: row.original.article_number }}
+            statusToggle={statusToggle}
+          />
+        ),
+      },
+      {
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -4179,7 +4373,7 @@ function OtherAppliancesListingTable({
         ),
       },
     ],
-    [],
+    [onEdit, statusToggle],
   );
 
   const table = useReactTable({
@@ -4301,9 +4495,11 @@ function OtherAppliancesTab({ type }: { type: string }) {
           id: item.id,
           article_number: item.article_number,
           description: item.description,
+          ...entryStatus(item.status),
         })),
     [otherAppliances?.data, type],
   );
+  const statusToggle = useStatusToggle("other-appliances");
 
   const [openModal, setOpenModal] = React.useState(false);
   const [articleNumber, setArticleNumber] = React.useState("");
@@ -4400,6 +4596,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
       <OtherAppliancesListingTable
         type={type}
         rows={rows}
+        statusToggle={statusToggle}
         isLoading={isLoading}
         isError={isError}
         errorMessage={(error as any)?.response?.data?.error}

@@ -10,6 +10,10 @@ export type SpecsMasterKind =
   | "hardware-type" | "hardware-item" | "hardware-item-option"
   | "light-carcas-type" | "light-carcas-unit" | "other-appliances";
 
+/** Specs master query keys (parent names and statuses show up in child lists too). */
+const isSpecsMasterQuery = (queryKey: readonly unknown[]) =>
+  /^(all)?(carcass|carcas|shutter|hardware|lightCarcas|otherAppliances)/i.test(String(queryKey[0]));
+
 export function useSaveSpecsMaster(kind: SpecsMasterKind, editingId: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -21,13 +25,29 @@ export function useSaveSpecsMaster(kind: SpecsMasterKind, editingId: number | nu
     },
     onSuccess: () => {
       // Parent names are displayed by their child lists as well.
-      queryClient.invalidateQueries({ predicate: query =>
-        /^(all)?(carcass|carcas|shutter|hardware|lightCarcas|otherAppliances)/i.test(String(query.queryKey[0])),
-      });
+      queryClient.invalidateQueries({ predicate: query => isSpecsMasterQuery(query.queryKey) });
       toastManager.add({ title: editingId ? "Entry updated successfully." : "Entry created successfully.", type: "success" });
     },
     onError: (error: any) => {
       toastManager.add({ title: error?.response?.data?.message || error?.response?.data?.error || "Failed to save entry.", type: "error" });
+    },
+  });
+}
+
+/** Marks specs master entries active / inactive. */
+export function useUpdateSpecsMasterStatus(kind: SpecsMasterKind) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids, status }: { ids: number[]; status: "active" | "inactive" }) => {
+      const result = await apiClient.patch(`/leads/specs-masters/${kind}/status`, { ids, status });
+      return result.data;
+    },
+    onSuccess: (_data, { status }) => {
+      queryClient.invalidateQueries({ predicate: query => isSpecsMasterQuery(query.queryKey) });
+      toastManager.add({ title: status === "active" ? "Marked as active." : "Marked as inactive.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({ title: error?.response?.data?.message || "Failed to update status.", type: "error" });
     },
   });
 }
