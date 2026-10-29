@@ -189,7 +189,7 @@ export const exportLeadSpecificationPdf = (
 
   addSection(
     "Hardware",
-    ["Carcass Legs", "Skirting", "Colors", "Note"],
+    ["Hardware Type", "Hardware Item", "Hardware Item Options", "Note"],
     specification.hardwareMappings.map((row) => ({
       values: [
         row.carcassLegs?.name,

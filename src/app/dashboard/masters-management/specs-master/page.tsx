@@ -326,11 +326,19 @@ async function computeHardwareUploadPreview(
 ): Promise<MasterUploadPreview> {
   const { headers, rows } = await parseUploadFile(file);
 
-  const legsKey = headers.find((h) => h.includes("legs"));
-  const skirtingKey = headers.find(
-    (h) => h.includes("skirting") && !h.includes("color"),
+  // Hardware Type / Hardware Item / Hardware Item Options; the older
+  // Carcass Legs / Skirting / Skirting Color headers are still accepted.
+  const isOptionHeader = (h: string) =>
+    h.includes("option") || h.includes("color");
+  const legsKey = headers.find(
+    (h) => h.includes("hardware type") || h.includes("legs"),
   );
-  const colorKey = headers.find((h) => h.includes("color"));
+  const skirtingKey = headers.find(
+    (h) =>
+      !isOptionHeader(h) &&
+      (h.includes("hardware item") || h.includes("skirting")),
+  );
+  const colorKey = headers.find(isOptionHeader);
 
   if (!legsKey || !skirtingKey || !colorKey) {
     return {
@@ -342,7 +350,7 @@ async function computeHardwareUploadPreview(
       skippedDuplicate: 0,
       skippedRows: [],
       headerError:
-        "Required columns missing. The sheet must have Carcass Legs, Skirting, and Skirting Color columns.",
+        "Required columns missing. The sheet must have Hardware Type, Hardware Item, and Hardware Item Options columns.",
     };
   }
 
@@ -414,7 +422,7 @@ async function computeHardwareUploadPreview(
       skippedDuplicate++;
       skippedRows.push({
         row: rowNumber,
-        reason: `Duplicate skirting color "${colorValue}" for skirting "${skirtingName}"`,
+        reason: `Duplicate hardware item option "${colorValue}" for hardware item "${skirtingName}"`,
         type: "duplicate",
       });
       return;
@@ -2431,9 +2439,9 @@ function HardwareMastersSection() {
     const worksheet = workbook.addWorksheet("Hardware Masters Template");
 
     worksheet.columns = [
-      { header: "Carcass Legs", key: "legs", width: 30 },
-      { header: "Skirting", key: "skirting", width: 30 },
-      { header: "Skirting Color", key: "color", width: 30 },
+      { header: "Hardware Type", key: "legs", width: 30 },
+      { header: "Hardware Item", key: "skirting", width: 30 },
+      { header: "Hardware Item Options", key: "color", width: 30 },
     ];
 
     const headerRow = worksheet.getRow(1);
@@ -2452,17 +2460,17 @@ function HardwareMastersSection() {
     <>
       <Tabs defaultValue="color" className="w-full">
         <TabsList>
-          <TabsTrigger value="color">Skirting Color</TabsTrigger>
-          <TabsTrigger value="skirting">Skirting</TabsTrigger>
-          <TabsTrigger value="legs">Carcass Legs</TabsTrigger>
+          <TabsTrigger value="color">Hardware Item Options</TabsTrigger>
+          <TabsTrigger value="skirting">Hardware Item</TabsTrigger>
+          <TabsTrigger value="legs">Hardware Type</TabsTrigger>
         </TabsList>
 
         <TabsContent value="color" className="mt-4">
           <MasterListingTable
-            title="Skirting Color"
-            description="Skirting color master entries for the current vendor."
-            searchPlaceholder="Search skirting color..."
-            actionLabel="Add Skirting Color"
+            title="Hardware Item Options"
+            description="Hardware item option master entries for the current vendor."
+            searchPlaceholder="Search hardware item options..."
+            actionLabel="Add Hardware Item Option"
             rows={skirtingColorRows}
             onEdit={(row) => {
               const item = skirtingColors?.data?.find(item => item.id === row.id);
@@ -2503,10 +2511,10 @@ function HardwareMastersSection() {
 
         <TabsContent value="skirting" className="mt-4">
           <MasterListingTable
-            title="Skirting"
-            description="Skirting master entries for the current vendor."
-            searchPlaceholder="Search skirting..."
-            actionLabel="Add Skirting"
+            title="Hardware Item"
+            description="Hardware item master entries for the current vendor."
+            searchPlaceholder="Search hardware item..."
+            actionLabel="Add Hardware Item"
             rows={skirtingRows}
             onEdit={(row) => {
               const item = skirtings?.data?.find(item => item.id === row.id);
@@ -2546,10 +2554,10 @@ function HardwareMastersSection() {
 
         <TabsContent value="legs" className="mt-4">
           <MasterListingTable
-            title="Carcass Legs"
-            description="Carcass legs master entries for the current vendor."
-            searchPlaceholder="Search carcass legs..."
-            actionLabel="Add Carcass Legs"
+            title="Hardware Type"
+            description="Hardware type master entries for the current vendor."
+            searchPlaceholder="Search hardware type..."
+            actionLabel="Add Hardware Type"
             rows={carcassLegsRows}
             onEdit={(row) => {
               const item = carcassLegs?.data?.find(item => item.id === row.id);
@@ -2590,20 +2598,20 @@ function HardwareMastersSection() {
       <Dialog open={openLegsModal} onOpenChange={setOpenLegsModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Legs</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Type</DialogTitle>
             <DialogDescription>
-              {editingId ? "Edit the selected" : "Create a new"} carcass legs entry for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} hardware type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="carcass-legs-name">Carcass Legs</Label>
+              <Label htmlFor="carcass-legs-name">Hardware Type</Label>
               <Input
                 id="carcass-legs-name"
                 value={legsName}
                 onChange={(e) => setLegsName(e.target.value)}
-                placeholder="Enter carcass legs"
+                placeholder="Enter hardware type"
               />
             </div>
           </div>
@@ -2633,18 +2641,18 @@ function HardwareMastersSection() {
       <Dialog open={openSkirtingModal} onOpenChange={setOpenSkirtingModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit" : "Add"} Skirting</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item</DialogTitle>
             <DialogDescription>
-              {editingId ? "Edit the selected" : "Create a new"} skirting entry and link it to a carcass legs.
+              {editingId ? "Edit the selected" : "Create a new"} hardware item and link it to a hardware type.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Carcass Legs</Label>
+              <Label>Hardware Type</Label>
               <Select value={skirtingLegsId} onValueChange={setSkirtingLegsId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select carcass legs" />
+                  <SelectValue placeholder="Select hardware type" />
                 </SelectTrigger>
                 <SelectContent>
                   {(carcassLegs?.data ?? []).map((item) => (
@@ -2657,12 +2665,12 @@ function HardwareMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="skirting-name">Skirting</Label>
+              <Label htmlFor="skirting-name">Hardware Item</Label>
               <Input
                 id="skirting-name"
                 value={skirtingName}
                 onChange={(e) => setSkirtingName(e.target.value)}
-                placeholder="Enter skirting"
+                placeholder="Enter hardware item"
               />
             </div>
 
@@ -2712,16 +2720,16 @@ function HardwareMastersSection() {
       <Dialog open={openColorModal} onOpenChange={setOpenColorModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit" : "Add"} Skirting Color</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item Option</DialogTitle>
             <DialogDescription>
-              {editingId ? "Edit the selected" : "Create a new"} skirting color and link it to a carcass legs and
-              skirting.
+              {editingId ? "Edit the selected" : "Create a new"} hardware item option and link it to a hardware
+              type and hardware item.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Carcass Legs</Label>
+              <Label>Hardware Type</Label>
               <Select
                 value={colorLegsId}
                 onValueChange={(value) => {
@@ -2730,7 +2738,7 @@ function HardwareMastersSection() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select carcass legs" />
+                  <SelectValue placeholder="Select hardware type" />
                 </SelectTrigger>
                 <SelectContent>
                   {(carcassLegs?.data ?? []).map((item) => (
@@ -2743,7 +2751,7 @@ function HardwareMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label>Skirting</Label>
+              <Label>Hardware Item</Label>
               <Select
                 value={colorSkirtingId}
                 onValueChange={setColorSkirtingId}
@@ -2753,8 +2761,8 @@ function HardwareMastersSection() {
                   <SelectValue
                     placeholder={
                       colorLegsId
-                        ? "Select skirting"
-                        : "Select carcass legs first"
+                        ? "Select hardware item"
+                        : "Select hardware type first"
                     }
                   />
                 </SelectTrigger>
@@ -2769,12 +2777,12 @@ function HardwareMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="skirting-color-value">Color</Label>
+              <Label htmlFor="skirting-color-value">Option</Label>
               <Input
                 id="skirting-color-value"
                 value={colorValue}
                 onChange={(e) => setColorValue(e.target.value)}
-                placeholder="Enter color"
+                placeholder="Enter option"
               />
             </div>
           </div>
@@ -2817,8 +2825,8 @@ function HardwareMastersSection() {
             setUploadPreview(null);
           }
         }}
-        title="Import Skirting Color"
-        description="Upload a CSV or XLSX file with Carcass Legs, Skirting, and Skirting Color columns. Carcass Legs and Skirting are required per row; Skirting Color may be left blank, but a value that already exists for that skirting is skipped as a duplicate."
+        title="Import Hardware Item Options"
+        description="Upload a CSV or XLSX file with Hardware Type, Hardware Item, and Hardware Item Options columns. Hardware Type and Hardware Item are required per row; Hardware Item Options may be left blank, but an option that already exists for that hardware item is skipped as a duplicate."
         size="smd"
       >
         <div className="p-6 space-y-4">
@@ -2864,19 +2872,19 @@ function HardwareMastersSection() {
                   <div className="grid grid-cols-2 gap-2">
                     <PreviewStatTile
                       icon={<Layers />}
-                      label="New Carcass Legs"
+                      label="New Hardware Type"
                       value={uploadPreview.typesToAdd}
                       tone="indigo"
                     />
                     <PreviewStatTile
                       icon={<Package />}
-                      label="New Skirting"
+                      label="New Hardware Item"
                       value={uploadPreview.materialsToAdd}
                       tone="violet"
                     />
                     <PreviewStatTile
                       icon={<Palette />}
-                      label="New Skirting Color"
+                      label="New Hardware Item Option"
                       value={uploadPreview.finishesToAdd}
                       tone="emerald"
                     />
@@ -2891,7 +2899,7 @@ function HardwareMastersSection() {
                   {uploadPreview.skippedMissing > 0 && (
                     <PreviewStatTile
                       icon={<FileWarning />}
-                      label="Skipped — missing Carcass Legs/Skirting value"
+                      label="Skipped — missing Hardware Type/Item value"
                       value={uploadPreview.skippedMissing}
                       tone="red"
                     />

@@ -946,13 +946,13 @@ export const useCreateCarcassLegs = () => {
         queryKey: getCarcassLegsQueryKey(vendorId),
       });
       toastManager.add({
-        title: "Carcass legs created successfully.",
+        title: "Hardware type created successfully.",
         type: "success",
       });
     },
     onError: (error: any) => {
       toastManager.add({
-        title: error?.response?.data?.error || "Failed to create carcass legs.",
+        title: error?.response?.data?.error || "Failed to create hardware type.",
         type: "error",
       });
     },
@@ -973,13 +973,13 @@ export const useCreateSkirtingCarcassLegs = () => {
         queryKey: ["skirtingCarcassLegs"],
       });
       toastManager.add({
-        title: "Skirting created successfully.",
+        title: "Hardware item created successfully.",
         type: "success",
       });
     },
     onError: (error: any) => {
       toastManager.add({
-        title: error?.response?.data?.error || "Failed to create skirting.",
+        title: error?.response?.data?.error || "Failed to create hardware item.",
         type: "error",
       });
     },
@@ -1000,14 +1000,14 @@ export const useCreateSkirtingCarcassLegsColor = () => {
         queryKey: ["skirtingCarcassLegsColors"],
       });
       toastManager.add({
-        title: "Skirting color created successfully.",
+        title: "Hardware item option created successfully.",
         type: "success",
       });
     },
     onError: (error: any) => {
       toastManager.add({
         title:
-          error?.response?.data?.error || "Failed to create skirting color.",
+          error?.response?.data?.error || "Failed to create hardware item option.",
         type: "error",
       });
     },

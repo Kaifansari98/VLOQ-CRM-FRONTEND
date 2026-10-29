@@ -1648,7 +1648,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
             duplicateMessage =
-              "This carcass legs and skirting combination has already been added.";
+              "This hardware type and hardware item combination has already been added.";
             return row;
           }
 
@@ -1699,7 +1699,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
             duplicateMessage =
-              "This carcass legs, skirting, and color combination has already been added.";
+              "This hardware type, hardware item, and option combination has already been added.";
             return row;
           }
 
@@ -2968,13 +2968,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   <thead className="bg-zinc-700">
                     <tr className="border-b">
                       <th className="px-4 py-3 text-left font-bold text-white">
-                        Carcass Legs
+                        Hardware Type
                       </th>
                       <th className="px-4 py-3 text-left font-bold text-white">
-                        Skirting
+                        Hardware Item
                       </th>
                       <th className="px-4 py-3 text-left font-bold text-white">
-                        Colors
+                        Hardware Item Options
                       </th>
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Note
@@ -3047,8 +3047,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   value ? String(value) : "",
                                 )
                               }
-                              placeholder="Search carcass legs..."
-	                              emptyLabel="Select carcass legs"
+                              placeholder="Search hardware type..."
+	                              emptyLabel="Select hardware type"
                               disabled={rowLocked}
                               className={cn(
                                 pickerClassName,
@@ -3077,13 +3077,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               disabled={rowLocked || !row.carcass_legs_id}
                               placeholder={
                                 row.carcass_legs_id
-                                  ? "Search skirting..."
-                                  : "Select carcass legs first"
+                                  ? "Search hardware item..."
+                                  : "Select hardware type first"
                               }
                               emptyLabel={
                                 row.carcass_legs_id
-                                  ? "Select skirting"
-                                  : "Select carcass legs first"
+                                  ? "Select hardware item"
+                                  : "Select hardware type first"
                               }
                               className={cn(
                                 pickerClassName,
@@ -3116,17 +3116,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               }
                               placeholder={
                                 !row.skirting_carcass_legs_id
-                                  ? "Select skirting first"
+                                  ? "Select hardware item first"
                                   : colorOptions.length === 0
-                                    ? "No colors available"
-                                    : "Search color..."
+                                    ? "No options available"
+                                    : "Search option..."
                               }
                               emptyLabel={
                                 !row.skirting_carcass_legs_id
-                                  ? "Select skirting first"
+                                  ? "Select hardware item first"
                                   : colorOptions.length === 0
-                                    ? "No colors available"
-                                    : "Select color"
+                                    ? "No options available"
+                                    : "Select option"
                               }
                               className={cn(
                                 pickerClassName,
