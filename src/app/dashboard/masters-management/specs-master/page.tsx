@@ -29,6 +29,9 @@ import {
   FileWarning,
 } from "lucide-react";
 import ClearInput from "@/components/origin-input";
+import MultipleSelector, {
+  type Option as MultiSelectOption,
+} from "@/components/ui/multiselect";
 import { DataTable } from "@/components/data-table/data-table";
 import { FileUploadField } from "@/components/custom/file-upload";
 import BaseModal from "@/components/utils/baseModal";
@@ -2283,6 +2286,9 @@ function HardwareMastersSection() {
   const [openHardwareItemModal, setOpenHardwareItemModal] = React.useState(false);
   const [hardwareItemName, setHardwareItemName] = React.useState("");
   const [itemHardwareTypeId, setItemHardwareTypeId] = React.useState("");
+  // Adding: the same item is created under every selected hardware type.
+  const [itemHardwareTypeSelections, setItemHardwareTypeSelections] =
+    React.useState<MultiSelectOption[]>([]);
   const [hardwareItemInScope, setHardwareItemInScope] = React.useState("true");
   const [openOptionModal, setOpenOptionModal] = React.useState(false);
   const [optionValue, setOptionValue] = React.useState("");
@@ -2367,26 +2373,37 @@ function HardwareMastersSection() {
     );
   };
 
+  const resetHardwareItemForm = () => {
+    setHardwareItemName("");
+    setItemHardwareTypeId("");
+    setItemHardwareTypeSelections([]);
+    setHardwareItemInScope("true");
+  };
+
   const handleCreateHardwareItem = () => {
     const name = hardwareItemName.trim();
-    const hardwareTypeId = Number(itemHardwareTypeId);
-    if (!name || !hardwareTypeId) return;
+    const inScope = hardwareItemInScope === "true";
+    if (!name) return;
 
-    createHardwareItem.mutate(
-      {
-        hardware_type_id: hardwareTypeId,
-        name,
-        inScope: hardwareItemInScope === "true",
+    const payload = editingId
+      ? { hardware_type_id: Number(itemHardwareTypeId), name, inScope }
+      : {
+          hardware_type_ids: itemHardwareTypeSelections.map((option) =>
+            Number(option.value),
+          ),
+          name,
+          inScope,
+        };
+    if (editingId ? !payload.hardware_type_id : !payload.hardware_type_ids?.length) {
+      return;
+    }
+
+    createHardwareItem.mutate(payload, {
+      onSuccess: () => {
+        setOpenHardwareItemModal(false);
+        resetHardwareItemForm();
       },
-      {
-        onSuccess: () => {
-          setOpenHardwareItemModal(false);
-          setHardwareItemName("");
-          setItemHardwareTypeId("");
-          setHardwareItemInScope("true");
-        },
-      },
-    );
+    });
   };
 
   const handleCreateOption = () => {
@@ -2525,7 +2542,7 @@ function HardwareMastersSection() {
             isLoading={isHardwareItemsLoading}
             isError={isHardwareItemsError}
             errorMessage={(hardwareItemsError as any)?.response?.data?.error}
-            onAction={() => { setEditingId(null); setHardwareItemName(""); setItemHardwareTypeId(""); setHardwareItemInScope("true"); setOpenHardwareItemModal(true); }}  extraActions={
+            onAction={() => { setEditingId(null); resetHardwareItemForm(); setOpenHardwareItemModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2650,18 +2667,37 @@ function HardwareMastersSection() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Hardware Type</Label>
-              <Select value={itemHardwareTypeId} onValueChange={setItemHardwareTypeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select hardware type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(hardwareTypes?.data ?? []).map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {editingId ? (
+                // An existing item belongs to exactly one hardware type.
+                <Select value={itemHardwareTypeId} onValueChange={setItemHardwareTypeId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select hardware type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(hardwareTypes?.data ?? []).map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <MultipleSelector
+                  value={itemHardwareTypeSelections}
+                  onChange={setItemHardwareTypeSelections}
+                  options={(hardwareTypes?.data ?? []).map((item) => ({
+                    value: String(item.id),
+                    label: item.name,
+                  }))}
+                  placeholder="Select hardware types"
+                  hidePlaceholderWhenSelected
+                />
+              )}
+              {!editingId && itemHardwareTypeSelections.length > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  This item will be created once under each selected hardware type.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -2696,9 +2732,7 @@ function HardwareMastersSection() {
               variant="outline"
               onClick={() => {
                 setOpenHardwareItemModal(false);
-                setHardwareItemName("");
-                setItemHardwareTypeId("");
-                setHardwareItemInScope("true");
+                resetHardwareItemForm();
               }}
             >
               Cancel
@@ -2708,7 +2742,9 @@ function HardwareMastersSection() {
               disabled={
                 createHardwareItem.isPending ||
                 !hardwareItemName.trim() ||
-                !itemHardwareTypeId
+                (editingId
+                  ? !itemHardwareTypeId
+                  : itemHardwareTypeSelections.length === 0)
               }
             >
               {createHardwareItem.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
@@ -2728,52 +2764,55 @@ function HardwareMastersSection() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Hardware Type</Label>
-              <Select
-                value={optionHardwareTypeId}
-                onValueChange={(value) => {
-                  setOptionHardwareTypeId(value);
-                  setOptionHardwareItemId("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select hardware type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(hardwareTypes?.data ?? []).map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Row: Hardware Type + Hardware Item side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Hardware Type</Label>
+                <Select
+                  value={optionHardwareTypeId}
+                  onValueChange={(value) => {
+                    setOptionHardwareTypeId(value);
+                    setOptionHardwareItemId("");
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select hardware type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(hardwareTypes?.data ?? []).map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Hardware Item</Label>
-              <Select
-                value={optionHardwareItemId}
-                onValueChange={setOptionHardwareItemId}
-                disabled={!optionHardwareTypeId}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      optionHardwareTypeId
-                        ? "Select hardware item"
-                        : "Select hardware type first"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {optionHardwareItemOptions.map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label>Hardware Item</Label>
+                <Select
+                  value={optionHardwareItemId}
+                  onValueChange={setOptionHardwareItemId}
+                  disabled={!optionHardwareTypeId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue
+                      placeholder={
+                        optionHardwareTypeId
+                          ? "Select hardware item"
+                          : "Select hardware type first"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {optionHardwareItemOptions.map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
