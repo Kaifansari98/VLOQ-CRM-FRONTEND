@@ -223,16 +223,30 @@ export interface CarcasMaterialMasterResponse {
   data: CarcasMaterialMasterEntry[];
 }
 
-export interface ShutterMaterialFinishMasterEntry {
+export interface ShutterOuterFinishMasterEntry {
   id: number;
   name: string;
   shutter_material_id: number;
   material?: { id: number; name: string };
 }
 
-export interface ShutterMaterialFinishMasterResponse {
+
+export interface ShutterInnerFinishMasterEntry {
+  id: number;
+  name: string;
+  shutter_material_id: number;
+  material?: { id: number; name: string };
+}
+
+export interface ShutterOuterFinishMasterResponse {
   success: boolean;
-  data: ShutterMaterialFinishMasterEntry[];
+  data: ShutterOuterFinishMasterEntry[];
+}
+
+
+export interface ShutterInnerFinishMasterResponse {
+  success: boolean;
+  data: ShutterInnerFinishMasterEntry[];
 }
 
 export interface ShutterMaterialMasterEntry {
@@ -420,12 +434,34 @@ export interface CreateShutterMaterialPayload {
   name: string;
 }
 
-export interface CreateShutterMaterialFinishPayload {
+export interface CreateShutterOuterFinishPayload {
   shutter_material_id: number;
   name: string;
 }
 
-export interface BulkUploadShutterMaterialFinishesResponse {
+
+export interface CreateShutterInnerFinishPayload {
+  shutter_material_id: number;
+  name: string;
+}
+
+export interface BulkUploadShutterOuterFinishesResponse {
+  success: boolean;
+  data: {
+    typesCreated: number;
+    materialsCreated: number;
+    finishesCreated: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
+}
+
+
+export interface BulkUploadShutterInnerFinishesResponse {
   success: boolean;
   data: {
     typesCreated: number;
@@ -803,9 +839,9 @@ export const createShutterMaterial = async (
   return res.data;
 }
 
-export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) => {
-  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
-    `/leads/get-shutter-material-finishes/${shutterMaterialId}`,
+export const fetchShutterOuterFinishes = async (shutterMaterialId: number) => {
+  const res = await apiClient.get<ShutterOuterFinishMasterResponse>(
+    `/leads/get-shutter-outer-finishes/${shutterMaterialId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -813,9 +849,10 @@ export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) =>
   };
 }
 
-export const fetchAllShutterMaterialFinishes = async (vendorId: number) => {
-  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
-    `/leads/get-all-shutter-material-finishes/${vendorId}`,
+
+export const fetchShutterInnerFinishes = async (shutterMaterialId: number) => {
+  const res = await apiClient.get<ShutterInnerFinishMasterResponse>(
+    `/leads/get-shutter-inner-finishes/${shutterMaterialId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -823,19 +860,63 @@ export const fetchAllShutterMaterialFinishes = async (vendorId: number) => {
   };
 }
 
-export const createShutterMaterialFinish = async (
-  payload: CreateShutterMaterialFinishPayload,
+export const fetchAllShutterOuterFinishes = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterOuterFinishMasterResponse>(
+    `/leads/get-all-shutter-outer-finishes/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+
+export const fetchAllShutterInnerFinishes = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterInnerFinishMasterResponse>(
+    `/leads/get-all-shutter-inner-finishes/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createShutterOuterFinish = async (
+  payload: CreateShutterOuterFinishPayload,
 ) => {
   const res = await apiClient.post(
-    "/leads/create-shutter-material-finish",
+    "/leads/create-shutter-outer-finish",
     payload,
   );
   return res.data;
 }
 
-export const uploadShutterMaterialFinishes = async (formData: FormData) => {
-  const res = await apiClient.post<BulkUploadShutterMaterialFinishesResponse>(
-    "/leads/upload-shutter-material-finish",
+
+export const createShutterInnerFinish = async (
+  payload: CreateShutterInnerFinishPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-shutter-inner-finish",
+    payload,
+  );
+  return res.data;
+}
+
+export const uploadShutterOuterFinishes = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadShutterOuterFinishesResponse>(
+    "/leads/upload-shutter-outer-finish",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return res.data;
+}
+
+
+export const uploadShutterInnerFinishes = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadShutterInnerFinishesResponse>(
+    "/leads/upload-shutter-inner-finish",
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },

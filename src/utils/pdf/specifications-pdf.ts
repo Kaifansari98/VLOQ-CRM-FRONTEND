@@ -176,12 +176,12 @@ export const exportLeadSpecificationPdf = (
 
   addSection(
     "Shutter",
-    ["Shutter Type", "Shutter Material", "Shutter Material Finish"],
+    ["Shutter Type", "Shutter Material", "Shutter Outer Finish"],
     specification.shutterMaterialMappings.map((row) => ({
       values: [
         row.shutterType?.name,
         row.shutterMaterial?.name,
-        row.shutterMaterialFinish?.name,
+        row.shutterOuterFinish?.name,
       ],
       reviewStatus: getReviewStatus(row, includeReviewColors),
     })),

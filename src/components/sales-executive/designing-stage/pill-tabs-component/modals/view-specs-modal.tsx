@@ -68,7 +68,7 @@ import {
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
   fetchCarcassMaterialFinishes,
-  fetchShutterMaterialFinishes,
+  fetchShutterOuterFinishes,
   fetchHardwareItems,
   fetchHardwareItemOptions,
   fetchLightCarcasUnits,
@@ -107,7 +107,7 @@ type ShutterRow = {
   id?: number;
   shutter_type_id: string;
   shutter_material_id: string;
-  shutter_material_finish_id: string;
+  shutter_outer_finish_id: string;
 };
 
 type HardwareRow = {
@@ -158,7 +158,7 @@ type ReviewPersistPayload =
       created_by: number;
       shutter_type_id: number;
       shutter_material_id: number;
-      shutter_material_finish_id: number;
+      shutter_outer_finish_id: number;
     }
   | {
       id: number;
@@ -202,7 +202,7 @@ const makeBlankShutterRow = (): ShutterRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   shutter_type_id: "",
   shutter_material_id: "",
-  shutter_material_finish_id: "",
+  shutter_outer_finish_id: "",
 });
 
 const makeBlankHardwareRow = (): HardwareRow => ({
@@ -746,12 +746,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         section === "shutter" &&
         "shutter_type_id" in payload &&
         "shutter_material_id" in payload &&
-        "shutter_material_finish_id" in payload
+        "shutter_outer_finish_id" in payload
       ) {
         return (
           payload.shutter_type_id > 0 &&
           payload.shutter_material_id > 0 &&
-          payload.shutter_material_finish_id > 0
+          payload.shutter_outer_finish_id > 0
         );
       }
 
@@ -1162,8 +1162,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       shutter_material_id: item.shutter_material_id
         ? String(item.shutter_material_id)
         : "",
-      shutter_material_finish_id: item.shutter_material_finish_id
-        ? String(item.shutter_material_finish_id)
+      shutter_outer_finish_id: item.shutter_outer_finish_id
+        ? String(item.shutter_outer_finish_id)
         : "",
     }));
 
@@ -1300,8 +1300,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     queries: shutterRows.map((row) => {
       const materialId = Number(row.shutter_material_id);
       return {
-        queryKey: ["shutterMaterialFinishes", materialId],
-        queryFn: () => fetchShutterMaterialFinishes(materialId),
+        queryKey: ["shutterOuterFinishes", materialId],
+        queryFn: () => fetchShutterOuterFinishes(materialId),
         enabled: materialId > 0,
       };
     }),
@@ -1451,7 +1451,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !specification?.id ||
         !row.shutter_type_id ||
         !row.shutter_material_id ||
-        !row.shutter_material_finish_id
+        !row.shutter_outer_finish_id
       ) {
         return;
       }
@@ -1464,7 +1464,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           specs_id: specification.id,
           shutter_type_id: Number(row.shutter_type_id),
           shutter_material_id: Number(row.shutter_material_id),
-          shutter_material_finish_id: Number(row.shutter_material_finish_id),
+          shutter_outer_finish_id: Number(row.shutter_outer_finish_id),
           created_by: userId,
         });
       } catch (error: any) {
@@ -1495,13 +1495,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: ShutterRow = { ...row, [field]: value };
           if (field === "shutter_material_id") {
-            updatedRow.shutter_material_finish_id = "";
+            updatedRow.shutter_outer_finish_id = "";
           }
 
           const isComplete =
             !!updatedRow.shutter_type_id &&
             !!updatedRow.shutter_material_id &&
-            !!updatedRow.shutter_material_finish_id;
+            !!updatedRow.shutter_outer_finish_id;
 
           if (isComplete) {
             const isDuplicate = prev.some(
@@ -1510,8 +1510,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 otherRow.shutter_type_id === updatedRow.shutter_type_id &&
                 otherRow.shutter_material_id ===
                   updatedRow.shutter_material_id &&
-                otherRow.shutter_material_finish_id ===
-                  updatedRow.shutter_material_finish_id,
+                otherRow.shutter_outer_finish_id ===
+                  updatedRow.shutter_outer_finish_id,
             );
 
             if (isDuplicate) {
@@ -2206,7 +2206,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       const hasValue =
         !!row.shutter_type_id ||
         !!row.shutter_material_id ||
-        !!row.shutter_material_finish_id;
+        !!row.shutter_outer_finish_id;
       if (!hasValue) return "";
 
       if (!row.id) return stageRowHighlightClass;
@@ -2218,8 +2218,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       const changed =
         Number(row.shutter_type_id || 0) !== baseline.shutter_type_id ||
         Number(row.shutter_material_id || 0) !== baseline.shutter_material_id ||
-        Number(row.shutter_material_finish_id || 0) !==
-          baseline.shutter_material_finish_id;
+        Number(row.shutter_outer_finish_id || 0) !==
+          baseline.shutter_outer_finish_id;
 
       return changed ? stageRowHighlightClass : "";
     },
@@ -2791,7 +2791,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         Shutter Material
                       </th>
                       <th className="px-4 py-3 text-left font-bold text-white">
-                        Shutter Material Finish
+                        Shutter Outer Finish
                       </th>
                       {showReviewColumns && !isSpecCompleted && (
                         <>
@@ -2893,26 +2893,26 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                label: finish.name,
 	                              }))}
 	                              value={
-	                                row.shutter_material_finish_id
-	                                  ? Number(row.shutter_material_finish_id)
+	                                row.shutter_outer_finish_id
+	                                  ? Number(row.shutter_outer_finish_id)
 	                                  : undefined
 	                              }
 	                              onChange={(value) =>
 	                                updateShutterRow(
 	                                  row.localId,
-	                                  "shutter_material_finish_id",
+	                                  "shutter_outer_finish_id",
 	                                  value ? String(value) : "",
 	                                )
 	                              }
 	                              disabled={rowLocked || !row.shutter_material_id}
 	                              placeholder={
 	                                row.shutter_material_id
-	                                  ? "Search shutter material finish..."
+	                                  ? "Search shutter outer finish..."
 	                                  : "Select material first"
 	                              }
 	                              emptyLabel={
 	                                row.shutter_material_id
-	                                  ? "Select shutter material finish"
+	                                  ? "Select shutter outer finish"
 	                                  : "Select material first"
 	                              }
 	                              className={cn(
@@ -2934,8 +2934,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       created_by: userId,
                                       shutter_type_id: Number(row.shutter_type_id),
                                       shutter_material_id: Number(row.shutter_material_id),
-                                      shutter_material_finish_id: Number(
-                                        row.shutter_material_finish_id,
+                                      shutter_outer_finish_id: Number(
+                                        row.shutter_outer_finish_id,
                                       ),
                                     }
                                   : null,

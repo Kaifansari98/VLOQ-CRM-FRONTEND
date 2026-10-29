@@ -83,8 +83,10 @@ import {
   useUploadCarcassMaterialFinishes,
   useShutterTypes,
   useShutterMaterials,
-  useAllShutterMaterialFinishes,
-  useUploadShutterMaterialFinishes,
+  useAllShutterOuterFinishes,
+  useAllShutterInnerFinishes,
+  useUploadShutterOuterFinishes,
+  useUploadShutterInnerFinishes,
   useHardwareTypes,
   useAllHardwareItems,
   useAllHardwareItemOptions,
@@ -1664,16 +1666,16 @@ function ShutterMastersSection() {
     error: shutterMaterialsError,
   } = useShutterMaterials();
   const {
-    data: shutterMaterialFinishes,
-    isLoading: isShutterMaterialFinishesLoading,
-    isError: isShutterMaterialFinishesError,
-    error: shutterMaterialFinishesError,
-  } = useAllShutterMaterialFinishes();
+    data: shutterOuterFinishes,
+    isLoading: isShutterOuterFinishesLoading,
+    isError: isShutterOuterFinishesError,
+    error: shutterOuterFinishesError,
+  } = useAllShutterOuterFinishes();
 
   const createShutterType = useSaveSpecsMaster("shutter-type", editingId);
   const createShutterMaterial = useSaveSpecsMaster("shutter-material", editingId);
-  const uploadShutterMaterialFinishes = useUploadShutterMaterialFinishes();
-  const createShutterMaterialFinish = useSaveSpecsMaster("shutter-material-finish", editingId);
+  const uploadShutterOuterFinishes = useUploadShutterOuterFinishes();
+  const createShutterOuterFinish = useSaveSpecsMaster("shutter-outer-finish", editingId);
 
   const shutterTypeRows = React.useMemo<MasterRow[]>(
     () =>
@@ -1697,16 +1699,16 @@ function ShutterMastersSection() {
     [shutterMaterials?.data],
   );
 
-  const shutterMaterialFinishRows = React.useMemo<MasterRow[]>(
+  const shutterOuterFinishRows = React.useMemo<MasterRow[]>(
     () =>
-      (shutterMaterialFinishes?.data ?? []).map((item, index) => ({
+      (shutterOuterFinishes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
         parent: item.material?.name ?? null,
         status: "active",
       })),
-    [shutterMaterialFinishes?.data],
+    [shutterOuterFinishes?.data],
   );
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
@@ -1734,7 +1736,7 @@ function ShutterMastersSection() {
     computeMasterUploadPreview(file, {
       types: shutterTypes?.data ?? [],
       materials: shutterMaterials?.data ?? [],
-      finishes: (shutterMaterialFinishes?.data ?? []).map((f) => ({
+      finishes: (shutterOuterFinishes?.data ?? []).map((f) => ({
         id: f.id,
         name: f.name,
         materialId: f.shutter_material_id,
@@ -1769,7 +1771,7 @@ function ShutterMastersSection() {
     selectedFiles,
     shutterTypes?.data,
     shutterMaterials?.data,
-    shutterMaterialFinishes?.data,
+    shutterOuterFinishes?.data,
   ]);
 
   const handleCreateType = () => {
@@ -1807,7 +1809,7 @@ function ShutterMastersSection() {
     const shutterMaterialId = Number(finishMaterialId);
     if (!name || !shutterMaterialId) return;
 
-    createShutterMaterialFinish.mutate(
+    createShutterOuterFinish.mutate(
       { shutter_material_id: shutterMaterialId, name },
       {
         onSuccess: () => {
@@ -1827,7 +1829,7 @@ function ShutterMastersSection() {
     formData.append("file", file);
     formData.append("vendorId", String(vendorId));
 
-    uploadShutterMaterialFinishes.mutate(formData, {
+    uploadShutterOuterFinishes.mutate(formData, {
       onSuccess: () => {
         setOpenUploadModal(false);
         setSelectedFiles([]);
@@ -1848,7 +1850,7 @@ function ShutterMastersSection() {
     worksheet.columns = [
       { header: "Shutter Type", key: "type", width: 30 },
       { header: "Shutter Material", key: "material", width: 30 },
-      { header: "Shutter Material Finish", key: "finish", width: 30 },
+      { header: "Shutter Outer Finish", key: "finish", width: 30 },
     ];
 
     const headerRow = worksheet.getRow(1);
@@ -1867,28 +1869,29 @@ function ShutterMastersSection() {
     <>
       <Tabs defaultValue="finish" className="w-full">
         <TabsList>
-          <TabsTrigger value="finish">Shutter Material Finish</TabsTrigger>
+          <TabsTrigger value="finish">Shutter Outer Finish</TabsTrigger>
+          <TabsTrigger value="inner-finish">Shutter Inner Finish</TabsTrigger>
           <TabsTrigger value="material">Shutter Material</TabsTrigger>
           <TabsTrigger value="type">Shutter Type</TabsTrigger>
         </TabsList>
 
         <TabsContent value="finish" className="mt-4">
           <MasterListingTable
-            title="Shutter Material Finish"
-            description="Shutter material finish master entries for the current vendor."
-            searchPlaceholder="Search shutter material finish..."
-            actionLabel="Add Shutter Material Finish"
-            rows={shutterMaterialFinishRows}
+            title="Shutter Outer Finish"
+            description="Shutter outer finish master entries for the current vendor."
+            searchPlaceholder="Search shutter outer finish..."
+            actionLabel="Add Shutter Outer Finish"
+            rows={shutterOuterFinishRows}
             onEdit={(row) => {
-              const item = shutterMaterialFinishes?.data?.find(item => item.id === row.id);
+              const item = shutterOuterFinishes?.data?.find(item => item.id === row.id);
               if (!item) return;
               setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.shutter_material_id)); setOpenFinishModal(true);
             }}
             showParent
-            isLoading={isShutterMaterialFinishesLoading}
-            isError={isShutterMaterialFinishesError}
+            isLoading={isShutterOuterFinishesLoading}
+            isError={isShutterOuterFinishesError}
             errorMessage={
-              (shutterMaterialFinishesError as any)?.response?.data?.error
+              (shutterOuterFinishesError as any)?.response?.data?.error
             }
             onAction={() => { setEditingId(null); setFinishName(""); setFinishMaterialId(""); setOpenFinishModal(true); }}
             extraActions={
@@ -1908,13 +1911,20 @@ function ShutterMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadShutterMaterialFinishes.isPending}
+                  disabled={uploadShutterOuterFinishes.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
                 </Button>
               </>
             }
+          />
+        </TabsContent>
+
+        <TabsContent value="inner-finish" className="mt-4">
+          <ShutterInnerFinishTab
+            shutterTypes={shutterTypes?.data ?? []}
+            shutterMaterials={shutterMaterials?.data ?? []}
           />
         </TabsContent>
 
@@ -1950,7 +1960,7 @@ function ShutterMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadShutterMaterialFinishes.isPending}
+                  disabled={uploadShutterOuterFinishes.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -1992,7 +2002,7 @@ function ShutterMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadShutterMaterialFinishes.isPending}
+                  disabled={uploadShutterOuterFinishes.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2094,9 +2104,9 @@ function ShutterMastersSection() {
       <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Material Finish</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Outer Finish</DialogTitle>
             <DialogDescription>
-              {editingId ? "Edit the selected" : "Create a new"} shutter material finish and link it to a shutter
+              {editingId ? "Edit the selected" : "Create a new"} shutter outer finish and link it to a shutter
               material.
             </DialogDescription>
           </DialogHeader>
@@ -2122,14 +2132,14 @@ function ShutterMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shutter-material-finish-name">
-                Shutter Material Finish
+              <Label htmlFor="shutter-outer-finish-name">
+                Shutter Outer Finish
               </Label>
               <Input
-                id="shutter-material-finish-name"
+                id="shutter-outer-finish-name"
                 value={finishName}
                 onChange={(e) => setFinishName(e.target.value)}
-                placeholder="Enter shutter material finish"
+                placeholder="Enter shutter outer finish"
               />
             </div>
           </div>
@@ -2148,12 +2158,12 @@ function ShutterMastersSection() {
             <Button
               onClick={handleCreateFinish}
               disabled={
-                createShutterMaterialFinish.isPending ||
+                createShutterOuterFinish.isPending ||
                 !finishName.trim() ||
                 !finishMaterialId
               }
             >
-              {createShutterMaterialFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
+              {createShutterOuterFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2168,8 +2178,8 @@ function ShutterMastersSection() {
             setUploadPreview(null);
           }
         }}
-        title="Import Shutter Material Finish"
-        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Material Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
+        title="Import Shutter Outer Finish"
+        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Outer Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
         size="smd"
       >
         <div className="p-6 space-y-4">
@@ -2227,7 +2237,7 @@ function ShutterMastersSection() {
                     />
                     <PreviewStatTile
                       icon={<Palette />}
-                      label="New Material Finish"
+                      label="New Outer Finish"
                       value={uploadPreview.finishesToAdd}
                       tone="emerald"
                     />
@@ -2295,12 +2305,387 @@ function ShutterMastersSection() {
                 selectedFiles.length === 0 ||
                 isParsingPreview ||
                 !!uploadPreview?.headerError ||
-                uploadShutterMaterialFinishes.isPending
+                uploadShutterOuterFinishes.isPending
               }
             >
-              {uploadShutterMaterialFinishes.isPending
+              {uploadShutterOuterFinishes.isPending
                 ? "Uploading..."
                 : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
+    </>
+  );
+}
+
+/** Shutter Inner Finish: same master as Shutter Outer Finish (a finish under a shutter material). */
+function ShutterInnerFinishTab({
+  shutterTypes,
+  shutterMaterials,
+}: {
+  shutterTypes: Array<{ id: number; name: string }>;
+  shutterMaterials: Array<{ id: number; name: string }>;
+}) {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+
+  const {
+    data: shutterInnerFinishes,
+    isLoading,
+    isError,
+    error,
+  } = useAllShutterInnerFinishes();
+  const createShutterInnerFinish = useSaveSpecsMaster("shutter-inner-finish", editingId);
+  const uploadShutterInnerFinishes = useUploadShutterInnerFinishes();
+
+  const rows = React.useMemo<MasterRow[]>(
+    () =>
+      (shutterInnerFinishes?.data ?? []).map((item, index) => ({
+        srNo: index + 1,
+        id: item.id,
+        name: item.name,
+        parent: item.material?.name ?? null,
+        status: "active",
+      })),
+    [shutterInnerFinishes?.data],
+  );
+
+  const [openFinishModal, setOpenFinishModal] = React.useState(false);
+  const [finishName, setFinishName] = React.useState("");
+  const [finishMaterialId, setFinishMaterialId] = React.useState("");
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeMasterUploadPreview(file, {
+      types: shutterTypes,
+      materials: shutterMaterials,
+      finishes: (shutterInnerFinishes?.data ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        materialId: f.shutter_material_id,
+      })),
+    })
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFiles, shutterTypes, shutterMaterials, shutterInnerFinishes?.data]);
+
+  const resetFinishForm = () => {
+    setFinishName("");
+    setFinishMaterialId("");
+  };
+
+  const handleCreateFinish = () => {
+    const name = finishName.trim();
+    const shutterMaterialId = Number(finishMaterialId);
+    if (!name || !shutterMaterialId) return;
+
+    createShutterInnerFinish.mutate(
+      { shutter_material_id: shutterMaterialId, name },
+      {
+        onSuccess: () => {
+          setOpenFinishModal(false);
+          resetFinishForm();
+        },
+      },
+    );
+  };
+
+  const closeUploadModal = () => {
+    setOpenUploadModal(false);
+    setSelectedFiles([]);
+    setUploadPreview(null);
+  };
+
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadShutterInnerFinishes.mutate(formData, {
+      onSuccess: closeUploadModal,
+      onError: closeUploadModal,
+    });
+  };
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Shutter Inner Finish Template");
+
+    worksheet.columns = [
+      { header: "Shutter Type", key: "type", width: 30 },
+      { header: "Shutter Material", key: "material", width: 30 },
+      { header: "Shutter Inner Finish", key: "finish", width: 30 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getRow(1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "shutter_inner_finish_template.xlsx");
+  };
+
+  return (
+    <>
+      <MasterListingTable
+        title="Shutter Inner Finish"
+        description="Shutter inner finish master entries for the current vendor."
+        searchPlaceholder="Search shutter inner finish..."
+        actionLabel="Add Shutter Inner Finish"
+        rows={rows}
+        onEdit={(row) => {
+          const item = shutterInnerFinishes?.data?.find((entry) => entry.id === row.id);
+          if (!item) return;
+          setEditingId(row.id);
+          setFinishName(item.name);
+          setFinishMaterialId(String(item.shutter_material_id));
+          setOpenFinishModal(true);
+        }}
+        showParent
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage={(error as any)?.response?.data?.error}
+        onAction={() => {
+          setEditingId(null);
+          resetFinishForm();
+          setOpenFinishModal(true);
+        }}
+        extraActions={
+          <>
+            <Button type="button" variant="outline" onClick={downloadTemplate}>
+              <Download className="h-4 w-4" />
+              Template
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedFiles([]);
+                setOpenUploadModal(true);
+              }}
+              disabled={uploadShutterInnerFinishes.isPending}
+            >
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+          </>
+        }
+      />
+
+      <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Inner Finish</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Edit the selected" : "Create a new"} shutter inner finish and link it to a shutter
+              material.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Shutter Material</Label>
+              <Select value={finishMaterialId} onValueChange={setFinishMaterialId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select shutter material" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shutterMaterials.map((item) => (
+                    <SelectItem key={item.id} value={String(item.id)}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shutter-inner-finish-name">Shutter Inner Finish</Label>
+              <Input
+                id="shutter-inner-finish-name"
+                value={finishName}
+                onChange={(e) => setFinishName(e.target.value)}
+                placeholder="Enter shutter inner finish"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenFinishModal(false);
+                resetFinishForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateFinish}
+              disabled={
+                createShutterInnerFinish.isPending ||
+                !finishName.trim() ||
+                !finishMaterialId
+              }
+            >
+              {createShutterInnerFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          if (open) setOpenUploadModal(true);
+          else closeUploadModal();
+        }}
+        title="Import Shutter Inner Finish"
+        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Inner Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile icon={<Layers />} label="New Shutter Type" value={uploadPreview.typesToAdd} tone="indigo" />
+                    <PreviewStatTile icon={<Package />} label="New Shutter Material" value={uploadPreview.materialsToAdd} tone="violet" />
+                    <PreviewStatTile icon={<Palette />} label="New Inner Finish" value={uploadPreview.finishesToAdd} tone="emerald" />
+                    <PreviewStatTile icon={<CopyX />} label="Skipped — duplicate" value={uploadPreview.skippedDuplicate} tone="amber" />
+                  </div>
+
+                  {uploadPreview.skippedMissing > 0 && (
+                    <PreviewStatTile
+                      icon={<FileWarning />}
+                      label="Skipped — missing Type/Material/Finish value"
+                      value={uploadPreview.skippedMissing}
+                      tone="red"
+                    />
+                  )}
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div key={i} className="flex items-start gap-2 px-3 py-1.5 text-xs">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "mt-0.5 shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">{s.reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={closeUploadModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadShutterInnerFinishes.isPending
+              }
+            >
+              {uploadShutterInnerFinishes.isPending ? "Uploading..." : "Upload & Import"}
             </Button>
           </div>
         </div>

@@ -26,10 +26,14 @@ import {
   createShutterType,
   fetchShutterMaterials,
   createShutterMaterial,
-  fetchShutterMaterialFinishes,
-  fetchAllShutterMaterialFinishes,
-  createShutterMaterialFinish,
-  uploadShutterMaterialFinishes,
+  fetchShutterOuterFinishes,
+  fetchAllShutterOuterFinishes,
+  createShutterOuterFinish,
+  uploadShutterOuterFinishes,
+  fetchShutterInnerFinishes,
+  fetchAllShutterInnerFinishes,
+  createShutterInnerFinish,
+  uploadShutterInnerFinishes,
   createShutterSubType,
   fetchHardwareTypes,
   createHardwareType,
@@ -131,7 +135,10 @@ const getCarcasMaterialsQueryKey = (vendorId?: number) => ["carcasMaterials", ve
 const getCarcassMaterialFinishesQueryKey = (carcasMaterialId?: number) => ["carcassMaterialFinishes", carcasMaterialId];
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getShutterMaterialsQueryKey = (vendorId?: number) => ["shutterMaterials", vendorId];
-const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shutterMaterialFinishes", shutterMaterialId];
+const getShutterOuterFinishesQueryKey = (shutterMaterialId?: number) => ["shutterOuterFinishes", shutterMaterialId];
+
+const getShutterInnerFinishesQueryKey = (shutterMaterialId?: number) => ["shutterInnerFinishes", shutterMaterialId];
+
 const getHardwareTypesQueryKey = (vendorId?: number) => ["hardwareTypes", vendorId];
 const getHardwareItemsQueryKey = (hardwareTypeId?: number) => ["hardwareItems", hardwareTypeId];
 const getHardwareItemOptionsQueryKey = (hardwareItemId?: number) => ["hardwareItemOptions", hardwareItemId];
@@ -869,21 +876,21 @@ export const useCreateShutterMaterial = () => {
   });
 }
 
-export const useCreateShutterMaterialFinish = () => {
+export const useCreateShutterOuterFinish = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   return useMutation({
-    mutationFn: createShutterMaterialFinish,
+    mutationFn: createShutterOuterFinish,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["allShutterMaterialFinishes", vendorId],
+        queryKey: ["allShutterOuterFinishes", vendorId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["shutterMaterialFinishes"],
+        queryKey: ["shutterOuterFinishes"],
       });
       toastManager.add({
-        title: "Shutter material finish created successfully.",
+        title: "Shutter outer finish created successfully.",
         type: "success",
       });
     },
@@ -891,19 +898,49 @@ export const useCreateShutterMaterialFinish = () => {
       toastManager.add({
         title:
           error?.response?.data?.error ||
-          "Failed to create shutter material finish.",
+          "Failed to create shutter outer finish.",
         type: "error",
       });
     },
   });
 }
 
-export const useUploadShutterMaterialFinishes = () => {
+
+export const useCreateShutterInnerFinish = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   return useMutation({
-    mutationFn: (formData: FormData) => uploadShutterMaterialFinishes(formData),
+    mutationFn: createShutterInnerFinish,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allShutterInnerFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shutterInnerFinishes"],
+      });
+      toastManager.add({
+        title: "Shutter inner finish created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create shutter inner finish.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadShutterOuterFinishes = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadShutterOuterFinishes(formData),
     onSuccess: (res) => {
       queryClient.invalidateQueries({
         queryKey: getShutterTypesQueryKey(vendorId),
@@ -912,10 +949,48 @@ export const useUploadShutterMaterialFinishes = () => {
         queryKey: getShutterMaterialsQueryKey(vendorId),
       });
       queryClient.invalidateQueries({
-        queryKey: ["allShutterMaterialFinishes", vendorId],
+        queryKey: ["allShutterOuterFinishes", vendorId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["shutterMaterialFinishes"],
+        queryKey: ["shutterOuterFinishes"],
+      });
+      const summary = res.data
+        ? `Finishes added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Shutter masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload shutter masters.",
+        type: "error",
+      });
+    },
+  });
+}
+
+
+export const useUploadShutterInnerFinishes = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadShutterInnerFinishes(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getShutterMaterialsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allShutterInnerFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shutterInnerFinishes"],
       });
       const summary = res.data
         ? `Finishes added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
@@ -1077,10 +1152,21 @@ export const useShutterMaterials = () => {
   });
 }
 
-export const useShutterMaterialFinishes = (shutterMaterialId?: number) => {
+export const useShutterOuterFinishes = (shutterMaterialId?: number) => {
   return useQuery({
-    queryKey: getShutterMaterialFinishesQueryKey(shutterMaterialId),
-    queryFn: () => fetchShutterMaterialFinishes(shutterMaterialId!),
+    queryKey: getShutterOuterFinishesQueryKey(shutterMaterialId),
+    queryFn: () => fetchShutterOuterFinishes(shutterMaterialId!),
+    enabled: !!shutterMaterialId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+
+export const useShutterInnerFinishes = (shutterMaterialId?: number) => {
+  return useQuery({
+    queryKey: getShutterInnerFinishesQueryKey(shutterMaterialId),
+    queryFn: () => fetchShutterInnerFinishes(shutterMaterialId!),
     enabled: !!shutterMaterialId,
     retry: false,
     refetchOnWindowFocus: false,
@@ -1320,11 +1406,23 @@ export const useHardwareItemOptions = (hardwareItemId?: number) => {
   });
 }
 
-export const useAllShutterMaterialFinishes = () => {
+export const useAllShutterOuterFinishes = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
-    queryKey: ["allShutterMaterialFinishes", vendorId],
-    queryFn: () => fetchAllShutterMaterialFinishes(vendorId!),
+    queryKey: ["allShutterOuterFinishes", vendorId],
+    queryFn: () => fetchAllShutterOuterFinishes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+
+export const useAllShutterInnerFinishes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allShutterInnerFinishes", vendorId],
+    queryFn: () => fetchAllShutterInnerFinishes(vendorId!),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,

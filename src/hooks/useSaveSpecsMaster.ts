@@ -6,7 +6,7 @@ import { toastManager } from "@/components/ui/toast";
 
 export type SpecsMasterKind =
   | "carcass-type" | "carcas-material" | "carcass-material-finish"
-  | "shutter-type" | "shutter-material" | "shutter-material-finish"
+  | "shutter-type" | "shutter-material" | "shutter-outer-finish" | "shutter-inner-finish"
   | "hardware-type" | "hardware-item" | "hardware-item-option"
   | "light-carcas-type" | "light-carcas-unit" | "other-appliances";
 
