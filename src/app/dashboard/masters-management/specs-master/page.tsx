@@ -1191,46 +1191,6 @@ function CarcassMastersSection() {
         </TabsContent>
 
         <TabsContent value="material" className="mt-4">
-
-
-               <MasterListingTable
-            title="Carcass Material Finish"
-            description="Carcass material finish master entries for the current vendor."
-            searchPlaceholder="Search carcass material finish..."
-            actionLabel="Add Carcass Material Finish"
-            rows={carcassMaterialFinishRows}
-            showParent
-            isLoading={isCarcassMaterialFinishesLoading}
-            isError={isCarcassMaterialFinishesError}
-            errorMessage={
-              (carcassMaterialFinishesError as any)?.response?.data?.error
-            }
-            onAction={() => setOpenFinishModal(true)}
-            extraActions={
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={downloadCarcassTemplate}
-                >
-                  <Download className="h-4 w-4" />
-                  Template
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedFiles([]);
-                    setOpenUploadModal(true);
-                  }}
-                  disabled={uploadCarcassMaterialFinishes.isPending}
-                >
-                  <Upload className="h-4 w-4" />
-                  Import
-                </Button>
-              </>
-            }
-          />
           <MasterListingTable
             title="Carcass Material"
             description="Carcass material master entries for the current vendor."
@@ -1245,44 +1205,6 @@ function CarcassMastersSection() {
         </TabsContent>
 
         <TabsContent value="type" className="mt-4">
-          <MasterListingTable
-            title="Carcass Material Finish"
-            description="Carcass material finish master entries for the current vendor."
-            searchPlaceholder="Search carcass material finish..."
-            actionLabel="Add Carcass Material Finish"
-            rows={carcassMaterialFinishRows}
-            showParent
-            isLoading={isCarcassMaterialFinishesLoading}
-            isError={isCarcassMaterialFinishesError}
-            errorMessage={
-              (carcassMaterialFinishesError as any)?.response?.data?.error
-            }
-            onAction={() => setOpenFinishModal(true)}
-            extraActions={
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={downloadCarcassTemplate}
-                >
-                  <Download className="h-4 w-4" />
-                  Template
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedFiles([]);
-                    setOpenUploadModal(true);
-                  }}
-                  disabled={uploadCarcassMaterialFinishes.isPending}
-                >
-                  <Upload className="h-4 w-4" />
-                  Import
-                </Button>
-              </>
-            }
-          />
           <MasterListingTable
             title="Carcass Type"
             description="Carcass type master entries for the current vendor."
