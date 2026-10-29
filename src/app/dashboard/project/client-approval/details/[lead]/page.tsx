@@ -200,6 +200,7 @@ export default function ClientApprovalLeadDetails() {
   );
   const handlesLargeScaleProjects =
     handlesLargeScaleProjectsFromAuth ||
+    lead?.vendor?.handlesLargeScaleProjects === true ||
     lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
     lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
@@ -556,7 +557,7 @@ export default function ClientApprovalLeadDetails() {
               )}
 
               {/* CLIENT APPROVAL */}
-              {!is_client_approval_submitted ? (
+              {!handlesLargeScaleProjects && !is_client_approval_submitted ? (
                 canAccessClientApprovalForm ? (
                   // Lead block handling added for DropdownMenu action
                   shouldDisableBlockedActions ? (
