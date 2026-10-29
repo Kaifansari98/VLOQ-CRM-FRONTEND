@@ -105,7 +105,9 @@ type MasterRow = {
   grandParent?: string | null;
   status: string;
   /** Several entries shown as one row; each can still be edited on its own. */
-  entries?: Array<{ id: number; name: string }>;
+  entries?: Array<{ id: number; name: string; label?: string }>;
+  /** Shown as pills in the name column instead of plain text. */
+  pills?: string[];
 };
 
 /** "A, B and C" */
@@ -850,10 +852,17 @@ function MasterListingTable({
       accessorKey: "name",
       header: nameHeader,
       cell: ({ row }) =>
-        row.original.entries ? (
-          // Grouped rows grow in height as the list gets longer.
-          <div className="min-w-[16rem] max-w-xl whitespace-normal break-words leading-relaxed">
-            {row.original.name}
+        row.original.pills ? (
+          // Pills wrap onto new lines, so the row grows with the list.
+          <div className="flex min-w-[16rem] max-w-xl flex-wrap gap-1.5 whitespace-normal">
+            {row.original.pills.map((pill) => (
+              <span
+                key={pill}
+                className="inline-flex items-center rounded-md border bg-muted/40 px-2 py-0.5 text-xs font-medium"
+              >
+                {pill}
+              </span>
+            ))}
           </div>
         ) : (
           row.original.name
@@ -888,9 +897,10 @@ function MasterListingTable({
         header: "Sr. No.",
         cell: ({ row }) => row.original.srNo,
       },
+      // Top-level first (Type | Item | Name), or the name first and its parents after it.
       ...(parentFirst
         ? [...parentColumns, nameColumn]
-        : [nameColumn, ...parentColumns]),
+        : [nameColumn, ...[...parentColumns].reverse()]),
       {
         accessorKey: "status",
         header: "Status",
@@ -924,7 +934,7 @@ function MasterListingTable({
                   {entries.map((entry) => (
                     <DropdownMenuItem key={entry.id}
                       onSelect={() => onEdit({ ...row.original, id: entry.id, name: entry.name })}>
-                      {entry.name}
+                      {entry.label ?? entry.name}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -2338,37 +2348,97 @@ function HardwareMastersSection() {
     [hardwareTypes?.data],
   );
 
-  const hardwareItemRows = React.useMemo<MasterRow[]>(
-    () =>
-      newestFirst(hardwareItems?.data).map((item, index) => ({
+  const hardwareItemRows = React.useMemo<MasterRow[]>(() => {
+    type ItemEntry = NonNullable<typeof hardwareItems>["data"][number];
+
+    // One row per hardware item name (and scope), listing every hardware type it is under.
+    const rows = new Map<string, ItemEntry[]>();
+    for (const item of newestFirst(hardwareItems?.data)) {
+      const key = `${item.name.trim().toLowerCase()}::${item.inScope}`;
+      rows.set(key, [...(rows.get(key) ?? []), item]);
+    }
+
+    return [...rows.values()].map((items, index) => {
+      const byTypeAge = [...items].sort(
+        (a, b) => a.hardware_type_id - b.hardware_type_id,
+      );
+      return {
         srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.hardwareType?.name ?? null,
-        status: item.inScope ? "in scope" : "not in scope",
-      })),
-    [hardwareItems?.data],
-  );
+        id: items[0].id,
+        name: items[0].name,
+        parent: byTypeAge.map((item) => item.hardwareType?.name ?? "—").join(" / "),
+        status: items[0].inScope ? "in scope" : "not in scope",
+        entries: items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          label: `${item.name} (${item.hardwareType?.name ?? "—"})`,
+        })),
+      };
+    });
+  }, [hardwareItems?.data]);
 
   const hardwareItemOptionRows = React.useMemo<MasterRow[]>(() => {
     const hardwareTypeNames = new Map(
       (hardwareTypes?.data ?? []).map((type) => [type.id, type.name]),
     );
-    // One row per hardware type + hardware item, listing all its options.
-    const groups = new Map<string, NonNullable<typeof hardwareItemOptions>["data"]>();
-    for (const item of newestFirst(hardwareItemOptions?.data)) {
-      const key = `${item.hardware_type_id}::${item.hardware_item_id}`;
-      groups.set(key, [...(groups.get(key) ?? []), item]);
+    type OptionEntry = NonNullable<typeof hardwareItemOptions>["data"][number];
+
+    // 1) Options of each hardware item (an item belongs to one hardware type).
+    const byItem = new Map<number, OptionEntry[]>();
+    for (const option of newestFirst(hardwareItemOptions?.data)) {
+      byItem.set(option.hardware_item_id, [
+        ...(byItem.get(option.hardware_item_id) ?? []),
+        option,
+      ]);
     }
-    return [...groups.values()].map((options, index) => ({
-      srNo: index + 1,
-      id: options[0].id,
-      name: joinNames(options.map((option) => option.name)),
-      parent: options[0].hardwareItem?.name ?? null,
-      grandParent: hardwareTypeNames.get(options[0].hardware_type_id) ?? null,
-      status: "active",
-      entries: options.map((option) => ({ id: option.id, name: option.name })),
-    }));
+
+    // 2) One row per hardware item name: the same item with the same options under
+    //    several hardware types (e.g. Drawers Type under Base, Tall and Roll) is one row.
+    const rows = new Map<
+      string,
+      { itemName: string; optionNames: string[]; typeIds: number[]; options: OptionEntry[] }
+    >();
+    for (const options of byItem.values()) {
+      const itemName = options[0].hardwareItem?.name ?? "—";
+      const optionNames = [...new Set(options.map((option) => option.name))];
+      const key = [
+        itemName.trim().toLowerCase(),
+        ...optionNames.map((name) => name.trim().toLowerCase()).sort(),
+      ].join("::");
+      const row = rows.get(key) ?? { itemName, optionNames, typeIds: [], options: [] };
+      row.typeIds.push(options[0].hardware_type_id);
+      row.options.push(...options);
+      rows.set(key, row);
+    }
+
+    return [...rows.values()]
+      .sort(
+        (a, b) =>
+          Math.max(...b.options.map((o) => o.id)) -
+          Math.max(...a.options.map((o) => o.id)),
+      )
+      .map((row, index) => {
+        const typeNames = [...new Set(row.typeIds)]
+          .sort((a, b) => a - b)
+          .map((id) => hardwareTypeNames.get(id) ?? "—");
+        return {
+          srNo: index + 1,
+          id: row.options[0].id,
+          name: joinNames(row.optionNames),
+          pills: row.optionNames,
+          parent: row.itemName,
+          grandParent: typeNames.join(" / "),
+          status: "active",
+          entries: row.options.map((option) => ({
+            id: option.id,
+            name: option.name,
+            label:
+              typeNames.length > 1
+                ? `${option.name} (${hardwareTypeNames.get(option.hardware_type_id) ?? "—"})`
+                : option.name,
+          })),
+        };
+      });
   }, [hardwareItemOptions?.data, hardwareTypes?.data]);
 
   const [openHardwareTypeModal, setOpenHardwareTypeModal] = React.useState(false);
@@ -2585,7 +2655,6 @@ function HardwareMastersSection() {
               setEditingId(row.id); setOptionValue(item.name); setOptionHardwareTypeId(String(item.hardware_type_id)); setOptionHardwareItemId(String(item.hardware_item_id)); setOpenOptionModal(true);
             }}
             showParent
-            parentFirst
             grandParentHeader="Hardware Type"
             parentHeader="Hardware Item"
             nameHeader="Hardware Item Option"
@@ -2633,7 +2702,6 @@ function HardwareMastersSection() {
               setEditingId(row.id); setHardwareItemName(item.name); setItemHardwareTypeId(String(item.hardware_type_id)); setHardwareItemInScope(String(item.inScope)); setOpenHardwareItemModal(true);
             }}
             showParent
-            parentFirst
             parentHeader="Hardware Type"
             nameHeader="Hardware Item"
             isLoading={isHardwareItemsLoading}
@@ -2764,6 +2832,16 @@ function HardwareMastersSection() {
 
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="hardware-item-name">Hardware Item</Label>
+              <Input
+                id="hardware-item-name"
+                value={hardwareItemName}
+                onChange={(e) => setHardwareItemName(e.target.value)}
+                placeholder="Enter hardware item"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Hardware Type</Label>
               {editingId ? (
                 // An existing item belongs to exactly one hardware type.
@@ -2798,31 +2876,24 @@ function HardwareMastersSection() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="hardware-item-name">Hardware Item</Label>
-              <Input
-                id="hardware-item-name"
-                value={hardwareItemName}
-                onChange={(e) => setHardwareItemName(e.target.value)}
-                placeholder="Enter hardware item"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>In Scope</Label>
-              <Select
-                value={hardwareItemInScope}
-                onValueChange={setHardwareItemInScope}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select scope" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">In Scope</SelectItem>
-                  <SelectItem value="false">Not in Scope</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* New items are always in scope; the scope can be changed when editing. */}
+            {editingId && (
+              <div className="space-y-2">
+                <Label>In Scope</Label>
+                <Select
+                  value={hardwareItemInScope}
+                  onValueChange={setHardwareItemInScope}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select scope" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">In Scope</SelectItem>
+                    <SelectItem value="false">Not in Scope</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
