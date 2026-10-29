@@ -160,6 +160,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     (state) => state.customPrivileges.codes,
   );
 
+  const currentUserType = useAppSelector(
+    (s) =>
+      s.auth.user?.user_type?.user_type ||
+      s.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
+
   const isCustomUser = (userRole ?? "").toLowerCase() === "custom";
   const canAccessRestrictedTasks = ["super-admin", "admin", "sales-executive"].includes(userRole ?? "");
   const normalizedUserRole = (userRole ?? "").toLowerCase();
@@ -202,7 +211,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useVendorSalesExecutiveUsers(vendorId!, undefined, {
     assigneeUserType: "custom",
     requiredPrivilegeCode:
-      "project.final_measurement.fm_action_upload_of_fm.enable_disable",
+      "project.final_measurement.fm_action_upload_of_fm.enable_disable,project.final_measurement.measurement_documents.upload,project.final_measurement.current_site_photos.upload",
   });
 
   const router = useRouter();
@@ -456,32 +465,49 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useApprovalRequestAssignableUsers(vendorId, leadId);
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
-  const eligibleCustomUsers = (salesExecutives?.data?.sales_executives ?? []).filter(
-    (user: any) =>
-      String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
-  );
-  const eligibleFinalMeasurementCustomUsers =
-    (customFinalMeasurementUsers?.data?.sales_executives ?? []).filter(
-      (user: any) =>
-        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  const eligibleCustomUsers = React.useMemo(() => {
+    return (salesExecutives?.data?.sales_executives ?? []).filter(
+      (user: any) => {
+        const role = String(user.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
     );
+  }, [salesExecutives?.data?.sales_executives, isSuperAdmin]);
+
+  const eligibleFinalMeasurementCustomUsers = React.useMemo(() => {
+    return (customFinalMeasurementUsers?.data?.sales_executives ?? []).filter(
+      (user: any) => {
+        const role = String(user.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
+    );
+  }, [customFinalMeasurementUsers?.data?.sales_executives, isSuperAdmin]);
 
   const baseFinalMeasurementUsers = React.useMemo(() => {
     if (assignedSiteSupervisorId) {
       const assigned = (siteSupervisors?.data?.site_supervisors ?? []).find(
         (user: any) => user.id === assignedSiteSupervisorId
       );
-      return assigned &&
-        String(assigned.user_type?.user_type ?? "").toLowerCase() !== "master-admin"
-        ? [assigned]
-        : [];
+      if (!assigned) return [];
+      const role = String(assigned.user_type?.user_type ?? "").trim().toLowerCase();
+      if (role === "master-admin") return false;
+      if (role === "super-admin" && !isSuperAdmin) return false;
+      return [assigned];
     }
 
     return (siteSupervisors?.data?.site_supervisors ?? []).filter(
-      (user: any) =>
-        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+      (user: any) => {
+        const role = String(user.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
     );
-  }, [assignedSiteSupervisorId, siteSupervisors]);
+  }, [assignedSiteSupervisorId, siteSupervisors, isSuperAdmin]);
 
   const finalMeasurementUsers = React.useMemo(() => {
     if (vendorCustomUserTypeMode === true) {
@@ -544,16 +570,23 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     [approvalRequestUsers],
   );
 
-  const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
-    (u: any) =>
-      String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
-  );
+  const followUpAssignableUsers = React.useMemo(() => {
+    return (followUpUsersData?.data?.users ?? []).filter(
+      (u: any) => {
+        const role = String(u.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
+    );
+  }, [followUpUsersData?.data?.users, isSuperAdmin]);
+
   const customFollowUpAssignableUsers = React.useMemo(() => {
     const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
       (u: any) =>
         String(u.user_type?.user_type ?? "").toLowerCase() === "super-admin",
     );
-    const users = [...eligibleCustomUsers, ...superAdminUsers];
+    const users = [...eligibleCustomUsers, ...(isSuperAdmin ? superAdminUsers : [])];
 
     if (!userId || !loggedInUserName || !isCustomUser) {
       return users.filter(

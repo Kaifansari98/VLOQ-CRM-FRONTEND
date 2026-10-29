@@ -100,14 +100,43 @@ export default function MoveToProductionModal({
       ? "Confirm Production Assignment"
       : "Confirm Move To Production";
 
+  const currentUserType = useAppSelector(
+    (s) =>
+      s.auth.user?.user_type?.user_type ||
+      s.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
+
   const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
   const { data: dateDetails } = useClientRequiredCompletionDate(vendorId, data?.id);
 
-  const mappedUsers =
-    factoryUsers?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+  const rawUsers = factoryUsers ?? [];
+  const activeUsers = React.useMemo(
+    () =>
+      rawUsers.filter((user: any) => {
+        const isUserSuperAdmin =
+          String(user.user_type?.user_type || "")
+            .trim()
+            .toLowerCase() === "super-admin";
+        if (isUserSuperAdmin) {
+          return isSuperAdmin;
+        }
+        return true;
+      }),
+    [rawUsers, isSuperAdmin],
+  );
+
+  const mappedUsers = React.useMemo(
+    () =>
+      activeUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+        subLabel: user.user_email || user.email || "",
+      })),
+    [activeUsers],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
