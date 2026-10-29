@@ -2351,10 +2351,10 @@ function HardwareMastersSection() {
   const hardwareItemRows = React.useMemo<MasterRow[]>(() => {
     type ItemEntry = NonNullable<typeof hardwareItems>["data"][number];
 
-    // One row per hardware item name (and scope), listing every hardware type it is under.
+    // One row per hardware item name, listing every hardware type it is under.
     const rows = new Map<string, ItemEntry[]>();
     for (const item of newestFirst(hardwareItems?.data)) {
-      const key = `${item.name.trim().toLowerCase()}::${item.inScope}`;
+      const key = item.name.trim().toLowerCase();
       rows.set(key, [...(rows.get(key) ?? []), item]);
     }
 
@@ -2367,7 +2367,7 @@ function HardwareMastersSection() {
         id: items[0].id,
         name: items[0].name,
         parent: byTypeAge.map((item) => item.hardwareType?.name ?? "—").join(" / "),
-        status: items[0].inScope ? "in scope" : "not in scope",
+        status: "active",
         entries: items.map((item) => ({
           id: item.id,
           name: item.name,
@@ -2452,16 +2452,49 @@ function HardwareMastersSection() {
   const [hardwareItemInScope, setHardwareItemInScope] = React.useState("true");
   const [openOptionModal, setOpenOptionModal] = React.useState(false);
   const [optionValue, setOptionValue] = React.useState("");
-  const [optionHardwareTypeId, setOptionHardwareTypeId] = React.useState("");
+  // Editing: the one hardware item (and so hardware type) the option belongs to.
   const [optionHardwareItemId, setOptionHardwareItemId] = React.useState("");
+  // Adding: a hardware item name; the option is added under every type it has.
+  const [optionItemGroupKey, setOptionItemGroupKey] = React.useState("");
 
-  const optionHardwareItemOptions = React.useMemo(
-    () =>
-      (hardwareItems?.data ?? []).filter(
-        (item) => String(item.hardware_type_id) === optionHardwareTypeId,
-      ),
-    [hardwareItems?.data, optionHardwareTypeId],
+  const hardwareTypeNameById = React.useMemo(
+    () => new Map((hardwareTypes?.data ?? []).map((type) => [type.id, type.name])),
+    [hardwareTypes?.data],
   );
+
+  // Hardware items grouped by name, e.g. Handle → Base / Wall / Tall / Roll / Loft.
+  const hardwareItemGroups = React.useMemo(() => {
+    const groups = new Map<
+      string,
+      { key: string; name: string; items: NonNullable<typeof hardwareItems>["data"] }
+    >();
+    for (const item of hardwareItems?.data ?? []) {
+      const key = item.name.trim().toLowerCase();
+      const group = groups.get(key) ?? { key, name: item.name, items: [] };
+      group.items.push(item);
+      groups.set(key, group);
+    }
+    return [...groups.values()]
+      .map((group) => {
+        const items = [...group.items].sort(
+          (a, b) => a.hardware_type_id - b.hardware_type_id,
+        );
+        return {
+          ...group,
+          items,
+          typeNames: items
+            .map((item) => hardwareTypeNameById.get(item.hardware_type_id) ?? "—")
+            .join(" / "),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [hardwareItems?.data, hardwareTypeNameById]);
+
+  const resetOptionForm = () => {
+    setOptionValue("");
+    setOptionHardwareItemId("");
+    setOptionItemGroupKey("");
+  };
 
   const [openUploadModal, setOpenUploadModal] = React.useState(false);
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
@@ -2568,25 +2601,31 @@ function HardwareMastersSection() {
 
   const handleCreateOption = () => {
     const name = optionValue.trim();
-    const hardwareTypeId = Number(optionHardwareTypeId);
-    const hardwareItemId = Number(optionHardwareItemId);
-    if (!name || !hardwareTypeId || !hardwareItemId) return;
+    if (!name) return;
 
-    createHardwareItemOption.mutate(
-      {
-        hardware_type_id: hardwareTypeId,
-        hardware_item_id: hardwareItemId,
+    let payload: Record<string, unknown>;
+    if (editingId) {
+      const item = (hardwareItems?.data ?? []).find(
+        (entry) => String(entry.id) === optionHardwareItemId,
+      );
+      if (!item) return;
+      payload = {
+        hardware_type_id: item.hardware_type_id,
+        hardware_item_id: item.id,
         name,
+      };
+    } else {
+      const group = hardwareItemGroups.find((entry) => entry.key === optionItemGroupKey);
+      if (!group) return;
+      payload = { hardware_item_ids: group.items.map((item) => item.id), name };
+    }
+
+    createHardwareItemOption.mutate(payload, {
+      onSuccess: () => {
+        setOpenOptionModal(false);
+        resetOptionForm();
       },
-      {
-        onSuccess: () => {
-          setOpenOptionModal(false);
-          setOptionValue("");
-          setOptionHardwareTypeId("");
-          setOptionHardwareItemId("");
-        },
-      },
-    );
+    });
   };
 
   const handleUploadSubmit = () => {
@@ -2652,7 +2691,7 @@ function HardwareMastersSection() {
             onEdit={(row) => {
               const item = hardwareItemOptions?.data?.find(item => item.id === row.id);
               if (!item) return;
-              setEditingId(row.id); setOptionValue(item.name); setOptionHardwareTypeId(String(item.hardware_type_id)); setOptionHardwareItemId(String(item.hardware_item_id)); setOpenOptionModal(true);
+              setEditingId(row.id); setOptionValue(item.name); setOptionHardwareItemId(String(item.hardware_item_id)); setOptionItemGroupKey(""); setOpenOptionModal(true);
             }}
             showParent
             grandParentHeader="Hardware Type"
@@ -2661,7 +2700,7 @@ function HardwareMastersSection() {
             isLoading={isHardwareItemOptionsLoading}
             isError={isHardwareItemOptionsError}
             errorMessage={(hardwareItemOptionsError as any)?.response?.data?.error}
-            onAction={() => { setEditingId(null); setOptionValue(""); setOptionHardwareTypeId(""); setOptionHardwareItemId(""); setOpenOptionModal(true); }}
+            onAction={() => { setEditingId(null); resetOptionForm(); setOpenOptionModal(true); }}
             extraActions={
               <>
                 <Button
@@ -2928,70 +2967,68 @@ function HardwareMastersSection() {
             <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item Option</DialogTitle>
             <DialogDescription>
               {editingId ? "Edit the selected" : "Create a new"} hardware item option and link it to a hardware
-              type and hardware item.
+              item.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Row: Hardware Type + Hardware Item side by side */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Hardware Type</Label>
-                <Select
-                  value={optionHardwareTypeId}
-                  onValueChange={(value) => {
-                    setOptionHardwareTypeId(value);
-                    setOptionHardwareItemId("");
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select hardware type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(hardwareTypes?.data ?? []).map((item) => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Hardware Item</Label>
-                <Select
-                  value={optionHardwareItemId}
-                  onValueChange={setOptionHardwareItemId}
-                  disabled={!optionHardwareTypeId}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        optionHardwareTypeId
-                          ? "Select hardware item"
-                          : "Select hardware type first"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {optionHardwareItemOptions.map((item) => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label htmlFor="hardware-item-option-value">Option</Label>
+              <Label htmlFor="hardware-item-option-value">Hardware Item Option</Label>
               <Input
                 id="hardware-item-option-value"
                 value={optionValue}
                 onChange={(e) => setOptionValue(e.target.value)}
-                placeholder="Enter option"
+                placeholder="Enter hardware item option"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hardware Item</Label>
+              {editingId ? (
+                // An existing option belongs to one hardware item under one hardware type.
+                <Select value={optionHardwareItemId} onValueChange={setOptionHardwareItemId}>
+                  <SelectTrigger className="h-auto min-h-9 w-full py-1.5">
+                    <SelectValue placeholder="Select hardware item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hardwareItemGroups.flatMap((group) =>
+                      group.items.map((item) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          <div className="flex flex-col items-start text-left">
+                            <span className="font-medium">{item.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {hardwareTypeNameById.get(item.hardware_type_id) ?? "—"}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      )),
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={optionItemGroupKey} onValueChange={setOptionItemGroupKey}>
+                  <SelectTrigger className="h-auto min-h-9 w-full py-1.5">
+                    <SelectValue placeholder="Select hardware item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hardwareItemGroups.map((group) => (
+                      <SelectItem key={group.key} value={group.key}>
+                        <div className="flex flex-col items-start text-left">
+                          <span className="font-medium">{group.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {group.typeNames}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!editingId && optionItemGroupKey && (
+                <p className="text-xs text-muted-foreground">
+                  The option will be added under each of these hardware types.
+                </p>
+              )}
             </div>
           </div>
 
@@ -3000,9 +3037,7 @@ function HardwareMastersSection() {
               variant="outline"
               onClick={() => {
                 setOpenOptionModal(false);
-                setOptionValue("");
-                setOptionHardwareTypeId("");
-                setOptionHardwareItemId("");
+                resetOptionForm();
               }}
             >
               Cancel
@@ -3012,8 +3047,7 @@ function HardwareMastersSection() {
               disabled={
                 createHardwareItemOption.isPending ||
                 !optionValue.trim() ||
-                !optionHardwareTypeId ||
-                !optionHardwareItemId
+                (editingId ? !optionHardwareItemId : !optionItemGroupKey)
               }
             >
               {createHardwareItemOption.isPending
