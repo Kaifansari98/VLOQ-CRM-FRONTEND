@@ -788,6 +788,7 @@ export interface LeadShutterMaterialMappingEntry {
   shutter_type_id: number;
   shutter_material_id: number;
   shutter_outer_finish_id: number;
+  shutter_inner_finish_id: number | null;
   is_approved: boolean;
   approved_at: string | null;
   is_amended: boolean;
@@ -801,6 +802,7 @@ export interface LeadShutterMaterialMappingEntry {
   shutterType?: { id: number; name: string };
   shutterMaterial?: { id: number; name: string };
   shutterOuterFinish?: { id: number; name: string };
+  shutterInnerFinish?: { id: number; name: string } | null;
 }
 
 export interface UpsertLeadShutterMaterialMappingPayload {
@@ -811,6 +813,7 @@ export interface UpsertLeadShutterMaterialMappingPayload {
   shutter_type_id: number;
   shutter_material_id: number;
   shutter_outer_finish_id: number;
+  shutter_inner_finish_id?: number | null;
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
@@ -1042,6 +1045,7 @@ export interface LeadSpecificationPdfData {
     shutterType: { name: string };
     shutterMaterial: { name: string };
     shutterOuterFinish: { name: string };
+    shutterInnerFinish?: { name: string } | null;
   }>;
   hardwareMappings: Array<{
     is_approved: boolean;

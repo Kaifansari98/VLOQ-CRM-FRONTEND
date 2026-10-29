@@ -69,6 +69,7 @@ import {
 import {
   fetchCarcassMaterialFinishes,
   fetchShutterOuterFinishes,
+  fetchShutterInnerFinishes,
   fetchHardwareItems,
   fetchHardwareItemOptions,
   fetchLightCarcasUnits,
@@ -108,6 +109,7 @@ type ShutterRow = {
   shutter_type_id: string;
   shutter_material_id: string;
   shutter_outer_finish_id: string;
+  shutter_inner_finish_id: string;
 };
 
 type HardwareRow = {
@@ -159,6 +161,7 @@ type ReviewPersistPayload =
       shutter_type_id: number;
       shutter_material_id: number;
       shutter_outer_finish_id: number;
+      shutter_inner_finish_id?: number | null;
     }
   | {
       id: number;
@@ -203,6 +206,7 @@ const makeBlankShutterRow = (): ShutterRow => ({
   shutter_type_id: "",
   shutter_material_id: "",
   shutter_outer_finish_id: "",
+  shutter_inner_finish_id: "",
 });
 
 const makeBlankHardwareRow = (): HardwareRow => ({
@@ -1165,6 +1169,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       shutter_outer_finish_id: item.shutter_outer_finish_id
         ? String(item.shutter_outer_finish_id)
         : "",
+      shutter_inner_finish_id: item.shutter_inner_finish_id
+        ? String(item.shutter_inner_finish_id)
+        : "",
     }));
 
     setShutterRows([...persistedRows, makeBlankShutterRow()]);
@@ -1307,6 +1314,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     }),
   });
 
+  const shutterInnerFinishQueries = useQueries({
+    queries: shutterRows.map((row) => {
+      const materialId = Number(row.shutter_material_id);
+      return {
+        queryKey: ["shutterInnerFinishes", materialId],
+        queryFn: () => fetchShutterInnerFinishes(materialId),
+        enabled: materialId > 0,
+      };
+    }),
+  });
+
   const hardwareItemQueries = useQueries({
     queries: hardwareRows.map((row) => {
       const hardwareTypeId = Number(row.hardware_type_id);
@@ -1443,7 +1461,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const saveShutterRowIfComplete = React.useCallback(
-    async (row: ShutterRow) => {
+    async (row: ShutterRow, innerFinishCount: number) => {
       if (
         !vendorId ||
         !userId ||
@@ -1451,7 +1469,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !specification?.id ||
         !row.shutter_type_id ||
         !row.shutter_material_id ||
-        !row.shutter_outer_finish_id
+        !row.shutter_outer_finish_id ||
+        // An inner finish is required when the material has any.
+        (innerFinishCount > 0 && !row.shutter_inner_finish_id)
       ) {
         return;
       }
@@ -1465,6 +1485,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           shutter_type_id: Number(row.shutter_type_id),
           shutter_material_id: Number(row.shutter_material_id),
           shutter_outer_finish_id: Number(row.shutter_outer_finish_id),
+          shutter_inner_finish_id: row.shutter_inner_finish_id
+            ? Number(row.shutter_inner_finish_id)
+            : null,
           created_by: userId,
         });
       } catch (error: any) {
@@ -1485,6 +1508,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       localId: string,
       field: keyof Omit<ShutterRow, "localId" | "id">,
       value: string,
+      innerFinishCount: number,
     ) => {
       let nextRow: ShutterRow | null = null;
       let duplicateMessage = "";
@@ -1496,12 +1520,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           const updatedRow: ShutterRow = { ...row, [field]: value };
           if (field === "shutter_material_id") {
             updatedRow.shutter_outer_finish_id = "";
+            updatedRow.shutter_inner_finish_id = "";
           }
 
           const isComplete =
             !!updatedRow.shutter_type_id &&
             !!updatedRow.shutter_material_id &&
-            !!updatedRow.shutter_outer_finish_id;
+            !!updatedRow.shutter_outer_finish_id &&
+            (innerFinishCount === 0 || !!updatedRow.shutter_inner_finish_id);
 
           if (isComplete) {
             const isDuplicate = prev.some(
@@ -1511,12 +1537,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 otherRow.shutter_material_id ===
                   updatedRow.shutter_material_id &&
                 otherRow.shutter_outer_finish_id ===
-                  updatedRow.shutter_outer_finish_id,
+                  updatedRow.shutter_outer_finish_id &&
+                otherRow.shutter_inner_finish_id ===
+                  updatedRow.shutter_inner_finish_id,
             );
 
             if (isDuplicate) {
               duplicateMessage =
-                "This shutter type, material, and finish combination has already been added.";
+                "This shutter type, material, and finishes combination has already been added.";
               return row;
             }
           }
@@ -1536,7 +1564,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (nextRow) {
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("shutter", localId)]) {
-          void saveShutterRowIfComplete(nextRow);
+          void saveShutterRowIfComplete(nextRow, innerFinishCount);
         }
       }
     },
@@ -2206,7 +2234,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       const hasValue =
         !!row.shutter_type_id ||
         !!row.shutter_material_id ||
-        !!row.shutter_outer_finish_id;
+        !!row.shutter_outer_finish_id ||
+        !!row.shutter_inner_finish_id;
       if (!hasValue) return "";
 
       if (!row.id) return stageRowHighlightClass;
@@ -2219,7 +2248,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         Number(row.shutter_type_id || 0) !== baseline.shutter_type_id ||
         Number(row.shutter_material_id || 0) !== baseline.shutter_material_id ||
         Number(row.shutter_outer_finish_id || 0) !==
-          baseline.shutter_outer_finish_id;
+          baseline.shutter_outer_finish_id ||
+        Number(row.shutter_inner_finish_id || 0) !==
+          Number(baseline.shutter_inner_finish_id || 0);
 
       return changed ? stageRowHighlightClass : "";
     },
@@ -2793,6 +2824,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Shutter Outer Finish
                       </th>
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Shutter Inner Finish
+                      </th>
                       {showReviewColumns && !isSpecCompleted && (
                         <>
                           <th className="px-4 py-3 text-center font-bold text-white">
@@ -2812,6 +2846,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                     {shutterRows.map((row, index) => {
                       const finishOptions =
                         shutterFinishQueries[index]?.data?.data ?? [];
+                      const innerFinishOptions =
+                        shutterInnerFinishQueries[index]?.data?.data ?? [];
                       const persistedRow = row.id
                         ? shutterMappings.find((item) => item.id === row.id)
                         : undefined;
@@ -2848,6 +2884,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  row.localId,
 	                                  "shutter_type_id",
 	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
 	                                )
 	                              }
 	                              placeholder="Search shutter type..."
@@ -2875,6 +2912,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  row.localId,
 	                                  "shutter_material_id",
 	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
 	                                )
 	                              }
 	                              placeholder="Search shutter material..."
@@ -2902,6 +2940,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  row.localId,
 	                                  "shutter_outer_finish_id",
 	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
 	                                )
 	                              }
 	                              disabled={rowLocked || !row.shutter_material_id}
@@ -2914,6 +2953,50 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                row.shutter_material_id
 	                                  ? "Select shutter outer finish"
 	                                  : "Select material first"
+	                              }
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
+	                            />, reviewTooltipRemark || undefined)}
+	                          </td>
+	                          <td className="px-4 py-3 align-top">
+	                            {withDeletedRemarkTooltip(<AssignToPicker
+	                              data={innerFinishOptions.map((finish) => ({
+	                                id: finish.id,
+	                                label: finish.name,
+	                              }))}
+	                              value={
+	                                row.shutter_inner_finish_id
+	                                  ? Number(row.shutter_inner_finish_id)
+	                                  : undefined
+	                              }
+	                              onChange={(value) =>
+	                                updateShutterRow(
+	                                  row.localId,
+	                                  "shutter_inner_finish_id",
+	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
+	                                )
+	                              }
+	                              disabled={
+	                                rowLocked ||
+	                                !row.shutter_material_id ||
+	                                innerFinishOptions.length === 0
+	                              }
+	                              placeholder={
+	                                !row.shutter_material_id
+	                                  ? "Select material first"
+	                                  : innerFinishOptions.length === 0
+	                                    ? "No inner finishes available"
+	                                    : "Search shutter inner finish..."
+	                              }
+	                              emptyLabel={
+	                                !row.shutter_material_id
+	                                  ? "Select material first"
+	                                  : innerFinishOptions.length === 0
+	                                    ? "No inner finishes available"
+	                                    : "Select shutter inner finish"
 	                              }
 	                              className={cn(
                                   pickerClassName,
@@ -2937,6 +3020,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       shutter_outer_finish_id: Number(
                                         row.shutter_outer_finish_id,
                                       ),
+                                      shutter_inner_finish_id: row.shutter_inner_finish_id
+                                        ? Number(row.shutter_inner_finish_id)
+                                        : null,
                                     }
                                   : null,
                                 persistedRow,
