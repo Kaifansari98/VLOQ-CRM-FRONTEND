@@ -157,6 +157,23 @@ export default function SpecificationsTab() {
     [groupedSpecifications, selectedGroupId],
   );
 
+  /** The card (product type group) an item code's specifications are shown under. */
+  const groupIdForItemCode = (itemCodeId: number) =>
+    (itemCodeGroupMap.get(itemCodeId) || "Other Specifications").trim().toLowerCase();
+
+  // Inside a card, only that card's item codes can be picked.
+  const pickerItemCodes = selectedGroup
+    ? itemCodePickerData.filter(
+        (itemCode) => groupIdForItemCode(itemCode.id) === selectedGroup.id,
+      )
+    : itemCodePickerData;
+
+  const openCreateSpecification = () => {
+    // Inside a card with a single item code, that item code is pre-selected.
+    setSelectedItemCodeId(pickerItemCodes.length === 1 ? pickerItemCodes[0].id : null);
+    setOpenCreateConfirm(true);
+  };
+
   const createSpecification = useCreateLeadSpecification();
 
   const handleCreateSpecification = () => {
@@ -168,12 +185,13 @@ export default function SpecificationsTab() {
       return;
     }
 
+    const createdForItemCodeId = selectedItemCodeId;
     createSpecification.mutate(
       {
         vendorId,
         leadId,
         createdBy: userId,
-        itemCodeId: selectedItemCodeId ?? undefined,
+        itemCodeId: createdForItemCodeId ?? undefined,
       },
       {
         onSuccess: () => {
@@ -183,6 +201,10 @@ export default function SpecificationsTab() {
           });
           setOpenCreateConfirm(false);
           setSelectedItemCodeId(null);
+          // Open the card the new specification belongs to.
+          if (handlesLargeScaleProjects && createdForItemCodeId) {
+            setSelectedGroupId(groupIdForItemCode(createdForItemCodeId));
+          }
         },
         onError: (err: any) => {
           toastManager.add({
@@ -218,7 +240,7 @@ export default function SpecificationsTab() {
             </Button>
           )}
           {canUpload && (
-            <Button size="sm" onClick={() => setOpenCreateConfirm(true)}>
+            <Button size="sm" onClick={openCreateSpecification}>
               <Plus size={16} className="mr-1" />
               <span>Add Specs</span>
             </Button>
@@ -316,7 +338,7 @@ export default function SpecificationsTab() {
                 </p>
               ) : (
                 <AssignToPicker
-                  data={itemCodePickerData}
+                  data={pickerItemCodes}
                   value={selectedItemCodeId ?? undefined}
                   onChange={(id) => setSelectedItemCodeId(id)}
                   placeholder="Search item code..."
