@@ -14,7 +14,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
@@ -48,11 +48,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { useSaveBoqMaster } from "@/hooks/useSaveBoqMaster";
 import {
-  useCreateProductItemCode,
-  useCreateProductSubStructure,
-  useCreateProductType,
-  useCreateProductStructure,
   useProductItemCodes,
   useProductSubStructures,
   useProductStructureTypes,
@@ -89,6 +86,7 @@ function MasterListingTable({
   isError,
   errorMessage,
   onAction,
+  onEdit,
   onToggleStatus,
   isTogglingStatus = false,
   togglingId = null,
@@ -105,6 +103,7 @@ function MasterListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction?: () => void;
+  onEdit: (row: MasterRow) => void;
   onToggleStatus?: (row: MasterRow, nextChecked: boolean) => void;
   isTogglingStatus?: boolean;
   togglingId?: number | null;
@@ -203,8 +202,20 @@ function MasterListingTable({
           );
         },
       },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => (
+          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ),
+      },
     ],
-    [showDescription, showParent, showSpecification, onToggleStatus, isTogglingStatus, togglingId],
+    [showDescription, showParent, showSpecification, onEdit, onToggleStatus, isTogglingStatus, togglingId],
   );
 
   const table = useReactTable({
@@ -279,10 +290,11 @@ function MasterListingTable({
 
 export default function BoqItemsMasterPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const createProductItemCodeMutation = useCreateProductItemCode();
-  const createProductTypeMutation = useCreateProductType();
-  const createProductStructureMutation = useCreateProductStructure();
-  const createProductSubStructureMutation = useCreateProductSubStructure();
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const createProductItemCodeMutation = useSaveBoqMaster("product-item-code", editingId);
+  const createProductTypeMutation = useSaveBoqMaster("product-type", editingId);
+  const createProductStructureMutation = useSaveBoqMaster("product-structure", editingId);
+  const createProductSubStructureMutation = useSaveBoqMaster("product-sub-structure", editingId);
 
   const updateProductTypeStatusMutation = useUpdateProductTypeStatus();
   const updateProductStructureStatusMutation = useUpdateProductStructureStatus();
@@ -692,7 +704,18 @@ export default function BoqItemsMasterPage() {
                     (productItemCodesError as any)?.response?.data?.error
                   }
                   onAction={() => {
+                    setEditingId(null);
                     resetItemCodeForm();
+                    setOpenCreateItemCodeModal(true);
+                  }}
+                  onEdit={(row) => {
+                    const item = productItemCodes?.data?.find((item: any) => item.id === row.id);
+                    if (!item) return;
+                    setEditingId(row.id);
+                    setItemCodeValue(item.item_code ?? "");
+                    setItemCodeSubStructureId(item.sub_product_structure_id ? String(item.sub_product_structure_id) : "");
+                    setItemCodeDescription(item.description ?? "");
+                    setItemCodeSpecification(item.specification ?? "");
                     setOpenCreateItemCodeModal(true);
                   }}
                   onToggleStatus={handleToggleItemCodeStatus}
@@ -718,7 +741,20 @@ export default function BoqItemsMasterPage() {
                   errorMessage={
                     (productSubStructuresError as any)?.response?.data?.error
                   }
-                  onAction={() => setOpenCreateSubItemCategoryModal(true)}
+                  onAction={() => {
+                    setEditingId(null);
+                    setSubItemCategoryName("");
+                    setSubItemCategoryProductStructureId("");
+                    setOpenCreateSubItemCategoryModal(true);
+                  }}
+                  onEdit={(row) => {
+                    const item = productSubStructures?.data?.find((item: any) => item.id === row.id);
+                    if (!item) return;
+                    setEditingId(row.id);
+                    setSubItemCategoryName(item.type ?? "");
+                    setSubItemCategoryProductStructureId(String(item.product_structure_id ?? ""));
+                    setOpenCreateSubItemCategoryModal(true);
+                  }}
                   onToggleStatus={handleToggleSubItemCategoryStatus}
                   isTogglingStatus={updateProductSubStructureStatusMutation.isPending}
                   togglingId={togglingSubItemCategoryId}
@@ -742,7 +778,20 @@ export default function BoqItemsMasterPage() {
                   errorMessage={
                     (productStructuresError as any)?.response?.data?.error
                   }
-                  onAction={() => setOpenCreateItemCategoryModal(true)}
+                  onAction={() => {
+                    setEditingId(null);
+                    setItemCategoryName("");
+                    setItemCategoryProductTypeId("");
+                    setOpenCreateItemCategoryModal(true);
+                  }}
+                  onEdit={(row) => {
+                    const item = productStructures?.data?.find((item: any) => item.id === row.id);
+                    if (!item) return;
+                    setEditingId(row.id);
+                    setItemCategoryName(item.type ?? "");
+                    setItemCategoryProductTypeId(item.product_type_id ? String(item.product_type_id) : "");
+                    setOpenCreateItemCategoryModal(true);
+                  }}
                   onToggleStatus={handleToggleItemCategoryStatus}
                   isTogglingStatus={updateProductStructureStatusMutation.isPending}
                   togglingId={togglingItemCategoryId}
@@ -763,7 +812,16 @@ export default function BoqItemsMasterPage() {
                   isLoading={isProductTypesLoading}
                   isError={isProductTypesError}
                   errorMessage={(productTypesError as any)?.response?.data?.error}
-                  onAction={() => setOpenCreateItemGroupModal(true)}
+                  onAction={() => {
+                    setEditingId(null);
+                    setItemGroupTypeValue("");
+                    setOpenCreateItemGroupModal(true);
+                  }}
+                  onEdit={(row) => {
+                    setEditingId(row.id);
+                    setItemGroupTypeValue(row.name ?? "");
+                    setOpenCreateItemGroupModal(true);
+                  }}
                   onToggleStatus={handleToggleItemGroupStatus}
                   isTogglingStatus={updateProductTypeStatusMutation.isPending}
                   togglingId={togglingItemGroupId}
@@ -782,9 +840,9 @@ export default function BoqItemsMasterPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Item Code</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Item Code</DialogTitle>
             <DialogDescription>
-              Create a new item code and link it to a sub-item category.
+              {editingId ? "Edit the selected" : "Create a new"} item code and link it to a sub-item category.
             </DialogDescription>
           </DialogHeader>
 
@@ -816,7 +874,7 @@ export default function BoqItemsMasterPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {(productSubStructures?.data ?? [])
-                      .filter((item: any) => activeProductSubStructureIds.has(item.id))
+                      .filter((item: any) => activeProductSubStructureIds.has(item.id) || String(item.id) === itemCodeSubStructureId)
                       .map((item: any) => (
                         <SelectItem key={item.id} value={String(item.id)}>
                           {item.type}
@@ -873,7 +931,7 @@ export default function BoqItemsMasterPage() {
                 !vendorId
               }
             >
-              {isSavingItemCode ? "Creating..." : "Create"}
+              {isSavingItemCode ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
 
@@ -886,9 +944,9 @@ export default function BoqItemsMasterPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Sub-Item Category</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Sub-Item Category</DialogTitle>
             <DialogDescription>
-              Create a new product sub structure and link it to an item category.
+              {editingId ? "Edit the selected" : "Create a new"} product sub structure and link it to an item category.
             </DialogDescription>
           </DialogHeader>
 
@@ -914,7 +972,7 @@ export default function BoqItemsMasterPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {(productStructures?.data ?? [])
-                    .filter((item: any) => activeProductStructureIds.has(item.id))
+                    .filter((item: any) => activeProductStructureIds.has(item.id) || String(item.id) === subItemCategoryProductStructureId)
                     .map((item: any) => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {item.type}
@@ -946,8 +1004,8 @@ export default function BoqItemsMasterPage() {
               }
             >
               {createProductSubStructureMutation.isPending
-                ? "Creating..."
-                : "Create"}
+                ? (editingId ? "Saving..." : "Creating...")
+                : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -959,9 +1017,9 @@ export default function BoqItemsMasterPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Item Category</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Item Category</DialogTitle>
             <DialogDescription>
-              Create a new product structure and link it to a product type.
+              {editingId ? "Edit the selected" : "Create a new"} product structure and link it to a product type.
             </DialogDescription>
           </DialogHeader>
 
@@ -987,7 +1045,7 @@ export default function BoqItemsMasterPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {(productTypes?.data ?? [])
-                    .filter((item: any) => (item.status ?? "active").toLowerCase() === "active")
+                    .filter((item: any) => (item.status ?? "active").toLowerCase() === "active" || String(item.id) === itemCategoryProductTypeId)
                     .map((item: any) => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {item.type}
@@ -1019,8 +1077,8 @@ export default function BoqItemsMasterPage() {
               }
             >
               {createProductStructureMutation.isPending
-                ? "Creating..."
-                : "Create"}
+                ? (editingId ? "Saving..." : "Creating...")
+                : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1032,9 +1090,9 @@ export default function BoqItemsMasterPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Item Group</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Item Group</DialogTitle>
             <DialogDescription>
-              Create a new product type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} product type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1069,7 +1127,7 @@ export default function BoqItemsMasterPage() {
                 !vendorId
               }
             >
-              {createProductTypeMutation.isPending ? "Creating..." : "Create"}
+              {createProductTypeMutation.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>

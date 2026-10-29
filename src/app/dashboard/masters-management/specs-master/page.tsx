@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSaveSpecsMaster } from "@/hooks/useSaveSpecsMaster";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
+  Pencil,
   Upload,
   Download,
   Layers,
@@ -68,31 +70,19 @@ import {
   useCarcassTypes,
   useCarcasMaterials,
   useAllCarcassMaterialFinishes,
-  useCreateCarcassType,
-  useCreateCarcasMaterial,
-  useCreateCarcassMaterialFinish,
   useUploadCarcassMaterialFinishes,
   useShutterTypes,
   useShutterMaterials,
   useAllShutterMaterialFinishes,
-  useCreateShutterType,
-  useCreateShutterMaterial,
-  useCreateShutterMaterialFinish,
   useUploadShutterMaterialFinishes,
   useCarcassLegs,
   useAllSkirtingCarcassLegs,
   useAllSkirtingCarcassLegsColors,
-  useCreateCarcassLegs,
-  useCreateSkirtingCarcassLegs,
-  useCreateSkirtingCarcassLegsColor,
   useUploadSkirtingCarcassLegsColors,
   useLightCarcasTypes,
   useAllLightCarcasUnits,
-  useCreateLightCarcasType,
-  useCreateLightCarcasUnit,
   useUploadLightCarcasUnits,
   useOtherAppliances,
-  useCreateOtherAppliances,
   useUploadOtherAppliances,
   useDownloadOtherAppliancesReport,
 } from "@/hooks/useTypesMaster";
@@ -793,6 +783,7 @@ function MasterListingTable({
   isError,
   errorMessage,
   onAction,
+  onEdit,
   extraActions,
 }: {
   title: string;
@@ -805,6 +796,7 @@ function MasterListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction?: () => void;
+  onEdit: (row: MasterRow) => void;
   extraActions?: React.ReactNode;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -846,8 +838,20 @@ function MasterListingTable({
           );
         },
       },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => (
+          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ),
+      },
     ],
-    [showParent],
+    [showParent, onEdit],
   );
 
   const table = useReactTable({
@@ -926,6 +930,7 @@ function MasterListingTable({
 }
 
 function CarcassMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -947,10 +952,10 @@ function CarcassMastersSection() {
     error: carcassMaterialFinishesError,
   } = useAllCarcassMaterialFinishes();
 
-  const createCarcassType = useCreateCarcassType();
-  const createCarcasMaterial = useCreateCarcasMaterial();
+  const createCarcassType = useSaveSpecsMaster("carcass-type", editingId);
+  const createCarcasMaterial = useSaveSpecsMaster("carcas-material", editingId);
   const uploadCarcassMaterialFinishes = useUploadCarcassMaterialFinishes();
-  const createCarcassMaterialFinish = useCreateCarcassMaterialFinish();
+  const createCarcassMaterialFinish = useSaveSpecsMaster("carcass-material-finish", editingId);
 
   const carcassTypeRows = React.useMemo<MasterRow[]>(
     () =>
@@ -1156,13 +1161,18 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass material finish..."
             actionLabel="Add Carcass Material Finish"
             rows={carcassMaterialFinishRows}
+            onEdit={(row) => {
+              const item = carcassMaterialFinishes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.carcas_material_id)); setOpenFinishModal(true);
+            }}
             showParent
             isLoading={isCarcassMaterialFinishesLoading}
             isError={isCarcassMaterialFinishesError}
             errorMessage={
               (carcassMaterialFinishesError as any)?.response?.data?.error
             }
-            onAction={() => setOpenFinishModal(true)}
+            onAction={() => { setEditingId(null); setFinishName(""); setFinishMaterialId(""); setOpenFinishModal(true); }}
             extraActions={
               <>
                 <Button
@@ -1197,10 +1207,15 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass material..."
             actionLabel="Add Carcass Material"
             rows={carcasMaterialRows}
+            onEdit={(row) => {
+              const item = carcasMaterials?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setMaterialName(item.name); setOpenMaterialModal(true);
+            }}
             isLoading={isCarcasMaterialsLoading}
             isError={isCarcasMaterialsError}
             errorMessage={(carcasMaterialsError as any)?.response?.data?.error}
-            onAction={() => setOpenMaterialModal(true)}
+            onAction={() => { setEditingId(null); setMaterialName(""); setOpenMaterialModal(true); }}
           />
         </TabsContent>
 
@@ -1211,10 +1226,15 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass type..."
             actionLabel="Add Carcass Type"
             rows={carcassTypeRows}
+            onEdit={(row) => {
+              const item = carcassTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setTypeName(item.name); setOpenTypeModal(true);
+            }}
             isLoading={isCarcassTypesLoading}
             isError={isCarcassTypesError}
             errorMessage={(carcassTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)}
+            onAction={() => { setEditingId(null); setTypeName(""); setOpenTypeModal(true); }}
           />
         </TabsContent>
       </Tabs>
@@ -1222,9 +1242,9 @@ function CarcassMastersSection() {
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Type</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Type</DialogTitle>
             <DialogDescription>
-              Create a new carcass type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} carcass type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1256,7 +1276,7 @@ function CarcassMastersSection() {
                 createCarcassType.isPending || !typeName.trim() || !vendorId
               }
             >
-              {createCarcassType.isPending ? "Creating..." : "Create"}
+              {createCarcassType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1265,9 +1285,9 @@ function CarcassMastersSection() {
       <Dialog open={openMaterialModal} onOpenChange={setOpenMaterialModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Material</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Material</DialogTitle>
             <DialogDescription>
-              Create a new carcass material for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} carcass material for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1301,7 +1321,7 @@ function CarcassMastersSection() {
                 !vendorId
               }
             >
-              {createCarcasMaterial.isPending ? "Creating..." : "Create"}
+              {createCarcasMaterial.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1310,9 +1330,9 @@ function CarcassMastersSection() {
       <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Material Finish</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Material Finish</DialogTitle>
             <DialogDescription>
-              Create a new carcass material finish and link it to a carcass
+              {editingId ? "Edit the selected" : "Create a new"} carcass material finish and link it to a carcass
               material.
             </DialogDescription>
           </DialogHeader>
@@ -1369,7 +1389,7 @@ function CarcassMastersSection() {
                 !finishMaterialId
               }
             >
-              {createCarcassMaterialFinish.isPending ? "Creating..." : "Create"}
+              {createCarcassMaterialFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1526,6 +1546,7 @@ function CarcassMastersSection() {
 }
 
 function ShutterMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -1547,10 +1568,10 @@ function ShutterMastersSection() {
     error: shutterMaterialFinishesError,
   } = useAllShutterMaterialFinishes();
 
-  const createShutterType = useCreateShutterType();
-  const createShutterMaterial = useCreateShutterMaterial();
+  const createShutterType = useSaveSpecsMaster("shutter-type", editingId);
+  const createShutterMaterial = useSaveSpecsMaster("shutter-material", editingId);
   const uploadShutterMaterialFinishes = useUploadShutterMaterialFinishes();
-  const createShutterMaterialFinish = useCreateShutterMaterialFinish();
+  const createShutterMaterialFinish = useSaveSpecsMaster("shutter-material-finish", editingId);
 
   const shutterTypeRows = React.useMemo<MasterRow[]>(
     () =>
@@ -1756,13 +1777,18 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter material finish..."
             actionLabel="Add Shutter Material Finish"
             rows={shutterMaterialFinishRows}
+            onEdit={(row) => {
+              const item = shutterMaterialFinishes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.shutter_material_id)); setOpenFinishModal(true);
+            }}
             showParent
             isLoading={isShutterMaterialFinishesLoading}
             isError={isShutterMaterialFinishesError}
             errorMessage={
               (shutterMaterialFinishesError as any)?.response?.data?.error
             }
-            onAction={() => setOpenFinishModal(true)}
+            onAction={() => { setEditingId(null); setFinishName(""); setFinishMaterialId(""); setOpenFinishModal(true); }}
             extraActions={
               <>
                 <Button
@@ -1797,10 +1823,15 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter material..."
             actionLabel="Add Shutter Material"
             rows={shutterMaterialRows}
+            onEdit={(row) => {
+              const item = shutterMaterials?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setMaterialName(item.name); setOpenMaterialModal(true);
+            }}
             isLoading={isShutterMaterialsLoading}
             isError={isShutterMaterialsError}
             errorMessage={(shutterMaterialsError as any)?.response?.data?.error}
-            onAction={() => setOpenMaterialModal(true)} extraActions={
+            onAction={() => { setEditingId(null); setMaterialName(""); setOpenMaterialModal(true); }} extraActions={
               <>
                 <Button
                   type="button"
@@ -1834,10 +1865,15 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter type..."
             actionLabel="Add Shutter Type"
             rows={shutterTypeRows}
+            onEdit={(row) => {
+              const item = shutterTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setTypeName(item.name); setOpenTypeModal(true);
+            }}
             isLoading={isShutterTypesLoading}
             isError={isShutterTypesError}
             errorMessage={(shutterTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)} extraActions={
+            onAction={() => { setEditingId(null); setTypeName(""); setOpenTypeModal(true); }} extraActions={
               <>
                 <Button
                   type="button"
@@ -1868,9 +1904,9 @@ function ShutterMastersSection() {
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shutter Type</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Type</DialogTitle>
             <DialogDescription>
-              Create a new shutter type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} shutter type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1902,7 +1938,7 @@ function ShutterMastersSection() {
                 createShutterType.isPending || !typeName.trim() || !vendorId
               }
             >
-              {createShutterType.isPending ? "Creating..." : "Create"}
+              {createShutterType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1911,9 +1947,9 @@ function ShutterMastersSection() {
       <Dialog open={openMaterialModal} onOpenChange={setOpenMaterialModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shutter Material</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Material</DialogTitle>
             <DialogDescription>
-              Create a new shutter material for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} shutter material for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1947,7 +1983,7 @@ function ShutterMastersSection() {
                 !vendorId
               }
             >
-              {createShutterMaterial.isPending ? "Creating..." : "Create"}
+              {createShutterMaterial.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1956,9 +1992,9 @@ function ShutterMastersSection() {
       <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shutter Material Finish</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Material Finish</DialogTitle>
             <DialogDescription>
-              Create a new shutter material finish and link it to a shutter
+              {editingId ? "Edit the selected" : "Create a new"} shutter material finish and link it to a shutter
               material.
             </DialogDescription>
           </DialogHeader>
@@ -2015,7 +2051,7 @@ function ShutterMastersSection() {
                 !finishMaterialId
               }
             >
-              {createShutterMaterialFinish.isPending ? "Creating..." : "Create"}
+              {createShutterMaterialFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2172,6 +2208,7 @@ function ShutterMastersSection() {
 }
 
 function HardwareMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -2193,9 +2230,9 @@ function HardwareMastersSection() {
     error: skirtingColorsError,
   } = useAllSkirtingCarcassLegsColors();
 
-  const createCarcassLegs = useCreateCarcassLegs();
-  const createSkirtingCarcassLegs = useCreateSkirtingCarcassLegs();
-  const createSkirtingCarcassLegsColor = useCreateSkirtingCarcassLegsColor();
+  const createCarcassLegs = useSaveSpecsMaster("carcass-legs", editingId);
+  const createSkirtingCarcassLegs = useSaveSpecsMaster("skirting-carcass-legs", editingId);
+  const createSkirtingCarcassLegsColor = useSaveSpecsMaster("skirting-carcass-legs-color", editingId);
   const uploadSkirtingCarcassLegsColors = useUploadSkirtingCarcassLegsColors();
 
   const carcassLegsRows = React.useMemo<MasterRow[]>(
@@ -2427,11 +2464,16 @@ function HardwareMastersSection() {
             searchPlaceholder="Search skirting color..."
             actionLabel="Add Skirting Color"
             rows={skirtingColorRows}
+            onEdit={(row) => {
+              const item = skirtingColors?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setColorValue(item.color); setColorLegsId(String(item.carcass_legs_id)); setColorSkirtingId(String(item.skirting_carcass_legs_id)); setOpenColorModal(true);
+            }}
             showParent
             isLoading={isSkirtingColorsLoading}
             isError={isSkirtingColorsError}
             errorMessage={(skirtingColorsError as any)?.response?.data?.error}
-            onAction={() => setOpenColorModal(true)}
+            onAction={() => { setEditingId(null); setColorValue(""); setColorLegsId(""); setColorSkirtingId(""); setOpenColorModal(true); }}
             extraActions={
               <>
                 <Button
@@ -2466,11 +2508,16 @@ function HardwareMastersSection() {
             searchPlaceholder="Search skirting..."
             actionLabel="Add Skirting"
             rows={skirtingRows}
+            onEdit={(row) => {
+              const item = skirtings?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setSkirtingName(item.name); setSkirtingLegsId(String(item.carcass_legs_id)); setSkirtingInScope(String(item.inScope)); setOpenSkirtingModal(true);
+            }}
             showParent
             isLoading={isSkirtingsLoading}
             isError={isSkirtingsError}
             errorMessage={(skirtingsError as any)?.response?.data?.error}
-            onAction={() => setOpenSkirtingModal(true)}  extraActions={
+            onAction={() => { setEditingId(null); setSkirtingName(""); setSkirtingLegsId(""); setSkirtingInScope("true"); setOpenSkirtingModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2504,10 +2551,15 @@ function HardwareMastersSection() {
             searchPlaceholder="Search carcass legs..."
             actionLabel="Add Carcass Legs"
             rows={carcassLegsRows}
+            onEdit={(row) => {
+              const item = carcassLegs?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setLegsName(item.name); setOpenLegsModal(true);
+            }}
             isLoading={isCarcassLegsLoading}
             isError={isCarcassLegsError}
             errorMessage={(carcassLegsError as any)?.response?.data?.error}
-            onAction={() => setOpenLegsModal(true)}  extraActions={
+            onAction={() => { setEditingId(null); setLegsName(""); setOpenLegsModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2538,9 +2590,9 @@ function HardwareMastersSection() {
       <Dialog open={openLegsModal} onOpenChange={setOpenLegsModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Legs</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Legs</DialogTitle>
             <DialogDescription>
-              Create a new carcass legs entry for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} carcass legs entry for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -2572,7 +2624,7 @@ function HardwareMastersSection() {
                 createCarcassLegs.isPending || !legsName.trim() || !vendorId
               }
             >
-              {createCarcassLegs.isPending ? "Creating..." : "Create"}
+              {createCarcassLegs.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2581,9 +2633,9 @@ function HardwareMastersSection() {
       <Dialog open={openSkirtingModal} onOpenChange={setOpenSkirtingModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Skirting</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Skirting</DialogTitle>
             <DialogDescription>
-              Create a new skirting entry and link it to a carcass legs.
+              {editingId ? "Edit the selected" : "Create a new"} skirting entry and link it to a carcass legs.
             </DialogDescription>
           </DialogHeader>
 
@@ -2651,7 +2703,7 @@ function HardwareMastersSection() {
                 !skirtingLegsId
               }
             >
-              {createSkirtingCarcassLegs.isPending ? "Creating..." : "Create"}
+              {createSkirtingCarcassLegs.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2660,9 +2712,9 @@ function HardwareMastersSection() {
       <Dialog open={openColorModal} onOpenChange={setOpenColorModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Skirting Color</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Skirting Color</DialogTitle>
             <DialogDescription>
-              Create a new skirting color and link it to a carcass legs and
+              {editingId ? "Edit the selected" : "Create a new"} skirting color and link it to a carcass legs and
               skirting.
             </DialogDescription>
           </DialogHeader>
@@ -2749,8 +2801,8 @@ function HardwareMastersSection() {
               }
             >
               {createSkirtingCarcassLegsColor.isPending
-                ? "Creating..."
-                : "Create"}
+                ? (editingId ? "Saving..." : "Creating...")
+                : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2907,6 +2959,7 @@ function HardwareMastersSection() {
 }
 
 function LightMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -2922,8 +2975,8 @@ function LightMastersSection() {
     error: lightCarcasUnitsError,
   } = useAllLightCarcasUnits();
 
-  const createLightCarcasType = useCreateLightCarcasType();
-  const createLightCarcasUnit = useCreateLightCarcasUnit();
+  const createLightCarcasType = useSaveSpecsMaster("light-carcas-type", editingId);
+  const createLightCarcasUnit = useSaveSpecsMaster("light-carcas-unit", editingId);
   const uploadLightCarcasUnits = useUploadLightCarcasUnits();
 
   const lightCarcasTypeRows = React.useMemo<MasterRow[]>(
@@ -3098,11 +3151,16 @@ function LightMastersSection() {
             searchPlaceholder="Search light unit..."
             actionLabel="Add Light Unit"
             rows={lightCarcasUnitRows}
+            onEdit={(row) => {
+              const item = lightCarcasUnits?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setUnitName(item.type); setUnitTypeId(String(item.light_carcas_type_id)); setOpenUnitModal(true);
+            }}
             showParent
             isLoading={isLightCarcasUnitsLoading}
             isError={isLightCarcasUnitsError}
             errorMessage={(lightCarcasUnitsError as any)?.response?.data?.error}
-            onAction={() => setOpenUnitModal(true)}
+            onAction={() => { setEditingId(null); setUnitName(""); setUnitTypeId(""); setOpenUnitModal(true); }}
             extraActions={
               <>
                 <Button
@@ -3137,10 +3195,15 @@ function LightMastersSection() {
             searchPlaceholder="Search light carcas type..."
             actionLabel="Add Light Carcas Type"
             rows={lightCarcasTypeRows}
+            onEdit={(row) => {
+              const item = lightCarcasTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setTypeName(item.type); setOpenTypeModal(true);
+            }}
             isLoading={isLightCarcasTypesLoading}
             isError={isLightCarcasTypesError}
             errorMessage={(lightCarcasTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)}  extraActions={
+            onAction={() => { setEditingId(null); setTypeName(""); setOpenTypeModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -3171,9 +3234,9 @@ function LightMastersSection() {
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Light Carcas Type</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Light Carcas Type</DialogTitle>
             <DialogDescription>
-              Create a new light carcas type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} light carcas type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -3205,7 +3268,7 @@ function LightMastersSection() {
                 createLightCarcasType.isPending || !typeName.trim() || !vendorId
               }
             >
-              {createLightCarcasType.isPending ? "Creating..." : "Create"}
+              {createLightCarcasType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3214,9 +3277,9 @@ function LightMastersSection() {
       <Dialog open={openUnitModal} onOpenChange={setOpenUnitModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Light Unit</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Light Unit</DialogTitle>
             <DialogDescription>
-              Create a new light unit and link it to a light carcas type.
+              {editingId ? "Edit the selected" : "Create a new"} light unit and link it to a light carcas type.
             </DialogDescription>
           </DialogHeader>
 
@@ -3267,7 +3330,7 @@ function LightMastersSection() {
                 !unitTypeId
               }
             >
-              {createLightCarcasUnit.isPending ? "Creating..." : "Create"}
+              {createLightCarcasUnit.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3430,6 +3493,7 @@ function OtherAppliancesListingTable({
   isError,
   errorMessage,
   onAction,
+  onEdit,
   onTemplateDownload,
   onImportClick,
   isDownloading,
@@ -3440,6 +3504,7 @@ function OtherAppliancesListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction: () => void;
+  onEdit: (row: OtherApplianceMasterRow) => void;
   onTemplateDownload: () => void;
   onImportClick: () => void;
   isDownloading?: boolean;
@@ -3465,6 +3530,18 @@ function OtherAppliancesListingTable({
         accessorKey: "description",
         header: "Description",
         cell: ({ row }) => row.original.description,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => (
+          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ),
       },
     ],
     [],
@@ -3568,6 +3645,7 @@ function OtherAppliancesListingTable({
 }
 
 function OtherAppliancesTab({ type }: { type: string }) {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const {
     data: otherAppliances,
@@ -3575,7 +3653,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
     isError,
     error,
   } = useOtherAppliances();
-  const createOtherAppliances = useCreateOtherAppliances();
+  const createOtherAppliances = useSaveSpecsMaster("other-appliances", editingId);
   const uploadMutation = useUploadOtherAppliances();
   const downloadMutation = useDownloadOtherAppliancesReport();
 
@@ -3653,7 +3731,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
     const articleLower = article.toLowerCase();
     const isDuplicate = (otherAppliances?.data ?? []).some(
       (item) =>
-        item.type.toLowerCase() === type.toLowerCase() &&
+        item.id !== editingId && item.type.toLowerCase() === type.toLowerCase() &&
         item.article_number.trim().toLowerCase() === articleLower,
     );
 
@@ -3690,7 +3768,8 @@ function OtherAppliancesTab({ type }: { type: string }) {
         isLoading={isLoading}
         isError={isError}
         errorMessage={(error as any)?.response?.data?.error}
-        onAction={() => setOpenModal(true)}
+        onAction={() => { setEditingId(null); setArticleNumber(""); setDescription(""); setOpenModal(true); }}
+        onEdit={(row) => { setEditingId(row.id); setArticleNumber(row.article_number); setDescription(row.description); setOpenModal(true); }}
         onTemplateDownload={() => downloadMutation.mutate()}
         onImportClick={() => {
           setSelectedFiles([]);
@@ -3867,9 +3946,9 @@ function OtherAppliancesTab({ type }: { type: string }) {
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add {type}</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} {type}</DialogTitle>
             <DialogDescription>
-              Create a new {type.toLowerCase()} entry for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} {type.toLowerCase()} entry for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -3917,7 +3996,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
                 !vendorId
               }
             >
-              {createOtherAppliances.isPending ? "Creating..." : "Create"}
+              {createOtherAppliances.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
