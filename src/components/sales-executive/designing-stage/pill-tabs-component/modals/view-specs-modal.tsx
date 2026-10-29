@@ -209,9 +209,9 @@ const makeBlankShutterRow = (): ShutterRow => ({
   shutter_inner_finish_id: "",
 });
 
-const makeBlankHardwareRow = (): HardwareRow => ({
-  localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  hardware_type_id: "",
+const makeBlankHardwareRow = (hardwareTypeId: number): HardwareRow => ({
+  localId: `new-${hardwareTypeId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  hardware_type_id: String(hardwareTypeId),
   hardware_item_id: "",
   hardware_item_option_id: "",
   note: "",
@@ -443,7 +443,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const carcasMaterials = carcasMaterialsData?.data ?? [];
   const shutterTypes = shutterTypesData?.data ?? [];
   const shutterMaterials = shutterMaterialsData?.data ?? [];
-  const hardwareTypes = hardwareTypesData?.data ?? [];
+  // Hardware tables are shown per hardware type, in the order the types were created.
+  const sortedHardwareTypes = React.useMemo(
+    () => [...(hardwareTypesData?.data ?? [])].sort((a, b) => a.id - b.id),
+    [hardwareTypesData?.data],
+  );
   const lightCarcasTypes = lightCarcasTypesData?.data ?? [];
   const customLightCarcasType = React.useMemo(
     () =>
@@ -1196,8 +1200,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       note: item.note ?? "",
     }));
 
-    setHardwareRows([...persistedRows, makeBlankHardwareRow()]);
-  }, [hardwareMappings, specification?.id]);
+    // Each hardware type has its own table, so each gets a blank row for data entry.
+    setHardwareRows([
+      ...persistedRows,
+      ...sortedHardwareTypes.map((type) => makeBlankHardwareRow(type.id)),
+    ]);
+  }, [hardwareMappings, specification?.id, sortedHardwareTypes]);
 
   React.useEffect(() => {
     if (!specification) {
@@ -1626,25 +1634,6 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         otherRow.hardware_item_option_id ===
           updatedRow.hardware_item_option_id,
     );
-
-  const handleHardwareTypeChange = React.useCallback(
-    (localId: string, value: string) => {
-      setHardwareRows((prev) =>
-        prev.map((row) =>
-          row.localId === localId
-            ? {
-                ...row,
-                hardware_type_id: value,
-                hardware_item_id: "",
-                hardware_item_option_id: "",
-                note: "",
-              }
-            : row,
-        ),
-      );
-    },
-    [],
-  );
 
   const handleHardwareItemChange = React.useCallback(
     async (
@@ -3048,228 +3037,210 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 <h3 className="text-base font-semibold">Hardware</h3>
               </div>
             )}
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}`}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-zinc-700">
-                    <tr className="border-b">
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Hardware Type
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Hardware Item
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Hardware Item Options
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Note
-                      </th>
-                      {showReviewColumns && !isSpecCompleted && (
-                        <>
-                          <th className="px-4 py-3 text-center font-bold text-white">
-                            Approve
+            <div className={effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}>
+              {sortedHardwareTypes.length === 0 && (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  No hardware types found. Add them in Specs Master → Hardware.
+                </p>
+              )}
+              {sortedHardwareTypes.map((hardwareType) => (
+                <div key={hardwareType.id}>
+                  <div className="flex items-center justify-between gap-3 mb-2 mt-6">
+                    <h3 className="text-sm font-semibold">{hardwareType.name}</h3>
+                  </div>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-700">
+                        <tr className="border-b">
+                          <th className="px-4 py-3 text-left font-bold text-white">
+                            Hardware Item
                           </th>
-                          <th className="px-4 py-3 text-center font-bold text-white">
-                            Amend
+                          <th className="px-4 py-3 text-left font-bold text-white">
+                            Hardware Item Options
                           </th>
-                          <th className="px-4 py-3 text-center font-bold text-white">
-                            Delete
+                          <th className="px-4 py-3 text-left font-bold text-white">
+                            Note
                           </th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hardwareRows.map((row, index) => {
-                      const hardwareItemOptions =
-                        hardwareItemQueries[index]?.data?.data ?? [];
-                      const itemOptions =
-                        optionQueries[index]?.data?.data ?? [];
-                      const selectedHardwareItem = hardwareItemOptions.find(
-                        (option) =>
-                          String(option.id) === row.hardware_item_id,
-                      );
-                      const persistedRow = row.id
-                        ? hardwareMappings.find((item) => item.id === row.id)
-                        : undefined;
-                      const isDeletedRow = isReviewDeleted(
-                        "hardware",
-                        row,
-                        persistedRow,
-                      );
-                      const reviewTooltipRemark = getReviewTooltipRemark(
-                        "hardware",
-                        row,
-                        persistedRow,
-                      );
-                      const isOutOfScope =
-                        !!selectedHardwareItem && !selectedHardwareItem.inScope;
-                      const rowLocked = isRowLocked("hardware", row);
-
-                      return (
-                        <tr
-                          key={row.localId}
-                          className={cn(
-                            "border-b last:border-b-0",
-                            getHardwareRowHighlightClass(row, index),
-                            getReviewRowClass("hardware", row, persistedRow),
+                          {showReviewColumns && !isSpecCompleted && (
+                            <>
+                              <th className="px-4 py-3 text-center font-bold text-white">
+                                Approve
+                              </th>
+                              <th className="px-4 py-3 text-center font-bold text-white">
+                                Amend
+                              </th>
+                              <th className="px-4 py-3 text-center font-bold text-white">
+                                Delete
+                              </th>
+                            </>
                           )}
-                        >
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<AssignToPicker
-                              data={hardwareTypes.map((type) => ({
-                                id: type.id,
-                                label: type.name,
-                              }))}
-                              value={
-                                row.hardware_type_id
-                                  ? Number(row.hardware_type_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                handleHardwareTypeChange(
-                                  row.localId,
-                                  value ? String(value) : "",
-                                )
-                              }
-                              placeholder="Search hardware type..."
-	                              emptyLabel="Select hardware type"
-                              disabled={rowLocked}
-                              className={cn(
-                                pickerClassName,
-                                isDeletedRow && "line-through text-red-600",
-                              )}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<AssignToPicker
-                              data={hardwareItemOptions.map((option) => ({
-                                id: option.id,
-                                label: option.name,
-                              }))}
-                              value={
-                                row.hardware_item_id
-                                  ? Number(row.hardware_item_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                void handleHardwareItemChange(
-                                  row.localId,
-                                  value ? String(value) : "",
-                                  hardwareItemOptions,
-                                )
-                              }
-                              disabled={rowLocked || !row.hardware_type_id}
-                              placeholder={
-                                row.hardware_type_id
-                                  ? "Search hardware item..."
-                                  : "Select hardware type first"
-                              }
-                              emptyLabel={
-                                row.hardware_type_id
-                                  ? "Select hardware item"
-                                  : "Select hardware type first"
-                              }
-                              className={cn(
-                                pickerClassName,
-                                isDeletedRow && "line-through text-red-600",
-                              )}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<AssignToPicker
-                              data={itemOptions.map((option) => ({
-                                id: option.id,
-                                label: option.name,
-                              }))}
-                              value={
-                                row.hardware_item_option_id
-                                  ? Number(row.hardware_item_option_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                handleOptionChange(
-                                  row.localId,
-                                  value ? String(value) : "",
-                                  itemOptions.length,
-                                )
-                              }
-                              disabled={
-                                rowLocked ||
-                                !row.hardware_item_id ||
-                                itemOptions.length === 0
-                              }
-                              placeholder={
-                                !row.hardware_item_id
-                                  ? "Select hardware item first"
-                                  : itemOptions.length === 0
-                                    ? "No options available"
-                                    : "Search option..."
-                              }
-                              emptyLabel={
-                                !row.hardware_item_id
-                                  ? "Select hardware item first"
-                                  : itemOptions.length === 0
-                                    ? "No options available"
-                                    : "Select option"
-                              }
-                              className={cn(
-                                pickerClassName,
-                                isDeletedRow && "line-through text-red-600",
-                              )}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<input
-                              type="text"
-                              value={isOutOfScope ? "Not in our scope" : row.note}
-                              onChange={(event) =>
-                                handleNoteChange(row.localId, event.target.value)
-                              }
-                              onBlur={() =>
-                                handleNoteBlur(row, itemOptions.length)
-                              }
-                              readOnly={rowLocked || isOutOfScope}
-                              disabled={rowLocked || isOutOfScope}
-                              placeholder={
-                                isOutOfScope ? "" : "Add a note (optional)"
-                              }
-                              className={`${pickerClassName} w-full ${
-                                isOutOfScope ? "text-muted-foreground" : ""
-                              } ${isDeletedRow ? "line-through text-red-600" : ""}`}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          {showReviewColumns && !isSpecCompleted &&
-                            renderReviewActionCells(
-                              "hardware",
-                              row,
-                              row.id && vendorId && userId && specification
-                                ? {
-                                    id: row.id,
-                                    vendor_id: vendorId,
-                                    lead_id: specification.lead_id,
-                                    specs_id: specification.id,
-                                    created_by: userId,
-                                    hardware_type_id: Number(row.hardware_type_id),
-                                    hardware_item_id: Number(
-                                      row.hardware_item_id,
-                                    ),
-                                    hardware_item_option_id:
-                                      row.hardware_item_option_id
-                                        ? Number(row.hardware_item_option_id)
-                                        : null,
-                                    note: row.note || null,
-                                  }
-                                : null,
-                              persistedRow,
-                            )}
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {hardwareRows.map((row, index) => {
+                          if (row.hardware_type_id !== String(hardwareType.id)) return null;
+                          const hardwareItemOptions =
+                            hardwareItemQueries[index]?.data?.data ?? [];
+                          const itemOptions =
+                            optionQueries[index]?.data?.data ?? [];
+                          const selectedHardwareItem = hardwareItemOptions.find(
+                            (option) =>
+                              String(option.id) === row.hardware_item_id,
+                          );
+                          const persistedRow = row.id
+                            ? hardwareMappings.find((item) => item.id === row.id)
+                            : undefined;
+                          const isDeletedRow = isReviewDeleted(
+                            "hardware",
+                            row,
+                            persistedRow,
+                          );
+                          const reviewTooltipRemark = getReviewTooltipRemark(
+                            "hardware",
+                            row,
+                            persistedRow,
+                          );
+                          const isOutOfScope =
+                            !!selectedHardwareItem && !selectedHardwareItem.inScope;
+                          const rowLocked = isRowLocked("hardware", row);
+
+                          return (
+                            <tr
+                              key={row.localId}
+                              className={cn(
+                                "border-b last:border-b-0",
+                                getHardwareRowHighlightClass(row, index),
+                                getReviewRowClass("hardware", row, persistedRow),
+                              )}
+                            >
+                              <td className="px-4 py-3 align-top">
+                                {withDeletedRemarkTooltip(<AssignToPicker
+                                  data={hardwareItemOptions.map((option) => ({
+                                    id: option.id,
+                                    label: option.name,
+                                  }))}
+                                  value={
+                                    row.hardware_item_id
+                                      ? Number(row.hardware_item_id)
+                                      : undefined
+                                  }
+                                  onChange={(value) =>
+                                    void handleHardwareItemChange(
+                                      row.localId,
+                                      value ? String(value) : "",
+                                      hardwareItemOptions,
+                                    )
+                                  }
+                                  disabled={rowLocked}
+                                  placeholder="Search hardware item..."
+                                  emptyLabel={
+                                    hardwareItemOptions.length === 0
+                                      ? "No hardware items available"
+                                      : "Select hardware item"
+                                  }
+                                  className={cn(
+                                    pickerClassName,
+                                    isDeletedRow && "line-through text-red-600",
+                                  )}
+                                />, reviewTooltipRemark || undefined)}
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                {withDeletedRemarkTooltip(<AssignToPicker
+                                  data={itemOptions.map((option) => ({
+                                    id: option.id,
+                                    label: option.name,
+                                  }))}
+                                  value={
+                                    row.hardware_item_option_id
+                                      ? Number(row.hardware_item_option_id)
+                                      : undefined
+                                  }
+                                  onChange={(value) =>
+                                    handleOptionChange(
+                                      row.localId,
+                                      value ? String(value) : "",
+                                      itemOptions.length,
+                                    )
+                                  }
+                                  disabled={
+                                    rowLocked ||
+                                    !row.hardware_item_id ||
+                                    itemOptions.length === 0
+                                  }
+                                  placeholder={
+                                    !row.hardware_item_id
+                                      ? "Select hardware item first"
+                                      : itemOptions.length === 0
+                                        ? "No options available"
+                                        : "Search option..."
+                                  }
+                                  emptyLabel={
+                                    !row.hardware_item_id
+                                      ? "Select hardware item first"
+                                      : itemOptions.length === 0
+                                        ? "No options available"
+                                        : "Select option"
+                                  }
+                                  className={cn(
+                                    pickerClassName,
+                                    isDeletedRow && "line-through text-red-600",
+                                  )}
+                                />, reviewTooltipRemark || undefined)}
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                {withDeletedRemarkTooltip(<input
+                                  type="text"
+                                  value={isOutOfScope ? "Not in our scope" : row.note}
+                                  onChange={(event) =>
+                                    handleNoteChange(row.localId, event.target.value)
+                                  }
+                                  onBlur={() =>
+                                    handleNoteBlur(row, itemOptions.length)
+                                  }
+                                  readOnly={rowLocked || isOutOfScope}
+                                  disabled={rowLocked || isOutOfScope}
+                                  placeholder={
+                                    isOutOfScope ? "" : "Add a note (optional)"
+                                  }
+                                  className={`${pickerClassName} w-full ${
+                                    isOutOfScope ? "text-muted-foreground" : ""
+                                  } ${isDeletedRow ? "line-through text-red-600" : ""}`}
+                                />, reviewTooltipRemark || undefined)}
+                              </td>
+                              {showReviewColumns && !isSpecCompleted &&
+                                renderReviewActionCells(
+                                  "hardware",
+                                  row,
+                                  row.id && vendorId && userId && specification
+                                    ? {
+                                        id: row.id,
+                                        vendor_id: vendorId,
+                                        lead_id: specification.lead_id,
+                                        specs_id: specification.id,
+                                        created_by: userId,
+                                        hardware_type_id: Number(row.hardware_type_id),
+                                        hardware_item_id: Number(
+                                          row.hardware_item_id,
+                                        ),
+                                        hardware_item_option_id:
+                                          row.hardware_item_option_id
+                                            ? Number(row.hardware_item_option_id)
+                                            : null,
+                                        note: row.note || null,
+                                      }
+                                    : null,
+                                  persistedRow,
+                                )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </TabsContent>
           <TabsContent
