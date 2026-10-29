@@ -53,7 +53,7 @@ export default function UnderInstallationDetails({
 
   // 🔹 Fetch installation data
   const { data: details } = useUnderInstallationDetails(vendorId, leadId, instanceId);
-  const { data: mappedInstallers } = useMappedInstallers(vendorId, leadId);
+  const { data: mappedInstallers } = useMappedInstallers(vendorId, leadId, instanceId);
   const { data: installerUsers } = useInstallerUsers(vendorId);
 
   // 🔹 Mutations
@@ -180,6 +180,7 @@ export default function UnderInstallationDetails({
       installers: installerSelections.map((i) => ({
         installer_id: Number(i.value),
       })),
+      instance_id: instanceId,
     };
 
     if (hasAssignedData) {
@@ -190,6 +191,14 @@ export default function UnderInstallationDetails({
           payload,
         },
         {
+          onError: (error: any) => {
+            toastManager.add({
+              title:
+                error?.response?.data?.message ||
+                "Failed to save installation details.",
+              type: "error",
+            });
+          },
           onSuccess: () => {
             (toastManager.add({ title: "Installation details updated.", type: "success" }),
               queryClient.invalidateQueries({
@@ -209,6 +218,14 @@ export default function UnderInstallationDetails({
           payload,
         },
         {
+          onError: (error: any) => {
+            toastManager.add({
+              title:
+                error?.response?.data?.message ||
+                "Failed to save installation details.",
+              type: "error",
+            });
+          },
           onSuccess: () => {
             toastManager.add({ title: "Installers added successfully.", type: "success" });
             queryClient.invalidateQueries({
@@ -514,6 +531,7 @@ export default function UnderInstallationDetails({
         <InstallationDayWiseReports
           vendorId={vendorId}
           leadId={leadId}
+          instanceId={instanceId}
           accountId={accountId}
           accessBtn={canManageDayWiseReports}
           disabledReason={!isInstallationDetailsComplete ? installationDetailsDisabledReason : undefined}
@@ -577,19 +595,32 @@ export default function UnderInstallationDetails({
               onClick={() => {
                 if (!confirmState) return;
 
-                updateCompletionMutation.mutate({
-                  vendorId,
-                  leadId,
-                  updated_by: userId!,
-                  is_carcass_installation_completed:
-                    confirmState.type === "carcass"
-                      ? !confirmState.current
-                      : undefined,
-                  is_shutter_installation_completed:
-                    confirmState.type === "shutter"
-                      ? !confirmState.current
-                      : undefined,
-                });
+                updateCompletionMutation.mutate(
+                  {
+                    vendorId,
+                    leadId,
+                    updated_by: userId!,
+                    is_carcass_installation_completed:
+                      confirmState.type === "carcass"
+                        ? !confirmState.current
+                        : undefined,
+                    is_shutter_installation_completed:
+                      confirmState.type === "shutter"
+                        ? !confirmState.current
+                        : undefined,
+                    instance_id: instanceId,
+                  },
+                  {
+                    onError: (error: any) => {
+                      toastManager.add({
+                        title:
+                          error?.response?.data?.message ||
+                          "Failed to update installation completion.",
+                        type: "error",
+                      });
+                    },
+                  },
+                );
 
                 setConfirmState(null);
               }}

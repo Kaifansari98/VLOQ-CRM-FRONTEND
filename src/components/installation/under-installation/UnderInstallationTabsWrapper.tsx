@@ -56,7 +56,7 @@ export default function UnderInstallationTabsWrapper({
   const installationStarted = !!underDetails?.actual_installation_start_date;
 
   // 🔥 Fetch usable handover readiness
-  const { data: readyData } = useUsableHandoverReady(vendorId, leadId);
+  const { data: readyData } = useUsableHandoverReady(vendorId, leadId, instanceId);
   const { data: smallOrderRequestsData } = useSmallOrderRequestsByLead(
     vendorId,
     leadId,
