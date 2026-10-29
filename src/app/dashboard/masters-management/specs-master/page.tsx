@@ -49,6 +49,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -97,7 +104,15 @@ type MasterRow = {
   parent?: string | null;
   grandParent?: string | null;
   status: string;
+  /** Several entries shown as one row; each can still be edited on its own. */
+  entries?: Array<{ id: number; name: string }>;
 };
+
+/** "A, B and C" */
+const joinNames = (names: string[]) =>
+  names.length <= 1
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 /** Newest entries first (ids are auto-incrementing). */
 const newestFirst = <T extends { id: number }>(items: T[] = []) =>
@@ -834,7 +849,15 @@ function MasterListingTable({
     const nameColumn: ColumnDef<MasterRow> = {
       accessorKey: "name",
       header: nameHeader,
-      cell: ({ row }) => row.original.name,
+      cell: ({ row }) =>
+        row.original.entries ? (
+          // Grouped rows grow in height as the list gets longer.
+          <div className="min-w-[16rem] max-w-xl whitespace-normal break-words leading-relaxed">
+            {row.original.name}
+          </div>
+        ) : (
+          row.original.name
+        ),
     };
     const parentColumns: ColumnDef<MasterRow>[] = [
       ...(grandParentHeader
@@ -885,12 +908,40 @@ function MasterListingTable({
         header: "Actions",
         enableSorting: false,
         enableGlobalFilter: false,
-        cell: ({ row }) => (
-          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
-            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-        ),
+        cell: ({ row }) => {
+          const entries = row.original.entries;
+          if (entries && entries.length > 1) {
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+                    onClick={(event) => event.stopPropagation()}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+                  <DropdownMenuLabel>Edit option</DropdownMenuLabel>
+                  {entries.map((entry) => (
+                    <DropdownMenuItem key={entry.id}
+                      onSelect={() => onEdit({ ...row.original, id: entry.id, name: entry.name })}>
+                      {entry.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          }
+          const target = entries?.[0];
+          return (
+            <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(target ? { ...row.original, id: target.id, name: target.name } : row.original);
+              }}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          );
+        },
       },
     ];
   }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit]);
@@ -2303,13 +2354,20 @@ function HardwareMastersSection() {
     const hardwareTypeNames = new Map(
       (hardwareTypes?.data ?? []).map((type) => [type.id, type.name]),
     );
-    return newestFirst(hardwareItemOptions?.data).map((item, index) => ({
+    // One row per hardware type + hardware item, listing all its options.
+    const groups = new Map<string, NonNullable<typeof hardwareItemOptions>["data"]>();
+    for (const item of newestFirst(hardwareItemOptions?.data)) {
+      const key = `${item.hardware_type_id}::${item.hardware_item_id}`;
+      groups.set(key, [...(groups.get(key) ?? []), item]);
+    }
+    return [...groups.values()].map((options, index) => ({
       srNo: index + 1,
-      id: item.id,
-      name: item.name,
-      parent: item.hardwareItem?.name ?? null,
-      grandParent: hardwareTypeNames.get(item.hardware_type_id) ?? null,
+      id: options[0].id,
+      name: joinNames(options.map((option) => option.name)),
+      parent: options[0].hardwareItem?.name ?? null,
+      grandParent: hardwareTypeNames.get(options[0].hardware_type_id) ?? null,
       status: "active",
+      entries: options.map((option) => ({ id: option.id, name: option.name })),
     }));
   }, [hardwareItemOptions?.data, hardwareTypes?.data]);
 
