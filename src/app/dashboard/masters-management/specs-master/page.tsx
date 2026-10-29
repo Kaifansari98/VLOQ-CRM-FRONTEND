@@ -95,8 +95,13 @@ type MasterRow = {
   id: number;
   name: string;
   parent?: string | null;
+  grandParent?: string | null;
   status: string;
 };
+
+/** Newest entries first (ids are auto-incrementing). */
+const newestFirst = <T extends { id: number }>(items: T[] = []) =>
+  [...items].sort((a, b) => b.id - a.id);
 
 function parseCsvText(text: string): string[][] {
   const rows: string[][] = [];
@@ -790,6 +795,10 @@ function MasterListingTable({
   actionLabel,
   rows,
   showParent = false,
+  nameHeader = "Name",
+  parentHeader = "Parent",
+  grandParentHeader,
+  parentFirst = false,
   isLoading,
   isError,
   errorMessage,
@@ -803,6 +812,12 @@ function MasterListingTable({
   actionLabel: string;
   rows: MasterRow[];
   showParent?: boolean;
+  nameHeader?: string;
+  parentHeader?: string;
+  /** Shows a `grandParent` column before the parent column. */
+  grandParentHeader?: string;
+  /** Show the parent columns before the name (top-level first). */
+  parentFirst?: boolean;
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string;
@@ -815,28 +830,44 @@ function MasterListingTable({
     [],
   );
   const [globalFilter, setGlobalFilter] = React.useState("");
-  const columns = React.useMemo<ColumnDef<MasterRow>[]>(
-    () => [
-      {
-        accessorKey: "srNo",
-        header: "Sr. No.",
-        cell: ({ row }) => row.original.srNo,
-      },
-      {
-        accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => row.original.name,
-      },
+  const columns = React.useMemo<ColumnDef<MasterRow>[]>(() => {
+    const nameColumn: ColumnDef<MasterRow> = {
+      accessorKey: "name",
+      header: nameHeader,
+      cell: ({ row }) => row.original.name,
+    };
+    const parentColumns: ColumnDef<MasterRow>[] = [
+      ...(grandParentHeader
+        ? [
+            {
+              accessorKey: "grandParent",
+              header: grandParentHeader,
+              cell: ({ row }: { row: { original: MasterRow } }) =>
+                row.original.grandParent || "—",
+            } satisfies ColumnDef<MasterRow>,
+          ]
+        : []),
       ...(showParent
         ? [
             {
               accessorKey: "parent",
-              header: "Parent",
+              header: parentHeader,
               cell: ({ row }: { row: { original: MasterRow } }) =>
                 row.original.parent || "—",
             } satisfies ColumnDef<MasterRow>,
           ]
         : []),
+    ];
+
+    return [
+      {
+        accessorKey: "srNo",
+        header: "Sr. No.",
+        cell: ({ row }) => row.original.srNo,
+      },
+      ...(parentFirst
+        ? [...parentColumns, nameColumn]
+        : [nameColumn, ...parentColumns]),
       {
         accessorKey: "status",
         header: "Status",
@@ -861,9 +892,8 @@ function MasterListingTable({
           </Button>
         ),
       },
-    ],
-    [showParent, onEdit],
-  );
+    ];
+  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit]);
 
   const table = useReactTable({
     data: rows,
@@ -2248,7 +2278,7 @@ function HardwareMastersSection() {
 
   const hardwareTypeRows = React.useMemo<MasterRow[]>(
     () =>
-      (hardwareTypes?.data ?? []).map((item, index) => ({
+      newestFirst(hardwareTypes?.data).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
@@ -2259,7 +2289,7 @@ function HardwareMastersSection() {
 
   const hardwareItemRows = React.useMemo<MasterRow[]>(
     () =>
-      (hardwareItems?.data ?? []).map((item, index) => ({
+      newestFirst(hardwareItems?.data).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
@@ -2269,17 +2299,19 @@ function HardwareMastersSection() {
     [hardwareItems?.data],
   );
 
-  const hardwareItemOptionRows = React.useMemo<MasterRow[]>(
-    () =>
-      (hardwareItemOptions?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.hardwareItem?.name ?? null,
-        status: "active",
-      })),
-    [hardwareItemOptions?.data],
-  );
+  const hardwareItemOptionRows = React.useMemo<MasterRow[]>(() => {
+    const hardwareTypeNames = new Map(
+      (hardwareTypes?.data ?? []).map((type) => [type.id, type.name]),
+    );
+    return newestFirst(hardwareItemOptions?.data).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.hardwareItem?.name ?? null,
+      grandParent: hardwareTypeNames.get(item.hardware_type_id) ?? null,
+      status: "active",
+    }));
+  }, [hardwareItemOptions?.data, hardwareTypes?.data]);
 
   const [openHardwareTypeModal, setOpenHardwareTypeModal] = React.useState(false);
   const [hardwareTypeName, setHardwareTypeName] = React.useState("");
@@ -2495,6 +2527,10 @@ function HardwareMastersSection() {
               setEditingId(row.id); setOptionValue(item.name); setOptionHardwareTypeId(String(item.hardware_type_id)); setOptionHardwareItemId(String(item.hardware_item_id)); setOpenOptionModal(true);
             }}
             showParent
+            parentFirst
+            grandParentHeader="Hardware Type"
+            parentHeader="Hardware Item"
+            nameHeader="Hardware Item Option"
             isLoading={isHardwareItemOptionsLoading}
             isError={isHardwareItemOptionsError}
             errorMessage={(hardwareItemOptionsError as any)?.response?.data?.error}
@@ -2539,6 +2575,9 @@ function HardwareMastersSection() {
               setEditingId(row.id); setHardwareItemName(item.name); setItemHardwareTypeId(String(item.hardware_type_id)); setHardwareItemInScope(String(item.inScope)); setOpenHardwareItemModal(true);
             }}
             showParent
+            parentFirst
+            parentHeader="Hardware Type"
+            nameHeader="Hardware Item"
             isLoading={isHardwareItemsLoading}
             isError={isHardwareItemsError}
             errorMessage={(hardwareItemsError as any)?.response?.data?.error}
@@ -2576,6 +2615,7 @@ function HardwareMastersSection() {
             searchPlaceholder="Search hardware type..."
             actionLabel="Add Hardware Type"
             rows={hardwareTypeRows}
+            nameHeader="Hardware Type"
             onEdit={(row) => {
               const item = hardwareTypes?.data?.find(item => item.id === row.id);
               if (!item) return;
