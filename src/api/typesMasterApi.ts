@@ -246,41 +246,41 @@ export interface ShutterMaterialMasterResponse {
   data: ShutterMaterialMasterEntry[];
 }
 
-export interface SkirtingCarcassLegsColorMasterEntry {
+export interface HardwareItemOptionMasterEntry {
   id: number;
-  carcass_legs_id: number;
-  skirting_carcass_legs_id: number;
-  color: string;
-  skirtingCarcassLegs?: { id: number; name: string };
+  hardware_type_id: number;
+  hardware_item_id: number;
+  name: string;
+  hardwareItem?: { id: number; name: string };
 }
 
-export interface SkirtingCarcassLegsColorMasterResponse {
+export interface HardwareItemOptionMasterResponse {
   success: boolean;
-  data: SkirtingCarcassLegsColorMasterEntry[];
+  data: HardwareItemOptionMasterEntry[];
 }
 
-export interface SkirtingCarcassLegsMasterEntry {
+export interface HardwareItemMasterEntry {
   id: number;
   name: string;
-  carcass_legs_id: number;
+  hardware_type_id: number;
   inScope: boolean;
-  carcassLegs?: { id: number; name: string };
+  hardwareType?: { id: number; name: string };
 }
 
-export interface SkirtingCarcassLegsMasterResponse {
+export interface HardwareItemMasterResponse {
   success: boolean;
-  data: SkirtingCarcassLegsMasterEntry[];
+  data: HardwareItemMasterEntry[];
 }
 
-export interface CarcassLegsMasterEntry {
+export interface HardwareTypeMasterEntry {
   id: number;
   name: string;
   vendor_id: number;
 }
 
-export interface CarcassLegsMasterResponse {
+export interface HardwareTypeMasterResponse {
   success: boolean;
-  data: CarcassLegsMasterEntry[];
+  data: HardwareTypeMasterEntry[];
 }
 
 export interface HandleTypeMasterEntry {
@@ -440,24 +440,24 @@ export interface BulkUploadShutterMaterialFinishesResponse {
   };
 }
 
-export interface CreateCarcassLegsPayload {
+export interface CreateHardwareTypePayload {
   vendor_id: number;
   name: string;
 }
 
-export interface CreateSkirtingCarcassLegsPayload {
-  carcass_legs_id: number;
+export interface CreateHardwareItemPayload {
+  hardware_type_id: number;
   name: string;
   inScope: boolean;
 }
 
-export interface CreateSkirtingCarcassLegsColorPayload {
-  carcass_legs_id: number;
-  skirting_carcass_legs_id: number;
-  color: string;
+export interface CreateHardwareItemOptionPayload {
+  hardware_type_id: number;
+  hardware_item_id: number;
+  name: string;
 }
 
-export interface BulkUploadSkirtingCarcassLegsColorsResponse {
+export interface BulkUploadHardwareItemOptionsResponse {
   success: boolean;
   data: {
     typesCreated: number;
@@ -844,9 +844,9 @@ export const uploadShutterMaterialFinishes = async (formData: FormData) => {
   return res.data;
 }
 
-export const fetchCarcassLegs = async (vendorId: number) => {
-  const res = await apiClient.get<CarcassLegsMasterResponse>(
-    `/leads/get-all-carcass-legs/${vendorId}`,
+export const fetchHardwareTypes = async (vendorId: number) => {
+  const res = await apiClient.get<HardwareTypeMasterResponse>(
+    `/leads/get-all-hardware-types/${vendorId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -854,14 +854,14 @@ export const fetchCarcassLegs = async (vendorId: number) => {
   };
 }
 
-export const createCarcassLegs = async (payload: CreateCarcassLegsPayload) => {
-  const res = await apiClient.post("/leads/create-carcass-legs", payload);
+export const createHardwareType = async (payload: CreateHardwareTypePayload) => {
+  const res = await apiClient.post("/leads/create-hardware-type", payload);
   return res.data;
 }
 
-export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
-  const res = await apiClient.get<SkirtingCarcassLegsMasterResponse>(
-    `/leads/get-skirting-carcass-legs/${carcassLegsId}`,
+export const fetchHardwareItems = async (hardwareTypeId: number) => {
+  const res = await apiClient.get<HardwareItemMasterResponse>(
+    `/leads/get-hardware-items/${hardwareTypeId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -869,9 +869,9 @@ export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
   };
 }
 
-export const fetchAllSkirtingCarcassLegs = async (vendorId: number) => {
-  const res = await apiClient.get<SkirtingCarcassLegsMasterResponse>(
-    `/leads/get-all-skirting-carcass-legs/${vendorId}`,
+export const fetchAllHardwareItems = async (vendorId: number) => {
+  const res = await apiClient.get<HardwareItemMasterResponse>(
+    `/leads/get-all-hardware-items/${vendorId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -879,21 +879,21 @@ export const fetchAllSkirtingCarcassLegs = async (vendorId: number) => {
   };
 }
 
-export const createSkirtingCarcassLegs = async (
-  payload: CreateSkirtingCarcassLegsPayload,
+export const createHardwareItem = async (
+  payload: CreateHardwareItemPayload,
 ) => {
   const res = await apiClient.post(
-    "/leads/create-skirting-carcass-legs",
+    "/leads/create-hardware-item",
     payload,
   );
   return res.data;
 }
 
-export const fetchSkirtingCarcassLegsColors = async (
-  skirtingCarcassLegsId: number,
+export const fetchHardwareItemOptions = async (
+  hardwareItemId: number,
 ) => {
-  const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
-    `/leads/get-skirting-carcass-legs-colors/${skirtingCarcassLegsId}`,
+  const res = await apiClient.get<HardwareItemOptionMasterResponse>(
+    `/leads/get-hardware-item-options/${hardwareItemId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -901,9 +901,9 @@ export const fetchSkirtingCarcassLegsColors = async (
   };
 }
 
-export const fetchAllSkirtingCarcassLegsColors = async (vendorId: number) => {
-  const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
-    `/leads/get-all-skirting-carcass-legs-colors/${vendorId}`,
+export const fetchAllHardwareItemOptions = async (vendorId: number) => {
+  const res = await apiClient.get<HardwareItemOptionMasterResponse>(
+    `/leads/get-all-hardware-item-options/${vendorId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -911,19 +911,19 @@ export const fetchAllSkirtingCarcassLegsColors = async (vendorId: number) => {
   };
 }
 
-export const createSkirtingCarcassLegsColor = async (
-  payload: CreateSkirtingCarcassLegsColorPayload,
+export const createHardwareItemOption = async (
+  payload: CreateHardwareItemOptionPayload,
 ) => {
   const res = await apiClient.post(
-    "/leads/create-skirting-carcass-legs-color",
+    "/leads/create-hardware-item-option",
     payload,
   );
   return res.data;
 }
 
-export const uploadSkirtingCarcassLegsColors = async (formData: FormData) => {
-  const res = await apiClient.post<BulkUploadSkirtingCarcassLegsColorsResponse>(
-    "/leads/upload-skirting-carcass-legs-color",
+export const uploadHardwareItemOptions = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadHardwareItemOptionsResponse>(
+    "/leads/upload-hardware-item-options",
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },

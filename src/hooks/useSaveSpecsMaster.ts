@@ -7,7 +7,7 @@ import { toastManager } from "@/components/ui/toast";
 export type SpecsMasterKind =
   | "carcass-type" | "carcas-material" | "carcass-material-finish"
   | "shutter-type" | "shutter-material" | "shutter-material-finish"
-  | "carcass-legs" | "skirting-carcass-legs" | "skirting-carcass-legs-color"
+  | "hardware-type" | "hardware-item" | "hardware-item-option"
   | "light-carcas-type" | "light-carcas-unit" | "other-appliances";
 
 export function useSaveSpecsMaster(kind: SpecsMasterKind, editingId: number | null) {
@@ -22,7 +22,7 @@ export function useSaveSpecsMaster(kind: SpecsMasterKind, editingId: number | nu
     onSuccess: () => {
       // Parent names are displayed by their child lists as well.
       queryClient.invalidateQueries({ predicate: query =>
-        /^(all)?(carcass|carcas|shutter|skirting|lightCarcas|otherAppliances)/i.test(String(query.queryKey[0])),
+        /^(all)?(carcass|carcas|shutter|hardware|lightCarcas|otherAppliances)/i.test(String(query.queryKey[0])),
       });
       toastManager.add({ title: editingId ? "Entry updated successfully." : "Entry created successfully.", type: "success" });
     },

@@ -31,15 +31,15 @@ import {
   createShutterMaterialFinish,
   uploadShutterMaterialFinishes,
   createShutterSubType,
-  fetchCarcassLegs,
-  createCarcassLegs,
-  fetchSkirtingCarcassLegs,
-  fetchAllSkirtingCarcassLegs,
-  createSkirtingCarcassLegs,
-  fetchSkirtingCarcassLegsColors,
-  fetchAllSkirtingCarcassLegsColors,
-  createSkirtingCarcassLegsColor,
-  uploadSkirtingCarcassLegsColors,
+  fetchHardwareTypes,
+  createHardwareType,
+  fetchHardwareItems,
+  fetchAllHardwareItems,
+  createHardwareItem,
+  fetchHardwareItemOptions,
+  fetchAllHardwareItemOptions,
+  createHardwareItemOption,
+  uploadHardwareItemOptions,
   fetchLightCarcasTypes,
   createLightCarcasType,
   fetchLightCarcasUnits,
@@ -132,9 +132,9 @@ const getCarcassMaterialFinishesQueryKey = (carcasMaterialId?: number) => ["carc
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getShutterMaterialsQueryKey = (vendorId?: number) => ["shutterMaterials", vendorId];
 const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shutterMaterialFinishes", shutterMaterialId];
-const getCarcassLegsQueryKey = (vendorId?: number) => ["carcassLegs", vendorId];
-const getSkirtingCarcassLegsQueryKey = (carcassLegsId?: number) => ["skirtingCarcassLegs", carcassLegsId];
-const getSkirtingCarcassLegsColorsQueryKey = (skirtingCarcassLegsId?: number) => ["skirtingCarcassLegsColors", skirtingCarcassLegsId];
+const getHardwareTypesQueryKey = (vendorId?: number) => ["hardwareTypes", vendorId];
+const getHardwareItemsQueryKey = (hardwareTypeId?: number) => ["hardwareItems", hardwareTypeId];
+const getHardwareItemOptionsQueryKey = (hardwareItemId?: number) => ["hardwareItemOptions", hardwareItemId];
 const getLightCarcasTypesQueryKey = (vendorId?: number) => ["lightCarcasTypes", vendorId];
 const getLightCarcasUnitsQueryKey = (lightCarcasTypeId?: number) => ["lightCarcasUnits", lightCarcasTypeId];
 const getOtherAppliancesQueryKey = (vendorId?: number) => ["otherAppliances", vendorId];
@@ -935,15 +935,15 @@ export const useUploadShutterMaterialFinishes = () => {
   });
 }
 
-export const useCreateCarcassLegs = () => {
+export const useCreateHardwareType = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   return useMutation({
-    mutationFn: createCarcassLegs,
+    mutationFn: createHardwareType,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: getCarcassLegsQueryKey(vendorId),
+        queryKey: getHardwareTypesQueryKey(vendorId),
       });
       toastManager.add({
         title: "Hardware type created successfully.",
@@ -959,18 +959,18 @@ export const useCreateCarcassLegs = () => {
   });
 }
 
-export const useCreateSkirtingCarcassLegs = () => {
+export const useCreateHardwareItem = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   return useMutation({
-    mutationFn: createSkirtingCarcassLegs,
+    mutationFn: createHardwareItem,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["allSkirtingCarcassLegs", vendorId],
+        queryKey: ["allHardwareItems", vendorId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["skirtingCarcassLegs"],
+        queryKey: ["hardwareItems"],
       });
       toastManager.add({
         title: "Hardware item created successfully.",
@@ -986,18 +986,18 @@ export const useCreateSkirtingCarcassLegs = () => {
   });
 }
 
-export const useCreateSkirtingCarcassLegsColor = () => {
+export const useCreateHardwareItemOption = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   return useMutation({
-    mutationFn: createSkirtingCarcassLegsColor,
+    mutationFn: createHardwareItemOption,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+        queryKey: ["allHardwareItemOptions", vendorId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["skirtingCarcassLegsColors"],
+        queryKey: ["hardwareItemOptions"],
       });
       toastManager.add({
         title: "Hardware item option created successfully.",
@@ -1014,28 +1014,28 @@ export const useCreateSkirtingCarcassLegsColor = () => {
   });
 }
 
-export const useUploadSkirtingCarcassLegsColors = () => {
+export const useUploadHardwareItemOptions = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   return useMutation({
     mutationFn: (formData: FormData) =>
-      uploadSkirtingCarcassLegsColors(formData),
+      uploadHardwareItemOptions(formData),
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: getCarcassLegsQueryKey(vendorId),
+        queryKey: getHardwareTypesQueryKey(vendorId),
       });
       queryClient.invalidateQueries({
-        queryKey: ["allSkirtingCarcassLegs", vendorId],
+        queryKey: ["allHardwareItems", vendorId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["skirtingCarcassLegs"],
+        queryKey: ["hardwareItems"],
       });
       queryClient.invalidateQueries({
-        queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+        queryKey: ["allHardwareItemOptions", vendorId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["skirtingCarcassLegsColors"],
+        queryKey: ["hardwareItemOptions"],
       });
       const summary = res.data
         ? `Colors added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
@@ -1087,22 +1087,22 @@ export const useShutterMaterialFinishes = (shutterMaterialId?: number) => {
   });
 }
 
-export const useCarcassLegs = () => {
+export const useHardwareTypes = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
-    queryKey: getCarcassLegsQueryKey(vendorId),
-    queryFn: () => fetchCarcassLegs(vendorId!),
+    queryKey: getHardwareTypesQueryKey(vendorId),
+    queryFn: () => fetchHardwareTypes(vendorId!),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
   });
 }
 
-export const useSkirtingCarcassLegs = (carcassLegsId?: number) => {
+export const useHardwareItems = (hardwareTypeId?: number) => {
   return useQuery({
-    queryKey: getSkirtingCarcassLegsQueryKey(carcassLegsId),
-    queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId!),
-    enabled: !!carcassLegsId,
+    queryKey: getHardwareItemsQueryKey(hardwareTypeId),
+    queryFn: () => fetchHardwareItems(hardwareTypeId!),
+    enabled: !!hardwareTypeId,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -1310,11 +1310,11 @@ export const useDownloadOtherAppliancesReport = () => {
   });
 };
 
-export const useSkirtingCarcassLegsColors = (skirtingCarcassLegsId?: number) => {
+export const useHardwareItemOptions = (hardwareItemId?: number) => {
   return useQuery({
-    queryKey: getSkirtingCarcassLegsColorsQueryKey(skirtingCarcassLegsId),
-    queryFn: () => fetchSkirtingCarcassLegsColors(skirtingCarcassLegsId!),
-    enabled: !!skirtingCarcassLegsId,
+    queryKey: getHardwareItemOptionsQueryKey(hardwareItemId),
+    queryFn: () => fetchHardwareItemOptions(hardwareItemId!),
+    enabled: !!hardwareItemId,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -1331,22 +1331,22 @@ export const useAllShutterMaterialFinishes = () => {
   });
 }
 
-export const useAllSkirtingCarcassLegs = () => {
+export const useAllHardwareItems = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
-    queryKey: ["allSkirtingCarcassLegs", vendorId],
-    queryFn: () => fetchAllSkirtingCarcassLegs(vendorId!),
+    queryKey: ["allHardwareItems", vendorId],
+    queryFn: () => fetchAllHardwareItems(vendorId!),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
   });
 }
 
-export const useAllSkirtingCarcassLegsColors = () => {
+export const useAllHardwareItemOptions = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
-    queryKey: ["allSkirtingCarcassLegsColors", vendorId],
-    queryFn: () => fetchAllSkirtingCarcassLegsColors(vendorId!),
+    queryKey: ["allHardwareItemOptions", vendorId],
+    queryFn: () => fetchAllHardwareItemOptions(vendorId!),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,

@@ -75,10 +75,10 @@ import {
   useShutterMaterials,
   useAllShutterMaterialFinishes,
   useUploadShutterMaterialFinishes,
-  useCarcassLegs,
-  useAllSkirtingCarcassLegs,
-  useAllSkirtingCarcassLegsColors,
-  useUploadSkirtingCarcassLegsColors,
+  useHardwareTypes,
+  useAllHardwareItems,
+  useAllHardwareItemOptions,
+  useUploadHardwareItemOptions,
   useLightCarcasTypes,
   useAllLightCarcasUnits,
   useUploadLightCarcasUnits,
@@ -319,9 +319,9 @@ async function computeMasterUploadPreview(
 async function computeHardwareUploadPreview(
   file: File,
   existing: {
-    legs: Array<{ id: number; name: string }>;
-    skirtings: Array<{ id: number; name: string; legsId: number }>;
-    colors: Array<{ id: number; color: string; skirtingId: number }>;
+    hardwareTypes: Array<{ id: number; name: string }>;
+    hardwareItems: Array<{ id: number; name: string; hardwareTypeId: number }>;
+    options: Array<{ id: number; name: string; hardwareItemId: number }>;
   },
 ): Promise<MasterUploadPreview> {
   const { headers, rows } = await parseUploadFile(file);
@@ -330,17 +330,17 @@ async function computeHardwareUploadPreview(
   // Carcass Legs / Skirting / Skirting Color headers are still accepted.
   const isOptionHeader = (h: string) =>
     h.includes("option") || h.includes("color");
-  const legsKey = headers.find(
+  const hardwareTypeKey = headers.find(
     (h) => h.includes("hardware type") || h.includes("legs"),
   );
-  const skirtingKey = headers.find(
+  const hardwareItemKey = headers.find(
     (h) =>
       !isOptionHeader(h) &&
       (h.includes("hardware item") || h.includes("skirting")),
   );
-  const colorKey = headers.find(isOptionHeader);
+  const optionKey = headers.find(isOptionHeader);
 
-  if (!legsKey || !skirtingKey || !colorKey) {
+  if (!hardwareTypeKey || !hardwareItemKey || !optionKey) {
     return {
       totalDataRows: rows.length,
       typesToAdd: 0,
@@ -354,26 +354,26 @@ async function computeHardwareUploadPreview(
     };
   }
 
-  const legsMap = new Map<string, number>(
-    existing.legs.map((l) => [l.name.trim().toLowerCase(), l.id]),
+  const hardwareTypeMap = new Map<string, number>(
+    existing.hardwareTypes.map((t) => [t.name.trim().toLowerCase(), t.id]),
   );
-  const skirtingMap = new Map<string, number>(
-    existing.skirtings.map((s) => [
-      `${s.legsId}::${s.name.trim().toLowerCase()}`,
+  const hardwareItemMap = new Map<string, number>(
+    existing.hardwareItems.map((s) => [
+      `${s.hardwareTypeId}::${s.name.trim().toLowerCase()}`,
       s.id,
     ]),
   );
-  const colorKeySet = new Set<string>(
-    existing.colors.map(
-      (c) => `${c.skirtingId}::${c.color.trim().toLowerCase()}`,
+  const optionKeySet = new Set<string>(
+    existing.options.map(
+      (o) => `${o.hardwareItemId}::${o.name.trim().toLowerCase()}`,
     ),
   );
-  const newLegsNames = new Set<string>();
-  const newSkirtingKeys = new Set<string>();
+  const newHardwareTypeNames = new Set<string>();
+  const newHardwareItemKeys = new Set<string>();
 
   let skippedMissing = 0;
   let skippedDuplicate = 0;
-  let colorsToAdd = 0;
+  let optionsToAdd = 0;
   const skippedRows: Array<{
     row: number;
     reason: string;
@@ -382,11 +382,11 @@ async function computeHardwareUploadPreview(
 
   rows.forEach((row, idx) => {
     const rowNumber = idx + 2;
-    const legsName = (row[legsKey] || "").trim();
-    const skirtingName = (row[skirtingKey] || "").trim();
-    const colorValue = (row[colorKey] || "").trim();
+    const hardwareTypeName = (row[hardwareTypeKey] || "").trim();
+    const hardwareItemName = (row[hardwareItemKey] || "").trim();
+    const optionValue = (row[optionKey] || "").trim();
 
-    if (!legsName || !skirtingName) {
+    if (!hardwareTypeName || !hardwareItemName) {
       skippedMissing++;
       skippedRows.push({
         row: rowNumber,
@@ -396,47 +396,47 @@ async function computeHardwareUploadPreview(
       return;
     }
 
-    const legsLower = legsName.toLowerCase();
-    const existingLegsId = legsMap.get(legsLower);
-    if (!existingLegsId) {
-      newLegsNames.add(legsLower);
+    const hardwareTypeLower = hardwareTypeName.toLowerCase();
+    const existingHardwareTypeId = hardwareTypeMap.get(hardwareTypeLower);
+    if (!existingHardwareTypeId) {
+      newHardwareTypeNames.add(hardwareTypeLower);
     }
-    const legsDedupeId = existingLegsId ?? `new:${legsLower}`;
+    const hardwareTypeDedupeId = existingHardwareTypeId ?? `new:${hardwareTypeLower}`;
 
-    const skirtingLower = skirtingName.toLowerCase();
-    const skirtingLookupKey = `${legsDedupeId}::${skirtingLower}`;
-    const existingSkirtingId = skirtingMap.get(skirtingLookupKey);
-    if (!existingSkirtingId) {
-      newSkirtingKeys.add(skirtingLookupKey);
+    const hardwareItemLower = hardwareItemName.toLowerCase();
+    const hardwareItemLookupKey = `${hardwareTypeDedupeId}::${hardwareItemLower}`;
+    const existingHardwareItemId = hardwareItemMap.get(hardwareItemLookupKey);
+    if (!existingHardwareItemId) {
+      newHardwareItemKeys.add(hardwareItemLookupKey);
     }
-    const skirtingDedupeId = existingSkirtingId ?? `new:${skirtingLookupKey}`;
+    const hardwareItemDedupeId = existingHardwareItemId ?? `new:${hardwareItemLookupKey}`;
 
-    if (!colorValue) {
+    if (!optionValue) {
       return;
     }
 
-    const colorLower = colorValue.toLowerCase();
-    const colorDedupeKey = `${skirtingDedupeId}::${colorLower}`;
+    const optionLower = optionValue.toLowerCase();
+    const optionDedupeKey = `${hardwareItemDedupeId}::${optionLower}`;
 
-    if (colorKeySet.has(colorDedupeKey)) {
+    if (optionKeySet.has(optionDedupeKey)) {
       skippedDuplicate++;
       skippedRows.push({
         row: rowNumber,
-        reason: `Duplicate hardware item option "${colorValue}" for hardware item "${skirtingName}"`,
+        reason: `Duplicate hardware item option "${optionValue}" for hardware item "${hardwareItemName}"`,
         type: "duplicate",
       });
       return;
     }
 
-    colorKeySet.add(colorDedupeKey);
-    colorsToAdd++;
+    optionKeySet.add(optionDedupeKey);
+    optionsToAdd++;
   });
 
   return {
     totalDataRows: rows.length,
-    typesToAdd: newLegsNames.size,
-    materialsToAdd: newSkirtingKeys.size,
-    finishesToAdd: colorsToAdd,
+    typesToAdd: newHardwareTypeNames.size,
+    materialsToAdd: newHardwareItemKeys.size,
+    finishesToAdd: optionsToAdd,
     skippedMissing,
     skippedDuplicate,
     skippedRows,
@@ -2220,81 +2220,81 @@ function HardwareMastersSection() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
-    data: carcassLegs,
-    isLoading: isCarcassLegsLoading,
-    isError: isCarcassLegsError,
-    error: carcassLegsError,
-  } = useCarcassLegs();
+    data: hardwareTypes,
+    isLoading: isHardwareTypesLoading,
+    isError: isHardwareTypesError,
+    error: hardwareTypesError,
+  } = useHardwareTypes();
   const {
-    data: skirtings,
-    isLoading: isSkirtingsLoading,
-    isError: isSkirtingsError,
-    error: skirtingsError,
-  } = useAllSkirtingCarcassLegs();
+    data: hardwareItems,
+    isLoading: isHardwareItemsLoading,
+    isError: isHardwareItemsError,
+    error: hardwareItemsError,
+  } = useAllHardwareItems();
   const {
-    data: skirtingColors,
-    isLoading: isSkirtingColorsLoading,
-    isError: isSkirtingColorsError,
-    error: skirtingColorsError,
-  } = useAllSkirtingCarcassLegsColors();
+    data: hardwareItemOptions,
+    isLoading: isHardwareItemOptionsLoading,
+    isError: isHardwareItemOptionsError,
+    error: hardwareItemOptionsError,
+  } = useAllHardwareItemOptions();
 
-  const createCarcassLegs = useSaveSpecsMaster("carcass-legs", editingId);
-  const createSkirtingCarcassLegs = useSaveSpecsMaster("skirting-carcass-legs", editingId);
-  const createSkirtingCarcassLegsColor = useSaveSpecsMaster("skirting-carcass-legs-color", editingId);
-  const uploadSkirtingCarcassLegsColors = useUploadSkirtingCarcassLegsColors();
+  const createHardwareType = useSaveSpecsMaster("hardware-type", editingId);
+  const createHardwareItem = useSaveSpecsMaster("hardware-item", editingId);
+  const createHardwareItemOption = useSaveSpecsMaster("hardware-item-option", editingId);
+  const uploadHardwareItemOptions = useUploadHardwareItemOptions();
 
-  const carcassLegsRows = React.useMemo<MasterRow[]>(
+  const hardwareTypeRows = React.useMemo<MasterRow[]>(
     () =>
-      (carcassLegs?.data ?? []).map((item, index) => ({
+      (hardwareTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
         status: "active",
       })),
-    [carcassLegs?.data],
+    [hardwareTypes?.data],
   );
 
-  const skirtingRows = React.useMemo<MasterRow[]>(
+  const hardwareItemRows = React.useMemo<MasterRow[]>(
     () =>
-      (skirtings?.data ?? []).map((item, index) => ({
+      (hardwareItems?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        parent: item.carcassLegs?.name ?? null,
+        parent: item.hardwareType?.name ?? null,
         status: item.inScope ? "in scope" : "not in scope",
       })),
-    [skirtings?.data],
+    [hardwareItems?.data],
   );
 
-  const skirtingColorRows = React.useMemo<MasterRow[]>(
+  const hardwareItemOptionRows = React.useMemo<MasterRow[]>(
     () =>
-      (skirtingColors?.data ?? []).map((item, index) => ({
+      (hardwareItemOptions?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
-        name: item.color,
-        parent: item.skirtingCarcassLegs?.name ?? null,
+        name: item.name,
+        parent: item.hardwareItem?.name ?? null,
         status: "active",
       })),
-    [skirtingColors?.data],
+    [hardwareItemOptions?.data],
   );
 
-  const [openLegsModal, setOpenLegsModal] = React.useState(false);
-  const [legsName, setLegsName] = React.useState("");
-  const [openSkirtingModal, setOpenSkirtingModal] = React.useState(false);
-  const [skirtingName, setSkirtingName] = React.useState("");
-  const [skirtingLegsId, setSkirtingLegsId] = React.useState("");
-  const [skirtingInScope, setSkirtingInScope] = React.useState("true");
-  const [openColorModal, setOpenColorModal] = React.useState(false);
-  const [colorValue, setColorValue] = React.useState("");
-  const [colorLegsId, setColorLegsId] = React.useState("");
-  const [colorSkirtingId, setColorSkirtingId] = React.useState("");
+  const [openHardwareTypeModal, setOpenHardwareTypeModal] = React.useState(false);
+  const [hardwareTypeName, setHardwareTypeName] = React.useState("");
+  const [openHardwareItemModal, setOpenHardwareItemModal] = React.useState(false);
+  const [hardwareItemName, setHardwareItemName] = React.useState("");
+  const [itemHardwareTypeId, setItemHardwareTypeId] = React.useState("");
+  const [hardwareItemInScope, setHardwareItemInScope] = React.useState("true");
+  const [openOptionModal, setOpenOptionModal] = React.useState(false);
+  const [optionValue, setOptionValue] = React.useState("");
+  const [optionHardwareTypeId, setOptionHardwareTypeId] = React.useState("");
+  const [optionHardwareItemId, setOptionHardwareItemId] = React.useState("");
 
-  const colorSkirtingOptions = React.useMemo(
+  const optionHardwareItemOptions = React.useMemo(
     () =>
-      (skirtings?.data ?? []).filter(
-        (item) => String(item.carcass_legs_id) === colorLegsId,
+      (hardwareItems?.data ?? []).filter(
+        (item) => String(item.hardware_type_id) === optionHardwareTypeId,
       ),
-    [skirtings?.data, colorLegsId],
+    [hardwareItems?.data, optionHardwareTypeId],
   );
 
   const [openUploadModal, setOpenUploadModal] = React.useState(false);
@@ -2313,16 +2313,16 @@ function HardwareMastersSection() {
     let cancelled = false;
     setIsParsingPreview(true);
     computeHardwareUploadPreview(file, {
-      legs: carcassLegs?.data ?? [],
-      skirtings: (skirtings?.data ?? []).map((s) => ({
+      hardwareTypes: hardwareTypes?.data ?? [],
+      hardwareItems: (hardwareItems?.data ?? []).map((s) => ({
         id: s.id,
         name: s.name,
-        legsId: s.carcass_legs_id,
+        hardwareTypeId: s.hardware_type_id,
       })),
-      colors: (skirtingColors?.data ?? []).map((c) => ({
-        id: c.id,
-        color: c.color,
-        skirtingId: c.skirting_carcass_legs_id,
+      options: (hardwareItemOptions?.data ?? []).map((o) => ({
+        id: o.id,
+        name: o.name,
+        hardwareItemId: o.hardware_item_id,
       })),
     })
       .then((preview) => {
@@ -2350,63 +2350,63 @@ function HardwareMastersSection() {
     return () => {
       cancelled = true;
     };
-  }, [selectedFiles, carcassLegs?.data, skirtings?.data, skirtingColors?.data]);
+  }, [selectedFiles, hardwareTypes?.data, hardwareItems?.data, hardwareItemOptions?.data]);
 
-  const handleCreateLegs = () => {
-    const name = legsName.trim();
+  const handleCreateHardwareType = () => {
+    const name = hardwareTypeName.trim();
     if (!name || !vendorId) return;
 
-    createCarcassLegs.mutate(
+    createHardwareType.mutate(
       { vendor_id: vendorId, name },
       {
         onSuccess: () => {
-          setOpenLegsModal(false);
-          setLegsName("");
+          setOpenHardwareTypeModal(false);
+          setHardwareTypeName("");
         },
       },
     );
   };
 
-  const handleCreateSkirting = () => {
-    const name = skirtingName.trim();
-    const carcassLegsId = Number(skirtingLegsId);
-    if (!name || !carcassLegsId) return;
+  const handleCreateHardwareItem = () => {
+    const name = hardwareItemName.trim();
+    const hardwareTypeId = Number(itemHardwareTypeId);
+    if (!name || !hardwareTypeId) return;
 
-    createSkirtingCarcassLegs.mutate(
+    createHardwareItem.mutate(
       {
-        carcass_legs_id: carcassLegsId,
+        hardware_type_id: hardwareTypeId,
         name,
-        inScope: skirtingInScope === "true",
+        inScope: hardwareItemInScope === "true",
       },
       {
         onSuccess: () => {
-          setOpenSkirtingModal(false);
-          setSkirtingName("");
-          setSkirtingLegsId("");
-          setSkirtingInScope("true");
+          setOpenHardwareItemModal(false);
+          setHardwareItemName("");
+          setItemHardwareTypeId("");
+          setHardwareItemInScope("true");
         },
       },
     );
   };
 
-  const handleCreateColor = () => {
-    const color = colorValue.trim();
-    const carcassLegsId = Number(colorLegsId);
-    const skirtingCarcassLegsId = Number(colorSkirtingId);
-    if (!color || !carcassLegsId || !skirtingCarcassLegsId) return;
+  const handleCreateOption = () => {
+    const name = optionValue.trim();
+    const hardwareTypeId = Number(optionHardwareTypeId);
+    const hardwareItemId = Number(optionHardwareItemId);
+    if (!name || !hardwareTypeId || !hardwareItemId) return;
 
-    createSkirtingCarcassLegsColor.mutate(
+    createHardwareItemOption.mutate(
       {
-        carcass_legs_id: carcassLegsId,
-        skirting_carcass_legs_id: skirtingCarcassLegsId,
-        color,
+        hardware_type_id: hardwareTypeId,
+        hardware_item_id: hardwareItemId,
+        name,
       },
       {
         onSuccess: () => {
-          setOpenColorModal(false);
-          setColorValue("");
-          setColorLegsId("");
-          setColorSkirtingId("");
+          setOpenOptionModal(false);
+          setOptionValue("");
+          setOptionHardwareTypeId("");
+          setOptionHardwareItemId("");
         },
       },
     );
@@ -2420,7 +2420,7 @@ function HardwareMastersSection() {
     formData.append("file", file);
     formData.append("vendorId", String(vendorId));
 
-    uploadSkirtingCarcassLegsColors.mutate(formData, {
+    uploadHardwareItemOptions.mutate(formData, {
       onSuccess: () => {
         setOpenUploadModal(false);
         setSelectedFiles([]);
@@ -2439,9 +2439,9 @@ function HardwareMastersSection() {
     const worksheet = workbook.addWorksheet("Hardware Masters Template");
 
     worksheet.columns = [
-      { header: "Hardware Type", key: "legs", width: 30 },
-      { header: "Hardware Item", key: "skirting", width: 30 },
-      { header: "Hardware Item Options", key: "color", width: 30 },
+      { header: "Hardware Type", key: "hardwareType", width: 30 },
+      { header: "Hardware Item", key: "hardwareItem", width: 30 },
+      { header: "Hardware Item Options", key: "option", width: 30 },
     ];
 
     const headerRow = worksheet.getRow(1);
@@ -2458,30 +2458,30 @@ function HardwareMastersSection() {
 
   return (
     <>
-      <Tabs defaultValue="color" className="w-full">
+      <Tabs defaultValue="option" className="w-full">
         <TabsList>
-          <TabsTrigger value="color">Hardware Item Options</TabsTrigger>
-          <TabsTrigger value="skirting">Hardware Item</TabsTrigger>
-          <TabsTrigger value="legs">Hardware Type</TabsTrigger>
+          <TabsTrigger value="option">Hardware Item Options</TabsTrigger>
+          <TabsTrigger value="item">Hardware Item</TabsTrigger>
+          <TabsTrigger value="type">Hardware Type</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="color" className="mt-4">
+        <TabsContent value="option" className="mt-4">
           <MasterListingTable
             title="Hardware Item Options"
             description="Hardware item option master entries for the current vendor."
             searchPlaceholder="Search hardware item options..."
             actionLabel="Add Hardware Item Option"
-            rows={skirtingColorRows}
+            rows={hardwareItemOptionRows}
             onEdit={(row) => {
-              const item = skirtingColors?.data?.find(item => item.id === row.id);
+              const item = hardwareItemOptions?.data?.find(item => item.id === row.id);
               if (!item) return;
-              setEditingId(row.id); setColorValue(item.color); setColorLegsId(String(item.carcass_legs_id)); setColorSkirtingId(String(item.skirting_carcass_legs_id)); setOpenColorModal(true);
+              setEditingId(row.id); setOptionValue(item.name); setOptionHardwareTypeId(String(item.hardware_type_id)); setOptionHardwareItemId(String(item.hardware_item_id)); setOpenOptionModal(true);
             }}
             showParent
-            isLoading={isSkirtingColorsLoading}
-            isError={isSkirtingColorsError}
-            errorMessage={(skirtingColorsError as any)?.response?.data?.error}
-            onAction={() => { setEditingId(null); setColorValue(""); setColorLegsId(""); setColorSkirtingId(""); setOpenColorModal(true); }}
+            isLoading={isHardwareItemOptionsLoading}
+            isError={isHardwareItemOptionsError}
+            errorMessage={(hardwareItemOptionsError as any)?.response?.data?.error}
+            onAction={() => { setEditingId(null); setOptionValue(""); setOptionHardwareTypeId(""); setOptionHardwareItemId(""); setOpenOptionModal(true); }}
             extraActions={
               <>
                 <Button
@@ -2499,7 +2499,7 @@ function HardwareMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                  disabled={uploadHardwareItemOptions.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2509,23 +2509,23 @@ function HardwareMastersSection() {
           />
         </TabsContent>
 
-        <TabsContent value="skirting" className="mt-4">
+        <TabsContent value="item" className="mt-4">
           <MasterListingTable
             title="Hardware Item"
             description="Hardware item master entries for the current vendor."
             searchPlaceholder="Search hardware item..."
             actionLabel="Add Hardware Item"
-            rows={skirtingRows}
+            rows={hardwareItemRows}
             onEdit={(row) => {
-              const item = skirtings?.data?.find(item => item.id === row.id);
+              const item = hardwareItems?.data?.find(item => item.id === row.id);
               if (!item) return;
-              setEditingId(row.id); setSkirtingName(item.name); setSkirtingLegsId(String(item.carcass_legs_id)); setSkirtingInScope(String(item.inScope)); setOpenSkirtingModal(true);
+              setEditingId(row.id); setHardwareItemName(item.name); setItemHardwareTypeId(String(item.hardware_type_id)); setHardwareItemInScope(String(item.inScope)); setOpenHardwareItemModal(true);
             }}
             showParent
-            isLoading={isSkirtingsLoading}
-            isError={isSkirtingsError}
-            errorMessage={(skirtingsError as any)?.response?.data?.error}
-            onAction={() => { setEditingId(null); setSkirtingName(""); setSkirtingLegsId(""); setSkirtingInScope("true"); setOpenSkirtingModal(true); }}  extraActions={
+            isLoading={isHardwareItemsLoading}
+            isError={isHardwareItemsError}
+            errorMessage={(hardwareItemsError as any)?.response?.data?.error}
+            onAction={() => { setEditingId(null); setHardwareItemName(""); setItemHardwareTypeId(""); setHardwareItemInScope("true"); setOpenHardwareItemModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2542,7 +2542,7 @@ function HardwareMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                  disabled={uploadHardwareItemOptions.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2552,22 +2552,22 @@ function HardwareMastersSection() {
           />
         </TabsContent>
 
-        <TabsContent value="legs" className="mt-4">
+        <TabsContent value="type" className="mt-4">
           <MasterListingTable
             title="Hardware Type"
             description="Hardware type master entries for the current vendor."
             searchPlaceholder="Search hardware type..."
             actionLabel="Add Hardware Type"
-            rows={carcassLegsRows}
+            rows={hardwareTypeRows}
             onEdit={(row) => {
-              const item = carcassLegs?.data?.find(item => item.id === row.id);
+              const item = hardwareTypes?.data?.find(item => item.id === row.id);
               if (!item) return;
-              setEditingId(row.id); setLegsName(item.name); setOpenLegsModal(true);
+              setEditingId(row.id); setHardwareTypeName(item.name); setOpenHardwareTypeModal(true);
             }}
-            isLoading={isCarcassLegsLoading}
-            isError={isCarcassLegsError}
-            errorMessage={(carcassLegsError as any)?.response?.data?.error}
-            onAction={() => { setEditingId(null); setLegsName(""); setOpenLegsModal(true); }}  extraActions={
+            isLoading={isHardwareTypesLoading}
+            isError={isHardwareTypesError}
+            errorMessage={(hardwareTypesError as any)?.response?.data?.error}
+            onAction={() => { setEditingId(null); setHardwareTypeName(""); setOpenHardwareTypeModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2584,7 +2584,7 @@ function HardwareMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                  disabled={uploadHardwareItemOptions.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2595,7 +2595,7 @@ function HardwareMastersSection() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={openLegsModal} onOpenChange={setOpenLegsModal}>
+      <Dialog open={openHardwareTypeModal} onOpenChange={setOpenHardwareTypeModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Type</DialogTitle>
@@ -2606,11 +2606,11 @@ function HardwareMastersSection() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="carcass-legs-name">Hardware Type</Label>
+              <Label htmlFor="hardware-type-name">Hardware Type</Label>
               <Input
-                id="carcass-legs-name"
-                value={legsName}
-                onChange={(e) => setLegsName(e.target.value)}
+                id="hardware-type-name"
+                value={hardwareTypeName}
+                onChange={(e) => setHardwareTypeName(e.target.value)}
                 placeholder="Enter hardware type"
               />
             </div>
@@ -2620,25 +2620,25 @@ function HardwareMastersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setOpenLegsModal(false);
-                setLegsName("");
+                setOpenHardwareTypeModal(false);
+                setHardwareTypeName("");
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateLegs}
+              onClick={handleCreateHardwareType}
               disabled={
-                createCarcassLegs.isPending || !legsName.trim() || !vendorId
+                createHardwareType.isPending || !hardwareTypeName.trim() || !vendorId
               }
             >
-              {createCarcassLegs.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
+              {createHardwareType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={openSkirtingModal} onOpenChange={setOpenSkirtingModal}>
+      <Dialog open={openHardwareItemModal} onOpenChange={setOpenHardwareItemModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item</DialogTitle>
@@ -2650,12 +2650,12 @@ function HardwareMastersSection() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Hardware Type</Label>
-              <Select value={skirtingLegsId} onValueChange={setSkirtingLegsId}>
+              <Select value={itemHardwareTypeId} onValueChange={setItemHardwareTypeId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select hardware type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(carcassLegs?.data ?? []).map((item) => (
+                  {(hardwareTypes?.data ?? []).map((item) => (
                     <SelectItem key={item.id} value={String(item.id)}>
                       {item.name}
                     </SelectItem>
@@ -2665,11 +2665,11 @@ function HardwareMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="skirting-name">Hardware Item</Label>
+              <Label htmlFor="hardware-item-name">Hardware Item</Label>
               <Input
-                id="skirting-name"
-                value={skirtingName}
-                onChange={(e) => setSkirtingName(e.target.value)}
+                id="hardware-item-name"
+                value={hardwareItemName}
+                onChange={(e) => setHardwareItemName(e.target.value)}
                 placeholder="Enter hardware item"
               />
             </div>
@@ -2677,8 +2677,8 @@ function HardwareMastersSection() {
             <div className="space-y-2">
               <Label>In Scope</Label>
               <Select
-                value={skirtingInScope}
-                onValueChange={setSkirtingInScope}
+                value={hardwareItemInScope}
+                onValueChange={setHardwareItemInScope}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select scope" />
@@ -2695,29 +2695,29 @@ function HardwareMastersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setOpenSkirtingModal(false);
-                setSkirtingName("");
-                setSkirtingLegsId("");
-                setSkirtingInScope("true");
+                setOpenHardwareItemModal(false);
+                setHardwareItemName("");
+                setItemHardwareTypeId("");
+                setHardwareItemInScope("true");
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateSkirting}
+              onClick={handleCreateHardwareItem}
               disabled={
-                createSkirtingCarcassLegs.isPending ||
-                !skirtingName.trim() ||
-                !skirtingLegsId
+                createHardwareItem.isPending ||
+                !hardwareItemName.trim() ||
+                !itemHardwareTypeId
               }
             >
-              {createSkirtingCarcassLegs.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
+              {createHardwareItem.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={openColorModal} onOpenChange={setOpenColorModal}>
+      <Dialog open={openOptionModal} onOpenChange={setOpenOptionModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item Option</DialogTitle>
@@ -2731,17 +2731,17 @@ function HardwareMastersSection() {
             <div className="space-y-2">
               <Label>Hardware Type</Label>
               <Select
-                value={colorLegsId}
+                value={optionHardwareTypeId}
                 onValueChange={(value) => {
-                  setColorLegsId(value);
-                  setColorSkirtingId("");
+                  setOptionHardwareTypeId(value);
+                  setOptionHardwareItemId("");
                 }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select hardware type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(carcassLegs?.data ?? []).map((item) => (
+                  {(hardwareTypes?.data ?? []).map((item) => (
                     <SelectItem key={item.id} value={String(item.id)}>
                       {item.name}
                     </SelectItem>
@@ -2753,21 +2753,21 @@ function HardwareMastersSection() {
             <div className="space-y-2">
               <Label>Hardware Item</Label>
               <Select
-                value={colorSkirtingId}
-                onValueChange={setColorSkirtingId}
-                disabled={!colorLegsId}
+                value={optionHardwareItemId}
+                onValueChange={setOptionHardwareItemId}
+                disabled={!optionHardwareTypeId}
               >
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
-                      colorLegsId
+                      optionHardwareTypeId
                         ? "Select hardware item"
                         : "Select hardware type first"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {colorSkirtingOptions.map((item) => (
+                  {optionHardwareItemOptions.map((item) => (
                     <SelectItem key={item.id} value={String(item.id)}>
                       {item.name}
                     </SelectItem>
@@ -2777,11 +2777,11 @@ function HardwareMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="skirting-color-value">Option</Label>
+              <Label htmlFor="hardware-item-option-value">Option</Label>
               <Input
-                id="skirting-color-value"
-                value={colorValue}
-                onChange={(e) => setColorValue(e.target.value)}
+                id="hardware-item-option-value"
+                value={optionValue}
+                onChange={(e) => setOptionValue(e.target.value)}
                 placeholder="Enter option"
               />
             </div>
@@ -2791,24 +2791,24 @@ function HardwareMastersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setOpenColorModal(false);
-                setColorValue("");
-                setColorLegsId("");
-                setColorSkirtingId("");
+                setOpenOptionModal(false);
+                setOptionValue("");
+                setOptionHardwareTypeId("");
+                setOptionHardwareItemId("");
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateColor}
+              onClick={handleCreateOption}
               disabled={
-                createSkirtingCarcassLegsColor.isPending ||
-                !colorValue.trim() ||
-                !colorLegsId ||
-                !colorSkirtingId
+                createHardwareItemOption.isPending ||
+                !optionValue.trim() ||
+                !optionHardwareTypeId ||
+                !optionHardwareItemId
               }
             >
-              {createSkirtingCarcassLegsColor.isPending
+              {createHardwareItemOption.isPending
                 ? (editingId ? "Saving..." : "Creating...")
                 : (editingId ? "Edit" : "Create")}
             </Button>
@@ -2952,10 +2952,10 @@ function HardwareMastersSection() {
                 selectedFiles.length === 0 ||
                 isParsingPreview ||
                 !!uploadPreview?.headerError ||
-                uploadSkirtingCarcassLegsColors.isPending
+                uploadHardwareItemOptions.isPending
               }
             >
-              {uploadSkirtingCarcassLegsColors.isPending
+              {uploadHardwareItemOptions.isPending
                 ? "Uploading..."
                 : "Upload & Import"}
             </Button>

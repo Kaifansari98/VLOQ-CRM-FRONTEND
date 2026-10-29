@@ -192,10 +192,10 @@ export const exportLeadSpecificationPdf = (
     ["Hardware Type", "Hardware Item", "Hardware Item Options", "Note"],
     specification.hardwareMappings.map((row) => ({
       values: [
-        row.carcassLegs?.name,
-        row.skirtingCarcassLegs?.name,
-        row.skirtingCarcassLegsColor?.color,
-        row.skirtingCarcassLegs && !row.skirtingCarcassLegs.inScope
+        row.hardwareType?.name,
+        row.hardwareItem?.name,
+        row.hardwareItemOption?.name,
+        row.hardwareItem && !row.hardwareItem.inScope
           ? "Not in our scope"
           : row.note,
       ],

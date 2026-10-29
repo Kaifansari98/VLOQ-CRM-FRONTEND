@@ -46,7 +46,7 @@ import {
   useCarcasMaterials,
   useShutterMaterials,
   useShutterTypes,
-  useCarcassLegs,
+  useHardwareTypes,
   useLightCarcasTypes,
   useOtherAppliances,
 } from "@/hooks/useTypesMaster";
@@ -69,8 +69,8 @@ import {
 import {
   fetchCarcassMaterialFinishes,
   fetchShutterMaterialFinishes,
-  fetchSkirtingCarcassLegs,
-  fetchSkirtingCarcassLegsColors,
+  fetchHardwareItems,
+  fetchHardwareItemOptions,
   fetchLightCarcasUnits,
   type OtherAppliancesMasterEntry,
   OTHER_APPLIANCE_TYPES,
@@ -113,9 +113,9 @@ type ShutterRow = {
 type HardwareRow = {
   localId: string;
   id?: number;
-  carcass_legs_id: string;
-  skirting_carcass_legs_id: string;
-  skirting_carcass_legs_color_id: string;
+  hardware_type_id: string;
+  hardware_item_id: string;
+  hardware_item_option_id: string;
   note: string;
 };
 
@@ -166,9 +166,9 @@ type ReviewPersistPayload =
       lead_id: number;
       specs_id: number;
       created_by: number;
-      carcass_legs_id: number;
-      skirting_carcass_legs_id: number;
-      skirting_carcass_legs_color_id: number | null;
+      hardware_type_id: number;
+      hardware_item_id: number;
+      hardware_item_option_id: number | null;
       note: string | null;
     }
   | {
@@ -207,9 +207,9 @@ const makeBlankShutterRow = (): ShutterRow => ({
 
 const makeBlankHardwareRow = (): HardwareRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  carcass_legs_id: "",
-  skirting_carcass_legs_id: "",
-  skirting_carcass_legs_color_id: "",
+  hardware_type_id: "",
+  hardware_item_id: "",
+  hardware_item_option_id: "",
   note: "",
 });
 
@@ -303,7 +303,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     specification?.lead_id,
     specification?.id,
   );
-  const { data: carcassLegsData } = useCarcassLegs();
+  const { data: hardwareTypesData } = useHardwareTypes();
   const { data: hardwareMappingsData } = useLeadHardwareMappings(
     vendorId,
     specification?.lead_id,
@@ -439,7 +439,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const carcasMaterials = carcasMaterialsData?.data ?? [];
   const shutterTypes = shutterTypesData?.data ?? [];
   const shutterMaterials = shutterMaterialsData?.data ?? [];
-  const carcassLegs = carcassLegsData?.data ?? [];
+  const hardwareTypes = hardwareTypesData?.data ?? [];
   const lightCarcasTypes = lightCarcasTypesData?.data ?? [];
   const customLightCarcasType = React.useMemo(
     () =>
@@ -757,15 +757,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (
         section === "hardware" &&
-        "carcass_legs_id" in payload &&
-        "skirting_carcass_legs_id" in payload &&
-        "skirting_carcass_legs_color_id" in payload
+        "hardware_type_id" in payload &&
+        "hardware_item_id" in payload &&
+        "hardware_item_option_id" in payload
       ) {
         return (
-          payload.carcass_legs_id > 0 &&
-          payload.skirting_carcass_legs_id > 0 &&
-          (payload.skirting_carcass_legs_color_id === null ||
-            payload.skirting_carcass_legs_color_id > 0)
+          payload.hardware_type_id > 0 &&
+          payload.hardware_item_id > 0 &&
+          (payload.hardware_item_option_id === null ||
+            payload.hardware_item_option_id > 0)
         );
       }
 
@@ -1179,12 +1179,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     const persistedRows: HardwareRow[] = hardwareMappings.map((item) => ({
       localId: `saved-${item.id}`,
       id: item.id,
-      carcass_legs_id: item.carcass_legs_id ? String(item.carcass_legs_id) : "",
-      skirting_carcass_legs_id: item.skirting_carcass_legs_id
-        ? String(item.skirting_carcass_legs_id)
+      hardware_type_id: item.hardware_type_id ? String(item.hardware_type_id) : "",
+      hardware_item_id: item.hardware_item_id
+        ? String(item.hardware_item_id)
         : "",
-      skirting_carcass_legs_color_id: item.skirting_carcass_legs_color_id
-        ? String(item.skirting_carcass_legs_color_id)
+      hardware_item_option_id: item.hardware_item_option_id
+        ? String(item.hardware_item_option_id)
         : "",
       note: item.note ?? "",
     }));
@@ -1307,24 +1307,24 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     }),
   });
 
-  const skirtingQueries = useQueries({
+  const hardwareItemQueries = useQueries({
     queries: hardwareRows.map((row) => {
-      const carcassLegsId = Number(row.carcass_legs_id);
+      const hardwareTypeId = Number(row.hardware_type_id);
       return {
-        queryKey: ["skirtingCarcassLegs", carcassLegsId],
-        queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId),
-        enabled: carcassLegsId > 0,
+        queryKey: ["hardwareItems", hardwareTypeId],
+        queryFn: () => fetchHardwareItems(hardwareTypeId),
+        enabled: hardwareTypeId > 0,
       };
     }),
   });
 
-  const colorQueries = useQueries({
+  const optionQueries = useQueries({
     queries: hardwareRows.map((row) => {
-      const skirtingId = Number(row.skirting_carcass_legs_id);
+      const hardwareItemId = Number(row.hardware_item_id);
       return {
-        queryKey: ["skirtingCarcassLegsColors", skirtingId],
-        queryFn: () => fetchSkirtingCarcassLegsColors(skirtingId),
-        enabled: skirtingId > 0,
+        queryKey: ["hardwareItemOptions", hardwareItemId],
+        queryFn: () => fetchHardwareItemOptions(hardwareItemId),
+        enabled: hardwareItemId > 0,
       };
     }),
   });
@@ -1544,15 +1544,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const saveHardwareRowIfComplete = React.useCallback(
-    async (row: HardwareRow, colorOptionsCount: number) => {
+    async (row: HardwareRow, optionCount: number) => {
       if (
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
         !specification?.id ||
-        !row.carcass_legs_id ||
-        !row.skirting_carcass_legs_id ||
-        (colorOptionsCount > 0 && !row.skirting_carcass_legs_color_id)
+        !row.hardware_type_id ||
+        !row.hardware_item_id ||
+        (optionCount > 0 && !row.hardware_item_option_id)
       ) {
         return;
       }
@@ -1563,10 +1563,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           vendor_id: vendorId,
           lead_id: specification.lead_id,
           specs_id: specification.id,
-          carcass_legs_id: Number(row.carcass_legs_id),
-          skirting_carcass_legs_id: Number(row.skirting_carcass_legs_id),
-          skirting_carcass_legs_color_id: row.skirting_carcass_legs_color_id
-            ? Number(row.skirting_carcass_legs_color_id)
+          hardware_type_id: Number(row.hardware_type_id),
+          hardware_item_id: Number(row.hardware_item_id),
+          hardware_item_option_id: row.hardware_item_option_id
+            ? Number(row.hardware_item_option_id)
             : null,
           note: row.note || null,
           created_by: userId,
@@ -1592,23 +1592,23 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     prev.some(
       (otherRow) =>
         otherRow.localId !== localId &&
-        otherRow.carcass_legs_id === updatedRow.carcass_legs_id &&
-        otherRow.skirting_carcass_legs_id ===
-          updatedRow.skirting_carcass_legs_id &&
-        otherRow.skirting_carcass_legs_color_id ===
-          updatedRow.skirting_carcass_legs_color_id,
+        otherRow.hardware_type_id === updatedRow.hardware_type_id &&
+        otherRow.hardware_item_id ===
+          updatedRow.hardware_item_id &&
+        otherRow.hardware_item_option_id ===
+          updatedRow.hardware_item_option_id,
     );
 
-  const handleCarcassLegsChange = React.useCallback(
+  const handleHardwareTypeChange = React.useCallback(
     (localId: string, value: string) => {
       setHardwareRows((prev) =>
         prev.map((row) =>
           row.localId === localId
             ? {
                 ...row,
-                carcass_legs_id: value,
-                skirting_carcass_legs_id: "",
-                skirting_carcass_legs_color_id: "",
+                hardware_type_id: value,
+                hardware_item_id: "",
+                hardware_item_option_id: "",
                 note: "",
               }
             : row,
@@ -1618,17 +1618,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [],
   );
 
-  const handleSkirtingChange = React.useCallback(
+  const handleHardwareItemChange = React.useCallback(
     async (
       localId: string,
       value: string,
-      skirtingOptions: { id: number; name: string; inScope: boolean }[],
+      hardwareItemOptions: { id: number; name: string; inScope: boolean }[],
     ) => {
-      const selectedSkirting = skirtingOptions.find(
+      const selectedHardwareItem = hardwareItemOptions.find(
         (option) => String(option.id) === value,
       );
       const autoNote =
-        selectedSkirting && !selectedSkirting.inScope
+        selectedHardwareItem && !selectedHardwareItem.inScope
           ? "Not in our scope"
           : "";
 
@@ -1641,8 +1641,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: HardwareRow = {
             ...row,
-            skirting_carcass_legs_id: value,
-            skirting_carcass_legs_color_id: "",
+            hardware_item_id: value,
+            hardware_item_option_id: "",
             note: autoNote,
           };
 
@@ -1664,7 +1664,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (!nextRow) return;
 
-      if (selectedSkirting && !selectedSkirting.inScope) {
+      if (selectedHardwareItem && !selectedHardwareItem.inScope) {
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
           void saveHardwareRowIfComplete(nextRow, 0);
         }
@@ -1672,19 +1672,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (value) {
-        const colorsResult = await fetchSkirtingCarcassLegsColors(
+        const optionsResult = await fetchHardwareItemOptions(
           Number(value),
         );
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
-          void saveHardwareRowIfComplete(nextRow, colorsResult.data.length);
+          void saveHardwareRowIfComplete(nextRow, optionsResult.data.length);
         }
       }
     },
     [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
 
-  const handleColorChange = React.useCallback(
-    (localId: string, value: string, colorOptionsCount: number) => {
+  const handleOptionChange = React.useCallback(
+    (localId: string, value: string, optionCount: number) => {
       let nextRow: HardwareRow | null = null;
       let duplicateMessage = "";
 
@@ -1694,7 +1694,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: HardwareRow = {
             ...row,
-            skirting_carcass_legs_color_id: value,
+            hardware_item_option_id: value,
           };
 
           if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
@@ -1715,7 +1715,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (nextRow) {
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
-          void saveHardwareRowIfComplete(nextRow, colorOptionsCount);
+          void saveHardwareRowIfComplete(nextRow, optionCount);
         }
       }
     },
@@ -1731,11 +1731,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   }, []);
 
   const handleNoteBlur = React.useCallback(
-    (row: HardwareRow, colorOptionsCount: number) => {
+    (row: HardwareRow, optionCount: number) => {
       if (showReviewColumns && amendEditingRows[getReviewEditKey("hardware", row.localId)]) {
         return;
       }
-      void saveHardwareRowIfComplete(row, colorOptionsCount);
+      void saveHardwareRowIfComplete(row, optionCount);
     },
     [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
@@ -2241,9 +2241,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (reviewClass) return reviewClass;
 
       const hasValue =
-        !!row.carcass_legs_id ||
-        !!row.skirting_carcass_legs_id ||
-        !!row.skirting_carcass_legs_color_id ||
+        !!row.hardware_type_id ||
+        !!row.hardware_item_id ||
+        !!row.hardware_item_option_id ||
         !!row.note;
       if (!hasValue) return "";
 
@@ -2254,11 +2254,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (!baseline) return stageRowHighlightClass;
 
       const changed =
-        Number(row.carcass_legs_id || 0) !== baseline.carcass_legs_id ||
-        Number(row.skirting_carcass_legs_id || 0) !==
-          baseline.skirting_carcass_legs_id ||
-        Number(row.skirting_carcass_legs_color_id || 0) !==
-          Number(baseline.skirting_carcass_legs_color_id || 0) ||
+        Number(row.hardware_type_id || 0) !== baseline.hardware_type_id ||
+        Number(row.hardware_item_id || 0) !==
+          baseline.hardware_item_id ||
+        Number(row.hardware_item_option_id || 0) !==
+          Number(baseline.hardware_item_option_id || 0) ||
         (row.note || "") !== (baseline.note || "");
 
       return changed ? stageRowHighlightClass : "";
@@ -2996,13 +2996,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {hardwareRows.map((row, index) => {
-                      const skirtingOptions =
-                        skirtingQueries[index]?.data?.data ?? [];
-                      const colorOptions =
-                        colorQueries[index]?.data?.data ?? [];
-                      const selectedSkirting = skirtingOptions.find(
+                      const hardwareItemOptions =
+                        hardwareItemQueries[index]?.data?.data ?? [];
+                      const itemOptions =
+                        optionQueries[index]?.data?.data ?? [];
+                      const selectedHardwareItem = hardwareItemOptions.find(
                         (option) =>
-                          String(option.id) === row.skirting_carcass_legs_id,
+                          String(option.id) === row.hardware_item_id,
                       );
                       const persistedRow = row.id
                         ? hardwareMappings.find((item) => item.id === row.id)
@@ -3018,7 +3018,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         persistedRow,
                       );
                       const isOutOfScope =
-                        !!selectedSkirting && !selectedSkirting.inScope;
+                        !!selectedHardwareItem && !selectedHardwareItem.inScope;
                       const rowLocked = isRowLocked("hardware", row);
 
                       return (
@@ -3032,17 +3032,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         >
                           <td className="px-4 py-3 align-top">
                             {withDeletedRemarkTooltip(<AssignToPicker
-                              data={carcassLegs.map((legs) => ({
-                                id: legs.id,
-                                label: legs.name,
+                              data={hardwareTypes.map((type) => ({
+                                id: type.id,
+                                label: type.name,
                               }))}
                               value={
-                                row.carcass_legs_id
-                                  ? Number(row.carcass_legs_id)
+                                row.hardware_type_id
+                                  ? Number(row.hardware_type_id)
                                   : undefined
                               }
                               onChange={(value) =>
-                                handleCarcassLegsChange(
+                                handleHardwareTypeChange(
                                   row.localId,
                                   value ? String(value) : "",
                                 )
@@ -3058,30 +3058,30 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           </td>
                           <td className="px-4 py-3 align-top">
                             {withDeletedRemarkTooltip(<AssignToPicker
-                              data={skirtingOptions.map((option) => ({
+                              data={hardwareItemOptions.map((option) => ({
                                 id: option.id,
                                 label: option.name,
                               }))}
                               value={
-                                row.skirting_carcass_legs_id
-                                  ? Number(row.skirting_carcass_legs_id)
+                                row.hardware_item_id
+                                  ? Number(row.hardware_item_id)
                                   : undefined
                               }
                               onChange={(value) =>
-                                void handleSkirtingChange(
+                                void handleHardwareItemChange(
                                   row.localId,
                                   value ? String(value) : "",
-                                  skirtingOptions,
+                                  hardwareItemOptions,
                                 )
                               }
-                              disabled={rowLocked || !row.carcass_legs_id}
+                              disabled={rowLocked || !row.hardware_type_id}
                               placeholder={
-                                row.carcass_legs_id
+                                row.hardware_type_id
                                   ? "Search hardware item..."
                                   : "Select hardware type first"
                               }
                               emptyLabel={
-                                row.carcass_legs_id
+                                row.hardware_type_id
                                   ? "Select hardware item"
                                   : "Select hardware type first"
                               }
@@ -3093,38 +3093,38 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           </td>
                           <td className="px-4 py-3 align-top">
                             {withDeletedRemarkTooltip(<AssignToPicker
-                              data={colorOptions.map((color) => ({
-                                id: color.id,
-                                label: color.color,
+                              data={itemOptions.map((option) => ({
+                                id: option.id,
+                                label: option.name,
                               }))}
                               value={
-                                row.skirting_carcass_legs_color_id
-                                  ? Number(row.skirting_carcass_legs_color_id)
+                                row.hardware_item_option_id
+                                  ? Number(row.hardware_item_option_id)
                                   : undefined
                               }
                               onChange={(value) =>
-                                handleColorChange(
+                                handleOptionChange(
                                   row.localId,
                                   value ? String(value) : "",
-                                  colorOptions.length,
+                                  itemOptions.length,
                                 )
                               }
                               disabled={
                                 rowLocked ||
-                                !row.skirting_carcass_legs_id ||
-                                colorOptions.length === 0
+                                !row.hardware_item_id ||
+                                itemOptions.length === 0
                               }
                               placeholder={
-                                !row.skirting_carcass_legs_id
+                                !row.hardware_item_id
                                   ? "Select hardware item first"
-                                  : colorOptions.length === 0
+                                  : itemOptions.length === 0
                                     ? "No options available"
                                     : "Search option..."
                               }
                               emptyLabel={
-                                !row.skirting_carcass_legs_id
+                                !row.hardware_item_id
                                   ? "Select hardware item first"
-                                  : colorOptions.length === 0
+                                  : itemOptions.length === 0
                                     ? "No options available"
                                     : "Select option"
                               }
@@ -3142,7 +3142,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 handleNoteChange(row.localId, event.target.value)
                               }
                               onBlur={() =>
-                                handleNoteBlur(row, colorOptions.length)
+                                handleNoteBlur(row, itemOptions.length)
                               }
                               readOnly={rowLocked || isOutOfScope}
                               disabled={rowLocked || isOutOfScope}
@@ -3165,13 +3165,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     lead_id: specification.lead_id,
                                     specs_id: specification.id,
                                     created_by: userId,
-                                    carcass_legs_id: Number(row.carcass_legs_id),
-                                    skirting_carcass_legs_id: Number(
-                                      row.skirting_carcass_legs_id,
+                                    hardware_type_id: Number(row.hardware_type_id),
+                                    hardware_item_id: Number(
+                                      row.hardware_item_id,
                                     ),
-                                    skirting_carcass_legs_color_id:
-                                      row.skirting_carcass_legs_color_id
-                                        ? Number(row.skirting_carcass_legs_color_id)
+                                    hardware_item_option_id:
+                                      row.hardware_item_option_id
+                                        ? Number(row.hardware_item_option_id)
                                         : null,
                                     note: row.note || null,
                                   }
