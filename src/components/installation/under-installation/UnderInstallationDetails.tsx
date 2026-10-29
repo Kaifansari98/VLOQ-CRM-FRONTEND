@@ -37,10 +37,12 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 export default function UnderInstallationDetails({
   leadId,
   accountId,
+  instanceId,
 }: {
   leadId: number;
   accountId?: number;
   name?: string;
+  instanceId?: number | null;
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -50,7 +52,7 @@ export default function UnderInstallationDetails({
   );
 
   // 🔹 Fetch installation data
-  const { data: details } = useUnderInstallationDetails(vendorId, leadId);
+  const { data: details } = useUnderInstallationDetails(vendorId, leadId, instanceId);
   const { data: mappedInstallers } = useMappedInstallers(vendorId, leadId);
   const { data: installerUsers } = useInstallerUsers(vendorId);
 

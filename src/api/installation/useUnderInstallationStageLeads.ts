@@ -352,9 +352,11 @@ export const useUnderInstallationStageLeads = (
 export const getUnderInstallationDetails = async (
   vendorId: number,
   leadId: number,
+  instanceId?: number | null,
 ) => {
   const { data } = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/some_under_installation_details`,
+    { params: instanceId ? { instance_id: instanceId } : undefined },
   );
   return data?.data;
 };
@@ -365,10 +367,11 @@ export const getUnderInstallationDetails = async (
 export const useUnderInstallationDetails = (
   vendorId?: number,
   leadId?: number,
+  instanceId?: number | null,
 ) => {
   return useQuery({
-    queryKey: ["underInstallationDetails", vendorId, leadId],
-    queryFn: () => getUnderInstallationDetails(vendorId!, leadId!),
+    queryKey: ["underInstallationDetails", vendorId, leadId, instanceId ?? null],
+    queryFn: () => getUnderInstallationDetails(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -382,6 +385,7 @@ export interface SetActualStartPayload {
   leadId: number;
   updated_by: number;
   actual_installation_start_date: string | Date; // ISO or Date object
+  instance_id?: number | null; // large-scale vendors start installation per instance
 }
 
 export const setActualInstallationStartDate = async ({
@@ -389,12 +393,14 @@ export const setActualInstallationStartDate = async ({
   leadId,
   updated_by,
   actual_installation_start_date,
+  instance_id,
 }: SetActualStartPayload) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/set-actual-installation-start-date`,
     {
       updated_by,
       actual_installation_start_date,
+      ...(instance_id ? { instance_id } : {}),
     },
   );
 
@@ -427,7 +433,10 @@ export const useSetActualInstallationStartDate = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
-        title: error?.message || "Failed to update installation start date",
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update installation start date",
         type: "error",
       });
     },

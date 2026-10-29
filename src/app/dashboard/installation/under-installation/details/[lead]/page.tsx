@@ -127,6 +127,7 @@ export default function UnderInstallationLeadDetails() {
   const { data: underDetails } = useUnderInstallationDetails(
     vendorId,
     leadIdNum,
+    validInstanceId,
   );
   const { data: usableHandoverData, isLoading: isLoadingUsableHandover } =
     useGetUsableHandover(vendorId ?? 0, leadIdNum);
@@ -1160,6 +1161,7 @@ export default function UnderInstallationLeadDetails() {
                   leadId: leadIdNum,
                   updated_by: userId!,
                   actual_installation_start_date: new Date().toISOString(),
+                  instance_id: validInstanceId,
                 });
                 setOpenStartModal(false);
               }}
