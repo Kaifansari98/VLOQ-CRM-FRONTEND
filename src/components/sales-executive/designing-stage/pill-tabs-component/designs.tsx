@@ -343,6 +343,7 @@ const DesigningTab = () => {
                 isLatest={index === 0}
                 canDelete={canDelete}
                 onDelete={(id) => setConfirmDelete(id)}
+                isDesignDoc={true}
               />
             </div>
           );
@@ -436,6 +437,7 @@ const DesigningTab = () => {
                             tagLabel="Design"
                             canDelete={canDelete}
                             onDelete={(id) => setConfirmDelete(id)}
+                            isDesignDoc={true}
                           />
                         ))}
                       </div>
