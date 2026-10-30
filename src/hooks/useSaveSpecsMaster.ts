@@ -51,3 +51,21 @@ export function useUpdateSpecsMasterStatus(kind: SpecsMasterKind) {
     },
   });
 }
+
+export function useDeleteSpecsMaster(kind: SpecsMasterKind) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await apiClient.delete(`/leads/specs-masters/${kind}/${id}`);
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ predicate: query => isSpecsMasterQuery(query.queryKey) });
+      toastManager.add({ title: "Entry deleted successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({ title: error?.response?.data?.message || error?.response?.data?.error || "Failed to delete entry.", type: "error" });
+    },
+  });
+}
+

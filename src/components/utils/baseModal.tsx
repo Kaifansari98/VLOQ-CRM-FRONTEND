@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "../ui/scroll-area";
 
 interface BaseModalProps {
   open: boolean;
@@ -16,6 +15,7 @@ interface BaseModalProps {
   title?: string;
   description?: string;
   children: ReactNode;
+  footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "xxl" | "smd";
   icon?: ReactNode; // icon is optional
   modal?: boolean;
@@ -36,6 +36,7 @@ const BaseModal: React.FC<BaseModalProps> = ({
   title,
   description,
   children,
+  footer,
   size = "lg",
   icon,
   modal = true,
@@ -43,12 +44,12 @@ const BaseModal: React.FC<BaseModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <DialogContent
-        className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden`}
+        className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col`}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
         {(title || description) && (
-          <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
+          <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30 shrink-0">
             {icon}
 
             <div className="space-y-1 min-w-0 flex-1 pr-12">
@@ -66,9 +67,15 @@ const BaseModal: React.FC<BaseModalProps> = ({
           </DialogHeader>
         )}
 
-        <ScrollArea className="max-h-[calc(90vh-80px)] p-0 m-0">
+        <div className="flex-1 min-h-0 overflow-y-auto p-0 m-0">
           {children}
-        </ScrollArea>
+        </div>
+
+        {footer && (
+          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t bg-background shrink-0">
+            {footer}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
