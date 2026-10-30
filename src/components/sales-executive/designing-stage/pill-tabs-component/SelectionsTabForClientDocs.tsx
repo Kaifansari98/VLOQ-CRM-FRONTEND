@@ -79,6 +79,8 @@ import {
 } from "@/components/ui/select";
 import {
   getDesignDocsWithoutQuotation,
+  getDesignRevisionKey,
+  getRevisionKey,
   groupDesignDocsByRevision,
 } from "@/lib/design-revision";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1987,10 +1989,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             (doc: any) =>
               (doc.product_structure_instance_id ?? null) === instance_id,
           );
-          const instanceQuotationDocs = quotationDocs.filter(
-            (doc: any) =>
-              (doc.product_structure_instance_id ?? null) === instance_id,
+          // Older quotations were saved without an instance id, so also match
+          // them through the revision of this item group's design files
+          const instanceDesignKeys = new Set(
+            instanceDesignDocs
+              .map((doc: any) => getDesignRevisionKey(doc.doc_og_name))
+              .filter(Boolean),
           );
+          const instanceQuotationDocs = quotationDocs.filter((doc: any) => {
+            const docInstanceId = doc.product_structure_instance_id ?? null;
+            if (docInstanceId === instance_id) return true;
+            if (docInstanceId !== null) return false;
+            const quotationKey = getRevisionKey(doc.doc_og_name, "Q");
+            return !!quotationKey && instanceDesignKeys.has(quotationKey);
+          });
 
           const documentSections: UploadSectionConfig[] = [
             {
