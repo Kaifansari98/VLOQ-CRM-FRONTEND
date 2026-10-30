@@ -2522,7 +2522,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         import("@/utils/pdf/specifications-pdf"),
       ]);
       pdfModule.exportLeadSpecificationPdf(
-        specification.name,
+        pdfData.file_name || specification.name,
         pdfData,
         showReviewColumns,
       );

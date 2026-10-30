@@ -1029,6 +1029,7 @@ export interface LeadSpecificationPdfData {
     sheet_title: string;
     created_at: string;
   };
+  file_name?: string | null;
   lights_remark: LightsRemark | null;
   carcassMaterialMappings: Array<{
     is_approved: boolean;
