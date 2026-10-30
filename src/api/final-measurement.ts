@@ -161,6 +161,7 @@ export interface uploadClientDocPayload {
   productStructureInstanceId?: number;
   pptDocuments: File[];
   pythaDocuments: File[];
+  keepOriginalNames?: boolean;
 }
 
 export const UploadClientDocumantation = async (
@@ -176,6 +177,10 @@ export const UploadClientDocumantation = async (
       "product_structure_instance_id",
       payload.productStructureInstanceId.toString()
     );
+  }
+  // Must be appended before the files: the upload filter reads it
+  if (payload.keepOriginalNames) {
+    formData.append("keep_original_name", "true");
   }
 
   payload.pptDocuments.forEach((file) => {
