@@ -252,10 +252,10 @@ const makeBlankOtherApplianceRow = (type: string = ""): OtherApplianceRow => ({
 const pickerClassName =
   "h-11 rounded-md border border-input bg-background px-3 text-sm";
 const clonedRowHighlightClass = "bg-blue-50/80 dark:bg-blue-950/20";
+// "Provide only grooves" is offered for Lights only (it has its own select)
 const specificationSectionOptions: SpecificationSectionRemark[] = [
   "In our scope",
   "Not in our scope",
-  "Provide only grooves",
 ];
 
 const renderReviewState = (active: boolean, timestamp?: string | null) => (
