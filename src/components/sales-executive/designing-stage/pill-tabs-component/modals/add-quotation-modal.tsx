@@ -29,7 +29,9 @@ import BaseModal from "@/components/utils/baseModal";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -72,6 +74,55 @@ const getRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
 
 const getDesignRevisionKey = (fileName: string) =>
   getRevisionKey(fileName, "D") ?? getRevisionKey(fileName, "R");
+
+// Base design first, then 2D, then 3D within the same revision
+const DESIGN_VARIANT_ORDER: Record<string, number> = { "": 0, "2D": 1, "3D": 2 };
+
+const getDesignRevisionInfo = (fileName: string) => {
+  const parsedName = fileName.replace(/\.[^/.]+$/, "").replace(/^\[.*?\]\s*/, "");
+  const match = parsedName.match(/^D(\d+)_(?:(2D|3D)_)?/i);
+  if (!match) return null;
+  return {
+    revision: Number(match[1]),
+    variantOrder: DESIGN_VARIANT_ORDER[(match[2] ?? "").toUpperCase()] ?? 0,
+  };
+};
+
+// Groups design docs by revision, latest revision first (D2, D1, D0, ...).
+// Files that don't follow the naming pattern go in a trailing group.
+const groupDesignDocsByRevision = (docs: DesignsDocument[]) => {
+  const byNewest = (a: DesignsDocument, b: DesignsDocument) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+
+  const groups = new Map<number, { doc: DesignsDocument; variantOrder: number }[]>();
+  const ungrouped: DesignsDocument[] = [];
+
+  docs.forEach((doc) => {
+    const info = getDesignRevisionInfo(doc.doc_og_name);
+    if (!info) {
+      ungrouped.push(doc);
+      return;
+    }
+    const group = groups.get(info.revision) ?? [];
+    group.push({ doc, variantOrder: info.variantOrder });
+    groups.set(info.revision, group);
+  });
+
+  const result = [...groups.entries()]
+    .sort(([a], [b]) => b - a)
+    .map(([revision, items]) => ({
+      key: `D${revision}`,
+      docs: items
+        .sort((a, b) => a.variantOrder - b.variantOrder || byNewest(a.doc, b.doc))
+        .map((item) => item.doc),
+    }));
+
+  if (ungrouped.length > 0) {
+    result.push({ key: "other", docs: ungrouped.sort(byNewest) });
+  }
+
+  return result;
+};
 
 const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   open,
@@ -278,6 +329,10 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   };
 
   const displayDesignDocs = availableDesignDocs;
+  const groupedDesignDocs = React.useMemo(
+    () => groupDesignDocsByRevision(displayDesignDocs),
+    [displayDesignDocs],
+  );
 
   return (
     <BaseModal
@@ -371,10 +426,17 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {displayDesignDocs.map((doc) => (
-                          <SelectItem key={doc.id} value={String(doc.id)}>
-                            {doc.doc_og_name}
-                          </SelectItem>
+                        {groupedDesignDocs.map((group, index) => (
+                          <React.Fragment key={group.key}>
+                            {index > 0 && <SelectSeparator />}
+                            <SelectGroup>
+                              {group.docs.map((doc) => (
+                                <SelectItem key={doc.id} value={String(doc.id)}>
+                                  {doc.doc_og_name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </React.Fragment>
                         ))}
                       </SelectContent>
                     </Select>
