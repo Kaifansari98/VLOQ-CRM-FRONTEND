@@ -59,7 +59,10 @@ const buildSchema = (
           .string()
           .min(1, "Please select a date")
           .refine((value) => value >= minDate, {
-            message: `Client required date must be at least ${minDays} days from today`,
+            message:
+              minDays === 0
+                ? "Client required date cannot be in the past"
+                : `Client required date must be at least ${minDays} days from today`,
           }),
   });
 
@@ -106,6 +109,9 @@ export default function MoveToOrderLoginModal({
         | null
         | undefined,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const currentUserType = useAppSelector(
     (s) =>
       s.auth.user?.user_type?.user_type ||
@@ -138,9 +144,12 @@ export default function MoveToOrderLoginModal({
     vendorCustomUserTypeMode === true
       ? "Confirm Order Login Assignment"
       : "Confirm Move to Order Login";
+  // Large-scale project vendors can pick today or any future date
   const minDays =
-    (leadStatusData as any)?.total_required_chs_manufacturing_days ??
-    DEFAULT_MIN_DAYS;
+    handlesLargeScaleProjects
+      ? 0
+      : ((leadStatusData as any)?.total_required_chs_manufacturing_days ??
+        DEFAULT_MIN_DAYS);
   const isFastProductionLead =
     (leadStatusData as any)?.is_fast_production === true;
   const fastProductionLeadRequiredDate = (leadStatusData as any)

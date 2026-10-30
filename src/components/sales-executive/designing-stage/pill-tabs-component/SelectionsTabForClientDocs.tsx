@@ -68,6 +68,8 @@ import {
   Upload,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import SelectDocumentModal from "@/components/modal/select-doc-modal";
+import { useBookingLeadById } from "@/hooks/booking-stage/use-booking";
 import {
   Select,
   SelectContent,
@@ -718,6 +720,44 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     activeSpecLightMappings,
     activeSpecOtherApplianceMappings,
   ]);
+
+  // Presentation files are selected from the booking documents, not uploaded,
+  // unless the spec was completed with amended or deleted items.
+  const selectPresentationFilesFromBooking = React.useMemo(() => {
+    if (!isCustomVendorFlow) return false;
+    if (!activeLatestSpecification?.is_completed) return true;
+
+    const mappingGroups = [
+      activeSpecCarcassMappings,
+      activeSpecShutterMappings,
+      activeSpecHardwareMappings,
+      activeSpecLightMappings,
+      activeSpecOtherApplianceMappings,
+    ];
+    if (mappingGroups.some((group) => !group)) return false;
+
+    return !activeSpecRequiresAdditionalUploads;
+  }, [
+    isCustomVendorFlow,
+    activeLatestSpecification?.is_completed,
+    activeSpecCarcassMappings,
+    activeSpecShutterMappings,
+    activeSpecHardwareMappings,
+    activeSpecLightMappings,
+    activeSpecOtherApplianceMappings,
+    activeSpecRequiresAdditionalUploads,
+  ]);
+  const isSelectingPresentationFiles =
+    activeUploadSection?.id === "project" && selectPresentationFilesFromBooking;
+  const [openSelectDocModal, setOpenSelectDocModal] = React.useState(false);
+  const { data: bookingLeadData } = useBookingLeadById(vendorId, leadId);
+  const bookingDocNames = React.useMemo(
+    () =>
+      (bookingLeadData?.documents ?? [])
+        .filter((doc) => doc.s3Key.includes("final-documents-booking"))
+        .map((doc) => doc.originalName),
+    [bookingLeadData?.documents],
+  );
 
   const submitDesignsMutation = useSubmitDesigns();
   const uploadQuotationMutation = useSubmitQuotation();
@@ -1488,6 +1528,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             activeUploadSection.id === "project" ? sectionSelectedFiles : [],
           pythaDocuments:
             activeUploadSection.id === "pytha" ? sectionSelectedFiles : [],
+          keepOriginalNames: isSelectingPresentationFiles,
         });
         await queryClient.invalidateQueries({
           queryKey: ["clientDocumentationDetails", vendorId, leadId],
@@ -2464,12 +2505,28 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   className="space-y-4"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Upload New Files</h4>
-                    {sectionSelectedFiles.length > 0 && (
-                      <Badge variant="secondary">
-                        {sectionSelectedFiles.length} selected
-                      </Badge>
-                    )}
+                    <h4 className="text-sm font-semibold">
+                      {isSelectingPresentationFiles
+                        ? "Select Files"
+                        : "Upload New Files"}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      {sectionSelectedFiles.length > 0 && (
+                        <Badge variant="secondary">
+                          {sectionSelectedFiles.length} selected
+                        </Badge>
+                      )}
+                      {isSelectingPresentationFiles && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          onClick={() => setOpenSelectDocModal(true)}
+                        >
+                          Select Documents
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div
@@ -2551,8 +2608,30 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       value={sectionSelectedFiles}
                       onChange={setSectionSelectedFiles}
                       accept={activeUploadSection.accept}
+                      isUploadDeniedAndSelectEnabled={
+                        isSelectingPresentationFiles
+                      }
+                      onSelectEnabledClick={() => setOpenSelectDocModal(true)}
                     />
                   </div>
+
+                  <SelectDocumentModal
+                    open={openSelectDocModal}
+                    onOpenChange={setOpenSelectDocModal}
+                    leadId={leadId}
+                    activeProductTypeId={
+                      handlesLargeScaleProjects
+                        ? activeInstance?.product_type_id
+                        : undefined
+                    }
+                    activeInstanceIds={
+                      handlesLargeScaleProjects && activeInstance
+                        ? [activeInstance.id]
+                        : undefined
+                    }
+                    currentDocNames={bookingDocNames}
+                    onSelectDocs={setSectionSelectedFiles}
+                  />
 
                   {sectionSelectedFiles.length > 0 && (
                     <motion.div
@@ -2580,7 +2659,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 ) : (
                                   <>
                                     <Upload className="w-4 h-4" />
-                                    Upload {sectionSelectedFiles.length} File
+                                    {isSelectingPresentationFiles
+                                      ? "Save"
+                                      : "Upload"}{" "}
+                                    {sectionSelectedFiles.length} File
                                     {sectionSelectedFiles.length > 1 ? "s" : ""}
                                   </>
                                 )}

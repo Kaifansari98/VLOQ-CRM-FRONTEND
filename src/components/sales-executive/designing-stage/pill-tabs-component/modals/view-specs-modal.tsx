@@ -258,6 +258,8 @@ const specificationSectionOptions: SpecificationSectionRemark[] = [
   "Not in our scope",
 ];
 
+const NEW_ROW_AMEND_REMARK = "New row added during specification review";
+
 const renderReviewState = (active: boolean, timestamp?: string | null) => (
   <div className="flex min-w-[108px] flex-col items-center justify-center gap-1 text-center">
     <span
@@ -303,7 +305,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     (userType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.designing_stage.specifications.upload",
-        )
+        ) ||
+        (showReviewColumns &&
+          customPrivilegeCodes.includes(
+            "project.client_documentation.specifications.upload",
+          ))
       : true);
 
   const effectiveReadOnly = readOnly || !canUpload;
@@ -760,9 +766,35 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const isRowLocked = React.useCallback(
-    (section: string, row: { localId: string }) =>
-      effectiveReadOnly || (readOnly || (showReviewColumns && !isRowInAmendEditMode(section, row))),
-    [isRowInAmendEditMode, readOnly, showReviewColumns, effectiveReadOnly],
+    (section: string, row: { id?: number; localId: string }) =>
+      effectiveReadOnly ||
+      readOnly ||
+      (showReviewColumns &&
+        !isRowInAmendEditMode(section, row) &&
+        // Unsaved rows stay open so new rows can be added during review
+        (!!row.id || isSpecCompleted)),
+    [
+      isRowInAmendEditMode,
+      isSpecCompleted,
+      readOnly,
+      showReviewColumns,
+      effectiveReadOnly,
+    ],
+  );
+
+  // A row added during review is saved as amended; saved rows keep their state.
+  const getNewRowReviewState = React.useCallback(
+    (rowId?: number) =>
+      showReviewColumns && !rowId
+        ? {
+            is_approved: false,
+            is_amended: true,
+            amended_remark: NEW_ROW_AMEND_REMARK,
+            is_deleted_item: false,
+            deleted_remark: null,
+          }
+        : {},
+    [showReviewColumns],
   );
 
   const isReviewPayloadComplete = React.useCallback(
@@ -1422,6 +1454,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           carcas_material_id: Number(row.carcas_material_id),
           carcass_material_finish_id: Number(row.carcass_material_finish_id),
           created_by: userId,
+          ...getNewRowReviewState(row.id),
         });
       } catch (error: any) {
         toastManager.add({
@@ -1433,7 +1466,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.id, specification?.lead_id, upsertCarcassMapping, userId, vendorId],
+    [getNewRowReviewState, specification?.id, specification?.lead_id, upsertCarcassMapping, userId, vendorId],
   );
 
   const updateCarcassRow = React.useCallback(
@@ -1527,6 +1560,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             ? Number(row.shutter_inner_finish_id)
             : null,
           created_by: userId,
+          ...getNewRowReviewState(row.id),
         });
       } catch (error: any) {
         toastManager.add({
@@ -1538,7 +1572,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.id, specification?.lead_id, upsertShutterMapping, userId, vendorId],
+    [getNewRowReviewState, specification?.id, specification?.lead_id, upsertShutterMapping, userId, vendorId],
   );
 
   const updateShutterRow = React.useCallback(
@@ -1636,6 +1670,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             : null,
           note: row.note || null,
           created_by: userId,
+          ...getNewRowReviewState(row.id),
         });
       } catch (error: any) {
         toastManager.add({
@@ -1647,7 +1682,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.id, specification?.lead_id, upsertHardwareMapping, userId, vendorId],
+    [getNewRowReviewState, specification?.id, specification?.lead_id, upsertHardwareMapping, userId, vendorId],
   );
 
   const isHardwareRowDuplicate = (
@@ -1822,6 +1857,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             : Number(row.light_carcas_unit_master_id),
           custom_remark: isCustomRow ? trimmedCustomRemark : null,
           created_by: userId,
+          ...getNewRowReviewState(row.id),
         });
       } catch (error: any) {
         toastManager.add({
@@ -1835,6 +1871,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     },
     [
       customLightCarcasType,
+      getNewRowReviewState,
       specification?.lead_id,
       specification?.id,
       upsertLightMapping,
@@ -1992,6 +2029,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             : Number(row.other_appliances_master_id),
           custom_remark: isCustomRow ? trimmedCustomRemark : null,
           created_by: userId,
+          ...getNewRowReviewState(row.id),
         });
       } catch (error: any) {
         toastManager.add({
@@ -2004,6 +2042,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
     },
     [
+      getNewRowReviewState,
       specification?.lead_id,
       specification?.id,
       upsertOtherApplianceMapping,
@@ -2483,7 +2522,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         import("@/utils/pdf/specifications-pdf"),
       ]);
       pdfModule.exportLeadSpecificationPdf(
-        specification.name,
+        pdfData.file_name || specification.name,
         pdfData,
         showReviewColumns,
       );

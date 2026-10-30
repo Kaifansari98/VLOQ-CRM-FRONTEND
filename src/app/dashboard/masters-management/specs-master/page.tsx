@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   useSaveSpecsMaster,
+  useDeleteSpecsMaster,
   useUpdateSpecsMasterStatus,
   type SpecsMasterKind,
 } from "@/hooks/useSaveSpecsMaster";
@@ -23,8 +24,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus,
   Pencil,
+  Trash2,
   Upload,
   Download,
   Layers,
@@ -41,7 +53,6 @@ import { DataTable } from "@/components/data-table/data-table";
 import { FileUploadField } from "@/components/custom/file-upload";
 import BaseModal from "@/components/utils/baseModal";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { cn } from "@/lib/utils";
@@ -918,6 +929,44 @@ function PreviewStatTile({
   );
 }
 
+function DeleteConfirmDialog({
+  item,
+  onClose,
+  onConfirm,
+  isPending,
+}: {
+  item: { name: string; label: string } | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <AlertDialog open={item !== null} onOpenChange={(open) => { if (!open && !isPending) onClose(); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {item?.label}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete &ldquo;{item?.name}&rdquo;? This will remove it from active listings and options without affecting existing records.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+          >
+            {isPending ? "Deleting..." : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function MasterListingTable({
   title,
   description,
@@ -934,6 +983,7 @@ function MasterListingTable({
   errorMessage,
   onAction,
   onEdit,
+  onDelete,
   extraActions,
   statusToggle,
 }: {
@@ -954,6 +1004,7 @@ function MasterListingTable({
   errorMessage?: string;
   onAction?: () => void;
   onEdit: (row: MasterRow) => void;
+  onDelete?: (row: MasterRow) => void;
   extraActions?: React.ReactNode;
   /** Shows an active / inactive switch in the status column. */
   statusToggle?: StatusToggle;
@@ -1033,39 +1084,74 @@ function MasterListingTable({
           const entries = row.original.entries;
           if (entries && entries.length > 1) {
             return (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
-                    onClick={(event) => event.stopPropagation()}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
-                  <DropdownMenuLabel>Edit option</DropdownMenuLabel>
-                  {entries.map((entry) => (
-                    <DropdownMenuItem key={entry.id}
-                      onSelect={() => onEdit({ ...row.original, id: entry.id, name: entry.name })}>
-                      {entry.label ?? entry.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+                      onClick={(event) => event.stopPropagation()}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+                    <DropdownMenuLabel>Edit option</DropdownMenuLabel>
+                    {entries.map((entry) => (
+                      <DropdownMenuItem key={entry.id}
+                        onSelect={() => onEdit({ ...row.original, id: entry.id, name: entry.name })}>
+                        {entry.label ?? entry.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {onDelete && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" aria-label="Delete entry" title="Delete entry"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        onClick={(event) => event.stopPropagation()}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+                      <DropdownMenuLabel>Delete option</DropdownMenuLabel>
+                      {entries.map((entry) => (
+                        <DropdownMenuItem key={entry.id}
+                          onSelect={() => onDelete({ ...row.original, id: entry.id, name: entry.name })}>
+                          {entry.label ?? entry.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             );
           }
           const target = entries?.[0];
+          const targetRow = target ? { ...row.original, id: target.id, name: target.name } : row.original;
           return (
-            <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit(target ? { ...row.original, id: target.id, name: target.name } : row.original);
-              }}>
-              <Pencil className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit(targetRow);
+                }}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              {onDelete && (
+                <Button type="button" variant="ghost" size="icon" aria-label="Delete entry" title="Delete entry"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDelete(targetRow);
+                  }}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           );
         },
       },
     ];
-  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit, statusToggle]);
+  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit, onDelete, statusToggle]);
 
   const table = useReactTable({
     data: rows,
@@ -1169,6 +1255,10 @@ function CarcassMastersSection() {
   const createCarcasMaterial = useSaveSpecsMaster("carcas-material", editingId);
   const uploadCarcassMaterialFinishes = useUploadCarcassMaterialFinishes();
   const createCarcassMaterialFinish = useSaveSpecsMaster("carcass-material-finish", editingId);
+  const deleteCarcassType = useDeleteSpecsMaster("carcass-type");
+  const deleteCarcasMaterial = useDeleteSpecsMaster("carcas-material");
+  const deleteCarcassMaterialFinish = useDeleteSpecsMaster("carcass-material-finish");
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: number; name: string; kind: SpecsMasterKind; label: string } | null>(null);
 
   const carcassTypeStatusToggle = useStatusToggle("carcass-type");
   const carcassTypeRows = React.useMemo<MasterRow[]>(
@@ -1387,6 +1477,7 @@ function CarcassMastersSection() {
               if (!item) return;
               setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.carcas_material_id)); setOpenFinishModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "carcass-material-finish", label: "Carcass Material Finish" })}
             showParent
             isLoading={isCarcassMaterialFinishesLoading}
             isError={isCarcassMaterialFinishesError}
@@ -1434,6 +1525,7 @@ function CarcassMastersSection() {
               if (!item) return;
               setEditingId(row.id); setMaterialName(item.name); setOpenMaterialModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "carcas-material", label: "Carcass Material" })}
             isLoading={isCarcasMaterialsLoading}
             isError={isCarcasMaterialsError}
             errorMessage={(carcasMaterialsError as any)?.response?.data?.error}
@@ -1454,6 +1546,7 @@ function CarcassMastersSection() {
               if (!item) return;
               setEditingId(row.id); setTypeName(item.name); setOpenTypeModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "carcass-type", label: "Carcass Type" })}
             isLoading={isCarcassTypesLoading}
             isError={isCarcassTypesError}
             errorMessage={(carcassTypesError as any)?.response?.data?.error}
@@ -1461,6 +1554,28 @@ function CarcassMastersSection() {
           />
         </TabsContent>
       </Tabs>
+
+      <DeleteConfirmDialog
+        item={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const mutation =
+            deleteTarget.kind === "carcass-type"
+              ? deleteCarcassType
+              : deleteTarget.kind === "carcas-material"
+                ? deleteCarcasMaterial
+                : deleteCarcassMaterialFinish;
+          mutation.mutate(deleteTarget.id, {
+            onSettled: () => setDeleteTarget(null),
+          });
+        }}
+        isPending={
+          deleteCarcassType.isPending ||
+          deleteCarcasMaterial.isPending ||
+          deleteCarcassMaterialFinish.isPending
+        }
+      />
 
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
@@ -1630,6 +1745,26 @@ function CarcassMastersSection() {
         title="Import Carcass Material Finish"
         description="Upload a CSV or XLSX file with Carcass Type, Carcass Material, and Carcass Material Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
         size="smd"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadCarcassMaterialFinishes.isPending
+              }
+            >
+              {uploadCarcassMaterialFinishes.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </>
+        }
       >
         <div className="p-6 space-y-4">
           <div className="space-y-4">
@@ -1712,7 +1847,7 @@ function CarcassMastersSection() {
                       <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                         Skipped row details
                       </div>
-                      <ScrollArea className="h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="divide-y">
                           {uploadPreview.skippedRows.map((s, i) => (
                             <div
@@ -1736,32 +1871,13 @@ function CarcassMastersSection() {
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
               ) : null}
             </div>
           )}
-
-          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
-            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUploadSubmit}
-              disabled={
-                selectedFiles.length === 0 ||
-                isParsingPreview ||
-                !!uploadPreview?.headerError ||
-                uploadCarcassMaterialFinishes.isPending
-              }
-            >
-              {uploadCarcassMaterialFinishes.isPending
-                ? "Uploading..."
-                : "Upload & Import"}
-            </Button>
-          </div>
         </div>
       </BaseModal>
     </>
@@ -1795,6 +1911,10 @@ function ShutterMastersSection() {
   const createShutterMaterial = useSaveSpecsMaster("shutter-material", editingId);
   const uploadShutterOuterFinishes = useUploadShutterOuterFinishes();
   const createShutterOuterFinish = useSaveSpecsMaster("shutter-outer-finish", editingId);
+  const deleteShutterType = useDeleteSpecsMaster("shutter-type");
+  const deleteShutterMaterial = useDeleteSpecsMaster("shutter-material");
+  const deleteShutterOuterFinish = useDeleteSpecsMaster("shutter-outer-finish");
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: number; name: string; kind: SpecsMasterKind; label: string } | null>(null);
 
   const shutterTypeStatusToggle = useStatusToggle("shutter-type");
   const shutterTypeRows = React.useMemo<MasterRow[]>(
@@ -2014,6 +2134,7 @@ function ShutterMastersSection() {
               if (!item) return;
               setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.shutter_material_id)); setOpenFinishModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "shutter-outer-finish", label: "Shutter Outer Finish" })}
             showParent
             isLoading={isShutterOuterFinishesLoading}
             isError={isShutterOuterFinishesError}
@@ -2068,6 +2189,7 @@ function ShutterMastersSection() {
               if (!item) return;
               setEditingId(row.id); setMaterialName(item.name); setOpenMaterialModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "shutter-material", label: "Shutter Material" })}
             isLoading={isShutterMaterialsLoading}
             isError={isShutterMaterialsError}
             errorMessage={(shutterMaterialsError as any)?.response?.data?.error}
@@ -2111,6 +2233,7 @@ function ShutterMastersSection() {
               if (!item) return;
               setEditingId(row.id); setTypeName(item.name); setOpenTypeModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "shutter-type", label: "Shutter Type" })}
             isLoading={isShutterTypesLoading}
             isError={isShutterTypesError}
             errorMessage={(shutterTypesError as any)?.response?.data?.error}
@@ -2141,6 +2264,28 @@ function ShutterMastersSection() {
           />
         </TabsContent>
       </Tabs>
+
+      <DeleteConfirmDialog
+        item={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const mutation =
+            deleteTarget.kind === "shutter-type"
+              ? deleteShutterType
+              : deleteTarget.kind === "shutter-material"
+                ? deleteShutterMaterial
+                : deleteShutterOuterFinish;
+          mutation.mutate(deleteTarget.id, {
+            onSettled: () => setDeleteTarget(null),
+          });
+        }}
+        isPending={
+          deleteShutterType.isPending ||
+          deleteShutterMaterial.isPending ||
+          deleteShutterOuterFinish.isPending
+        }
+      />
 
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
@@ -2310,6 +2455,26 @@ function ShutterMastersSection() {
         title="Import Shutter Outer Finish"
         description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Outer Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
         size="smd"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadShutterOuterFinishes.isPending
+              }
+            >
+              {uploadShutterOuterFinishes.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </>
+        }
       >
         <div className="p-6 space-y-4">
           <div className="space-y-4">
@@ -2392,7 +2557,7 @@ function ShutterMastersSection() {
                       <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                         Skipped row details
                       </div>
-                      <ScrollArea className="h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="divide-y">
                           {uploadPreview.skippedRows.map((s, i) => (
                             <div
@@ -2416,32 +2581,13 @@ function ShutterMastersSection() {
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
               ) : null}
             </div>
           )}
-
-          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
-            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUploadSubmit}
-              disabled={
-                selectedFiles.length === 0 ||
-                isParsingPreview ||
-                !!uploadPreview?.headerError ||
-                uploadShutterOuterFinishes.isPending
-              }
-            >
-              {uploadShutterOuterFinishes.isPending
-                ? "Uploading..."
-                : "Upload & Import"}
-            </Button>
-          </div>
         </div>
       </BaseModal>
     </>
@@ -2468,6 +2614,8 @@ function ShutterInnerFinishTab({
   const createShutterInnerFinish = useSaveSpecsMaster("shutter-inner-finish", editingId);
   const uploadShutterInnerFinishes = useUploadShutterInnerFinishes();
 
+  const deleteShutterInnerFinish = useDeleteSpecsMaster("shutter-inner-finish");
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: number; name: string } | null>(null);
   const statusToggle = useStatusToggle("shutter-inner-finish");
   const rows = React.useMemo<MasterRow[]>(() => {
     // Under an inactive material, an inner finish is inactive too.
@@ -2604,6 +2752,18 @@ function ShutterInnerFinishTab({
 
   return (
     <>
+      <DeleteConfirmDialog
+        item={deleteTarget ? { name: deleteTarget.name, label: "Shutter Inner Finish" } : null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteShutterInnerFinish.mutate(deleteTarget.id, {
+            onSettled: () => setDeleteTarget(null),
+          });
+        }}
+        isPending={deleteShutterInnerFinish.isPending}
+      />
+
       <MasterListingTable
         title="Shutter Inner Finish"
         description="Shutter inner finish master entries for the current vendor."
@@ -2619,6 +2779,7 @@ function ShutterInnerFinishTab({
           setFinishMaterialId(String(item.shutter_material_id));
           setOpenFinishModal(true);
         }}
+        onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name })}
         showParent
         isLoading={isLoading}
         isError={isError}
@@ -2721,6 +2882,24 @@ function ShutterInnerFinishTab({
         title="Import Shutter Inner Finish"
         description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Inner Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
         size="smd"
+        footer={
+          <>
+            <Button variant="outline" onClick={closeUploadModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadShutterInnerFinishes.isPending
+              }
+            >
+              {uploadShutterInnerFinishes.isPending ? "Uploading..." : "Upload & Import"}
+            </Button>
+          </>
+        }
       >
         <div className="p-6 space-y-4">
           <div className="space-y-4">
@@ -2780,7 +2959,7 @@ function ShutterInnerFinishTab({
                       <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                         Skipped row details
                       </div>
-                      <ScrollArea className="h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="divide-y">
                           {uploadPreview.skippedRows.map((s, i) => (
                             <div key={i} className="flex items-start gap-2 px-3 py-1.5 text-xs">
@@ -2799,30 +2978,13 @@ function ShutterInnerFinishTab({
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
               ) : null}
             </div>
           )}
-
-          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
-            <Button variant="outline" onClick={closeUploadModal}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUploadSubmit}
-              disabled={
-                selectedFiles.length === 0 ||
-                isParsingPreview ||
-                !!uploadPreview?.headerError ||
-                uploadShutterInnerFinishes.isPending
-              }
-            >
-              {uploadShutterInnerFinishes.isPending ? "Uploading..." : "Upload & Import"}
-            </Button>
-          </div>
         </div>
       </BaseModal>
     </>
@@ -2856,6 +3018,10 @@ function HardwareMastersSection() {
   const createHardwareItem = useSaveSpecsMaster("hardware-item", editingId);
   const createHardwareItemOption = useSaveSpecsMaster("hardware-item-option", editingId);
   const uploadHardwareItemOptions = useUploadHardwareItemOptions();
+  const deleteHardwareType = useDeleteSpecsMaster("hardware-type");
+  const deleteHardwareItem = useDeleteSpecsMaster("hardware-item");
+  const deleteHardwareItemOption = useDeleteSpecsMaster("hardware-item-option");
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: number; name: string; kind: SpecsMasterKind; label: string } | null>(null);
 
   const hardwareTypeStatusToggle = useStatusToggle("hardware-type");
   const hardwareTypeRows = React.useMemo<MasterRow[]>(
@@ -3248,6 +3414,7 @@ function HardwareMastersSection() {
               if (!item) return;
               setEditingId(row.id); setOptionValue(item.name); setOptionHardwareItemId(String(item.hardware_item_id)); setOptionItemGroupKey(""); setOpenOptionModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "hardware-item-option", label: "Hardware Item Option" })}
             showParent
             grandParentHeader="Hardware Type"
             parentHeader="Hardware Item"
@@ -3296,6 +3463,7 @@ function HardwareMastersSection() {
               if (!item) return;
               setEditingId(row.id); setHardwareItemName(item.name); setItemHardwareTypeId(String(item.hardware_type_id)); setHardwareItemInScope(String(item.inScope)); setOpenHardwareItemModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "hardware-item", label: "Hardware Item" })}
             showParent
             parentHeader="Hardware Type"
             nameHeader="Hardware Item"
@@ -3343,6 +3511,7 @@ function HardwareMastersSection() {
               if (!item) return;
               setEditingId(row.id); setHardwareTypeName(item.name); setOpenHardwareTypeModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "hardware-type", label: "Hardware Type" })}
             isLoading={isHardwareTypesLoading}
             isError={isHardwareTypesError}
             errorMessage={(hardwareTypesError as any)?.response?.data?.error}
@@ -3373,6 +3542,28 @@ function HardwareMastersSection() {
           />
         </TabsContent>
       </Tabs>
+
+      <DeleteConfirmDialog
+        item={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const mutation =
+            deleteTarget.kind === "hardware-type"
+              ? deleteHardwareType
+              : deleteTarget.kind === "hardware-item"
+                ? deleteHardwareItem
+                : deleteHardwareItemOption;
+          mutation.mutate(deleteTarget.id, {
+            onSettled: () => setDeleteTarget(null),
+          });
+        }}
+        isPending={
+          deleteHardwareType.isPending ||
+          deleteHardwareItem.isPending ||
+          deleteHardwareItemOption.isPending
+        }
+      />
 
       <Dialog open={openHardwareTypeModal} onOpenChange={setOpenHardwareTypeModal}>
         <DialogContent>
@@ -3627,6 +3818,26 @@ function HardwareMastersSection() {
         title="Import Hardware Item Options"
         description="Upload a CSV or XLSX file with Hardware Type, Hardware Item, and Hardware Item Options columns. Hardware Type and Hardware Item are required per row; Hardware Item Options may be left blank, but an option that already exists for that hardware item is skipped as a duplicate."
         size="smd"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadHardwareItemOptions.isPending
+              }
+            >
+              {uploadHardwareItemOptions.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </>
+        }
       >
         <div className="p-6 space-y-4">
           <div className="space-y-4">
@@ -3709,7 +3920,7 @@ function HardwareMastersSection() {
                       <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                         Skipped row details
                       </div>
-                      <ScrollArea className="h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="divide-y">
                           {uploadPreview.skippedRows.map((s, i) => (
                             <div
@@ -3733,32 +3944,13 @@ function HardwareMastersSection() {
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
               ) : null}
             </div>
           )}
-
-          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
-            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUploadSubmit}
-              disabled={
-                selectedFiles.length === 0 ||
-                isParsingPreview ||
-                !!uploadPreview?.headerError ||
-                uploadHardwareItemOptions.isPending
-              }
-            >
-              {uploadHardwareItemOptions.isPending
-                ? "Uploading..."
-                : "Upload & Import"}
-            </Button>
-          </div>
         </div>
       </BaseModal>
     </>
@@ -3785,6 +3977,9 @@ function LightMastersSection() {
   const createLightCarcasType = useSaveSpecsMaster("light-carcas-type", editingId);
   const createLightCarcasUnit = useSaveSpecsMaster("light-carcas-unit", editingId);
   const uploadLightCarcasUnits = useUploadLightCarcasUnits();
+  const deleteLightCarcasType = useDeleteSpecsMaster("light-carcas-type");
+  const deleteLightCarcasUnit = useDeleteSpecsMaster("light-carcas-unit");
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: number; name: string; kind: SpecsMasterKind; label: string } | null>(null);
 
   const lightCarcasTypeStatusToggle = useStatusToggle("light-carcas-type");
   const lightCarcasTypeRows = React.useMemo<MasterRow[]>(
@@ -3970,6 +4165,7 @@ function LightMastersSection() {
               if (!item) return;
               setEditingId(row.id); setUnitName(item.type); setUnitTypeId(String(item.light_carcas_type_id)); setOpenUnitModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "light-carcas-unit", label: "Light Unit" })}
             showParent
             isLoading={isLightCarcasUnitsLoading}
             isError={isLightCarcasUnitsError}
@@ -4015,6 +4211,7 @@ function LightMastersSection() {
               if (!item) return;
               setEditingId(row.id); setTypeName(item.type); setOpenTypeModal(true);
             }}
+            onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "light-carcas-type", label: "Light Carcas Type" })}
             isLoading={isLightCarcasTypesLoading}
             isError={isLightCarcasTypesError}
             errorMessage={(lightCarcasTypesError as any)?.response?.data?.error}
@@ -4045,6 +4242,22 @@ function LightMastersSection() {
           />    
         </TabsContent>
       </Tabs>
+
+      <DeleteConfirmDialog
+        item={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          const mutation =
+            deleteTarget.kind === "light-carcas-type"
+              ? deleteLightCarcasType
+              : deleteLightCarcasUnit;
+          mutation.mutate(deleteTarget.id, {
+            onSettled: () => setDeleteTarget(null),
+          });
+        }}
+        isPending={deleteLightCarcasType.isPending || deleteLightCarcasUnit.isPending}
+      />
 
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
@@ -4163,6 +4376,26 @@ function LightMastersSection() {
         title="Import Light Unit"
         description="Upload a CSV or XLSX file with Light Carcas Type and Light Unit columns. Both columns are required per row; duplicate light units are skipped."
         size="smd"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadLightCarcasUnits.isPending
+              }
+            >
+              {uploadLightCarcasUnits.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </>
+        }
       >
         <div className="p-6 space-y-4">
           <div className="space-y-4">
@@ -4238,7 +4471,7 @@ function LightMastersSection() {
                       <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                         Skipped row details
                       </div>
-                      <ScrollArea className="h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="divide-y">
                           {uploadPreview.skippedRows.map((s, i) => (
                             <div
@@ -4262,32 +4495,13 @@ function LightMastersSection() {
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
               ) : null}
             </div>
           )}
-
-          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
-            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUploadSubmit}
-              disabled={
-                selectedFiles.length === 0 ||
-                isParsingPreview ||
-                !!uploadPreview?.headerError ||
-                uploadLightCarcasUnits.isPending
-              }
-            >
-              {uploadLightCarcasUnits.isPending
-                ? "Uploading..."
-                : "Upload & Import"}
-            </Button>
-          </div>
         </div>
       </BaseModal>
     </>
@@ -4311,6 +4525,7 @@ function OtherAppliancesListingTable({
   errorMessage,
   onAction,
   onEdit,
+  onDelete,
   onTemplateDownload,
   onImportClick,
   isDownloading,
@@ -4323,6 +4538,7 @@ function OtherAppliancesListingTable({
   errorMessage?: string;
   onAction: () => void;
   onEdit: (row: OtherApplianceMasterRow) => void;
+  onDelete?: (row: OtherApplianceMasterRow) => void;
   onTemplateDownload: () => void;
   onImportClick: () => void;
   isDownloading?: boolean;
@@ -4366,14 +4582,41 @@ function OtherAppliancesListingTable({
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => (
-          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
-            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
-            <Pencil className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Edit entry"
+              title="Edit entry"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(row.original);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Delete entry"
+                title="Delete entry"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(row.original);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         ),
       },
     ],
-    [onEdit, statusToggle],
+    [onEdit, onDelete, statusToggle],
   );
 
   const table = useReactTable({
@@ -4483,6 +4726,8 @@ function OtherAppliancesTab({ type }: { type: string }) {
     error,
   } = useOtherAppliances();
   const createOtherAppliances = useSaveSpecsMaster("other-appliances", editingId);
+  const deleteOtherAppliances = useDeleteSpecsMaster("other-appliances");
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: number; name: string; label: string } | null>(null);
   const uploadMutation = useUploadOtherAppliances();
   const downloadMutation = useDownloadOtherAppliancesReport();
 
@@ -4554,21 +4799,25 @@ function OtherAppliancesTab({ type }: { type: string }) {
     };
   }, [selectedFiles, otherAppliances?.data, type]);
 
+  const isDuplicateArticle = React.useMemo(() => {
+    const trimmed = articleNumber.trim().toLowerCase();
+    if (!trimmed) return false;
+    return (otherAppliances?.data ?? []).some(
+      (item) =>
+        item.id !== editingId &&
+        item.type.toLowerCase() === type.toLowerCase() &&
+        item.article_number.trim().toLowerCase() === trimmed,
+    );
+  }, [articleNumber, otherAppliances?.data, editingId, type]);
+
   const handleCreate = () => {
     const article = articleNumber.trim();
     const desc = description.trim();
-    if (!article || !desc || !vendorId) return;
+    if (!article || !desc || !vendorId || isDuplicateArticle) return;
 
-    const articleLower = article.toLowerCase();
-    const isDuplicate = (otherAppliances?.data ?? []).some(
-      (item) =>
-        item.id !== editingId && item.type.toLowerCase() === type.toLowerCase() &&
-        item.article_number.trim().toLowerCase() === articleLower,
-    );
-
-    if (isDuplicate) {
+    if (isDuplicateArticle) {
       toastManager.add({
-        title: `Article number "${article}" already exists for ${type}.`,
+        title: `Article number must be unique.`,
         type: "error",
       });
       return;
@@ -4602,6 +4851,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
         errorMessage={(error as any)?.response?.data?.error}
         onAction={() => { setEditingId(null); setArticleNumber(""); setDescription(""); setOpenModal(true); }}
         onEdit={(row) => { setEditingId(row.id); setArticleNumber(row.article_number); setDescription(row.description); setOpenModal(true); }}
+        onDelete={(row) => setDeleteTarget({ id: row.id, name: row.article_number, label: type })}
         onTemplateDownload={() => downloadMutation.mutate()}
         onImportClick={() => {
           setSelectedFiles([]);
@@ -4609,6 +4859,18 @@ function OtherAppliancesTab({ type }: { type: string }) {
           setUploadPreview(null);
         }}
         isDownloading={downloadMutation.isPending}
+      />
+
+      <DeleteConfirmDialog
+        item={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteOtherAppliances.mutate(deleteTarget.id, {
+            onSettled: () => setDeleteTarget(null),
+          });
+        }}
+        isPending={deleteOtherAppliances.isPending}
       />
 
       <BaseModal
@@ -4623,6 +4885,56 @@ function OtherAppliancesTab({ type }: { type: string }) {
         title={`Import ${type}`}
         description={`Upload a CSV or XLSX file containing a tab for ${type}. The columns 'Article Number' and 'Description' are required per sheet.`}
         size="smd"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                const file = selectedFiles[0];
+                if (!file || !vendorId) return;
+                try {
+                  setIsPreparingUpload(true);
+                  const normalizedFile = await buildOtherAppliancesUploadFile(file);
+                  const formData = new FormData();
+                  formData.append("file", normalizedFile);
+                  formData.append("vendorId", String(vendorId));
+                  formData.append("type", type);
+                  uploadMutation.mutate(formData, {
+                    onSuccess: () => {
+                      setOpenUploadModal(false);
+                      setSelectedFiles([]);
+                      setUploadPreview(null);
+                    },
+                    onSettled: () => {
+                      setIsPreparingUpload(false);
+                    },
+                  });
+                } catch (error: any) {
+                  setIsPreparingUpload(false);
+                  toastManager.add({
+                    title:
+                      error?.message ||
+                      "Could not prepare this file for import.",
+                    type: "error",
+                  });
+                }
+              }}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                isPreparingUpload ||
+                !!uploadPreview?.headerError ||
+                uploadMutation.isPending
+              }
+            >
+              {uploadMutation.isPending || isPreparingUpload
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </>
+        }
       >
         <div className="p-6 space-y-4">
           <div className="space-y-4">
@@ -4692,7 +5004,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
                       <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                         Skipped row details
                       </div>
-                      <ScrollArea className="h-48">
+                      <div className="max-h-48 overflow-y-auto">
                         <div className="divide-y">
                           {uploadPreview.skippedRows.map((s, i) => (
                             <div
@@ -4716,62 +5028,13 @@ function OtherAppliancesTab({ type }: { type: string }) {
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
               ) : null}
             </div>
           )}
-
-          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
-            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                const file = selectedFiles[0];
-                if (!file || !vendorId) return;
-                try {
-                  setIsPreparingUpload(true);
-                  const normalizedFile = await buildOtherAppliancesUploadFile(file);
-                  const formData = new FormData();
-                  formData.append("file", normalizedFile);
-                  formData.append("vendorId", String(vendorId));
-                  formData.append("type", type);
-                  uploadMutation.mutate(formData, {
-                    onSuccess: () => {
-                      setOpenUploadModal(false);
-                      setSelectedFiles([]);
-                      setUploadPreview(null);
-                    },
-                    onSettled: () => {
-                      setIsPreparingUpload(false);
-                    },
-                  });
-                } catch (error: any) {
-                  setIsPreparingUpload(false);
-                  toastManager.add({
-                    title:
-                      error?.message ||
-                      "Could not prepare this file for import.",
-                    type: "error",
-                  });
-                }
-              }}
-              disabled={
-                selectedFiles.length === 0 ||
-                isParsingPreview ||
-                isPreparingUpload ||
-                !!uploadPreview?.headerError ||
-                uploadMutation.isPending
-              }
-            >
-              {uploadMutation.isPending || isPreparingUpload
-                ? "Uploading..."
-                : "Upload & Import"}
-            </Button>
-          </div>
         </div>
       </BaseModal>
 
@@ -4794,7 +5057,17 @@ function OtherAppliancesTab({ type }: { type: string }) {
                 value={articleNumber}
                 onChange={(e) => setArticleNumber(e.target.value)}
                 placeholder="Enter article number"
+                aria-invalid={isDuplicateArticle}
+                className={cn(
+                  isDuplicateArticle &&
+                    "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/30 text-red-600 dark:text-red-400",
+                )}
               />
+              {isDuplicateArticle && (
+                <p className="text-xs text-red-500 font-medium">
+                  Article number must be unique.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -4825,7 +5098,8 @@ function OtherAppliancesTab({ type }: { type: string }) {
                 createOtherAppliances.isPending ||
                 !articleNumber.trim() ||
                 !description.trim() ||
-                !vendorId
+                !vendorId ||
+                isDuplicateArticle
               }
             >
               {createOtherAppliances.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
