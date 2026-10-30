@@ -194,11 +194,14 @@ export default function UnderInstallationLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
-  const canCreateSmallOrder = [
-    "sales-executive",
-    "admin",
-    "super-admin",
-  ].includes(normalizedEffectiveUserType);
+  const canCreateSmallOrder =
+    normalizedEffectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.create_partial_order",
+        )
+      : ["sales-executive", "admin", "super-admin"].includes(
+          normalizedEffectiveUserType,
+        );
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
     !isAuditor && (

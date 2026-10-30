@@ -383,7 +383,7 @@ export default function UserMastersTable({
   const [openLeadPrivilegeSection, setOpenLeadPrivilegeSection] =
     React.useState<string | null>(null);
   const [activeGeneralPrivilegeTab, setActiveGeneralPrivilegeTab] =
-    React.useState<"servicing" | "general_tools">("servicing");
+    React.useState<string>("general_tools");
   const [selectedPrivilegeIds, setSelectedPrivilegeIds] = React.useState<
     number[]
   >([]);
@@ -674,7 +674,7 @@ export default function UserMastersTable({
     setOpenPrivilegesModal(false);
     setOpenPrivilegeSection(privilegeMastersData?.data?.[0]?.id ?? null);
     setOpenLeadPrivilegeSection(null);
-    setActiveGeneralPrivilegeTab("servicing");
+    setActiveGeneralPrivilegeTab("general_tools");
     setSelectedPrivilegeIds([]);
     setPrivilegeSearch("");
   };
@@ -1523,7 +1523,7 @@ export default function UserMastersTable({
           if (!open) {
             setOpenPrivilegeSection(privilegeMastersData?.data?.[0]?.id ?? null);
             setOpenLeadPrivilegeSection(null);
-            setActiveGeneralPrivilegeTab("servicing");
+            setActiveGeneralPrivilegeTab("general_tools");
             setSelectedPrivilegeIds([]);
             setPrivilegeSearch("");
           }
@@ -1581,7 +1581,7 @@ export default function UserMastersTable({
                           value={activeGeneralPrivilegeTab}
                           onValueChange={(value) =>
                             setActiveGeneralPrivilegeTab(
-                              value as "servicing" | "general_tools",
+                              value,
                             )
                           }
                           className="gap-3"

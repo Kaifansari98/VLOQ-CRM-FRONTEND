@@ -89,6 +89,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     return (user?.vendorMaster?.is_inventory_enabled ?? user?.vendor?.is_inventory_enabled) === true;
   });
   const showRequiredMaterials = handlesLargeScaleProjects && isInventoryEnabled;
+  const canViewRequiredProductionMaterials =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.required_production_materials.view",
+        )
+      : true;
   const productionFilesTitle = showRequiredMaterials ? "Required Production Materials" : "Production Files";
   const {
     data: orderLoginLockIns = [],
@@ -271,9 +277,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       : true;
   const canViewProductionFiles =
     userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "production.order_login.production_files.view",
-        )
+      ? showRequiredMaterials
+        ? canViewRequiredProductionMaterials
+        : customPrivilegeCodes.includes(
+            "production.order_login.production_files.view",
+          )
       : true;
   const canAccessOrderLoginDetails =
     userType === "custom"

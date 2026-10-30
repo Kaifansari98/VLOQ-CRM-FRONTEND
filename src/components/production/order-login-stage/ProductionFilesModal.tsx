@@ -358,7 +358,9 @@ export default function ProductionFilesSection({
     (
       userType === "custom"
         ? customPrivilegeCodes.includes(
-          "production.order_login.production_files.upload",
+          showRequiredMaterials
+            ? "production.order_login.required_production_materials.upload"
+            : "production.order_login.production_files.upload",
         )
         : canManageProductionFiles
     );

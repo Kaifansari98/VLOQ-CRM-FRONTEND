@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAppSelector } from "@/redux/store";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, RotateCw, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -44,6 +45,13 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const isIssuedItemsView = isMaterialIssueView && searchParams.get("mode") === "issued";
+  const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector((state) => state.customPrivileges.codes);
+  const hasRequiredMaterialsPrivilege = (action: string) =>
+    userType?.trim().toLowerCase() !== "custom" ||
+    customPrivilegeCodes.includes(
+      `production.order_login.required_production_materials.${action}`,
+    );
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [phase, setPhase] = useState<"reading" | "matching" | "done">("reading");
@@ -120,7 +128,9 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   // Outsourced materials are fulfilled through Order Login, so they are not issued from inventory.
   const tableRows = useMemo(() => isMaterialIssueView ? savedRows.filter((row) => !row.orderLoginId) : savedRows, [savedRows, isMaterialIssueView]);
   const outsourceRows = savedRows.filter((row) => outsourceKeys?.includes(row.key) && !row.orderLoginId);
-  const canOutsource = embedded && !viewOnly && !isMaterialIssueView && canUpload && !!leadId && !uploading;
+  const canOutsource = embedded && !viewOnly && !isMaterialIssueView && canUpload && hasRequiredMaterialsPrivilege("outsource") && !!leadId && !uploading;
+  const canFreeze = isMaterialIssueView && hasRequiredMaterialsPrivilege("freeze");
+  const canIssue = isMaterialIssueView && hasRequiredMaterialsPrivilege("issue");
   const freezeRows = useMemo(() => savedRows.filter((row) => freezeKeys?.includes(row.key)), [savedRows, freezeKeys]);
   const issueRows = useMemo(() => savedRows.filter((row) => issueKeys?.includes(row.key)), [savedRows, issueKeys]);
   const rows = preview?.rows ?? [];
@@ -211,8 +221,8 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
               enableRowSelection={(isMaterialIssueView && !isIssuedItemsView) || canOutsource}
               busy={outsourceMutation.isPending}
               isMaterialIssueView={isMaterialIssueView}
-              onFreezeSelected={isMaterialIssueView ? (selected) => setFreezeKeys(selected.map((row) => row.key)) : undefined}
-              onIssueSelected={isMaterialIssueView ? (selected) => setIssueKeys(selected.map((row) => row.key)) : undefined}
+              onFreezeSelected={canFreeze ? (selected) => setFreezeKeys(selected.map((row) => row.key)) : undefined}
+              onIssueSelected={canIssue ? (selected) => setIssueKeys(selected.map((row) => row.key)) : undefined}
               onOutsourceSelected={canOutsource ? (selected) => setOutsourceKeys(selected.map((row) => row.key)) : undefined}
               hideSelectionBar={freezeKeys !== null || issueKeys !== null || outsourceKeys !== null}
             />

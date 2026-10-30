@@ -179,11 +179,14 @@ export default function FinalHandoverLeadDetails() {
     );
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
-  const canCreateSmallOrder = [
-    "sales-executive",
-    "admin",
-    "super-admin",
-  ].includes(normalizedEffectiveUserType);
+  const canCreateSmallOrder =
+    normalizedEffectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.final_handover.create_partial_order",
+        )
+      : ["sales-executive", "admin", "super-admin"].includes(
+          normalizedEffectiveUserType,
+        );
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
 

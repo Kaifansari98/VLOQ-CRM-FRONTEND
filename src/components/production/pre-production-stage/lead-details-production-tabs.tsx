@@ -193,6 +193,12 @@ export default function LeadDetailsProductionUtil({
           "production.production.production_files.view_download",
         )
       : canAccessAllTabs;
+  const canViewRequiredProductionMaterials =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.required_production_materials.view",
+        )
+      : canAccessAllTabs;
   const canViewPreProductionFiles =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
@@ -252,10 +258,10 @@ export default function LeadDetailsProductionUtil({
             id: "requiredProductionMaterials",
             title: "Required Production Materials",
             color: "bg-zinc-900 hover:bg-zinc-900",
-            disabled: !canViewProductionFiles,
+            disabled: !canViewRequiredProductionMaterials,
             disabledReason:
               normalizedUserType === "custom"
-                ? "You don’t have permission to access Required Production Materials."
+                ? "You don’t have permission to view Required Production Materials."
                 : "Only super-admin and factory can access this tab.",
             cardContent: (
               <ProductionFilesSection
