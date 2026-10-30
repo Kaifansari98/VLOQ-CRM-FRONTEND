@@ -724,10 +724,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         <motion.div
           transition={{ duration: 0.25 }}
           className={`
-            group relative flex items-center gap-3.5 rounded-xl p-3 sm:p-4
+            group relative flex items-center gap-3 rounded-xl p-3 sm:p-3.5
             border bg-white dark:bg-neutral-900
-            hover:shadow-md transition-all duration-200 w-full min-w-[260px]
+            hover:shadow-md transition-all duration-200 w-full
             border-neutral-200/90 dark:border-neutral-800
+            @container overflow-hidden
           `}
         >
           {/* Delete Button (restored to original top-right position and style) */}
@@ -750,7 +751,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           )}
 
           {/* Left: Thumbnail Box with Colored Tag at Bottom-Left as shown in image */}
-          <div className="relative flex-shrink-0 w-20 h-20 sm:w-24 sm:h-20 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex items-center justify-center shadow-xs">
+          <div className="relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex items-center justify-center shadow-xs">
             {isThemeImage ? (
               <img
                 src={doc.signedUrl}
@@ -812,8 +813,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             </div>
 
             {/* Bottom Actions Row: Preview & Download (Left) + Design Tag at Right Bottom Corner */}
-            <div className="flex items-center justify-between gap-2 mt-3">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-1.5 mt-2.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
               {isThemeVideo && (
                 <button
                   type="button"
@@ -822,11 +823,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                     e.stopPropagation();
                     setShowVideo(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-700 transition"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-700 transition shrink-0"
                   title="Play"
                 >
-                  <Play className="w-3.5 h-3.5" />
-                  <span>Play</span>
+                  <Play className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden @[320px]:inline">Play</span>
                 </button>
               )}
 
@@ -838,11 +839,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                     e.stopPropagation();
                     setShowPreview(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition shrink-0"
                   title="Preview"
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Preview</span>
+                  <Eye className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden @[320px]:inline">Preview</span>
                 </button>
               )}
 
@@ -850,18 +851,18 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 type="button"
                 onClick={handleDownload}
                 disabled={isDownloading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
                 title="Download"
               >
                 {isDownloading ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>{progress ? `${progress}%` : "Preparing..."}</span>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    <span className="hidden @[320px]:inline">{progress ? `${progress}%` : "Preparing..."}</span>
                   </>
                 ) : (
                   <>
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden @[320px]:inline">Download</span>
                   </>
                 )}
               </button>
@@ -869,7 +870,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
 
             {/* Design Tag at right bottom corner */}
             <span
-              className={`px-2 py-1 rounded-[4px] text-[10px] sm:text-[11px] font-bold text-white shadow-xs leading-none tracking-wide select-none flex items-center justify-center shrink-0 ${tagBg}`}
+              className={`px-1.5 py-0.5 rounded-[4px] text-[10px] sm:text-[11px] font-bold text-white shadow-xs leading-none tracking-wide select-none flex items-center justify-center shrink-0 ml-auto ${tagBg}`}
             >
               {effectiveDesignType}
             </span>

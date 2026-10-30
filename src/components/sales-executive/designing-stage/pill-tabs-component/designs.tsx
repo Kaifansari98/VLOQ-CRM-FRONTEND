@@ -268,7 +268,7 @@ const DesigningTab = () => {
 
   // ✅ Render Design Documents using DocumentCard
   const renderDocumentCards = (docs: any[]) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
       {docs.map(
         (doc: any, index: number) => {
           const hasSpec = !!doc.specification?.name;
@@ -423,7 +423,7 @@ const DesigningTab = () => {
                         <p className="text-xs text-muted-foreground">No design documents uploaded yet.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {type.docs.map((doc: any, index: number) => (
                           <DocumentCard
                             key={doc.id}
