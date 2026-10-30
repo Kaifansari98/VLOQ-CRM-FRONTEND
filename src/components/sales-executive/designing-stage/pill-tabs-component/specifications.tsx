@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ClipboardList, Package, Plus } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import ViewSpecsModal from "./modals/view-specs-modal";
@@ -14,7 +14,6 @@ import {
 import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import AssignToPicker from "@/components/assign-to-picker";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,20 +156,21 @@ export default function SpecificationsTab() {
     [groupedSpecifications, selectedGroupId],
   );
 
-  /** The card (product type group) an item code's specifications are shown under. */
+  /** The item group an item code's specifications are shown under. */
   const groupIdForItemCode = (itemCodeId: number) =>
     (itemCodeGroupMap.get(itemCodeId) || "Other Specifications").trim().toLowerCase();
 
-  // Inside a card, only that card's item codes can be picked.
+  // A group-specific Add Specs action limits the picker to that group.
   const pickerItemCodes = selectedGroup
     ? itemCodePickerData.filter(
         (itemCode) => groupIdForItemCode(itemCode.id) === selectedGroup.id,
       )
     : itemCodePickerData;
 
-  const openCreateSpecification = () => {
-    // Inside a card with a single item code, that item code is pre-selected.
-    setSelectedItemCodeId(pickerItemCodes.length === 1 ? pickerItemCodes[0].id : null);
+  const openCreateSpecification = (groupId: string | null = null) => {
+    setSelectedGroupId(groupId);
+    const choices = groupId ? itemCodePickerData.filter(item => groupIdForItemCode(item.id) === groupId) : itemCodePickerData;
+    setSelectedItemCodeId(choices.length === 1 ? choices[0].id : null);
     setOpenCreateConfirm(true);
   };
 
@@ -216,31 +216,43 @@ export default function SpecificationsTab() {
     );
   };
 
+  const renderSpecCards = (specs: LeadSpecificationEntry[]) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {specs.map((spec) => (
+        <button
+          key={spec.id}
+          type="button"
+          onClick={() => setSelectedSpec(spec)}
+          className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent/40"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <ClipboardList size={20} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold truncate" title={spec.name}>
+              {spec.name}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Created {new Date(spec.created_at).toLocaleDateString()}
+            </p>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <ClipboardList size={20} className="shrink-0" />
           <h1 className="text-lg font-semibold tracking-tight">
-            {handlesLargeScaleProjects && selectedGroup
-              ? selectedGroup.title
-              : "Specifications"}
+            Specifications
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          {handlesLargeScaleProjects && selectedGroup && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedGroupId(null)}
-            >
-              <ArrowLeft size={14} className="mr-1" />
-              Back
-            </Button>
-          )}
           {canUpload && (
-            <Button size="sm" onClick={openCreateSpecification}>
+            <Button size="sm" onClick={() => openCreateSpecification()}>
               <Plus size={16} className="mr-1" />
               <span>Add Specs</span>
             </Button>
@@ -248,64 +260,23 @@ export default function SpecificationsTab() {
         </div>
       </div>
 
-      {handlesLargeScaleProjects && !selectedGroup ? (
-        groupedSpecifications.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {groupedSpecifications.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => setSelectedGroupId(group.id)}
-                className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Package className="h-4 w-4" />
-                      <span className="text-xs font-medium uppercase tracking-wide">
-                        Product Type
-                      </span>
-                    </div>
-                    <p className="line-clamp-2 text-base font-semibold leading-tight break-words">
-                      {group.title}
-                    </p>
-                  </div>
-                  <Badge variant="outline">
-                    {group.specs.length} {group.specs.length === 1 ? "spec" : "specs"}
-                  </Badge>
+      {handlesLargeScaleProjects && groupedSpecifications.length > 0 ? (
+        <div className="space-y-8">
+          {groupedSpecifications.map((group) => (
+            <section key={group.id} className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2">
+                <h2 className="text-base font-semibold break-words">{group.title}</h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{group.specs.length} {group.specs.length === 1 ? "spec" : "specs"}</span>
+                  {canUpload && <Button size="sm" variant="outline" onClick={() => openCreateSpecification(group.id)}><Plus size={16} className="mr-1" />Add Specs</Button>}
                 </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <ComingSoon
-            heading="No Specifications Added"
-            description="Specifications for this lead will show up here once added."
-          />
-        )
-      ) : hasSpecifications || selectedGroup ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(selectedGroup ? selectedGroup.specs : specifications).map((spec) => (
-            <button
-              key={spec.id}
-              type="button"
-              onClick={() => setSelectedSpec(spec)}
-              className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent/40"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <ClipboardList size={20} />
               </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold truncate" title={spec.name}>
-                  {spec.name}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Created {new Date(spec.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            </button>
+              {group.specs.length > 0 ? renderSpecCards(group.specs) : <p className="py-4 text-sm text-muted-foreground">No specifications added to this item group yet.</p>}
+            </section>
           ))}
         </div>
+      ) : hasSpecifications ? (
+        renderSpecCards(specifications)
       ) : (
         <ComingSoon
           heading="No Specifications Added"
