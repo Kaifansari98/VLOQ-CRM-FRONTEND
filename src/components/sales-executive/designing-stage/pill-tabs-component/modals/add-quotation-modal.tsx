@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Building2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -31,10 +32,14 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { useProductTypes } from "@/hooks/useTypesMaster";
+import { detectDesignType } from "@/components/utils/documentCard";
 import { DesignsDocument } from "@/types/designing-stage-types";
 import { fetchLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 import { uploadRequirementDocumentApi } from "@/api/leadRequirementDocuments";
@@ -249,11 +254,90 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     );
   };
 
-  const displayDesignDocs = availableDesignDocs;
-  const groupedDesignDocs = React.useMemo(
-    () => groupDesignDocsByRevision(displayDesignDocs),
-    [displayDesignDocs],
+  const { data: productTypesData } = useProductTypes();
+  const productTypes = React.useMemo(() => productTypesData?.data || [], [productTypesData]);
+
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+    open && Boolean(handlesLargeScaleProjects || vendorCustomUserTypeMode)
   );
+  const structureInstances: any[] = React.useMemo(
+    () => (Array.isArray(structureInstancesData?.data) ? structureInstancesData.data : []),
+    [structureInstancesData]
+  );
+
+  const displayDesignDocs = availableDesignDocs;
+
+  // Group designs instance-wise (e.g. Office, Hotel, Small Order)
+  const groupedDesignDocsByInstance = React.useMemo(() => {
+    const productTypeMap = new Map<string, string>(
+      productTypes.map((item: any) => [String(item.id), String(item.type || "").trim()])
+    );
+
+    const instanceMap = new Map<string, any>(
+      structureInstances.map((item: any) => [String(item.id), item])
+    );
+
+    const instanceToProductTypeMap = new Map<string, string>(
+      structureInstances
+        .map((item: any) => {
+          const productTypeId =
+            item.product_type_id ??
+            item.productType?.id ??
+            item.productItemCode?.productStructure?.productType?.id;
+          return productTypeId ? [String(item.id), String(productTypeId)] as const : null;
+        })
+        .filter(Boolean) as readonly (readonly [string, string])[]
+    );
+
+    const groups = new Map<string, { title: string; docs: DesignsDocument[] }>();
+
+    for (const doc of displayDesignDocs) {
+      let groupTitle = "";
+
+      // 1. Try matching product_type_id
+      if (doc.product_type_id && productTypeMap.has(String(doc.product_type_id))) {
+        groupTitle = productTypeMap.get(String(doc.product_type_id))!;
+      }
+
+      // 2. Try matching product_structure_instance_id
+      if (!groupTitle && doc.product_structure_instance_id) {
+        const inst = instanceMap.get(String(doc.product_structure_instance_id));
+        const resolvedTypeId = instanceToProductTypeMap.get(String(doc.product_structure_instance_id));
+        groupTitle =
+          inst?.productType?.type ||
+          inst?.name ||
+          inst?.custom_name ||
+          (resolvedTypeId ? productTypeMap.get(resolvedTypeId) : "") ||
+          inst?.productItemCode?.productStructure?.productType?.type ||
+          "";
+      }
+
+      // 3. Fallback: Parse structure/instance name from standard filename D{rev}_(2D_|3D_)?{client}_{structure}_{date}.pdf
+      if (!groupTitle && doc.doc_og_name) {
+        const clean = doc.doc_og_name.replace(/\.[^/.]+$/, "").replace(/^\[.*?\]\s*/, "");
+        const match = clean.match(/^D\d+_(?:(?:2D|3D)_)?([^_]+)_(.+?)_\d{4}-\d{2}-\d{2}$/i);
+        if (match && match[2]) {
+          groupTitle = match[2].replace(/_/g, " ").trim();
+        }
+      }
+
+      if (!groupTitle) {
+        groupTitle = "General Designs";
+      }
+
+      const key = groupTitle.trim().toLowerCase();
+      if (!groups.has(key)) {
+        groups.set(key, { title: groupTitle, docs: [] });
+      }
+      groups.get(key)!.docs.push(doc);
+    }
+
+    return Array.from(groups.values()).sort((a, b) =>
+      a.title.localeCompare(b.title)
+    );
+  }, [displayDesignDocs, productTypes, structureInstances]);
 
   return (
     <BaseModal
@@ -301,23 +385,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
             />
           )}
 
-          <FormField
-            control={form.control}
-            name="upload_pdf"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Quotation File</FormLabel>
-                <FormControl>
-                  <DocumentsUploader
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+          {/* Select Design File Dropdown placed at the top before Quotation File */}
           {(vendorCustomUserTypeMode || handlesLargeScaleProjects) && (
             <FormField
               control={form.control}
@@ -346,19 +414,53 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                           }
                         />
                       </SelectTrigger>
-                      <SelectContent>
-                        {groupedDesignDocs.map((group, index) => (
-                          <React.Fragment key={group.key}>
-                            {index > 0 && <SelectSeparator />}
-                            <SelectGroup>
-                              {group.docs.map((doc) => (
-                                <SelectItem key={doc.id} value={String(doc.id)}>
-                                  {doc.doc_og_name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </React.Fragment>
-                        ))}
+                      <SelectContent className="max-h-[300px]">
+                        {groupedDesignDocsByInstance.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No design files available
+                          </SelectItem>
+                        ) : (
+                          groupedDesignDocsByInstance.map((group, index) => (
+                            <React.Fragment key={group.title}>
+                              {index > 0 && <SelectSeparator />}
+                              <SelectGroup>
+                                <SelectLabel className="flex items-center justify-between px-2.5 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100/80 dark:bg-neutral-800/80 rounded-md my-1">
+                                  <div className="flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-bold">
+                                    <Building2 className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
+                                    <span>{group.title}</span>
+                                  </div>
+                                  <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 px-1.5 py-0.5 rounded-full shadow-3xs">
+                                    {group.docs.length} {group.docs.length === 1 ? "file" : "files"}
+                                  </span>
+                                </SelectLabel>
+                                {group.docs.map((doc) => {
+                                  const designType = detectDesignType(doc.doc_og_name);
+
+                                  return (
+                                    <SelectItem key={doc.id} value={String(doc.id)} className="pl-3 pr-8">
+                                      <div className="flex items-center gap-2 max-w-full">
+                                        {designType && (
+                                          <span
+                                            className={`shrink-0 px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold text-white leading-none ${
+                                              designType === "2D"
+                                                ? "bg-[#0070F3]"
+                                                : designType === "3D"
+                                                ? "bg-[#00A854]"
+                                                : "bg-[#7928CA]"
+                                            }`}
+                                          >
+                                            {designType}
+                                          </span>
+                                        )}
+                                        <span className="truncate">{doc.doc_og_name}</span>
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectGroup>
+                            </React.Fragment>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -370,6 +472,24 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
               )}
             />
           )}
+
+          {/* Quotation File Uploader */}
+          <FormField
+            control={form.control}
+            name="upload_pdf"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Quotation File</FormLabel>
+                <FormControl>
+                  <DocumentsUploader
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <div className="flex justify-end">
             <Button
