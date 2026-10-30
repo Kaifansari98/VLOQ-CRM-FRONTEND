@@ -4,7 +4,6 @@ import React, { useMemo, useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
 import {
-  ArrowLeft,
   Ban,
   Images,
   Package,
@@ -27,10 +26,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
-import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import Loader from "@/components/utils/loader";
-import { Badge } from "@/components/ui/badge";
 import { useB2BRequirementTypes, useProductTypes } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { CadbidQuotesSection } from "@/components/cadbid/CadbidQuotesSection";
@@ -95,7 +92,6 @@ const QuotationTab = () => {
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -202,11 +198,6 @@ const QuotationTab = () => {
     );
   }, [handlesLargeScaleProjects, sortedQuotationDocs, structureInstances, productTypes]);
 
-  const selectedGroup = useMemo(
-    () =>
-      groupedQuotationDocs.find((group) => group.id === selectedGroupId) || null,
-    [groupedQuotationDocs, selectedGroupId],
-  );
 
   // Group B2B documents by Requirement Type
   const b2bGroupedDocs = useMemo(() => {
@@ -273,6 +264,27 @@ const QuotationTab = () => {
         userType === "super-admin" ||
         (userType === "sales-executive" && leadStatus === "designing-stage");
 
+  const renderDocumentCards = (docs: any[]) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {docs.map(
+        (doc: any, index: number) => (
+          <DocumentCard
+            key={doc.id}
+            doc={{
+              id: doc.id,
+              originalName: doc.doc_og_name,
+              created_at: doc.created_at,
+              signedUrl: doc.signedUrl,
+            }}
+            isLatest={index === 0}
+            canDelete={canDelete}
+            onDelete={(id) => setConfirmDelete(id)}
+          />
+        ),
+      )}
+    </div>
+  );
+
   return (
     <div>
       {/* -------- Quotation Section (Matched UI) -------- */}
@@ -297,32 +309,19 @@ const QuotationTab = () => {
           <div className="flex items-center gap-2">
             <ScrollText size={20} className="shrink-0" />
             <h1 className="text-lg font-semibold tracking-tight">
-              {handlesLargeScaleProjects && selectedGroup
-                ? selectedGroup.title
-                : "Quotation"}
+              Quotation
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            {handlesLargeScaleProjects && selectedGroup && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedGroupId(null)}
-              >
-                <ArrowLeft size={14} className="mr-1" />
-                Back
-              </Button>
-            )}
             <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
               {isB2b
                 ? `${designQuotationDocs.length} ${designQuotationDocs.length === 1 ? "Document" : "Documents"}`
-                : handlesLargeScaleProjects && !selectedGroup
+                : handlesLargeScaleProjects
                   ? `${groupedQuotationDocs.length} ${
                       groupedQuotationDocs.length === 1 ? "Item Group" : "Item Groups"
                     }`
-                  : `${(selectedGroup?.docs || designQuotationDocs).length} ${
-                      (selectedGroup?.docs || designQuotationDocs).length === 1
+                  : `${designQuotationDocs.length} ${
+                      designQuotationDocs.length === 1
                         ? "Document"
                         : "Documents"
                     }`}
@@ -381,67 +380,33 @@ const QuotationTab = () => {
                 </div>
               ))}
             </div>
-          ) : handlesLargeScaleProjects && !selectedGroup ? (
-            <div className="grid gap-4 md:grid-cols-2">
+          ) : handlesLargeScaleProjects ? (
+            <div className="space-y-8">
+              <CadbidQuotesSection leadId={leadId} />
+              {groupedQuotationDocs.length === 0 && <p className="py-4 text-sm text-muted-foreground">No quotations found.</p>}
               {groupedQuotationDocs.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => setSelectedGroupId(group.id)}
-                  className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Package className="h-4 w-4" />
-                        <span className="text-xs font-medium uppercase tracking-wide">
-                          Item Group
-                        </span>
-                      </div>
-                      <p className="line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200">
-                        {group.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {group.subtitle}
-                      </p>
-                    </div>
-                    <Badge variant="outline">
-                      {group.docs.length} {group.docs.length === 1 ? "file" : "files"}
-                    </Badge>
+                <section key={group.id} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 border-b pb-2">
+                    <h2 className="text-base font-semibold break-words">{group.title}</h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">{group.docs.length} {group.docs.length === 1 ? "file" : "files"}</span>
                   </div>
-                </button>
+                  {group.docs.length > 0 ? renderDocumentCards(group.docs) : (
+                    <p className="py-4 text-sm text-muted-foreground">No quotations added to this item group yet.</p>
+                  )}
+                </section>
               ))}
             </div>
           ) : (
             <>
               {/* Same Cadbid quotes on every instance until Cadbid quotes carry an instance link */}
               <CadbidQuotesSection leadId={leadId} className="mb-6" />
-              {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).map(
-                  (doc: any, index: number) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.doc_og_name,
-                        created_at: doc.created_at,
-                        signedUrl: doc.signedUrl,
-                      }}
-                      isLatest={index === 0}
-                      canDelete={canDelete}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
-                  ),
-                )}
-              </div>
+              {sortedQuotationDocs.length > 0 ? (
+              renderDocumentCards(sortedQuotationDocs)
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
                 <Images size={42} className="text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">
-                  {handlesLargeScaleProjects && selectedGroup
-                    ? "No quotations found for this product type."
-                    : "No quotations found."}
+                  No quotations found.
                 </p>
               </div>
             )}

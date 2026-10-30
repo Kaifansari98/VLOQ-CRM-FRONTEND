@@ -787,7 +787,8 @@ export interface LeadShutterMaterialMappingEntry {
   specs_id: number;
   shutter_type_id: number;
   shutter_material_id: number;
-  shutter_material_finish_id: number;
+  shutter_outer_finish_id: number;
+  shutter_inner_finish_id: number | null;
   is_approved: boolean;
   approved_at: string | null;
   is_amended: boolean;
@@ -800,7 +801,8 @@ export interface LeadShutterMaterialMappingEntry {
   created_by: number;
   shutterType?: { id: number; name: string };
   shutterMaterial?: { id: number; name: string };
-  shutterMaterialFinish?: { id: number; name: string };
+  shutterOuterFinish?: { id: number; name: string };
+  shutterInnerFinish?: { id: number; name: string } | null;
 }
 
 export interface UpsertLeadShutterMaterialMappingPayload {
@@ -810,7 +812,8 @@ export interface UpsertLeadShutterMaterialMappingPayload {
   specs_id: number;
   shutter_type_id: number;
   shutter_material_id: number;
-  shutter_material_finish_id: number;
+  shutter_outer_finish_id: number;
+  shutter_inner_finish_id?: number | null;
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
@@ -846,9 +849,9 @@ export interface LeadHardwareMappingEntry {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  carcass_legs_id: number;
-  skirting_carcass_legs_id: number;
-  skirting_carcass_legs_color_id: number | null;
+  hardware_type_id: number;
+  hardware_item_id: number;
+  hardware_item_option_id: number | null;
   note: string | null;
   is_approved: boolean;
   approved_at: string | null;
@@ -860,9 +863,9 @@ export interface LeadHardwareMappingEntry {
   deleted_remark?: string | null;
   created_at: string;
   created_by: number;
-  carcassLegs?: { id: number; name: string };
-  skirtingCarcassLegs?: { id: number; name: string; inScope: boolean };
-  skirtingCarcassLegsColor?: { id: number; color: string } | null;
+  hardwareType?: { id: number; name: string };
+  hardwareItem?: { id: number; name: string; inScope: boolean };
+  hardwareItemOption?: { id: number; name: string } | null;
 }
 
 export interface UpsertLeadHardwareMappingPayload {
@@ -870,9 +873,9 @@ export interface UpsertLeadHardwareMappingPayload {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  carcass_legs_id: number;
-  skirting_carcass_legs_id: number;
-  skirting_carcass_legs_color_id?: number | null;
+  hardware_type_id: number;
+  hardware_item_id: number;
+  hardware_item_option_id?: number | null;
   note?: string | null;
   created_by: number;
   is_approved?: boolean;
@@ -1041,15 +1044,16 @@ export interface LeadSpecificationPdfData {
     is_deleted_item: boolean;
     shutterType: { name: string };
     shutterMaterial: { name: string };
-    shutterMaterialFinish: { name: string };
+    shutterOuterFinish: { name: string };
+    shutterInnerFinish?: { name: string } | null;
   }>;
   hardwareMappings: Array<{
     is_approved: boolean;
     is_amended: boolean;
     is_deleted_item: boolean;
-    carcassLegs: { name: string };
-    skirtingCarcassLegs: { name: string; inScope: boolean };
-    skirtingCarcassLegsColor: { color: string } | null;
+    hardwareType: { name: string };
+    hardwareItem: { name: string; inScope: boolean };
+    hardwareItemOption: { name: string } | null;
     note: string | null;
   }>;
   lightCarcasUnitMappings: Array<{

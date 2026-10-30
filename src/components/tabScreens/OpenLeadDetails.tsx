@@ -62,6 +62,7 @@ import {
 import { useMemo, useRef, useState, useEffect } from "react";
 import { ImageComponent } from "../utils/ImageCard";
 import DocumentCard from "../utils/documentCard";
+import CurrentSiteDimensionSection from "./CurrentSiteDimensionSection";
 import { Button } from "@/components/ui/button";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -250,11 +251,14 @@ const renameLeadSitePhotoFiles = ({
   clientName,
   targetLabel,
   uploadDate,
+  prefix = "CSP",
 }: {
   files: File[];
   clientName: string;
   targetLabel: string;
   uploadDate: string;
+  /** CSP = Current Site Photos, CSD = Current Site Dimension */
+  prefix?: "CSP" | "CSD";
 }) => {
   const safeClientName = sanitizeFileSegment(clientName || "Client");
   const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
@@ -263,7 +267,7 @@ const renameLeadSitePhotoFiles = ({
     (file, index) =>
       new File(
         [file],
-        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        `${prefix}${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
           file.name,
         )}`,
         {
@@ -1036,9 +1040,44 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   }, [boqDisplaySearch]);
 
   const filteredBoqItemCodes = useMemo(() => {
+    // Helper: returns true if a status string is "active" (or absent)
+    const isActive = (status?: string | null) =>
+      (status ?? "active").toLowerCase() === "active";
+
+    // Exclude items that are inactive at ANY level in the hierarchy:
+    // Item Code → Sub-Item Category → Item Category → Item Group
+    const activeItems = productItemCodes.filter((item: any) => {
+      // 1. Item Code itself
+      if (!isActive(item.status)) return false;
+
+      // 2. Sub-Item Category (subProductStructure)
+      const sub = item.subProductStructure;
+      if (sub) {
+        if (!isActive(sub.status)) return false;
+        // 3. Item Category via subProductStructure path
+        const cat = sub.productStructure;
+        if (cat) {
+          if (!isActive(cat.status)) return false;
+          // 4. Item Group via subProductStructure path
+          if (!isActive(cat.productType?.status)) return false;
+        }
+      } else {
+        // 3. Item Category directly on item
+        const cat = item.productStructure;
+        if (cat) {
+          if (!isActive(cat.status)) return false;
+          // 4. Item Group via productStructure path
+          if (!isActive(cat.productType?.status)) return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Then apply search filter
     const search = boqSearch.trim().toLowerCase();
-    if (!search) return productItemCodes;
-    return productItemCodes.filter((item: any) => {
+    if (!search) return activeItems;
+    return activeItems.filter((item: any) => {
       const haystack = [
         item.item_code,
         item.description,
@@ -3467,6 +3506,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               )}
             </motion.div>
           </motion.section>
+          )}
+
+          {/* Current Site Dimension (large-scale vendors) */}
+          {handlesLargeScaleProjects && !isB2b && vendorId && userId && (
+            <motion.div variants={itemVariants}>
+              <CurrentSiteDimensionSection
+                vendorId={vendorId}
+                leadId={leadId}
+                userId={userId}
+                canManage={canUploadSitePhotos}
+                shouldDisableBlockedActions={shouldDisableBlockedActions}
+                blockedTooltip={blockedTooltip}
+                renameFiles={(files) =>
+                  isCustomDocNomenclatureEnabled
+                    ? renameLeadSitePhotoFiles({
+                      files,
+                      clientName: `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim(),
+                      targetLabel: currentProductTypeLabel || "Furniture Type",
+                      uploadDate: formatFileDate(new Date()),
+                      prefix: "CSD",
+                    })
+                    : files
+                }
+              />
+            </motion.div>
           )}
 
           <WalkinLeadAnswers

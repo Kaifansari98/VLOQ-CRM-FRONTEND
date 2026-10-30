@@ -36,6 +36,8 @@ interface SiteReadinessDetailsProps {
   leadId: number;
   accountId: number;
   name?: string;
+  /** Large-scale vendors: the checklist belongs to this product instance. */
+  instanceId?: number | null;
 }
 
 interface ChecklistItem {
@@ -56,6 +58,7 @@ function checklistFromResponse(response: { questions: { key: string; label: stri
 export default function SiteReadinessDetails({
   leadId,
   accountId,
+  instanceId,
 }: SiteReadinessDetailsProps) {
   const vendor_id = useAppSelector((state) => state.auth.user?.vendor_id);
   const user_id = useAppSelector((state) => state.auth.user?.id);
@@ -105,7 +108,7 @@ export default function SiteReadinessDetails({
       setError(null);
       setChecklistData([]);
       try {
-        const response = await getSiteReadinessRecords(vendor_id, leadId, accountId);
+        const response = await getSiteReadinessRecords(vendor_id, leadId, accountId, instanceId);
         if (!cancelled) setChecklistData(checklistFromResponse(response));
       } catch {
         if (!cancelled) setError("Failed to load the site readiness checklist. Please retry.");
@@ -115,11 +118,11 @@ export default function SiteReadinessDetails({
     };
     void fetchRecords();
     return () => { cancelled = true; };
-  }, [vendor_id, leadId, accountId]);
+  }, [vendor_id, leadId, accountId, instanceId]);
 
   const refetchRecords = async () => {
     if (!vendor_id || !leadId) return;
-    const response = await getSiteReadinessRecords(vendor_id, leadId, accountId);
+    const response = await getSiteReadinessRecords(vendor_id, leadId, accountId, instanceId);
     setChecklistData(checklistFromResponse(response));
   };
 
@@ -176,6 +179,7 @@ export default function SiteReadinessDetails({
           vendorId: vendor_id,
           leadId,
           payload: createPayload,
+          instanceId,
         });
       }
 
@@ -184,6 +188,7 @@ export default function SiteReadinessDetails({
           vendorId: vendor_id,
           leadId,
           payload: updatePayload,
+          instanceId,
         });
       }
 

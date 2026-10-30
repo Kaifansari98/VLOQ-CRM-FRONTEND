@@ -68,6 +68,21 @@ import {
   Upload,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  getDesignDocsWithoutQuotation,
+  getDesignRevisionKey,
+  getRevisionKey,
+  groupDesignDocsByRevision,
+} from "@/lib/design-revision";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
@@ -531,6 +546,17 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const [sectionSelectedFiles, setSectionSelectedFiles] = React.useState<
     File[]
   >([]);
+  // Same rules as the Designing stage design / quotation upload modals
+  const [sectionDesignType, setSectionDesignType] = React.useState<
+    "2D" | "3D" | "2D + 3D" | ""
+  >("");
+  const [sectionDesignDocumentId, setSectionDesignDocumentId] =
+    React.useState("");
+
+  useEffect(() => {
+    setSectionDesignType("");
+    setSectionDesignDocumentId("");
+  }, [activeUploadSection?.id]);
 
   const [existingSelections, setExistingSelections] = React.useState<{
     carcas?: DesignSelection;
@@ -699,6 +725,26 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { data: quotationDocsResponse } = useQuotationDoc(vendorId, leadId);
   const designDocs: any[] = designDocsResponse?.data?.documents ?? [];
   const quotationDocs: any[] = quotationDocsResponse?.data?.documents ?? [];
+
+  const requiresQuotationDesignFile =
+    isCustomVendorFlow || handlesLargeScaleProjects;
+  // Design files of the active item group that don't have a quotation yet
+  const quotationDesignDocOptions = React.useMemo(
+    () =>
+      getDesignDocsWithoutQuotation(
+        designDocs.filter(
+          (doc) =>
+            (doc.product_structure_instance_id ?? null) ===
+            (activeInstance?.id ?? null),
+        ),
+        quotationDocs,
+      ),
+    [designDocs, quotationDocs, activeInstance?.id],
+  );
+  const groupedQuotationDesignDocs = React.useMemo(
+    () => groupDesignDocsByRevision(quotationDesignDocOptions),
+    [quotationDesignDocOptions],
+  );
 
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
@@ -1403,6 +1449,30 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     }
     if (sectionSelectedFiles.length === 0) return;
 
+    if (
+      activeUploadSection.id === "design" &&
+      isCustomVendorFlow &&
+      !sectionDesignType
+    ) {
+      toastManager.add({ title: "Design type is required", type: "error" });
+      return;
+    }
+
+    if (
+      activeUploadSection.id === "quotation" &&
+      requiresQuotationDesignFile &&
+      !sectionDesignDocumentId
+    ) {
+      toastManager.add({
+        title:
+          quotationDesignDocOptions.length === 0
+            ? "All designs are already linked to a quotation. Please upload a new design file."
+            : "Please select a design file for this quotation.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       if (
         activeUploadSection.id === "project" ||
@@ -1434,6 +1504,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           userId,
           productStructureInstanceIds: [activeInstance.id],
           specificationId: activeLatestSpecification?.id ?? null,
+          designType: sectionDesignType || undefined,
         });
         queryClient.invalidateQueries({
           queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -1444,7 +1515,15 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       } else {
         await new Promise<void>((resolve, reject) => {
           uploadQuotationMutation.mutate(
-            { files: sectionSelectedFiles, vendorId, leadId, userId },
+            {
+              files: sectionSelectedFiles,
+              vendorId,
+              leadId,
+              userId,
+              designDocumentId: sectionDesignDocumentId
+                ? Number(sectionDesignDocumentId)
+                : undefined,
+            },
             {
               onSuccess: () => resolve(),
               onError: (err) => reject(err),
@@ -1458,6 +1537,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         type: "success",
       });
       setSectionSelectedFiles([]);
+      setSectionDesignType("");
+      setSectionDesignDocumentId("");
       queryClient.invalidateQueries({ queryKey: ["allLeadDocuments"] });
     } catch (e: any) {
       const errorMessage =
@@ -1908,10 +1989,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             (doc: any) =>
               (doc.product_structure_instance_id ?? null) === instance_id,
           );
-          const instanceQuotationDocs = quotationDocs.filter(
-            (doc: any) =>
-              (doc.product_structure_instance_id ?? null) === instance_id,
+          // Older quotations were saved without an instance id, so also match
+          // them through the revision of this item group's design files
+          const instanceDesignKeys = new Set(
+            instanceDesignDocs
+              .map((doc: any) => getDesignRevisionKey(doc.doc_og_name))
+              .filter(Boolean),
           );
+          const instanceQuotationDocs = quotationDocs.filter((doc: any) => {
+            const docInstanceId = doc.product_structure_instance_id ?? null;
+            if (docInstanceId === instance_id) return true;
+            if (docInstanceId !== null) return false;
+            const quotationKey = getRevisionKey(doc.doc_og_name, "Q");
+            return !!quotationKey && instanceDesignKeys.has(quotationKey);
+          });
 
           const documentSections: UploadSectionConfig[] = [
             {
@@ -2388,6 +2479,74 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                         : ""
                     }
                   >
+                    {activeUploadSection.id === "design" &&
+                      isCustomVendorFlow && (
+                        <div className="mb-4 space-y-2">
+                          <p className="text-sm font-medium">Design Type *</p>
+                          <Select
+                            value={sectionDesignType}
+                            onValueChange={(val) =>
+                              setSectionDesignType(val as typeof sectionDesignType)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select design type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="2D">2D Design</SelectItem>
+                              <SelectItem value="3D">3D Design</SelectItem>
+                              <SelectItem value="2D + 3D">
+                                2D + 3D Design
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                    {activeUploadSection.id === "quotation" &&
+                      requiresQuotationDesignFile && (
+                        <div className="mb-4 space-y-2">
+                          <p className="text-sm font-medium">
+                            Select Design File *
+                          </p>
+                          <Select
+                            value={sectionDesignDocumentId}
+                            onValueChange={setSectionDesignDocumentId}
+                            disabled={quotationDesignDocOptions.length === 0}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue
+                                placeholder={
+                                  quotationDesignDocOptions.length === 0
+                                    ? "No design files available"
+                                    : "Select one design file"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {groupedQuotationDesignDocs.map((group, index) => (
+                                <React.Fragment key={group.key}>
+                                  {index > 0 && <SelectSeparator />}
+                                  <SelectGroup>
+                                    {group.docs.map((doc) => (
+                                      <SelectItem
+                                        key={doc.id}
+                                        value={String(doc.id)}
+                                      >
+                                        {doc.doc_og_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </React.Fragment>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Select the design file this quotation belongs to.
+                          </p>
+                        </div>
+                      )}
+
                     <FileUploadField
                       value={sectionSelectedFiles}
                       onChange={setSectionSelectedFiles}

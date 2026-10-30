@@ -29,13 +29,19 @@ import BaseModal from "@/components/utils/baseModal";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { DesignsDocument } from "@/types/designing-stage-types";
 import { fetchLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 import { uploadRequirementDocumentApi } from "@/api/leadRequirementDocuments";
+import {
+  getDesignDocsWithoutQuotation,
+  groupDesignDocsByRevision,
+} from "@/lib/design-revision";
 
 // Schema
 const quotationSchema = z.object({
@@ -52,26 +58,6 @@ interface LeadViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const getRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
-  let parsedName = fileName.replace(/\.[^/.]+$/, "");
-  parsedName = parsedName.replace(/^\[.*?\]\s*/, "");
-  const match =
-    prefix === "Q"
-      ? parsedName.match(/^Q(\d+)_(.+)_\d{4}-\d{2}-\d{2}$/i)
-      : parsedName.match(/^D(\d+)_(?:(2D|3D)_)?(.+)_\d{4}-\d{2}-\d{2}$/i);
-
-  if (!match) return null;
-
-  if (prefix === "Q") {
-    return `${match[1]}-${match[2].toLowerCase()}`;
-  }
-
-  return `${match[1]}-${match[3].toLowerCase()}`;
-};
-
-const getDesignRevisionKey = (fileName: string) =>
-  getRevisionKey(fileName, "D") ?? getRevisionKey(fileName, "R");
 
 const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   open,
@@ -98,23 +84,9 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   const designDocs: DesignsDocument[] = designDocsResponse?.data?.documents ?? [];
   const quotationDocs: DesignsDocument[] =
     quotationDocsResponse?.data?.documents ?? [];
-  const usedQuotationKeys = React.useMemo(
-    () =>
-      new Set(
-        quotationDocs
-          .map((doc) => getRevisionKey(doc.doc_og_name, "Q"))
-          .filter((key): key is string => Boolean(key)),
-      ),
-    [quotationDocs],
-  );
   const availableDesignDocs = React.useMemo(
-    () => {
-      return designDocs.filter((doc) => {
-        const designKey = getDesignRevisionKey(doc.doc_og_name);
-        return !designKey || !usedQuotationKeys.has(designKey);
-      });
-    },
-    [designDocs, usedQuotationKeys],
+    () => getDesignDocsWithoutQuotation(designDocs, quotationDocs),
+    [designDocs, quotationDocs],
   );
 
   const { mutate: uploadQuotation, isPending } = useSubmitQuotation();
@@ -278,6 +250,10 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   };
 
   const displayDesignDocs = availableDesignDocs;
+  const groupedDesignDocs = React.useMemo(
+    () => groupDesignDocsByRevision(displayDesignDocs),
+    [displayDesignDocs],
+  );
 
   return (
     <BaseModal
@@ -371,10 +347,17 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {displayDesignDocs.map((doc) => (
-                          <SelectItem key={doc.id} value={String(doc.id)}>
-                            {doc.doc_og_name}
-                          </SelectItem>
+                        {groupedDesignDocs.map((group, index) => (
+                          <React.Fragment key={group.key}>
+                            {index > 0 && <SelectSeparator />}
+                            <SelectGroup>
+                              {group.docs.map((doc) => (
+                                <SelectItem key={doc.id} value={String(doc.id)}>
+                                  {doc.doc_og_name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </React.Fragment>
                         ))}
                       </SelectContent>
                     </Select>

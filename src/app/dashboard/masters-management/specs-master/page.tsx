@@ -2,6 +2,12 @@
 
 import * as React from "react";
 import {
+  useSaveSpecsMaster,
+  useUpdateSpecsMasterStatus,
+  type SpecsMasterKind,
+} from "@/hooks/useSaveSpecsMaster";
+import { Switch } from "@/components/ui/switch";
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
@@ -18,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
+  Pencil,
   Upload,
   Download,
   Layers,
@@ -27,6 +34,9 @@ import {
   FileWarning,
 } from "lucide-react";
 import ClearInput from "@/components/origin-input";
+import MultipleSelector, {
+  type Option as MultiSelectOption,
+} from "@/components/ui/multiselect";
 import { DataTable } from "@/components/data-table/data-table";
 import { FileUploadField } from "@/components/custom/file-upload";
 import BaseModal from "@/components/utils/baseModal";
@@ -44,6 +54,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -68,31 +85,21 @@ import {
   useCarcassTypes,
   useCarcasMaterials,
   useAllCarcassMaterialFinishes,
-  useCreateCarcassType,
-  useCreateCarcasMaterial,
-  useCreateCarcassMaterialFinish,
   useUploadCarcassMaterialFinishes,
   useShutterTypes,
   useShutterMaterials,
-  useAllShutterMaterialFinishes,
-  useCreateShutterType,
-  useCreateShutterMaterial,
-  useCreateShutterMaterialFinish,
-  useUploadShutterMaterialFinishes,
-  useCarcassLegs,
-  useAllSkirtingCarcassLegs,
-  useAllSkirtingCarcassLegsColors,
-  useCreateCarcassLegs,
-  useCreateSkirtingCarcassLegs,
-  useCreateSkirtingCarcassLegsColor,
-  useUploadSkirtingCarcassLegsColors,
+  useAllShutterOuterFinishes,
+  useAllShutterInnerFinishes,
+  useUploadShutterOuterFinishes,
+  useUploadShutterInnerFinishes,
+  useHardwareTypes,
+  useAllHardwareItems,
+  useAllHardwareItemOptions,
+  useUploadHardwareItemOptions,
   useLightCarcasTypes,
   useAllLightCarcasUnits,
-  useCreateLightCarcasType,
-  useCreateLightCarcasUnit,
   useUploadLightCarcasUnits,
   useOtherAppliances,
-  useCreateOtherAppliances,
   useUploadOtherAppliances,
   useDownloadOtherAppliancesReport,
 } from "@/hooks/useTypesMaster";
@@ -102,8 +109,129 @@ type MasterRow = {
   id: number;
   name: string;
   parent?: string | null;
+  grandParent?: string | null;
   status: string;
+  /** Several entries shown as one row; each can still be edited on its own. */
+  entries?: Array<{ id: number; name: string; label?: string }>;
+  /** Shown as pills in the name column instead of plain text. */
+  pills?: string[];
+  /** The entry's own status (the switch); `status` is what is displayed. */
+  active?: boolean;
+  /** A parent is inactive, so this entry is inactive too and cannot be switched on. */
+  parentInactive?: boolean;
 };
+
+const isActiveStatus = (status?: string | null) =>
+  (status ?? "active").toLowerCase() === "active";
+
+/** Displayed status of an entry: inactive itself, or under an inactive parent. */
+const entryStatus = (self?: string | null, parentActive = true) => ({
+  status: parentActive && isActiveStatus(self) ? "active" : "inactive",
+  active: isActiveStatus(self),
+  parentInactive: !parentActive,
+});
+
+/** Status of a row standing for several entries (e.g. one hardware item under several types). */
+const groupStatus = (entries: Array<{ self: boolean; parent: boolean }>) => {
+  const effective = entries.map((entry) => entry.self && entry.parent);
+  return {
+    status: effective.every(Boolean)
+      ? "active"
+      : effective.some(Boolean)
+        ? "partly active"
+        : "inactive",
+    active: entries.every((entry) => entry.self),
+    parentInactive: entries.every((entry) => !entry.parent),
+  };
+};
+
+/** What the status column needs from a row. */
+type StatusRow = Pick<MasterRow, "id" | "status" | "active" | "parentInactive" | "entries"> & {
+  name?: string;
+};
+
+type StatusToggle = {
+  onToggleStatus: (row: StatusRow, checked: boolean) => void;
+  pendingIds: number[];
+};
+
+/** Active / inactive switch for one specs master; grouped rows switch all their entries. */
+function useStatusToggle(kind: SpecsMasterKind): StatusToggle {
+  const mutation = useUpdateSpecsMasterStatus(kind);
+  return {
+    onToggleStatus: (row, checked) =>
+      mutation.mutate({
+        ids: row.entries?.map((entry) => entry.id) ?? [row.id],
+        status: checked ? "active" : "inactive",
+      }),
+    pendingIds: mutation.isPending ? (mutation.variables?.ids ?? []) : [],
+  };
+}
+
+function StatusCell({
+  row,
+  statusToggle,
+}: {
+  row: StatusRow;
+  statusToggle?: StatusToggle;
+}) {
+  const status = (row.status || "active").toLowerCase();
+  const isActive = status === "active";
+  const isPartly = status === "partly active";
+  const isPending =
+    !!statusToggle &&
+    (row.entries?.map((entry) => entry.id) ?? [row.id]).some((id) =>
+      statusToggle.pendingIds.includes(id),
+    );
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize transition-colors",
+          isActive
+            ? "border-emerald-200 bg-emerald-500/10 text-emerald-600 dark:border-emerald-800/40 dark:bg-emerald-500/20 dark:text-emerald-400"
+            : isPartly
+              ? "border-amber-200 bg-amber-500/10 text-amber-700 dark:border-amber-800/40 dark:bg-amber-500/20 dark:text-amber-400"
+              : "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-400",
+        )}
+      >
+        <span
+          className={cn(
+            "h-1.5 w-1.5 rounded-full transition-colors",
+            isActive ? "bg-emerald-500" : isPartly ? "bg-amber-500" : "bg-zinc-400",
+          )}
+        />
+        {status}
+      </span>
+      {statusToggle && (
+        <Switch
+          checked={row.active ?? isActive}
+          disabled={isPending || row.parentInactive === true}
+          onCheckedChange={(checked) => statusToggle.onToggleStatus(row, checked)}
+          className={cn(
+            "transition-colors",
+            row.parentInactive === true ? "opacity-40 cursor-not-allowed" : "",
+            (row.active ?? isActive)
+              ? "bg-emerald-600 hover:bg-emerald-600"
+              : "bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400",
+          )}
+          aria-label={`Toggle status for ${row.name ?? "entry"}`}
+        />
+      )}
+    </div>
+  );
+}
+
+/** "A, B and C" */
+const joinNames = (names: string[]) =>
+  names.length <= 1
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
+/** Newest entries first (ids are auto-incrementing). */
+const newestFirst = <T extends { id: number }>(items: T[] = []) =>
+  [...items].sort((a, b) => b.id - a.id);
 
 function parseCsvText(text: string): string[][] {
   const rows: string[][] = [];
@@ -329,20 +457,28 @@ async function computeMasterUploadPreview(
 async function computeHardwareUploadPreview(
   file: File,
   existing: {
-    legs: Array<{ id: number; name: string }>;
-    skirtings: Array<{ id: number; name: string; legsId: number }>;
-    colors: Array<{ id: number; color: string; skirtingId: number }>;
+    hardwareTypes: Array<{ id: number; name: string }>;
+    hardwareItems: Array<{ id: number; name: string; hardwareTypeId: number }>;
+    options: Array<{ id: number; name: string; hardwareItemId: number }>;
   },
 ): Promise<MasterUploadPreview> {
   const { headers, rows } = await parseUploadFile(file);
 
-  const legsKey = headers.find((h) => h.includes("legs"));
-  const skirtingKey = headers.find(
-    (h) => h.includes("skirting") && !h.includes("color"),
+  // Hardware Type / Hardware Item / Hardware Item Options; the older
+  // Carcass Legs / Skirting / Skirting Color headers are still accepted.
+  const isOptionHeader = (h: string) =>
+    h.includes("option") || h.includes("color");
+  const hardwareTypeKey = headers.find(
+    (h) => h.includes("hardware type") || h.includes("legs"),
   );
-  const colorKey = headers.find((h) => h.includes("color"));
+  const hardwareItemKey = headers.find(
+    (h) =>
+      !isOptionHeader(h) &&
+      (h.includes("hardware item") || h.includes("skirting")),
+  );
+  const optionKey = headers.find(isOptionHeader);
 
-  if (!legsKey || !skirtingKey || !colorKey) {
+  if (!hardwareTypeKey || !hardwareItemKey || !optionKey) {
     return {
       totalDataRows: rows.length,
       typesToAdd: 0,
@@ -352,30 +488,30 @@ async function computeHardwareUploadPreview(
       skippedDuplicate: 0,
       skippedRows: [],
       headerError:
-        "Required columns missing. The sheet must have Carcass Legs, Skirting, and Skirting Color columns.",
+        "Required columns missing. The sheet must have Hardware Type, Hardware Item, and Hardware Item Options columns.",
     };
   }
 
-  const legsMap = new Map<string, number>(
-    existing.legs.map((l) => [l.name.trim().toLowerCase(), l.id]),
+  const hardwareTypeMap = new Map<string, number>(
+    existing.hardwareTypes.map((t) => [t.name.trim().toLowerCase(), t.id]),
   );
-  const skirtingMap = new Map<string, number>(
-    existing.skirtings.map((s) => [
-      `${s.legsId}::${s.name.trim().toLowerCase()}`,
+  const hardwareItemMap = new Map<string, number>(
+    existing.hardwareItems.map((s) => [
+      `${s.hardwareTypeId}::${s.name.trim().toLowerCase()}`,
       s.id,
     ]),
   );
-  const colorKeySet = new Set<string>(
-    existing.colors.map(
-      (c) => `${c.skirtingId}::${c.color.trim().toLowerCase()}`,
+  const optionKeySet = new Set<string>(
+    existing.options.map(
+      (o) => `${o.hardwareItemId}::${o.name.trim().toLowerCase()}`,
     ),
   );
-  const newLegsNames = new Set<string>();
-  const newSkirtingKeys = new Set<string>();
+  const newHardwareTypeNames = new Set<string>();
+  const newHardwareItemKeys = new Set<string>();
 
   let skippedMissing = 0;
   let skippedDuplicate = 0;
-  let colorsToAdd = 0;
+  let optionsToAdd = 0;
   const skippedRows: Array<{
     row: number;
     reason: string;
@@ -384,11 +520,11 @@ async function computeHardwareUploadPreview(
 
   rows.forEach((row, idx) => {
     const rowNumber = idx + 2;
-    const legsName = (row[legsKey] || "").trim();
-    const skirtingName = (row[skirtingKey] || "").trim();
-    const colorValue = (row[colorKey] || "").trim();
+    const hardwareTypeName = (row[hardwareTypeKey] || "").trim();
+    const hardwareItemName = (row[hardwareItemKey] || "").trim();
+    const optionValue = (row[optionKey] || "").trim();
 
-    if (!legsName || !skirtingName) {
+    if (!hardwareTypeName || !hardwareItemName) {
       skippedMissing++;
       skippedRows.push({
         row: rowNumber,
@@ -398,47 +534,47 @@ async function computeHardwareUploadPreview(
       return;
     }
 
-    const legsLower = legsName.toLowerCase();
-    const existingLegsId = legsMap.get(legsLower);
-    if (!existingLegsId) {
-      newLegsNames.add(legsLower);
+    const hardwareTypeLower = hardwareTypeName.toLowerCase();
+    const existingHardwareTypeId = hardwareTypeMap.get(hardwareTypeLower);
+    if (!existingHardwareTypeId) {
+      newHardwareTypeNames.add(hardwareTypeLower);
     }
-    const legsDedupeId = existingLegsId ?? `new:${legsLower}`;
+    const hardwareTypeDedupeId = existingHardwareTypeId ?? `new:${hardwareTypeLower}`;
 
-    const skirtingLower = skirtingName.toLowerCase();
-    const skirtingLookupKey = `${legsDedupeId}::${skirtingLower}`;
-    const existingSkirtingId = skirtingMap.get(skirtingLookupKey);
-    if (!existingSkirtingId) {
-      newSkirtingKeys.add(skirtingLookupKey);
+    const hardwareItemLower = hardwareItemName.toLowerCase();
+    const hardwareItemLookupKey = `${hardwareTypeDedupeId}::${hardwareItemLower}`;
+    const existingHardwareItemId = hardwareItemMap.get(hardwareItemLookupKey);
+    if (!existingHardwareItemId) {
+      newHardwareItemKeys.add(hardwareItemLookupKey);
     }
-    const skirtingDedupeId = existingSkirtingId ?? `new:${skirtingLookupKey}`;
+    const hardwareItemDedupeId = existingHardwareItemId ?? `new:${hardwareItemLookupKey}`;
 
-    if (!colorValue) {
+    if (!optionValue) {
       return;
     }
 
-    const colorLower = colorValue.toLowerCase();
-    const colorDedupeKey = `${skirtingDedupeId}::${colorLower}`;
+    const optionLower = optionValue.toLowerCase();
+    const optionDedupeKey = `${hardwareItemDedupeId}::${optionLower}`;
 
-    if (colorKeySet.has(colorDedupeKey)) {
+    if (optionKeySet.has(optionDedupeKey)) {
       skippedDuplicate++;
       skippedRows.push({
         row: rowNumber,
-        reason: `Duplicate skirting color "${colorValue}" for skirting "${skirtingName}"`,
+        reason: `Duplicate hardware item option "${optionValue}" for hardware item "${hardwareItemName}"`,
         type: "duplicate",
       });
       return;
     }
 
-    colorKeySet.add(colorDedupeKey);
-    colorsToAdd++;
+    optionKeySet.add(optionDedupeKey);
+    optionsToAdd++;
   });
 
   return {
     totalDataRows: rows.length,
-    typesToAdd: newLegsNames.size,
-    materialsToAdd: newSkirtingKeys.size,
-    finishesToAdd: colorsToAdd,
+    typesToAdd: newHardwareTypeNames.size,
+    materialsToAdd: newHardwareItemKeys.size,
+    finishesToAdd: optionsToAdd,
     skippedMissing,
     skippedDuplicate,
     skippedRows,
@@ -789,11 +925,17 @@ function MasterListingTable({
   actionLabel,
   rows,
   showParent = false,
+  nameHeader = "Name",
+  parentHeader = "Parent",
+  grandParentHeader,
+  parentFirst = false,
   isLoading,
   isError,
   errorMessage,
   onAction,
+  onEdit,
   extraActions,
+  statusToggle,
 }: {
   title: string;
   description: string;
@@ -801,54 +943,129 @@ function MasterListingTable({
   actionLabel: string;
   rows: MasterRow[];
   showParent?: boolean;
+  nameHeader?: string;
+  parentHeader?: string;
+  /** Shows a `grandParent` column before the parent column. */
+  grandParentHeader?: string;
+  /** Show the parent columns before the name (top-level first). */
+  parentFirst?: boolean;
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string;
   onAction?: () => void;
+  onEdit: (row: MasterRow) => void;
   extraActions?: React.ReactNode;
+  /** Shows an active / inactive switch in the status column. */
+  statusToggle?: StatusToggle;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
   const [globalFilter, setGlobalFilter] = React.useState("");
-  const columns = React.useMemo<ColumnDef<MasterRow>[]>(
-    () => [
-      {
-        accessorKey: "srNo",
-        header: "Sr. No.",
-        cell: ({ row }) => row.original.srNo,
-      },
-      {
-        accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => row.original.name,
-      },
+  const columns = React.useMemo<ColumnDef<MasterRow>[]>(() => {
+    const nameColumn: ColumnDef<MasterRow> = {
+      accessorKey: "name",
+      header: nameHeader,
+      cell: ({ row }) =>
+        row.original.pills ? (
+          // Pills wrap onto new lines, so the row grows with the list.
+          <div className="flex min-w-[16rem] max-w-xl flex-wrap gap-1.5 whitespace-normal">
+            {row.original.pills.map((pill) => (
+              <span
+                key={pill}
+                className="inline-flex items-center rounded-md border bg-muted/40 px-2 py-0.5 text-xs font-medium"
+              >
+                {pill}
+              </span>
+            ))}
+          </div>
+        ) : (
+          row.original.name
+        ),
+    };
+    const parentColumns: ColumnDef<MasterRow>[] = [
+      ...(grandParentHeader
+        ? [
+            {
+              accessorKey: "grandParent",
+              header: grandParentHeader,
+              cell: ({ row }: { row: { original: MasterRow } }) =>
+                row.original.grandParent || "—",
+            } satisfies ColumnDef<MasterRow>,
+          ]
+        : []),
       ...(showParent
         ? [
             {
               accessorKey: "parent",
-              header: "Parent",
+              header: parentHeader,
               cell: ({ row }: { row: { original: MasterRow } }) =>
                 row.original.parent || "—",
             } satisfies ColumnDef<MasterRow>,
           ]
         : []),
+    ];
+
+    return [
+      {
+        accessorKey: "srNo",
+        header: "Sr. No.",
+        cell: ({ row }) => row.original.srNo,
+      },
+      // Top-level first (Type | Item | Name), or the name first and its parents after it.
+      ...(parentFirst
+        ? [...parentColumns, nameColumn]
+        : [nameColumn, ...[...parentColumns].reverse()]),
       {
         accessorKey: "status",
         header: "Status",
+        cell: ({ row }) => (
+          <StatusCell row={row.original} statusToggle={statusToggle} />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableGlobalFilter: false,
         cell: ({ row }) => {
-          const status = row.original.status || "—";
+          const entries = row.original.entries;
+          if (entries && entries.length > 1) {
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+                    onClick={(event) => event.stopPropagation()}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+                  <DropdownMenuLabel>Edit option</DropdownMenuLabel>
+                  {entries.map((entry) => (
+                    <DropdownMenuItem key={entry.id}
+                      onSelect={() => onEdit({ ...row.original, id: entry.id, name: entry.name })}>
+                      {entry.label ?? entry.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          }
+          const target = entries?.[0];
           return (
-            <span className="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium">
-              {status}
-            </span>
+            <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(target ? { ...row.original, id: target.id, name: target.name } : row.original);
+              }}>
+              <Pencil className="h-4 w-4" />
+            </Button>
           );
         },
       },
-    ],
-    [showParent],
-  );
+    ];
+  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit, statusToggle]);
 
   const table = useReactTable({
     data: rows,
@@ -926,6 +1143,7 @@ function MasterListingTable({
 }
 
 function CarcassMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -947,44 +1165,51 @@ function CarcassMastersSection() {
     error: carcassMaterialFinishesError,
   } = useAllCarcassMaterialFinishes();
 
-  const createCarcassType = useCreateCarcassType();
-  const createCarcasMaterial = useCreateCarcasMaterial();
+  const createCarcassType = useSaveSpecsMaster("carcass-type", editingId);
+  const createCarcasMaterial = useSaveSpecsMaster("carcas-material", editingId);
   const uploadCarcassMaterialFinishes = useUploadCarcassMaterialFinishes();
-  const createCarcassMaterialFinish = useCreateCarcassMaterialFinish();
+  const createCarcassMaterialFinish = useSaveSpecsMaster("carcass-material-finish", editingId);
 
+  const carcassTypeStatusToggle = useStatusToggle("carcass-type");
   const carcassTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (carcassTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [carcassTypes?.data],
   );
 
+  const carcasMaterialStatusToggle = useStatusToggle("carcas-material");
   const carcasMaterialRows = React.useMemo<MasterRow[]>(
     () =>
       (carcasMaterials?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [carcasMaterials?.data],
   );
 
-  const carcassMaterialFinishRows = React.useMemo<MasterRow[]>(
-    () =>
-      (carcassMaterialFinishes?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.material?.name ?? null,
-        status: "active",
-      })),
-    [carcassMaterialFinishes?.data],
-  );
+  const carcassMaterialFinishStatusToggle = useStatusToggle("carcass-material-finish");
+  const carcassMaterialFinishRows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive parent, an entry is inactive too.
+    const activeParentIds = new Set(
+      (carcasMaterials?.data ?? [])
+        .filter((parent) => isActiveStatus(parent.status))
+        .map((parent) => parent.id),
+    );
+    return (carcassMaterialFinishes?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.material?.name ?? null,
+      ...entryStatus(item.status, activeParentIds.has(item.carcas_material_id)),
+    }));
+  }, [carcassMaterialFinishes?.data, carcasMaterials?.data]);
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
   const [typeName, setTypeName] = React.useState("");
@@ -1156,13 +1381,19 @@ function CarcassMastersSection() {
             searchPlaceholder="Search carcass material finish..."
             actionLabel="Add Carcass Material Finish"
             rows={carcassMaterialFinishRows}
+            statusToggle={carcassMaterialFinishStatusToggle}
+            onEdit={(row) => {
+              const item = carcassMaterialFinishes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.carcas_material_id)); setOpenFinishModal(true);
+            }}
             showParent
             isLoading={isCarcassMaterialFinishesLoading}
             isError={isCarcassMaterialFinishesError}
             errorMessage={
               (carcassMaterialFinishesError as any)?.response?.data?.error
             }
-            onAction={() => setOpenFinishModal(true)}
+            onAction={() => { setEditingId(null); setFinishName(""); setFinishMaterialId(""); setOpenFinishModal(true); }}
             extraActions={
               <>
                 <Button
@@ -1191,108 +1422,42 @@ function CarcassMastersSection() {
         </TabsContent>
 
         <TabsContent value="material" className="mt-4">
-
-
-               <MasterListingTable
-            title="Carcass Material Finish"
-            description="Carcass material finish master entries for the current vendor."
-            searchPlaceholder="Search carcass material finish..."
-            actionLabel="Add Carcass Material Finish"
-            rows={carcassMaterialFinishRows}
-            showParent
-            isLoading={isCarcassMaterialFinishesLoading}
-            isError={isCarcassMaterialFinishesError}
-            errorMessage={
-              (carcassMaterialFinishesError as any)?.response?.data?.error
-            }
-            onAction={() => setOpenFinishModal(true)}
-            extraActions={
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={downloadCarcassTemplate}
-                >
-                  <Download className="h-4 w-4" />
-                  Template
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedFiles([]);
-                    setOpenUploadModal(true);
-                  }}
-                  disabled={uploadCarcassMaterialFinishes.isPending}
-                >
-                  <Upload className="h-4 w-4" />
-                  Import
-                </Button>
-              </>
-            }
-          />
           <MasterListingTable
             title="Carcass Material"
             description="Carcass material master entries for the current vendor."
             searchPlaceholder="Search carcass material..."
             actionLabel="Add Carcass Material"
             rows={carcasMaterialRows}
+            statusToggle={carcasMaterialStatusToggle}
+            onEdit={(row) => {
+              const item = carcasMaterials?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setMaterialName(item.name); setOpenMaterialModal(true);
+            }}
             isLoading={isCarcasMaterialsLoading}
             isError={isCarcasMaterialsError}
             errorMessage={(carcasMaterialsError as any)?.response?.data?.error}
-            onAction={() => setOpenMaterialModal(true)}
+            onAction={() => { setEditingId(null); setMaterialName(""); setOpenMaterialModal(true); }}
           />
         </TabsContent>
 
         <TabsContent value="type" className="mt-4">
-          <MasterListingTable
-            title="Carcass Material Finish"
-            description="Carcass material finish master entries for the current vendor."
-            searchPlaceholder="Search carcass material finish..."
-            actionLabel="Add Carcass Material Finish"
-            rows={carcassMaterialFinishRows}
-            showParent
-            isLoading={isCarcassMaterialFinishesLoading}
-            isError={isCarcassMaterialFinishesError}
-            errorMessage={
-              (carcassMaterialFinishesError as any)?.response?.data?.error
-            }
-            onAction={() => setOpenFinishModal(true)}
-            extraActions={
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={downloadCarcassTemplate}
-                >
-                  <Download className="h-4 w-4" />
-                  Template
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedFiles([]);
-                    setOpenUploadModal(true);
-                  }}
-                  disabled={uploadCarcassMaterialFinishes.isPending}
-                >
-                  <Upload className="h-4 w-4" />
-                  Import
-                </Button>
-              </>
-            }
-          />
           <MasterListingTable
             title="Carcass Type"
             description="Carcass type master entries for the current vendor."
             searchPlaceholder="Search carcass type..."
             actionLabel="Add Carcass Type"
             rows={carcassTypeRows}
+            statusToggle={carcassTypeStatusToggle}
+            onEdit={(row) => {
+              const item = carcassTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setTypeName(item.name); setOpenTypeModal(true);
+            }}
             isLoading={isCarcassTypesLoading}
             isError={isCarcassTypesError}
             errorMessage={(carcassTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)}
+            onAction={() => { setEditingId(null); setTypeName(""); setOpenTypeModal(true); }}
           />
         </TabsContent>
       </Tabs>
@@ -1300,9 +1465,9 @@ function CarcassMastersSection() {
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Type</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Type</DialogTitle>
             <DialogDescription>
-              Create a new carcass type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} carcass type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1334,7 +1499,7 @@ function CarcassMastersSection() {
                 createCarcassType.isPending || !typeName.trim() || !vendorId
               }
             >
-              {createCarcassType.isPending ? "Creating..." : "Create"}
+              {createCarcassType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1343,9 +1508,9 @@ function CarcassMastersSection() {
       <Dialog open={openMaterialModal} onOpenChange={setOpenMaterialModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Material</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Material</DialogTitle>
             <DialogDescription>
-              Create a new carcass material for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} carcass material for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1379,7 +1544,7 @@ function CarcassMastersSection() {
                 !vendorId
               }
             >
-              {createCarcasMaterial.isPending ? "Creating..." : "Create"}
+              {createCarcasMaterial.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1388,9 +1553,9 @@ function CarcassMastersSection() {
       <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Material Finish</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Carcass Material Finish</DialogTitle>
             <DialogDescription>
-              Create a new carcass material finish and link it to a carcass
+              {editingId ? "Edit the selected" : "Create a new"} carcass material finish and link it to a carcass
               material.
             </DialogDescription>
           </DialogHeader>
@@ -1447,7 +1612,7 @@ function CarcassMastersSection() {
                 !finishMaterialId
               }
             >
-              {createCarcassMaterialFinish.isPending ? "Creating..." : "Create"}
+              {createCarcassMaterialFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1604,6 +1769,7 @@ function CarcassMastersSection() {
 }
 
 function ShutterMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -1619,50 +1785,57 @@ function ShutterMastersSection() {
     error: shutterMaterialsError,
   } = useShutterMaterials();
   const {
-    data: shutterMaterialFinishes,
-    isLoading: isShutterMaterialFinishesLoading,
-    isError: isShutterMaterialFinishesError,
-    error: shutterMaterialFinishesError,
-  } = useAllShutterMaterialFinishes();
+    data: shutterOuterFinishes,
+    isLoading: isShutterOuterFinishesLoading,
+    isError: isShutterOuterFinishesError,
+    error: shutterOuterFinishesError,
+  } = useAllShutterOuterFinishes();
 
-  const createShutterType = useCreateShutterType();
-  const createShutterMaterial = useCreateShutterMaterial();
-  const uploadShutterMaterialFinishes = useUploadShutterMaterialFinishes();
-  const createShutterMaterialFinish = useCreateShutterMaterialFinish();
+  const createShutterType = useSaveSpecsMaster("shutter-type", editingId);
+  const createShutterMaterial = useSaveSpecsMaster("shutter-material", editingId);
+  const uploadShutterOuterFinishes = useUploadShutterOuterFinishes();
+  const createShutterOuterFinish = useSaveSpecsMaster("shutter-outer-finish", editingId);
 
+  const shutterTypeStatusToggle = useStatusToggle("shutter-type");
   const shutterTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (shutterTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [shutterTypes?.data],
   );
 
+  const shutterMaterialStatusToggle = useStatusToggle("shutter-material");
   const shutterMaterialRows = React.useMemo<MasterRow[]>(
     () =>
       (shutterMaterials?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.name,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [shutterMaterials?.data],
   );
 
-  const shutterMaterialFinishRows = React.useMemo<MasterRow[]>(
-    () =>
-      (shutterMaterialFinishes?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.material?.name ?? null,
-        status: "active",
-      })),
-    [shutterMaterialFinishes?.data],
-  );
+  const shutterOuterFinishStatusToggle = useStatusToggle("shutter-outer-finish");
+  const shutterOuterFinishRows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive parent, an entry is inactive too.
+    const activeParentIds = new Set(
+      (shutterMaterials?.data ?? [])
+        .filter((parent) => isActiveStatus(parent.status))
+        .map((parent) => parent.id),
+    );
+    return (shutterOuterFinishes?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.material?.name ?? null,
+      ...entryStatus(item.status, activeParentIds.has(item.shutter_material_id)),
+    }));
+  }, [shutterOuterFinishes?.data, shutterMaterials?.data]);
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
   const [typeName, setTypeName] = React.useState("");
@@ -1689,7 +1862,7 @@ function ShutterMastersSection() {
     computeMasterUploadPreview(file, {
       types: shutterTypes?.data ?? [],
       materials: shutterMaterials?.data ?? [],
-      finishes: (shutterMaterialFinishes?.data ?? []).map((f) => ({
+      finishes: (shutterOuterFinishes?.data ?? []).map((f) => ({
         id: f.id,
         name: f.name,
         materialId: f.shutter_material_id,
@@ -1724,7 +1897,7 @@ function ShutterMastersSection() {
     selectedFiles,
     shutterTypes?.data,
     shutterMaterials?.data,
-    shutterMaterialFinishes?.data,
+    shutterOuterFinishes?.data,
   ]);
 
   const handleCreateType = () => {
@@ -1762,7 +1935,7 @@ function ShutterMastersSection() {
     const shutterMaterialId = Number(finishMaterialId);
     if (!name || !shutterMaterialId) return;
 
-    createShutterMaterialFinish.mutate(
+    createShutterOuterFinish.mutate(
       { shutter_material_id: shutterMaterialId, name },
       {
         onSuccess: () => {
@@ -1782,7 +1955,7 @@ function ShutterMastersSection() {
     formData.append("file", file);
     formData.append("vendorId", String(vendorId));
 
-    uploadShutterMaterialFinishes.mutate(formData, {
+    uploadShutterOuterFinishes.mutate(formData, {
       onSuccess: () => {
         setOpenUploadModal(false);
         setSelectedFiles([]);
@@ -1803,7 +1976,7 @@ function ShutterMastersSection() {
     worksheet.columns = [
       { header: "Shutter Type", key: "type", width: 30 },
       { header: "Shutter Material", key: "material", width: 30 },
-      { header: "Shutter Material Finish", key: "finish", width: 30 },
+      { header: "Shutter Outer Finish", key: "finish", width: 30 },
     ];
 
     const headerRow = worksheet.getRow(1);
@@ -1822,25 +1995,32 @@ function ShutterMastersSection() {
     <>
       <Tabs defaultValue="finish" className="w-full">
         <TabsList>
-          <TabsTrigger value="finish">Shutter Material Finish</TabsTrigger>
+          <TabsTrigger value="finish">Shutter Outer Finish</TabsTrigger>
+          <TabsTrigger value="inner-finish">Shutter Inner Finish</TabsTrigger>
           <TabsTrigger value="material">Shutter Material</TabsTrigger>
           <TabsTrigger value="type">Shutter Type</TabsTrigger>
         </TabsList>
 
         <TabsContent value="finish" className="mt-4">
           <MasterListingTable
-            title="Shutter Material Finish"
-            description="Shutter material finish master entries for the current vendor."
-            searchPlaceholder="Search shutter material finish..."
-            actionLabel="Add Shutter Material Finish"
-            rows={shutterMaterialFinishRows}
+            title="Shutter Outer Finish"
+            description="Shutter outer finish master entries for the current vendor."
+            searchPlaceholder="Search shutter outer finish..."
+            actionLabel="Add Shutter Outer Finish"
+            rows={shutterOuterFinishRows}
+            statusToggle={shutterOuterFinishStatusToggle}
+            onEdit={(row) => {
+              const item = shutterOuterFinishes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setFinishName(item.name); setFinishMaterialId(String(item.shutter_material_id)); setOpenFinishModal(true);
+            }}
             showParent
-            isLoading={isShutterMaterialFinishesLoading}
-            isError={isShutterMaterialFinishesError}
+            isLoading={isShutterOuterFinishesLoading}
+            isError={isShutterOuterFinishesError}
             errorMessage={
-              (shutterMaterialFinishesError as any)?.response?.data?.error
+              (shutterOuterFinishesError as any)?.response?.data?.error
             }
-            onAction={() => setOpenFinishModal(true)}
+            onAction={() => { setEditingId(null); setFinishName(""); setFinishMaterialId(""); setOpenFinishModal(true); }}
             extraActions={
               <>
                 <Button
@@ -1858,13 +2038,20 @@ function ShutterMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadShutterMaterialFinishes.isPending}
+                  disabled={uploadShutterOuterFinishes.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
                 </Button>
               </>
             }
+          />
+        </TabsContent>
+
+        <TabsContent value="inner-finish" className="mt-4">
+          <ShutterInnerFinishTab
+            shutterTypes={shutterTypes?.data ?? []}
+            shutterMaterials={shutterMaterials?.data ?? []}
           />
         </TabsContent>
 
@@ -1875,10 +2062,16 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter material..."
             actionLabel="Add Shutter Material"
             rows={shutterMaterialRows}
+            statusToggle={shutterMaterialStatusToggle}
+            onEdit={(row) => {
+              const item = shutterMaterials?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setMaterialName(item.name); setOpenMaterialModal(true);
+            }}
             isLoading={isShutterMaterialsLoading}
             isError={isShutterMaterialsError}
             errorMessage={(shutterMaterialsError as any)?.response?.data?.error}
-            onAction={() => setOpenMaterialModal(true)} extraActions={
+            onAction={() => { setEditingId(null); setMaterialName(""); setOpenMaterialModal(true); }} extraActions={
               <>
                 <Button
                   type="button"
@@ -1895,7 +2088,7 @@ function ShutterMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadShutterMaterialFinishes.isPending}
+                  disabled={uploadShutterOuterFinishes.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -1912,10 +2105,16 @@ function ShutterMastersSection() {
             searchPlaceholder="Search shutter type..."
             actionLabel="Add Shutter Type"
             rows={shutterTypeRows}
+            statusToggle={shutterTypeStatusToggle}
+            onEdit={(row) => {
+              const item = shutterTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setTypeName(item.name); setOpenTypeModal(true);
+            }}
             isLoading={isShutterTypesLoading}
             isError={isShutterTypesError}
             errorMessage={(shutterTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)} extraActions={
+            onAction={() => { setEditingId(null); setTypeName(""); setOpenTypeModal(true); }} extraActions={
               <>
                 <Button
                   type="button"
@@ -1932,7 +2131,7 @@ function ShutterMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadShutterMaterialFinishes.isPending}
+                  disabled={uploadShutterOuterFinishes.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -1946,9 +2145,9 @@ function ShutterMastersSection() {
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shutter Type</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Type</DialogTitle>
             <DialogDescription>
-              Create a new shutter type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} shutter type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -1980,7 +2179,7 @@ function ShutterMastersSection() {
                 createShutterType.isPending || !typeName.trim() || !vendorId
               }
             >
-              {createShutterType.isPending ? "Creating..." : "Create"}
+              {createShutterType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1989,9 +2188,9 @@ function ShutterMastersSection() {
       <Dialog open={openMaterialModal} onOpenChange={setOpenMaterialModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shutter Material</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Material</DialogTitle>
             <DialogDescription>
-              Create a new shutter material for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} shutter material for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -2025,7 +2224,7 @@ function ShutterMastersSection() {
                 !vendorId
               }
             >
-              {createShutterMaterial.isPending ? "Creating..." : "Create"}
+              {createShutterMaterial.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2034,9 +2233,9 @@ function ShutterMastersSection() {
       <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shutter Material Finish</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Outer Finish</DialogTitle>
             <DialogDescription>
-              Create a new shutter material finish and link it to a shutter
+              {editingId ? "Edit the selected" : "Create a new"} shutter outer finish and link it to a shutter
               material.
             </DialogDescription>
           </DialogHeader>
@@ -2062,14 +2261,14 @@ function ShutterMastersSection() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shutter-material-finish-name">
-                Shutter Material Finish
+              <Label htmlFor="shutter-outer-finish-name">
+                Shutter Outer Finish
               </Label>
               <Input
-                id="shutter-material-finish-name"
+                id="shutter-outer-finish-name"
                 value={finishName}
                 onChange={(e) => setFinishName(e.target.value)}
-                placeholder="Enter shutter material finish"
+                placeholder="Enter shutter outer finish"
               />
             </div>
           </div>
@@ -2088,12 +2287,12 @@ function ShutterMastersSection() {
             <Button
               onClick={handleCreateFinish}
               disabled={
-                createShutterMaterialFinish.isPending ||
+                createShutterOuterFinish.isPending ||
                 !finishName.trim() ||
                 !finishMaterialId
               }
             >
-              {createShutterMaterialFinish.isPending ? "Creating..." : "Create"}
+              {createShutterOuterFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2108,8 +2307,8 @@ function ShutterMastersSection() {
             setUploadPreview(null);
           }
         }}
-        title="Import Shutter Material Finish"
-        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Material Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
+        title="Import Shutter Outer Finish"
+        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Outer Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
         size="smd"
       >
         <div className="p-6 space-y-4">
@@ -2167,7 +2366,7 @@ function ShutterMastersSection() {
                     />
                     <PreviewStatTile
                       icon={<Palette />}
-                      label="New Material Finish"
+                      label="New Outer Finish"
                       value={uploadPreview.finishesToAdd}
                       tone="emerald"
                     />
@@ -2235,10 +2434,10 @@ function ShutterMastersSection() {
                 selectedFiles.length === 0 ||
                 isParsingPreview ||
                 !!uploadPreview?.headerError ||
-                uploadShutterMaterialFinishes.isPending
+                uploadShutterOuterFinishes.isPending
               }
             >
-              {uploadShutterMaterialFinishes.isPending
+              {uploadShutterOuterFinishes.isPending
                 ? "Uploading..."
                 : "Upload & Import"}
             </Button>
@@ -2249,87 +2448,46 @@ function ShutterMastersSection() {
   );
 }
 
-function HardwareMastersSection() {
+/** Shutter Inner Finish: same master as Shutter Outer Finish (a finish under a shutter material). */
+function ShutterInnerFinishTab({
+  shutterTypes,
+  shutterMaterials,
+}: {
+  shutterTypes: Array<{ id: number; name: string }>;
+  shutterMaterials: Array<{ id: number; name: string; status?: string }>;
+}) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
 
   const {
-    data: carcassLegs,
-    isLoading: isCarcassLegsLoading,
-    isError: isCarcassLegsError,
-    error: carcassLegsError,
-  } = useCarcassLegs();
-  const {
-    data: skirtings,
-    isLoading: isSkirtingsLoading,
-    isError: isSkirtingsError,
-    error: skirtingsError,
-  } = useAllSkirtingCarcassLegs();
-  const {
-    data: skirtingColors,
-    isLoading: isSkirtingColorsLoading,
-    isError: isSkirtingColorsError,
-    error: skirtingColorsError,
-  } = useAllSkirtingCarcassLegsColors();
+    data: shutterInnerFinishes,
+    isLoading,
+    isError,
+    error,
+  } = useAllShutterInnerFinishes();
+  const createShutterInnerFinish = useSaveSpecsMaster("shutter-inner-finish", editingId);
+  const uploadShutterInnerFinishes = useUploadShutterInnerFinishes();
 
-  const createCarcassLegs = useCreateCarcassLegs();
-  const createSkirtingCarcassLegs = useCreateSkirtingCarcassLegs();
-  const createSkirtingCarcassLegsColor = useCreateSkirtingCarcassLegsColor();
-  const uploadSkirtingCarcassLegsColors = useUploadSkirtingCarcassLegsColors();
+  const statusToggle = useStatusToggle("shutter-inner-finish");
+  const rows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive material, an inner finish is inactive too.
+    const activeMaterialIds = new Set(
+      shutterMaterials
+        .filter((material) => isActiveStatus(material.status))
+        .map((material) => material.id),
+    );
+    return (shutterInnerFinishes?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.name,
+      parent: item.material?.name ?? null,
+      ...entryStatus(item.status, activeMaterialIds.has(item.shutter_material_id)),
+    }));
+  }, [shutterInnerFinishes?.data, shutterMaterials]);
 
-  const carcassLegsRows = React.useMemo<MasterRow[]>(
-    () =>
-      (carcassLegs?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        status: "active",
-      })),
-    [carcassLegs?.data],
-  );
-
-  const skirtingRows = React.useMemo<MasterRow[]>(
-    () =>
-      (skirtings?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.name,
-        parent: item.carcassLegs?.name ?? null,
-        status: item.inScope ? "in scope" : "not in scope",
-      })),
-    [skirtings?.data],
-  );
-
-  const skirtingColorRows = React.useMemo<MasterRow[]>(
-    () =>
-      (skirtingColors?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.color,
-        parent: item.skirtingCarcassLegs?.name ?? null,
-        status: "active",
-      })),
-    [skirtingColors?.data],
-  );
-
-  const [openLegsModal, setOpenLegsModal] = React.useState(false);
-  const [legsName, setLegsName] = React.useState("");
-  const [openSkirtingModal, setOpenSkirtingModal] = React.useState(false);
-  const [skirtingName, setSkirtingName] = React.useState("");
-  const [skirtingLegsId, setSkirtingLegsId] = React.useState("");
-  const [skirtingInScope, setSkirtingInScope] = React.useState("true");
-  const [openColorModal, setOpenColorModal] = React.useState(false);
-  const [colorValue, setColorValue] = React.useState("");
-  const [colorLegsId, setColorLegsId] = React.useState("");
-  const [colorSkirtingId, setColorSkirtingId] = React.useState("");
-
-  const colorSkirtingOptions = React.useMemo(
-    () =>
-      (skirtings?.data ?? []).filter(
-        (item) => String(item.carcass_legs_id) === colorLegsId,
-      ),
-    [skirtings?.data, colorLegsId],
-  );
-
+  const [openFinishModal, setOpenFinishModal] = React.useState(false);
+  const [finishName, setFinishName] = React.useState("");
+  const [finishMaterialId, setFinishMaterialId] = React.useState("");
   const [openUploadModal, setOpenUploadModal] = React.useState(false);
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [uploadPreview, setUploadPreview] =
@@ -2345,17 +2503,13 @@ function HardwareMastersSection() {
 
     let cancelled = false;
     setIsParsingPreview(true);
-    computeHardwareUploadPreview(file, {
-      legs: carcassLegs?.data ?? [],
-      skirtings: (skirtings?.data ?? []).map((s) => ({
-        id: s.id,
-        name: s.name,
-        legsId: s.carcass_legs_id,
-      })),
-      colors: (skirtingColors?.data ?? []).map((c) => ({
-        id: c.id,
-        color: c.color,
-        skirtingId: c.skirting_carcass_legs_id,
+    computeMasterUploadPreview(file, {
+      types: shutterTypes,
+      materials: shutterMaterials,
+      finishes: (shutterInnerFinishes?.data ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        materialId: f.shutter_material_id,
       })),
     })
       .then((preview) => {
@@ -2383,66 +2537,33 @@ function HardwareMastersSection() {
     return () => {
       cancelled = true;
     };
-  }, [selectedFiles, carcassLegs?.data, skirtings?.data, skirtingColors?.data]);
+  }, [selectedFiles, shutterTypes, shutterMaterials, shutterInnerFinishes?.data]);
 
-  const handleCreateLegs = () => {
-    const name = legsName.trim();
-    if (!name || !vendorId) return;
+  const resetFinishForm = () => {
+    setFinishName("");
+    setFinishMaterialId("");
+  };
 
-    createCarcassLegs.mutate(
-      { vendor_id: vendorId, name },
+  const handleCreateFinish = () => {
+    const name = finishName.trim();
+    const shutterMaterialId = Number(finishMaterialId);
+    if (!name || !shutterMaterialId) return;
+
+    createShutterInnerFinish.mutate(
+      { shutter_material_id: shutterMaterialId, name },
       {
         onSuccess: () => {
-          setOpenLegsModal(false);
-          setLegsName("");
+          setOpenFinishModal(false);
+          resetFinishForm();
         },
       },
     );
   };
 
-  const handleCreateSkirting = () => {
-    const name = skirtingName.trim();
-    const carcassLegsId = Number(skirtingLegsId);
-    if (!name || !carcassLegsId) return;
-
-    createSkirtingCarcassLegs.mutate(
-      {
-        carcass_legs_id: carcassLegsId,
-        name,
-        inScope: skirtingInScope === "true",
-      },
-      {
-        onSuccess: () => {
-          setOpenSkirtingModal(false);
-          setSkirtingName("");
-          setSkirtingLegsId("");
-          setSkirtingInScope("true");
-        },
-      },
-    );
-  };
-
-  const handleCreateColor = () => {
-    const color = colorValue.trim();
-    const carcassLegsId = Number(colorLegsId);
-    const skirtingCarcassLegsId = Number(colorSkirtingId);
-    if (!color || !carcassLegsId || !skirtingCarcassLegsId) return;
-
-    createSkirtingCarcassLegsColor.mutate(
-      {
-        carcass_legs_id: carcassLegsId,
-        skirting_carcass_legs_id: skirtingCarcassLegsId,
-        color,
-      },
-      {
-        onSuccess: () => {
-          setOpenColorModal(false);
-          setColorValue("");
-          setColorLegsId("");
-          setColorSkirtingId("");
-        },
-      },
-    );
+  const closeUploadModal = () => {
+    setOpenUploadModal(false);
+    setSelectedFiles([]);
+    setUploadPreview(null);
   };
 
   const handleUploadSubmit = () => {
@@ -2453,7 +2574,623 @@ function HardwareMastersSection() {
     formData.append("file", file);
     formData.append("vendorId", String(vendorId));
 
-    uploadSkirtingCarcassLegsColors.mutate(formData, {
+    uploadShutterInnerFinishes.mutate(formData, {
+      onSuccess: closeUploadModal,
+      onError: closeUploadModal,
+    });
+  };
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Shutter Inner Finish Template");
+
+    worksheet.columns = [
+      { header: "Shutter Type", key: "type", width: 30 },
+      { header: "Shutter Material", key: "material", width: 30 },
+      { header: "Shutter Inner Finish", key: "finish", width: 30 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getRow(1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "shutter_inner_finish_template.xlsx");
+  };
+
+  return (
+    <>
+      <MasterListingTable
+        title="Shutter Inner Finish"
+        description="Shutter inner finish master entries for the current vendor."
+        searchPlaceholder="Search shutter inner finish..."
+        actionLabel="Add Shutter Inner Finish"
+        rows={rows}
+        statusToggle={statusToggle}
+        onEdit={(row) => {
+          const item = shutterInnerFinishes?.data?.find((entry) => entry.id === row.id);
+          if (!item) return;
+          setEditingId(row.id);
+          setFinishName(item.name);
+          setFinishMaterialId(String(item.shutter_material_id));
+          setOpenFinishModal(true);
+        }}
+        showParent
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage={(error as any)?.response?.data?.error}
+        onAction={() => {
+          setEditingId(null);
+          resetFinishForm();
+          setOpenFinishModal(true);
+        }}
+        extraActions={
+          <>
+            <Button type="button" variant="outline" onClick={downloadTemplate}>
+              <Download className="h-4 w-4" />
+              Template
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedFiles([]);
+                setOpenUploadModal(true);
+              }}
+              disabled={uploadShutterInnerFinishes.isPending}
+            >
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+          </>
+        }
+      />
+
+      <Dialog open={openFinishModal} onOpenChange={setOpenFinishModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Shutter Inner Finish</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Edit the selected" : "Create a new"} shutter inner finish and link it to a shutter
+              material.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Shutter Material</Label>
+              <Select value={finishMaterialId} onValueChange={setFinishMaterialId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select shutter material" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shutterMaterials.map((item) => (
+                    <SelectItem key={item.id} value={String(item.id)}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shutter-inner-finish-name">Shutter Inner Finish</Label>
+              <Input
+                id="shutter-inner-finish-name"
+                value={finishName}
+                onChange={(e) => setFinishName(e.target.value)}
+                placeholder="Enter shutter inner finish"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenFinishModal(false);
+                resetFinishForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateFinish}
+              disabled={
+                createShutterInnerFinish.isPending ||
+                !finishName.trim() ||
+                !finishMaterialId
+              }
+            >
+              {createShutterInnerFinish.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          if (open) setOpenUploadModal(true);
+          else closeUploadModal();
+        }}
+        title="Import Shutter Inner Finish"
+        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Inner Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile icon={<Layers />} label="New Shutter Type" value={uploadPreview.typesToAdd} tone="indigo" />
+                    <PreviewStatTile icon={<Package />} label="New Shutter Material" value={uploadPreview.materialsToAdd} tone="violet" />
+                    <PreviewStatTile icon={<Palette />} label="New Inner Finish" value={uploadPreview.finishesToAdd} tone="emerald" />
+                    <PreviewStatTile icon={<CopyX />} label="Skipped — duplicate" value={uploadPreview.skippedDuplicate} tone="amber" />
+                  </div>
+
+                  {uploadPreview.skippedMissing > 0 && (
+                    <PreviewStatTile
+                      icon={<FileWarning />}
+                      label="Skipped — missing Type/Material/Finish value"
+                      value={uploadPreview.skippedMissing}
+                      tone="red"
+                    />
+                  )}
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div key={i} className="flex items-start gap-2 px-3 py-1.5 text-xs">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "mt-0.5 shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">{s.reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={closeUploadModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadShutterInnerFinishes.isPending
+              }
+            >
+              {uploadShutterInnerFinishes.isPending ? "Uploading..." : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
+    </>
+  );
+}
+
+function HardwareMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  const {
+    data: hardwareTypes,
+    isLoading: isHardwareTypesLoading,
+    isError: isHardwareTypesError,
+    error: hardwareTypesError,
+  } = useHardwareTypes();
+  const {
+    data: hardwareItems,
+    isLoading: isHardwareItemsLoading,
+    isError: isHardwareItemsError,
+    error: hardwareItemsError,
+  } = useAllHardwareItems();
+  const {
+    data: hardwareItemOptions,
+    isLoading: isHardwareItemOptionsLoading,
+    isError: isHardwareItemOptionsError,
+    error: hardwareItemOptionsError,
+  } = useAllHardwareItemOptions();
+
+  const createHardwareType = useSaveSpecsMaster("hardware-type", editingId);
+  const createHardwareItem = useSaveSpecsMaster("hardware-item", editingId);
+  const createHardwareItemOption = useSaveSpecsMaster("hardware-item-option", editingId);
+  const uploadHardwareItemOptions = useUploadHardwareItemOptions();
+
+  const hardwareTypeStatusToggle = useStatusToggle("hardware-type");
+  const hardwareTypeRows = React.useMemo<MasterRow[]>(
+    () =>
+      newestFirst(hardwareTypes?.data).map((item, index) => ({
+        srNo: index + 1,
+        id: item.id,
+        name: item.name,
+        ...entryStatus(item.status),
+      })),
+    [hardwareTypes?.data],
+  );
+
+  const hardwareItemStatusToggle = useStatusToggle("hardware-item");
+  const hardwareItemRows = React.useMemo<MasterRow[]>(() => {
+    type ItemEntry = NonNullable<typeof hardwareItems>["data"][number];
+
+    const activeTypeIds = new Set(
+      (hardwareTypes?.data ?? [])
+        .filter((type) => isActiveStatus(type.status))
+        .map((type) => type.id),
+    );
+
+    // One row per hardware item name, listing every hardware type it is under.
+    const rows = new Map<string, ItemEntry[]>();
+    for (const item of newestFirst(hardwareItems?.data)) {
+      const key = item.name.trim().toLowerCase();
+      rows.set(key, [...(rows.get(key) ?? []), item]);
+    }
+
+    return [...rows.values()].map((items, index) => {
+      const byTypeAge = [...items].sort(
+        (a, b) => a.hardware_type_id - b.hardware_type_id,
+      );
+      return {
+        srNo: index + 1,
+        id: items[0].id,
+        name: items[0].name,
+        parent: byTypeAge.map((item) => item.hardwareType?.name ?? "—").join(" / "),
+        ...groupStatus(
+          items.map((item) => ({
+            self: isActiveStatus(item.status),
+            parent: activeTypeIds.has(item.hardware_type_id),
+          })),
+        ),
+        entries: items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          label: `${item.name} (${item.hardwareType?.name ?? "—"})`,
+        })),
+      };
+    });
+  }, [hardwareItems?.data, hardwareTypes?.data]);
+
+  const hardwareItemOptionStatusToggle = useStatusToggle("hardware-item-option");
+  const hardwareItemOptionRows = React.useMemo<MasterRow[]>(() => {
+    const hardwareTypeNames = new Map(
+      (hardwareTypes?.data ?? []).map((type) => [type.id, type.name]),
+    );
+    type OptionEntry = NonNullable<typeof hardwareItemOptions>["data"][number];
+
+    const activeTypeIds = new Set(
+      (hardwareTypes?.data ?? [])
+        .filter((type) => isActiveStatus(type.status))
+        .map((type) => type.id),
+    );
+    // An item is usable only while it and its hardware type are active.
+    const activeItemIds = new Set(
+      (hardwareItems?.data ?? [])
+        .filter(
+          (item) =>
+            isActiveStatus(item.status) && activeTypeIds.has(item.hardware_type_id),
+        )
+        .map((item) => item.id),
+    );
+
+    // 1) Options of each hardware item (an item belongs to one hardware type).
+    const byItem = new Map<number, OptionEntry[]>();
+    for (const option of newestFirst(hardwareItemOptions?.data)) {
+      byItem.set(option.hardware_item_id, [
+        ...(byItem.get(option.hardware_item_id) ?? []),
+        option,
+      ]);
+    }
+
+    // 2) One row per hardware item name: the same item with the same options under
+    //    several hardware types (e.g. Drawers Type under Base, Tall and Roll) is one row.
+    const rows = new Map<
+      string,
+      { itemName: string; optionNames: string[]; typeIds: number[]; options: OptionEntry[] }
+    >();
+    for (const options of byItem.values()) {
+      const itemName = options[0].hardwareItem?.name ?? "—";
+      const optionNames = [...new Set(options.map((option) => option.name))];
+      const key = [
+        itemName.trim().toLowerCase(),
+        ...optionNames.map((name) => name.trim().toLowerCase()).sort(),
+      ].join("::");
+      const row = rows.get(key) ?? { itemName, optionNames, typeIds: [], options: [] };
+      row.typeIds.push(options[0].hardware_type_id);
+      row.options.push(...options);
+      rows.set(key, row);
+    }
+
+    return [...rows.values()]
+      .sort(
+        (a, b) =>
+          Math.max(...b.options.map((o) => o.id)) -
+          Math.max(...a.options.map((o) => o.id)),
+      )
+      .map((row, index) => {
+        const typeNames = [...new Set(row.typeIds)]
+          .sort((a, b) => a - b)
+          .map((id) => hardwareTypeNames.get(id) ?? "—");
+        return {
+          srNo: index + 1,
+          id: row.options[0].id,
+          name: joinNames(row.optionNames),
+          pills: row.optionNames,
+          parent: row.itemName,
+          grandParent: typeNames.join(" / "),
+          ...groupStatus(
+            row.options.map((option) => ({
+              self: isActiveStatus(option.status),
+              parent: activeItemIds.has(option.hardware_item_id),
+            })),
+          ),
+          entries: row.options.map((option) => ({
+            id: option.id,
+            name: option.name,
+            label:
+              typeNames.length > 1
+                ? `${option.name} (${hardwareTypeNames.get(option.hardware_type_id) ?? "—"})`
+                : option.name,
+          })),
+        };
+      });
+  }, [hardwareItemOptions?.data, hardwareTypes?.data, hardwareItems?.data]);
+
+  const [openHardwareTypeModal, setOpenHardwareTypeModal] = React.useState(false);
+  const [hardwareTypeName, setHardwareTypeName] = React.useState("");
+  const [openHardwareItemModal, setOpenHardwareItemModal] = React.useState(false);
+  const [hardwareItemName, setHardwareItemName] = React.useState("");
+  const [itemHardwareTypeId, setItemHardwareTypeId] = React.useState("");
+  // Adding: the same item is created under every selected hardware type.
+  const [itemHardwareTypeSelections, setItemHardwareTypeSelections] =
+    React.useState<MultiSelectOption[]>([]);
+  const [hardwareItemInScope, setHardwareItemInScope] = React.useState("true");
+  const [openOptionModal, setOpenOptionModal] = React.useState(false);
+  const [optionValue, setOptionValue] = React.useState("");
+  // Editing: the one hardware item (and so hardware type) the option belongs to.
+  const [optionHardwareItemId, setOptionHardwareItemId] = React.useState("");
+  // Adding: a hardware item name; the option is added under every type it has.
+  const [optionItemGroupKey, setOptionItemGroupKey] = React.useState("");
+
+  const hardwareTypeNameById = React.useMemo(
+    () => new Map((hardwareTypes?.data ?? []).map((type) => [type.id, type.name])),
+    [hardwareTypes?.data],
+  );
+
+  // Hardware items grouped by name, e.g. Handle → Base / Wall / Tall / Roll / Loft.
+  const hardwareItemGroups = React.useMemo(() => {
+    const groups = new Map<
+      string,
+      { key: string; name: string; items: NonNullable<typeof hardwareItems>["data"] }
+    >();
+    for (const item of hardwareItems?.data ?? []) {
+      const key = item.name.trim().toLowerCase();
+      const group = groups.get(key) ?? { key, name: item.name, items: [] };
+      group.items.push(item);
+      groups.set(key, group);
+    }
+    return [...groups.values()]
+      .map((group) => {
+        const items = [...group.items].sort(
+          (a, b) => a.hardware_type_id - b.hardware_type_id,
+        );
+        return {
+          ...group,
+          items,
+          typeNames: items
+            .map((item) => hardwareTypeNameById.get(item.hardware_type_id) ?? "—")
+            .join(" / "),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [hardwareItems?.data, hardwareTypeNameById]);
+
+  const resetOptionForm = () => {
+    setOptionValue("");
+    setOptionHardwareItemId("");
+    setOptionItemGroupKey("");
+  };
+
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeHardwareUploadPreview(file, {
+      hardwareTypes: hardwareTypes?.data ?? [],
+      hardwareItems: (hardwareItems?.data ?? []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        hardwareTypeId: s.hardware_type_id,
+      })),
+      options: (hardwareItemOptions?.data ?? []).map((o) => ({
+        id: o.id,
+        name: o.name,
+        hardwareItemId: o.hardware_item_id,
+      })),
+    })
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFiles, hardwareTypes?.data, hardwareItems?.data, hardwareItemOptions?.data]);
+
+  const handleCreateHardwareType = () => {
+    const name = hardwareTypeName.trim();
+    if (!name || !vendorId) return;
+
+    createHardwareType.mutate(
+      { vendor_id: vendorId, name },
+      {
+        onSuccess: () => {
+          setOpenHardwareTypeModal(false);
+          setHardwareTypeName("");
+        },
+      },
+    );
+  };
+
+  const resetHardwareItemForm = () => {
+    setHardwareItemName("");
+    setItemHardwareTypeId("");
+    setItemHardwareTypeSelections([]);
+    setHardwareItemInScope("true");
+  };
+
+  const handleCreateHardwareItem = () => {
+    const name = hardwareItemName.trim();
+    const inScope = hardwareItemInScope === "true";
+    if (!name) return;
+
+    const payload = editingId
+      ? { hardware_type_id: Number(itemHardwareTypeId), name, inScope }
+      : {
+          hardware_type_ids: itemHardwareTypeSelections.map((option) =>
+            Number(option.value),
+          ),
+          name,
+          inScope,
+        };
+    if (editingId ? !payload.hardware_type_id : !payload.hardware_type_ids?.length) {
+      return;
+    }
+
+    createHardwareItem.mutate(payload, {
+      onSuccess: () => {
+        setOpenHardwareItemModal(false);
+        resetHardwareItemForm();
+      },
+    });
+  };
+
+  const handleCreateOption = () => {
+    const name = optionValue.trim();
+    if (!name) return;
+
+    let payload: Record<string, unknown>;
+    if (editingId) {
+      const item = (hardwareItems?.data ?? []).find(
+        (entry) => String(entry.id) === optionHardwareItemId,
+      );
+      if (!item) return;
+      payload = {
+        hardware_type_id: item.hardware_type_id,
+        hardware_item_id: item.id,
+        name,
+      };
+    } else {
+      const group = hardwareItemGroups.find((entry) => entry.key === optionItemGroupKey);
+      if (!group) return;
+      payload = { hardware_item_ids: group.items.map((item) => item.id), name };
+    }
+
+    createHardwareItemOption.mutate(payload, {
+      onSuccess: () => {
+        setOpenOptionModal(false);
+        resetOptionForm();
+      },
+    });
+  };
+
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadHardwareItemOptions.mutate(formData, {
       onSuccess: () => {
         setOpenUploadModal(false);
         setSelectedFiles([]);
@@ -2472,9 +3209,9 @@ function HardwareMastersSection() {
     const worksheet = workbook.addWorksheet("Hardware Masters Template");
 
     worksheet.columns = [
-      { header: "Carcass Legs", key: "legs", width: 30 },
-      { header: "Skirting", key: "skirting", width: 30 },
-      { header: "Skirting Color", key: "color", width: 30 },
+      { header: "Hardware Type", key: "hardwareType", width: 30 },
+      { header: "Hardware Item", key: "hardwareItem", width: 30 },
+      { header: "Hardware Item Options", key: "option", width: 30 },
     ];
 
     const headerRow = worksheet.getRow(1);
@@ -2491,25 +3228,34 @@ function HardwareMastersSection() {
 
   return (
     <>
-      <Tabs defaultValue="color" className="w-full">
+      <Tabs defaultValue="option" className="w-full">
         <TabsList>
-          <TabsTrigger value="color">Skirting Color</TabsTrigger>
-          <TabsTrigger value="skirting">Skirting</TabsTrigger>
-          <TabsTrigger value="legs">Carcass Legs</TabsTrigger>
+          <TabsTrigger value="option">Hardware Item Options</TabsTrigger>
+          <TabsTrigger value="item">Hardware Item</TabsTrigger>
+          <TabsTrigger value="type">Hardware Type</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="color" className="mt-4">
+        <TabsContent value="option" className="mt-4">
           <MasterListingTable
-            title="Skirting Color"
-            description="Skirting color master entries for the current vendor."
-            searchPlaceholder="Search skirting color..."
-            actionLabel="Add Skirting Color"
-            rows={skirtingColorRows}
+            title="Hardware Item Options"
+            description="Hardware item option master entries for the current vendor."
+            searchPlaceholder="Search hardware item options..."
+            actionLabel="Add Hardware Item Option"
+            rows={hardwareItemOptionRows}
+            statusToggle={hardwareItemOptionStatusToggle}
+            onEdit={(row) => {
+              const item = hardwareItemOptions?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setOptionValue(item.name); setOptionHardwareItemId(String(item.hardware_item_id)); setOptionItemGroupKey(""); setOpenOptionModal(true);
+            }}
             showParent
-            isLoading={isSkirtingColorsLoading}
-            isError={isSkirtingColorsError}
-            errorMessage={(skirtingColorsError as any)?.response?.data?.error}
-            onAction={() => setOpenColorModal(true)}
+            grandParentHeader="Hardware Type"
+            parentHeader="Hardware Item"
+            nameHeader="Hardware Item Option"
+            isLoading={isHardwareItemOptionsLoading}
+            isError={isHardwareItemOptionsError}
+            errorMessage={(hardwareItemOptionsError as any)?.response?.data?.error}
+            onAction={() => { setEditingId(null); resetOptionForm(); setOpenOptionModal(true); }}
             extraActions={
               <>
                 <Button
@@ -2527,7 +3273,7 @@ function HardwareMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                  disabled={uploadHardwareItemOptions.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2537,18 +3283,26 @@ function HardwareMastersSection() {
           />
         </TabsContent>
 
-        <TabsContent value="skirting" className="mt-4">
+        <TabsContent value="item" className="mt-4">
           <MasterListingTable
-            title="Skirting"
-            description="Skirting master entries for the current vendor."
-            searchPlaceholder="Search skirting..."
-            actionLabel="Add Skirting"
-            rows={skirtingRows}
+            title="Hardware Item"
+            description="Hardware item master entries for the current vendor."
+            searchPlaceholder="Search hardware item..."
+            actionLabel="Add Hardware Item"
+            rows={hardwareItemRows}
+            statusToggle={hardwareItemStatusToggle}
+            onEdit={(row) => {
+              const item = hardwareItems?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setHardwareItemName(item.name); setItemHardwareTypeId(String(item.hardware_type_id)); setHardwareItemInScope(String(item.inScope)); setOpenHardwareItemModal(true);
+            }}
             showParent
-            isLoading={isSkirtingsLoading}
-            isError={isSkirtingsError}
-            errorMessage={(skirtingsError as any)?.response?.data?.error}
-            onAction={() => setOpenSkirtingModal(true)}  extraActions={
+            parentHeader="Hardware Type"
+            nameHeader="Hardware Item"
+            isLoading={isHardwareItemsLoading}
+            isError={isHardwareItemsError}
+            errorMessage={(hardwareItemsError as any)?.response?.data?.error}
+            onAction={() => { setEditingId(null); resetHardwareItemForm(); setOpenHardwareItemModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2565,7 +3319,7 @@ function HardwareMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                  disabled={uploadHardwareItemOptions.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2575,17 +3329,24 @@ function HardwareMastersSection() {
           />
         </TabsContent>
 
-        <TabsContent value="legs" className="mt-4">
+        <TabsContent value="type" className="mt-4">
           <MasterListingTable
-            title="Carcass Legs"
-            description="Carcass legs master entries for the current vendor."
-            searchPlaceholder="Search carcass legs..."
-            actionLabel="Add Carcass Legs"
-            rows={carcassLegsRows}
-            isLoading={isCarcassLegsLoading}
-            isError={isCarcassLegsError}
-            errorMessage={(carcassLegsError as any)?.response?.data?.error}
-            onAction={() => setOpenLegsModal(true)}  extraActions={
+            title="Hardware Type"
+            description="Hardware type master entries for the current vendor."
+            searchPlaceholder="Search hardware type..."
+            actionLabel="Add Hardware Type"
+            rows={hardwareTypeRows}
+            statusToggle={hardwareTypeStatusToggle}
+            nameHeader="Hardware Type"
+            onEdit={(row) => {
+              const item = hardwareTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setHardwareTypeName(item.name); setOpenHardwareTypeModal(true);
+            }}
+            isLoading={isHardwareTypesLoading}
+            isError={isHardwareTypesError}
+            errorMessage={(hardwareTypesError as any)?.response?.data?.error}
+            onAction={() => { setEditingId(null); setHardwareTypeName(""); setOpenHardwareTypeModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -2602,7 +3363,7 @@ function HardwareMastersSection() {
                     setSelectedFiles([]);
                     setOpenUploadModal(true);
                   }}
-                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                  disabled={uploadHardwareItemOptions.isPending}
                 >
                   <Upload className="h-4 w-4" />
                   Import
@@ -2613,23 +3374,23 @@ function HardwareMastersSection() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={openLegsModal} onOpenChange={setOpenLegsModal}>
+      <Dialog open={openHardwareTypeModal} onOpenChange={setOpenHardwareTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Carcass Legs</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Type</DialogTitle>
             <DialogDescription>
-              Create a new carcass legs entry for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} hardware type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="carcass-legs-name">Carcass Legs</Label>
+              <Label htmlFor="hardware-type-name">Hardware Type</Label>
               <Input
-                id="carcass-legs-name"
-                value={legsName}
-                onChange={(e) => setLegsName(e.target.value)}
-                placeholder="Enter carcass legs"
+                id="hardware-type-name"
+                value={hardwareTypeName}
+                onChange={(e) => setHardwareTypeName(e.target.value)}
+                placeholder="Enter hardware type"
               />
             </div>
           </div>
@@ -2638,170 +3399,193 @@ function HardwareMastersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setOpenLegsModal(false);
-                setLegsName("");
+                setOpenHardwareTypeModal(false);
+                setHardwareTypeName("");
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateLegs}
+              onClick={handleCreateHardwareType}
               disabled={
-                createCarcassLegs.isPending || !legsName.trim() || !vendorId
+                createHardwareType.isPending || !hardwareTypeName.trim() || !vendorId
               }
             >
-              {createCarcassLegs.isPending ? "Creating..." : "Create"}
+              {createHardwareType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={openSkirtingModal} onOpenChange={setOpenSkirtingModal}>
+      <Dialog open={openHardwareItemModal} onOpenChange={setOpenHardwareItemModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Skirting</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item</DialogTitle>
             <DialogDescription>
-              Create a new skirting entry and link it to a carcass legs.
+              {editingId ? "Edit the selected" : "Create a new"} hardware item and link it to a hardware type.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Carcass Legs</Label>
-              <Select value={skirtingLegsId} onValueChange={setSkirtingLegsId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select carcass legs" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(carcassLegs?.data ?? []).map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="skirting-name">Skirting</Label>
+              <Label htmlFor="hardware-item-name">Hardware Item</Label>
               <Input
-                id="skirting-name"
-                value={skirtingName}
-                onChange={(e) => setSkirtingName(e.target.value)}
-                placeholder="Enter skirting"
+                id="hardware-item-name"
+                value={hardwareItemName}
+                onChange={(e) => setHardwareItemName(e.target.value)}
+                placeholder="Enter hardware item"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>In Scope</Label>
-              <Select
-                value={skirtingInScope}
-                onValueChange={setSkirtingInScope}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select scope" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">In Scope</SelectItem>
-                  <SelectItem value="false">Not in Scope</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Hardware Type</Label>
+              {editingId ? (
+                // An existing item belongs to exactly one hardware type.
+                <Select value={itemHardwareTypeId} onValueChange={setItemHardwareTypeId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select hardware type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(hardwareTypes?.data ?? []).map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <MultipleSelector
+                  value={itemHardwareTypeSelections}
+                  onChange={setItemHardwareTypeSelections}
+                  options={(hardwareTypes?.data ?? []).map((item) => ({
+                    value: String(item.id),
+                    label: item.name,
+                  }))}
+                  placeholder="Select hardware types"
+                  hidePlaceholderWhenSelected
+                />
+              )}
+              {!editingId && itemHardwareTypeSelections.length > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  This item will be created once under each selected hardware type.
+                </p>
+              )}
             </div>
+
+            {/* New items are always in scope; the scope can be changed when editing. */}
+            {editingId && (
+              <div className="space-y-2">
+                <Label>In Scope</Label>
+                <Select
+                  value={hardwareItemInScope}
+                  onValueChange={setHardwareItemInScope}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select scope" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">In Scope</SelectItem>
+                    <SelectItem value="false">Not in Scope</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
-                setOpenSkirtingModal(false);
-                setSkirtingName("");
-                setSkirtingLegsId("");
-                setSkirtingInScope("true");
+                setOpenHardwareItemModal(false);
+                resetHardwareItemForm();
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateSkirting}
+              onClick={handleCreateHardwareItem}
               disabled={
-                createSkirtingCarcassLegs.isPending ||
-                !skirtingName.trim() ||
-                !skirtingLegsId
+                createHardwareItem.isPending ||
+                !hardwareItemName.trim() ||
+                (editingId
+                  ? !itemHardwareTypeId
+                  : itemHardwareTypeSelections.length === 0)
               }
             >
-              {createSkirtingCarcassLegs.isPending ? "Creating..." : "Create"}
+              {createHardwareItem.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={openColorModal} onOpenChange={setOpenColorModal}>
+      <Dialog open={openOptionModal} onOpenChange={setOpenOptionModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Skirting Color</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Hardware Item Option</DialogTitle>
             <DialogDescription>
-              Create a new skirting color and link it to a carcass legs and
-              skirting.
+              {editingId ? "Edit the selected" : "Create a new"} hardware item option and link it to a hardware
+              item.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Carcass Legs</Label>
-              <Select
-                value={colorLegsId}
-                onValueChange={(value) => {
-                  setColorLegsId(value);
-                  setColorSkirtingId("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select carcass legs" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(carcassLegs?.data ?? []).map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Skirting</Label>
-              <Select
-                value={colorSkirtingId}
-                onValueChange={setColorSkirtingId}
-                disabled={!colorLegsId}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      colorLegsId
-                        ? "Select skirting"
-                        : "Select carcass legs first"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {colorSkirtingOptions.map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="skirting-color-value">Color</Label>
+              <Label htmlFor="hardware-item-option-value">Hardware Item Option</Label>
               <Input
-                id="skirting-color-value"
-                value={colorValue}
-                onChange={(e) => setColorValue(e.target.value)}
-                placeholder="Enter color"
+                id="hardware-item-option-value"
+                value={optionValue}
+                onChange={(e) => setOptionValue(e.target.value)}
+                placeholder="Enter hardware item option"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hardware Item</Label>
+              {editingId ? (
+                // An existing option belongs to one hardware item under one hardware type.
+                <Select value={optionHardwareItemId} onValueChange={setOptionHardwareItemId}>
+                  <SelectTrigger className="h-auto min-h-9 w-full py-1.5">
+                    <SelectValue placeholder="Select hardware item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hardwareItemGroups.flatMap((group) =>
+                      group.items.map((item) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          <div className="flex flex-col items-start text-left">
+                            <span className="font-medium">{item.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {hardwareTypeNameById.get(item.hardware_type_id) ?? "—"}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      )),
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={optionItemGroupKey} onValueChange={setOptionItemGroupKey}>
+                  <SelectTrigger className="h-auto min-h-9 w-full py-1.5">
+                    <SelectValue placeholder="Select hardware item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hardwareItemGroups.map((group) => (
+                      <SelectItem key={group.key} value={group.key}>
+                        <div className="flex flex-col items-start text-left">
+                          <span className="font-medium">{group.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {group.typeNames}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!editingId && optionItemGroupKey && (
+                <p className="text-xs text-muted-foreground">
+                  The option will be added under each of these hardware types.
+                </p>
+              )}
             </div>
           </div>
 
@@ -2809,26 +3593,23 @@ function HardwareMastersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setOpenColorModal(false);
-                setColorValue("");
-                setColorLegsId("");
-                setColorSkirtingId("");
+                setOpenOptionModal(false);
+                resetOptionForm();
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateColor}
+              onClick={handleCreateOption}
               disabled={
-                createSkirtingCarcassLegsColor.isPending ||
-                !colorValue.trim() ||
-                !colorLegsId ||
-                !colorSkirtingId
+                createHardwareItemOption.isPending ||
+                !optionValue.trim() ||
+                (editingId ? !optionHardwareItemId : !optionItemGroupKey)
               }
             >
-              {createSkirtingCarcassLegsColor.isPending
-                ? "Creating..."
-                : "Create"}
+              {createHardwareItemOption.isPending
+                ? (editingId ? "Saving..." : "Creating...")
+                : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2843,8 +3624,8 @@ function HardwareMastersSection() {
             setUploadPreview(null);
           }
         }}
-        title="Import Skirting Color"
-        description="Upload a CSV or XLSX file with Carcass Legs, Skirting, and Skirting Color columns. Carcass Legs and Skirting are required per row; Skirting Color may be left blank, but a value that already exists for that skirting is skipped as a duplicate."
+        title="Import Hardware Item Options"
+        description="Upload a CSV or XLSX file with Hardware Type, Hardware Item, and Hardware Item Options columns. Hardware Type and Hardware Item are required per row; Hardware Item Options may be left blank, but an option that already exists for that hardware item is skipped as a duplicate."
         size="smd"
       >
         <div className="p-6 space-y-4">
@@ -2890,19 +3671,19 @@ function HardwareMastersSection() {
                   <div className="grid grid-cols-2 gap-2">
                     <PreviewStatTile
                       icon={<Layers />}
-                      label="New Carcass Legs"
+                      label="New Hardware Type"
                       value={uploadPreview.typesToAdd}
                       tone="indigo"
                     />
                     <PreviewStatTile
                       icon={<Package />}
-                      label="New Skirting"
+                      label="New Hardware Item"
                       value={uploadPreview.materialsToAdd}
                       tone="violet"
                     />
                     <PreviewStatTile
                       icon={<Palette />}
-                      label="New Skirting Color"
+                      label="New Hardware Item Option"
                       value={uploadPreview.finishesToAdd}
                       tone="emerald"
                     />
@@ -2917,7 +3698,7 @@ function HardwareMastersSection() {
                   {uploadPreview.skippedMissing > 0 && (
                     <PreviewStatTile
                       icon={<FileWarning />}
-                      label="Skipped — missing Carcass Legs/Skirting value"
+                      label="Skipped — missing Hardware Type/Item value"
                       value={uploadPreview.skippedMissing}
                       tone="red"
                     />
@@ -2970,10 +3751,10 @@ function HardwareMastersSection() {
                 selectedFiles.length === 0 ||
                 isParsingPreview ||
                 !!uploadPreview?.headerError ||
-                uploadSkirtingCarcassLegsColors.isPending
+                uploadHardwareItemOptions.isPending
               }
             >
-              {uploadSkirtingCarcassLegsColors.isPending
+              {uploadHardwareItemOptions.isPending
                 ? "Uploading..."
                 : "Upload & Import"}
             </Button>
@@ -2985,6 +3766,7 @@ function HardwareMastersSection() {
 }
 
 function LightMastersSection() {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {
@@ -3000,32 +3782,38 @@ function LightMastersSection() {
     error: lightCarcasUnitsError,
   } = useAllLightCarcasUnits();
 
-  const createLightCarcasType = useCreateLightCarcasType();
-  const createLightCarcasUnit = useCreateLightCarcasUnit();
+  const createLightCarcasType = useSaveSpecsMaster("light-carcas-type", editingId);
+  const createLightCarcasUnit = useSaveSpecsMaster("light-carcas-unit", editingId);
   const uploadLightCarcasUnits = useUploadLightCarcasUnits();
 
+  const lightCarcasTypeStatusToggle = useStatusToggle("light-carcas-type");
   const lightCarcasTypeRows = React.useMemo<MasterRow[]>(
     () =>
       (lightCarcasTypes?.data ?? []).map((item, index) => ({
         srNo: index + 1,
         id: item.id,
         name: item.type,
-        status: "active",
+        ...entryStatus(item.status),
       })),
     [lightCarcasTypes?.data],
   );
 
-  const lightCarcasUnitRows = React.useMemo<MasterRow[]>(
-    () =>
-      (lightCarcasUnits?.data ?? []).map((item, index) => ({
-        srNo: index + 1,
-        id: item.id,
-        name: item.type,
-        parent: item.lightCarcasType?.type ?? null,
-        status: "active",
-      })),
-    [lightCarcasUnits?.data],
-  );
+  const lightCarcasUnitStatusToggle = useStatusToggle("light-carcas-unit");
+  const lightCarcasUnitRows = React.useMemo<MasterRow[]>(() => {
+    // Under an inactive parent, an entry is inactive too.
+    const activeParentIds = new Set(
+      (lightCarcasTypes?.data ?? [])
+        .filter((parent) => isActiveStatus(parent.status))
+        .map((parent) => parent.id),
+    );
+    return (lightCarcasUnits?.data ?? []).map((item, index) => ({
+      srNo: index + 1,
+      id: item.id,
+      name: item.type,
+      parent: item.lightCarcasType?.type ?? null,
+      ...entryStatus(item.status, activeParentIds.has(item.light_carcas_type_id)),
+    }));
+  }, [lightCarcasUnits?.data, lightCarcasTypes?.data]);
 
   const [openTypeModal, setOpenTypeModal] = React.useState(false);
   const [typeName, setTypeName] = React.useState("");
@@ -3176,11 +3964,17 @@ function LightMastersSection() {
             searchPlaceholder="Search light unit..."
             actionLabel="Add Light Unit"
             rows={lightCarcasUnitRows}
+            statusToggle={lightCarcasUnitStatusToggle}
+            onEdit={(row) => {
+              const item = lightCarcasUnits?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setUnitName(item.type); setUnitTypeId(String(item.light_carcas_type_id)); setOpenUnitModal(true);
+            }}
             showParent
             isLoading={isLightCarcasUnitsLoading}
             isError={isLightCarcasUnitsError}
             errorMessage={(lightCarcasUnitsError as any)?.response?.data?.error}
-            onAction={() => setOpenUnitModal(true)}
+            onAction={() => { setEditingId(null); setUnitName(""); setUnitTypeId(""); setOpenUnitModal(true); }}
             extraActions={
               <>
                 <Button
@@ -3215,10 +4009,16 @@ function LightMastersSection() {
             searchPlaceholder="Search light carcas type..."
             actionLabel="Add Light Carcas Type"
             rows={lightCarcasTypeRows}
+            statusToggle={lightCarcasTypeStatusToggle}
+            onEdit={(row) => {
+              const item = lightCarcasTypes?.data?.find(item => item.id === row.id);
+              if (!item) return;
+              setEditingId(row.id); setTypeName(item.type); setOpenTypeModal(true);
+            }}
             isLoading={isLightCarcasTypesLoading}
             isError={isLightCarcasTypesError}
             errorMessage={(lightCarcasTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)}  extraActions={
+            onAction={() => { setEditingId(null); setTypeName(""); setOpenTypeModal(true); }}  extraActions={
               <>
                 <Button
                   type="button"
@@ -3249,9 +4049,9 @@ function LightMastersSection() {
       <Dialog open={openTypeModal} onOpenChange={setOpenTypeModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Light Carcas Type</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Light Carcas Type</DialogTitle>
             <DialogDescription>
-              Create a new light carcas type for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} light carcas type for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -3283,7 +4083,7 @@ function LightMastersSection() {
                 createLightCarcasType.isPending || !typeName.trim() || !vendorId
               }
             >
-              {createLightCarcasType.isPending ? "Creating..." : "Create"}
+              {createLightCarcasType.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3292,9 +4092,9 @@ function LightMastersSection() {
       <Dialog open={openUnitModal} onOpenChange={setOpenUnitModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Light Unit</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} Light Unit</DialogTitle>
             <DialogDescription>
-              Create a new light unit and link it to a light carcas type.
+              {editingId ? "Edit the selected" : "Create a new"} light unit and link it to a light carcas type.
             </DialogDescription>
           </DialogHeader>
 
@@ -3345,7 +4145,7 @@ function LightMastersSection() {
                 !unitTypeId
               }
             >
-              {createLightCarcasUnit.isPending ? "Creating..." : "Create"}
+              {createLightCarcasUnit.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3499,6 +4299,8 @@ type OtherApplianceMasterRow = {
   id: number;
   article_number: string;
   description: string;
+  status: string;
+  active?: boolean;
 };
 
 function OtherAppliancesListingTable({
@@ -3508,9 +4310,11 @@ function OtherAppliancesListingTable({
   isError,
   errorMessage,
   onAction,
+  onEdit,
   onTemplateDownload,
   onImportClick,
   isDownloading,
+  statusToggle,
 }: {
   type: string;
   rows: OtherApplianceMasterRow[];
@@ -3518,9 +4322,11 @@ function OtherAppliancesListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction: () => void;
+  onEdit: (row: OtherApplianceMasterRow) => void;
   onTemplateDownload: () => void;
   onImportClick: () => void;
   isDownloading?: boolean;
+  statusToggle?: StatusToggle;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -3544,8 +4350,30 @@ function OtherAppliancesListingTable({
         header: "Description",
         cell: ({ row }) => row.original.description,
       },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusCell
+            row={{ ...row.original, name: row.original.article_number }}
+            statusToggle={statusToggle}
+          />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => (
+          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
+            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ),
+      },
     ],
-    [],
+    [onEdit, statusToggle],
   );
 
   const table = useReactTable({
@@ -3646,6 +4474,7 @@ function OtherAppliancesListingTable({
 }
 
 function OtherAppliancesTab({ type }: { type: string }) {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const {
     data: otherAppliances,
@@ -3653,7 +4482,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
     isError,
     error,
   } = useOtherAppliances();
-  const createOtherAppliances = useCreateOtherAppliances();
+  const createOtherAppliances = useSaveSpecsMaster("other-appliances", editingId);
   const uploadMutation = useUploadOtherAppliances();
   const downloadMutation = useDownloadOtherAppliancesReport();
 
@@ -3666,9 +4495,11 @@ function OtherAppliancesTab({ type }: { type: string }) {
           id: item.id,
           article_number: item.article_number,
           description: item.description,
+          ...entryStatus(item.status),
         })),
     [otherAppliances?.data, type],
   );
+  const statusToggle = useStatusToggle("other-appliances");
 
   const [openModal, setOpenModal] = React.useState(false);
   const [articleNumber, setArticleNumber] = React.useState("");
@@ -3731,7 +4562,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
     const articleLower = article.toLowerCase();
     const isDuplicate = (otherAppliances?.data ?? []).some(
       (item) =>
-        item.type.toLowerCase() === type.toLowerCase() &&
+        item.id !== editingId && item.type.toLowerCase() === type.toLowerCase() &&
         item.article_number.trim().toLowerCase() === articleLower,
     );
 
@@ -3765,10 +4596,12 @@ function OtherAppliancesTab({ type }: { type: string }) {
       <OtherAppliancesListingTable
         type={type}
         rows={rows}
+        statusToggle={statusToggle}
         isLoading={isLoading}
         isError={isError}
         errorMessage={(error as any)?.response?.data?.error}
-        onAction={() => setOpenModal(true)}
+        onAction={() => { setEditingId(null); setArticleNumber(""); setDescription(""); setOpenModal(true); }}
+        onEdit={(row) => { setEditingId(row.id); setArticleNumber(row.article_number); setDescription(row.description); setOpenModal(true); }}
         onTemplateDownload={() => downloadMutation.mutate()}
         onImportClick={() => {
           setSelectedFiles([]);
@@ -3945,9 +4778,9 @@ function OtherAppliancesTab({ type }: { type: string }) {
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add {type}</DialogTitle>
+            <DialogTitle>{editingId ? "Edit" : "Add"} {type}</DialogTitle>
             <DialogDescription>
-              Create a new {type.toLowerCase()} entry for the current vendor.
+              {editingId ? "Edit the selected" : "Create a new"} {type.toLowerCase()} entry for the current vendor.
             </DialogDescription>
           </DialogHeader>
 
@@ -3995,7 +4828,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
                 !vendorId
               }
             >
-              {createOtherAppliances.isPending ? "Creating..." : "Create"}
+              {createOtherAppliances.isPending ? (editingId ? "Saving..." : "Creating...") : (editingId ? "Edit" : "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>

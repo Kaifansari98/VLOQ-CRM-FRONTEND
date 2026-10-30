@@ -46,7 +46,7 @@ import {
   useCarcasMaterials,
   useShutterMaterials,
   useShutterTypes,
-  useCarcassLegs,
+  useHardwareTypes,
   useLightCarcasTypes,
   useOtherAppliances,
 } from "@/hooks/useTypesMaster";
@@ -68,9 +68,10 @@ import {
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
   fetchCarcassMaterialFinishes,
-  fetchShutterMaterialFinishes,
-  fetchSkirtingCarcassLegs,
-  fetchSkirtingCarcassLegsColors,
+  fetchShutterOuterFinishes,
+  fetchShutterInnerFinishes,
+  fetchHardwareItems,
+  fetchHardwareItemOptions,
   fetchLightCarcasUnits,
   type OtherAppliancesMasterEntry,
   OTHER_APPLIANCE_TYPES,
@@ -107,15 +108,16 @@ type ShutterRow = {
   id?: number;
   shutter_type_id: string;
   shutter_material_id: string;
-  shutter_material_finish_id: string;
+  shutter_outer_finish_id: string;
+  shutter_inner_finish_id: string;
 };
 
 type HardwareRow = {
   localId: string;
   id?: number;
-  carcass_legs_id: string;
-  skirting_carcass_legs_id: string;
-  skirting_carcass_legs_color_id: string;
+  hardware_type_id: string;
+  hardware_item_id: string;
+  hardware_item_option_id: string;
   note: string;
 };
 
@@ -158,7 +160,8 @@ type ReviewPersistPayload =
       created_by: number;
       shutter_type_id: number;
       shutter_material_id: number;
-      shutter_material_finish_id: number;
+      shutter_outer_finish_id: number;
+      shutter_inner_finish_id?: number | null;
     }
   | {
       id: number;
@@ -166,9 +169,9 @@ type ReviewPersistPayload =
       lead_id: number;
       specs_id: number;
       created_by: number;
-      carcass_legs_id: number;
-      skirting_carcass_legs_id: number;
-      skirting_carcass_legs_color_id: number | null;
+      hardware_type_id: number;
+      hardware_item_id: number;
+      hardware_item_option_id: number | null;
       note: string | null;
     }
   | {
@@ -198,18 +201,37 @@ const makeBlankCarcassRow = (): CarcassRow => ({
   carcass_material_finish_id: "",
 });
 
+const isActiveEntry = (status?: string | null) =>
+  (status ?? "active").toLowerCase() === "active";
+
+/**
+ * Dropdown options: active entries under an active parent, plus the value already
+ * saved on the row (so an entry switched off later still shows where it is used).
+ */
+const selectableEntries = <T extends { id: number; status?: string }>(
+  entries: T[],
+  selectedId: string,
+  parentActive = true,
+) =>
+  entries.filter(
+    (entry) =>
+      (parentActive && isActiveEntry(entry.status)) ||
+      (selectedId !== "" && String(entry.id) === selectedId),
+  );
+
 const makeBlankShutterRow = (): ShutterRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   shutter_type_id: "",
   shutter_material_id: "",
-  shutter_material_finish_id: "",
+  shutter_outer_finish_id: "",
+  shutter_inner_finish_id: "",
 });
 
-const makeBlankHardwareRow = (): HardwareRow => ({
-  localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  carcass_legs_id: "",
-  skirting_carcass_legs_id: "",
-  skirting_carcass_legs_color_id: "",
+const makeBlankHardwareRow = (hardwareTypeId: number): HardwareRow => ({
+  localId: `new-${hardwareTypeId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  hardware_type_id: String(hardwareTypeId),
+  hardware_item_id: "",
+  hardware_item_option_id: "",
   note: "",
 });
 
@@ -230,10 +252,10 @@ const makeBlankOtherApplianceRow = (type: string = ""): OtherApplianceRow => ({
 const pickerClassName =
   "h-11 rounded-md border border-input bg-background px-3 text-sm";
 const clonedRowHighlightClass = "bg-blue-50/80 dark:bg-blue-950/20";
+// "Provide only grooves" is offered for Lights only (it has its own select)
 const specificationSectionOptions: SpecificationSectionRemark[] = [
   "In our scope",
   "Not in our scope",
-  "Provide only grooves",
 ];
 
 const renderReviewState = (active: boolean, timestamp?: string | null) => (
@@ -303,7 +325,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     specification?.lead_id,
     specification?.id,
   );
-  const { data: carcassLegsData } = useCarcassLegs();
+  const { data: hardwareTypesData } = useHardwareTypes();
   const { data: hardwareMappingsData } = useLeadHardwareMappings(
     vendorId,
     specification?.lead_id,
@@ -439,7 +461,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const carcasMaterials = carcasMaterialsData?.data ?? [];
   const shutterTypes = shutterTypesData?.data ?? [];
   const shutterMaterials = shutterMaterialsData?.data ?? [];
-  const carcassLegs = carcassLegsData?.data ?? [];
+  const activeCarcasMaterialIds = React.useMemo(
+    () => new Set(carcasMaterials.filter((m) => isActiveEntry(m.status)).map((m) => m.id)),
+    [carcasMaterials],
+  );
+  const activeShutterMaterialIds = React.useMemo(
+    () => new Set(shutterMaterials.filter((m) => isActiveEntry(m.status)).map((m) => m.id)),
+    [shutterMaterials],
+  );
+  // Hardware tables are shown per hardware type, in the order the types were created.
+  const sortedHardwareTypes = React.useMemo(
+    () => [...(hardwareTypesData?.data ?? [])].sort((a, b) => a.id - b.id),
+    [hardwareTypesData?.data],
+  );
   const lightCarcasTypes = lightCarcasTypesData?.data ?? [];
   const customLightCarcasType = React.useMemo(
     () =>
@@ -453,6 +487,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       lightCarcasTypes.filter(
         (type) => type.type.trim().toLowerCase() !== "custom",
       ),
+    [lightCarcasTypes],
+  );
+  const activeLightTypeIds = React.useMemo(
+    () => new Set(lightCarcasTypes.filter((t) => isActiveEntry(t.status)).map((t) => t.id)),
     [lightCarcasTypes],
   );
   const otherAppliancesByType = React.useMemo(() => {
@@ -746,26 +784,26 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         section === "shutter" &&
         "shutter_type_id" in payload &&
         "shutter_material_id" in payload &&
-        "shutter_material_finish_id" in payload
+        "shutter_outer_finish_id" in payload
       ) {
         return (
           payload.shutter_type_id > 0 &&
           payload.shutter_material_id > 0 &&
-          payload.shutter_material_finish_id > 0
+          payload.shutter_outer_finish_id > 0
         );
       }
 
       if (
         section === "hardware" &&
-        "carcass_legs_id" in payload &&
-        "skirting_carcass_legs_id" in payload &&
-        "skirting_carcass_legs_color_id" in payload
+        "hardware_type_id" in payload &&
+        "hardware_item_id" in payload &&
+        "hardware_item_option_id" in payload
       ) {
         return (
-          payload.carcass_legs_id > 0 &&
-          payload.skirting_carcass_legs_id > 0 &&
-          (payload.skirting_carcass_legs_color_id === null ||
-            payload.skirting_carcass_legs_color_id > 0)
+          payload.hardware_type_id > 0 &&
+          payload.hardware_item_id > 0 &&
+          (payload.hardware_item_option_id === null ||
+            payload.hardware_item_option_id > 0)
         );
       }
 
@@ -1162,8 +1200,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       shutter_material_id: item.shutter_material_id
         ? String(item.shutter_material_id)
         : "",
-      shutter_material_finish_id: item.shutter_material_finish_id
-        ? String(item.shutter_material_finish_id)
+      shutter_outer_finish_id: item.shutter_outer_finish_id
+        ? String(item.shutter_outer_finish_id)
+        : "",
+      shutter_inner_finish_id: item.shutter_inner_finish_id
+        ? String(item.shutter_inner_finish_id)
         : "",
     }));
 
@@ -1179,18 +1220,22 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     const persistedRows: HardwareRow[] = hardwareMappings.map((item) => ({
       localId: `saved-${item.id}`,
       id: item.id,
-      carcass_legs_id: item.carcass_legs_id ? String(item.carcass_legs_id) : "",
-      skirting_carcass_legs_id: item.skirting_carcass_legs_id
-        ? String(item.skirting_carcass_legs_id)
+      hardware_type_id: item.hardware_type_id ? String(item.hardware_type_id) : "",
+      hardware_item_id: item.hardware_item_id
+        ? String(item.hardware_item_id)
         : "",
-      skirting_carcass_legs_color_id: item.skirting_carcass_legs_color_id
-        ? String(item.skirting_carcass_legs_color_id)
+      hardware_item_option_id: item.hardware_item_option_id
+        ? String(item.hardware_item_option_id)
         : "",
       note: item.note ?? "",
     }));
 
-    setHardwareRows([...persistedRows, makeBlankHardwareRow()]);
-  }, [hardwareMappings, specification?.id]);
+    // Each hardware type has its own table, so each gets a blank row for data entry.
+    setHardwareRows([
+      ...persistedRows,
+      ...sortedHardwareTypes.map((type) => makeBlankHardwareRow(type.id)),
+    ]);
+  }, [hardwareMappings, specification?.id, sortedHardwareTypes]);
 
   React.useEffect(() => {
     if (!specification) {
@@ -1300,31 +1345,42 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     queries: shutterRows.map((row) => {
       const materialId = Number(row.shutter_material_id);
       return {
-        queryKey: ["shutterMaterialFinishes", materialId],
-        queryFn: () => fetchShutterMaterialFinishes(materialId),
+        queryKey: ["shutterOuterFinishes", materialId],
+        queryFn: () => fetchShutterOuterFinishes(materialId),
         enabled: materialId > 0,
       };
     }),
   });
 
-  const skirtingQueries = useQueries({
-    queries: hardwareRows.map((row) => {
-      const carcassLegsId = Number(row.carcass_legs_id);
+  const shutterInnerFinishQueries = useQueries({
+    queries: shutterRows.map((row) => {
+      const materialId = Number(row.shutter_material_id);
       return {
-        queryKey: ["skirtingCarcassLegs", carcassLegsId],
-        queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId),
-        enabled: carcassLegsId > 0,
+        queryKey: ["shutterInnerFinishes", materialId],
+        queryFn: () => fetchShutterInnerFinishes(materialId),
+        enabled: materialId > 0,
       };
     }),
   });
 
-  const colorQueries = useQueries({
+  const hardwareItemQueries = useQueries({
     queries: hardwareRows.map((row) => {
-      const skirtingId = Number(row.skirting_carcass_legs_id);
+      const hardwareTypeId = Number(row.hardware_type_id);
       return {
-        queryKey: ["skirtingCarcassLegsColors", skirtingId],
-        queryFn: () => fetchSkirtingCarcassLegsColors(skirtingId),
-        enabled: skirtingId > 0,
+        queryKey: ["hardwareItems", hardwareTypeId],
+        queryFn: () => fetchHardwareItems(hardwareTypeId),
+        enabled: hardwareTypeId > 0,
+      };
+    }),
+  });
+
+  const optionQueries = useQueries({
+    queries: hardwareRows.map((row) => {
+      const hardwareItemId = Number(row.hardware_item_id);
+      return {
+        queryKey: ["hardwareItemOptions", hardwareItemId],
+        queryFn: () => fetchHardwareItemOptions(hardwareItemId),
+        enabled: hardwareItemId > 0,
       };
     }),
   });
@@ -1443,7 +1499,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const saveShutterRowIfComplete = React.useCallback(
-    async (row: ShutterRow) => {
+    async (row: ShutterRow, innerFinishCount: number) => {
       if (
         !vendorId ||
         !userId ||
@@ -1451,7 +1507,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !specification?.id ||
         !row.shutter_type_id ||
         !row.shutter_material_id ||
-        !row.shutter_material_finish_id
+        !row.shutter_outer_finish_id ||
+        // An inner finish is required when the material has any.
+        (innerFinishCount > 0 && !row.shutter_inner_finish_id)
       ) {
         return;
       }
@@ -1464,7 +1522,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           specs_id: specification.id,
           shutter_type_id: Number(row.shutter_type_id),
           shutter_material_id: Number(row.shutter_material_id),
-          shutter_material_finish_id: Number(row.shutter_material_finish_id),
+          shutter_outer_finish_id: Number(row.shutter_outer_finish_id),
+          shutter_inner_finish_id: row.shutter_inner_finish_id
+            ? Number(row.shutter_inner_finish_id)
+            : null,
           created_by: userId,
         });
       } catch (error: any) {
@@ -1485,6 +1546,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       localId: string,
       field: keyof Omit<ShutterRow, "localId" | "id">,
       value: string,
+      innerFinishCount: number,
     ) => {
       let nextRow: ShutterRow | null = null;
       let duplicateMessage = "";
@@ -1495,13 +1557,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: ShutterRow = { ...row, [field]: value };
           if (field === "shutter_material_id") {
-            updatedRow.shutter_material_finish_id = "";
+            updatedRow.shutter_outer_finish_id = "";
+            updatedRow.shutter_inner_finish_id = "";
           }
 
           const isComplete =
             !!updatedRow.shutter_type_id &&
             !!updatedRow.shutter_material_id &&
-            !!updatedRow.shutter_material_finish_id;
+            !!updatedRow.shutter_outer_finish_id &&
+            (innerFinishCount === 0 || !!updatedRow.shutter_inner_finish_id);
 
           if (isComplete) {
             const isDuplicate = prev.some(
@@ -1510,13 +1574,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 otherRow.shutter_type_id === updatedRow.shutter_type_id &&
                 otherRow.shutter_material_id ===
                   updatedRow.shutter_material_id &&
-                otherRow.shutter_material_finish_id ===
-                  updatedRow.shutter_material_finish_id,
+                otherRow.shutter_outer_finish_id ===
+                  updatedRow.shutter_outer_finish_id &&
+                otherRow.shutter_inner_finish_id ===
+                  updatedRow.shutter_inner_finish_id,
             );
 
             if (isDuplicate) {
               duplicateMessage =
-                "This shutter type, material, and finish combination has already been added.";
+                "This shutter type, material, and finishes combination has already been added.";
               return row;
             }
           }
@@ -1536,7 +1602,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (nextRow) {
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("shutter", localId)]) {
-          void saveShutterRowIfComplete(nextRow);
+          void saveShutterRowIfComplete(nextRow, innerFinishCount);
         }
       }
     },
@@ -1544,15 +1610,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const saveHardwareRowIfComplete = React.useCallback(
-    async (row: HardwareRow, colorOptionsCount: number) => {
+    async (row: HardwareRow, optionCount: number) => {
       if (
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
         !specification?.id ||
-        !row.carcass_legs_id ||
-        !row.skirting_carcass_legs_id ||
-        (colorOptionsCount > 0 && !row.skirting_carcass_legs_color_id)
+        !row.hardware_type_id ||
+        !row.hardware_item_id ||
+        (optionCount > 0 && !row.hardware_item_option_id)
       ) {
         return;
       }
@@ -1563,10 +1629,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           vendor_id: vendorId,
           lead_id: specification.lead_id,
           specs_id: specification.id,
-          carcass_legs_id: Number(row.carcass_legs_id),
-          skirting_carcass_legs_id: Number(row.skirting_carcass_legs_id),
-          skirting_carcass_legs_color_id: row.skirting_carcass_legs_color_id
-            ? Number(row.skirting_carcass_legs_color_id)
+          hardware_type_id: Number(row.hardware_type_id),
+          hardware_item_id: Number(row.hardware_item_id),
+          hardware_item_option_id: row.hardware_item_option_id
+            ? Number(row.hardware_item_option_id)
             : null,
           note: row.note || null,
           created_by: userId,
@@ -1592,43 +1658,24 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     prev.some(
       (otherRow) =>
         otherRow.localId !== localId &&
-        otherRow.carcass_legs_id === updatedRow.carcass_legs_id &&
-        otherRow.skirting_carcass_legs_id ===
-          updatedRow.skirting_carcass_legs_id &&
-        otherRow.skirting_carcass_legs_color_id ===
-          updatedRow.skirting_carcass_legs_color_id,
+        otherRow.hardware_type_id === updatedRow.hardware_type_id &&
+        otherRow.hardware_item_id ===
+          updatedRow.hardware_item_id &&
+        otherRow.hardware_item_option_id ===
+          updatedRow.hardware_item_option_id,
     );
 
-  const handleCarcassLegsChange = React.useCallback(
-    (localId: string, value: string) => {
-      setHardwareRows((prev) =>
-        prev.map((row) =>
-          row.localId === localId
-            ? {
-                ...row,
-                carcass_legs_id: value,
-                skirting_carcass_legs_id: "",
-                skirting_carcass_legs_color_id: "",
-                note: "",
-              }
-            : row,
-        ),
-      );
-    },
-    [],
-  );
-
-  const handleSkirtingChange = React.useCallback(
+  const handleHardwareItemChange = React.useCallback(
     async (
       localId: string,
       value: string,
-      skirtingOptions: { id: number; name: string; inScope: boolean }[],
+      hardwareItemOptions: { id: number; name: string; inScope: boolean }[],
     ) => {
-      const selectedSkirting = skirtingOptions.find(
+      const selectedHardwareItem = hardwareItemOptions.find(
         (option) => String(option.id) === value,
       );
       const autoNote =
-        selectedSkirting && !selectedSkirting.inScope
+        selectedHardwareItem && !selectedHardwareItem.inScope
           ? "Not in our scope"
           : "";
 
@@ -1641,14 +1688,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: HardwareRow = {
             ...row,
-            skirting_carcass_legs_id: value,
-            skirting_carcass_legs_color_id: "",
+            hardware_item_id: value,
+            hardware_item_option_id: "",
             note: autoNote,
           };
 
           if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
             duplicateMessage =
-              "This carcass legs and skirting combination has already been added.";
+              "This hardware type and hardware item combination has already been added.";
             return row;
           }
 
@@ -1664,7 +1711,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (!nextRow) return;
 
-      if (selectedSkirting && !selectedSkirting.inScope) {
+      if (selectedHardwareItem && !selectedHardwareItem.inScope) {
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
           void saveHardwareRowIfComplete(nextRow, 0);
         }
@@ -1672,19 +1719,23 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (value) {
-        const colorsResult = await fetchSkirtingCarcassLegsColors(
+        const optionsResult = await fetchHardwareItemOptions(
           Number(value),
         );
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
-          void saveHardwareRowIfComplete(nextRow, colorsResult.data.length);
+          // Only active options can be chosen, so only they make the option required.
+          void saveHardwareRowIfComplete(
+            nextRow,
+            optionsResult.data.filter((option) => isActiveEntry(option.status)).length,
+          );
         }
       }
     },
     [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
 
-  const handleColorChange = React.useCallback(
-    (localId: string, value: string, colorOptionsCount: number) => {
+  const handleOptionChange = React.useCallback(
+    (localId: string, value: string, optionCount: number) => {
       let nextRow: HardwareRow | null = null;
       let duplicateMessage = "";
 
@@ -1694,12 +1745,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: HardwareRow = {
             ...row,
-            skirting_carcass_legs_color_id: value,
+            hardware_item_option_id: value,
           };
 
           if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
             duplicateMessage =
-              "This carcass legs, skirting, and color combination has already been added.";
+              "This hardware type, hardware item, and option combination has already been added.";
             return row;
           }
 
@@ -1715,7 +1766,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (nextRow) {
         if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
-          void saveHardwareRowIfComplete(nextRow, colorOptionsCount);
+          void saveHardwareRowIfComplete(nextRow, optionCount);
         }
       }
     },
@@ -1731,11 +1782,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   }, []);
 
   const handleNoteBlur = React.useCallback(
-    (row: HardwareRow, colorOptionsCount: number) => {
+    (row: HardwareRow, optionCount: number) => {
       if (showReviewColumns && amendEditingRows[getReviewEditKey("hardware", row.localId)]) {
         return;
       }
-      void saveHardwareRowIfComplete(row, colorOptionsCount);
+      void saveHardwareRowIfComplete(row, optionCount);
     },
     [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
@@ -2206,7 +2257,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       const hasValue =
         !!row.shutter_type_id ||
         !!row.shutter_material_id ||
-        !!row.shutter_material_finish_id;
+        !!row.shutter_outer_finish_id ||
+        !!row.shutter_inner_finish_id;
       if (!hasValue) return "";
 
       if (!row.id) return stageRowHighlightClass;
@@ -2218,8 +2270,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       const changed =
         Number(row.shutter_type_id || 0) !== baseline.shutter_type_id ||
         Number(row.shutter_material_id || 0) !== baseline.shutter_material_id ||
-        Number(row.shutter_material_finish_id || 0) !==
-          baseline.shutter_material_finish_id;
+        Number(row.shutter_outer_finish_id || 0) !==
+          baseline.shutter_outer_finish_id ||
+        Number(row.shutter_inner_finish_id || 0) !==
+          Number(baseline.shutter_inner_finish_id || 0);
 
       return changed ? stageRowHighlightClass : "";
     },
@@ -2241,9 +2295,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (reviewClass) return reviewClass;
 
       const hasValue =
-        !!row.carcass_legs_id ||
-        !!row.skirting_carcass_legs_id ||
-        !!row.skirting_carcass_legs_color_id ||
+        !!row.hardware_type_id ||
+        !!row.hardware_item_id ||
+        !!row.hardware_item_option_id ||
         !!row.note;
       if (!hasValue) return "";
 
@@ -2254,11 +2308,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (!baseline) return stageRowHighlightClass;
 
       const changed =
-        Number(row.carcass_legs_id || 0) !== baseline.carcass_legs_id ||
-        Number(row.skirting_carcass_legs_id || 0) !==
-          baseline.skirting_carcass_legs_id ||
-        Number(row.skirting_carcass_legs_color_id || 0) !==
-          Number(baseline.skirting_carcass_legs_color_id || 0) ||
+        Number(row.hardware_type_id || 0) !== baseline.hardware_type_id ||
+        Number(row.hardware_item_id || 0) !==
+          baseline.hardware_item_id ||
+        Number(row.hardware_item_option_id || 0) !==
+          Number(baseline.hardware_item_option_id || 0) ||
         (row.note || "") !== (baseline.note || "");
 
       return changed ? stageRowHighlightClass : "";
@@ -2614,7 +2668,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {carcassRows.map((row, index) => {
-                      const finishOptions = finishQueries[index]?.data?.data ?? [];
+                      const finishOptions = selectableEntries(
+                        finishQueries[index]?.data?.data ?? [],
+                        row.carcass_material_finish_id,
+                        activeCarcasMaterialIds.has(Number(row.carcas_material_id)),
+                      );
                       const persistedRow = row.id
                         ? carcassMappings.find((item) => item.id === row.id)
                         : undefined;
@@ -2641,7 +2699,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           >
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={carcassTypes.map((type) => ({
+	                              data={selectableEntries(carcassTypes, row.carcass_type_id).map((type) => ({
 	                                id: type.id,
 	                                label: type.name,
 	                              }))}
@@ -2664,7 +2722,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={carcasMaterials.map((material) => ({
+	                              data={selectableEntries(carcasMaterials, row.carcas_material_id).map((material) => ({
 	                                id: material.id,
 	                                label: material.name,
 	                              }))}
@@ -2791,7 +2849,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         Shutter Material
                       </th>
                       <th className="px-4 py-3 text-left font-bold text-white">
-                        Shutter Material Finish
+                        Shutter Outer Finish
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Shutter Inner Finish
                       </th>
                       {showReviewColumns && !isSpecCompleted && (
                         <>
@@ -2810,8 +2871,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {shutterRows.map((row, index) => {
-                      const finishOptions =
-                        shutterFinishQueries[index]?.data?.data ?? [];
+                      const isShutterMaterialActive = activeShutterMaterialIds.has(
+                        Number(row.shutter_material_id),
+                      );
+                      const finishOptions = selectableEntries(
+                        shutterFinishQueries[index]?.data?.data ?? [],
+                        row.shutter_outer_finish_id,
+                        isShutterMaterialActive,
+                      );
+                      const innerFinishOptions = selectableEntries(
+                        shutterInnerFinishQueries[index]?.data?.data ?? [],
+                        row.shutter_inner_finish_id,
+                        isShutterMaterialActive,
+                      );
                       const persistedRow = row.id
                         ? shutterMappings.find((item) => item.id === row.id)
                         : undefined;
@@ -2838,7 +2910,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           >
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={shutterTypes.map((type) => ({
+	                              data={selectableEntries(shutterTypes, row.shutter_type_id).map((type) => ({
 	                                id: type.id,
 	                                label: type.name,
 	                              }))}
@@ -2848,6 +2920,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  row.localId,
 	                                  "shutter_type_id",
 	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
 	                                )
 	                              }
 	                              placeholder="Search shutter type..."
@@ -2861,7 +2934,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
 	                            {withDeletedRemarkTooltip(<AssignToPicker
-	                              data={shutterMaterials.map((material) => ({
+	                              data={selectableEntries(shutterMaterials, row.shutter_material_id).map((material) => ({
 	                                id: material.id,
 	                                label: material.name,
 	                              }))}
@@ -2875,6 +2948,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  row.localId,
 	                                  "shutter_material_id",
 	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
 	                                )
 	                              }
 	                              placeholder="Search shutter material..."
@@ -2893,27 +2967,72 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                label: finish.name,
 	                              }))}
 	                              value={
-	                                row.shutter_material_finish_id
-	                                  ? Number(row.shutter_material_finish_id)
+	                                row.shutter_outer_finish_id
+	                                  ? Number(row.shutter_outer_finish_id)
 	                                  : undefined
 	                              }
 	                              onChange={(value) =>
 	                                updateShutterRow(
 	                                  row.localId,
-	                                  "shutter_material_finish_id",
+	                                  "shutter_outer_finish_id",
 	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
 	                                )
 	                              }
 	                              disabled={rowLocked || !row.shutter_material_id}
 	                              placeholder={
 	                                row.shutter_material_id
-	                                  ? "Search shutter material finish..."
+	                                  ? "Search shutter outer finish..."
 	                                  : "Select material first"
 	                              }
 	                              emptyLabel={
 	                                row.shutter_material_id
-	                                  ? "Select shutter material finish"
+	                                  ? "Select shutter outer finish"
 	                                  : "Select material first"
+	                              }
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
+	                            />, reviewTooltipRemark || undefined)}
+	                          </td>
+	                          <td className="px-4 py-3 align-top">
+	                            {withDeletedRemarkTooltip(<AssignToPicker
+	                              data={innerFinishOptions.map((finish) => ({
+	                                id: finish.id,
+	                                label: finish.name,
+	                              }))}
+	                              value={
+	                                row.shutter_inner_finish_id
+	                                  ? Number(row.shutter_inner_finish_id)
+	                                  : undefined
+	                              }
+	                              onChange={(value) =>
+	                                updateShutterRow(
+	                                  row.localId,
+	                                  "shutter_inner_finish_id",
+	                                  value ? String(value) : "",
+	                                  innerFinishOptions.length,
+	                                )
+	                              }
+	                              disabled={
+	                                rowLocked ||
+	                                !row.shutter_material_id ||
+	                                innerFinishOptions.length === 0
+	                              }
+	                              placeholder={
+	                                !row.shutter_material_id
+	                                  ? "Select material first"
+	                                  : innerFinishOptions.length === 0
+	                                    ? "No inner finishes available"
+	                                    : "Search shutter inner finish..."
+	                              }
+	                              emptyLabel={
+	                                !row.shutter_material_id
+	                                  ? "Select material first"
+	                                  : innerFinishOptions.length === 0
+	                                    ? "No inner finishes available"
+	                                    : "Select shutter inner finish"
 	                              }
 	                              className={cn(
                                   pickerClassName,
@@ -2934,9 +3053,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       created_by: userId,
                                       shutter_type_id: Number(row.shutter_type_id),
                                       shutter_material_id: Number(row.shutter_material_id),
-                                      shutter_material_finish_id: Number(
-                                        row.shutter_material_finish_id,
+                                      shutter_outer_finish_id: Number(
+                                        row.shutter_outer_finish_id,
                                       ),
+                                      shutter_inner_finish_id: row.shutter_inner_finish_id
+                                        ? Number(row.shutter_inner_finish_id)
+                                        : null,
                                     }
                                   : null,
                                 persistedRow,
@@ -2962,228 +3084,229 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 <h3 className="text-base font-semibold">Hardware</h3>
               </div>
             )}
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}`}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-zinc-700">
-                    <tr className="border-b">
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Carcass Legs
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Skirting
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Colors
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold text-white">
-                        Note
-                      </th>
-                      {showReviewColumns && !isSpecCompleted && (
-                        <>
-                          <th className="px-4 py-3 text-center font-bold text-white">
-                            Approve
+            <div className={effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}>
+              {sortedHardwareTypes.length === 0 && (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  No hardware types found. Add them in Specs Master → Hardware.
+                </p>
+              )}
+              {sortedHardwareTypes
+                .filter(
+                  (hardwareType) =>
+                    isActiveEntry(hardwareType.status) ||
+                    hardwareRows.some(
+                      (row) => row.id && row.hardware_type_id === String(hardwareType.id),
+                    ),
+                )
+                .map((hardwareType) => (
+                <div key={hardwareType.id}>
+                  <div className="flex items-center justify-between gap-3 mb-2 mt-6">
+                    <h3 className="text-sm font-semibold">{hardwareType.name}</h3>
+                  </div>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-700">
+                        <tr className="border-b">
+                          <th className="px-4 py-3 text-left font-bold text-white">
+                            Hardware Item
                           </th>
-                          <th className="px-4 py-3 text-center font-bold text-white">
-                            Amend
+                          <th className="px-4 py-3 text-left font-bold text-white">
+                            Hardware Item Options
                           </th>
-                          <th className="px-4 py-3 text-center font-bold text-white">
-                            Delete
+                          <th className="px-4 py-3 text-left font-bold text-white">
+                            Note
                           </th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hardwareRows.map((row, index) => {
-                      const skirtingOptions =
-                        skirtingQueries[index]?.data?.data ?? [];
-                      const colorOptions =
-                        colorQueries[index]?.data?.data ?? [];
-                      const selectedSkirting = skirtingOptions.find(
-                        (option) =>
-                          String(option.id) === row.skirting_carcass_legs_id,
-                      );
-                      const persistedRow = row.id
-                        ? hardwareMappings.find((item) => item.id === row.id)
-                        : undefined;
-                      const isDeletedRow = isReviewDeleted(
-                        "hardware",
-                        row,
-                        persistedRow,
-                      );
-                      const reviewTooltipRemark = getReviewTooltipRemark(
-                        "hardware",
-                        row,
-                        persistedRow,
-                      );
-                      const isOutOfScope =
-                        !!selectedSkirting && !selectedSkirting.inScope;
-                      const rowLocked = isRowLocked("hardware", row);
-
-                      return (
-                        <tr
-                          key={row.localId}
-                          className={cn(
-                            "border-b last:border-b-0",
-                            getHardwareRowHighlightClass(row, index),
-                            getReviewRowClass("hardware", row, persistedRow),
+                          {showReviewColumns && !isSpecCompleted && (
+                            <>
+                              <th className="px-4 py-3 text-center font-bold text-white">
+                                Approve
+                              </th>
+                              <th className="px-4 py-3 text-center font-bold text-white">
+                                Amend
+                              </th>
+                              <th className="px-4 py-3 text-center font-bold text-white">
+                                Delete
+                              </th>
+                            </>
                           )}
-                        >
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<AssignToPicker
-                              data={carcassLegs.map((legs) => ({
-                                id: legs.id,
-                                label: legs.name,
-                              }))}
-                              value={
-                                row.carcass_legs_id
-                                  ? Number(row.carcass_legs_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                handleCarcassLegsChange(
-                                  row.localId,
-                                  value ? String(value) : "",
-                                )
-                              }
-                              placeholder="Search carcass legs..."
-	                              emptyLabel="Select carcass legs"
-                              disabled={rowLocked}
-                              className={cn(
-                                pickerClassName,
-                                isDeletedRow && "line-through text-red-600",
-                              )}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<AssignToPicker
-                              data={skirtingOptions.map((option) => ({
-                                id: option.id,
-                                label: option.name,
-                              }))}
-                              value={
-                                row.skirting_carcass_legs_id
-                                  ? Number(row.skirting_carcass_legs_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                void handleSkirtingChange(
-                                  row.localId,
-                                  value ? String(value) : "",
-                                  skirtingOptions,
-                                )
-                              }
-                              disabled={rowLocked || !row.carcass_legs_id}
-                              placeholder={
-                                row.carcass_legs_id
-                                  ? "Search skirting..."
-                                  : "Select carcass legs first"
-                              }
-                              emptyLabel={
-                                row.carcass_legs_id
-                                  ? "Select skirting"
-                                  : "Select carcass legs first"
-                              }
-                              className={cn(
-                                pickerClassName,
-                                isDeletedRow && "line-through text-red-600",
-                              )}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<AssignToPicker
-                              data={colorOptions.map((color) => ({
-                                id: color.id,
-                                label: color.color,
-                              }))}
-                              value={
-                                row.skirting_carcass_legs_color_id
-                                  ? Number(row.skirting_carcass_legs_color_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                handleColorChange(
-                                  row.localId,
-                                  value ? String(value) : "",
-                                  colorOptions.length,
-                                )
-                              }
-                              disabled={
-                                rowLocked ||
-                                !row.skirting_carcass_legs_id ||
-                                colorOptions.length === 0
-                              }
-                              placeholder={
-                                !row.skirting_carcass_legs_id
-                                  ? "Select skirting first"
-                                  : colorOptions.length === 0
-                                    ? "No colors available"
-                                    : "Search color..."
-                              }
-                              emptyLabel={
-                                !row.skirting_carcass_legs_id
-                                  ? "Select skirting first"
-                                  : colorOptions.length === 0
-                                    ? "No colors available"
-                                    : "Select color"
-                              }
-                              className={cn(
-                                pickerClassName,
-                                isDeletedRow && "line-through text-red-600",
-                              )}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {withDeletedRemarkTooltip(<input
-                              type="text"
-                              value={isOutOfScope ? "Not in our scope" : row.note}
-                              onChange={(event) =>
-                                handleNoteChange(row.localId, event.target.value)
-                              }
-                              onBlur={() =>
-                                handleNoteBlur(row, colorOptions.length)
-                              }
-                              readOnly={rowLocked || isOutOfScope}
-                              disabled={rowLocked || isOutOfScope}
-                              placeholder={
-                                isOutOfScope ? "" : "Add a note (optional)"
-                              }
-                              className={`${pickerClassName} w-full ${
-                                isOutOfScope ? "text-muted-foreground" : ""
-                              } ${isDeletedRow ? "line-through text-red-600" : ""}`}
-                            />, reviewTooltipRemark || undefined)}
-                          </td>
-                          {showReviewColumns && !isSpecCompleted &&
-                            renderReviewActionCells(
-                              "hardware",
-                              row,
-                              row.id && vendorId && userId && specification
-                                ? {
-                                    id: row.id,
-                                    vendor_id: vendorId,
-                                    lead_id: specification.lead_id,
-                                    specs_id: specification.id,
-                                    created_by: userId,
-                                    carcass_legs_id: Number(row.carcass_legs_id),
-                                    skirting_carcass_legs_id: Number(
-                                      row.skirting_carcass_legs_id,
-                                    ),
-                                    skirting_carcass_legs_color_id:
-                                      row.skirting_carcass_legs_color_id
-                                        ? Number(row.skirting_carcass_legs_color_id)
-                                        : null,
-                                    note: row.note || null,
-                                  }
-                                : null,
-                              persistedRow,
-                            )}
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {hardwareRows.map((row, index) => {
+                          if (row.hardware_type_id !== String(hardwareType.id)) return null;
+                          const isHardwareTypeActive = isActiveEntry(hardwareType.status);
+                          const hardwareItemOptions = selectableEntries(
+                            hardwareItemQueries[index]?.data?.data ?? [],
+                            row.hardware_item_id,
+                            isHardwareTypeActive,
+                          );
+                          const chosenHardwareItem = hardwareItemOptions.find(
+                            (option) => String(option.id) === row.hardware_item_id,
+                          );
+                          const itemOptions = selectableEntries(
+                            optionQueries[index]?.data?.data ?? [],
+                            row.hardware_item_option_id,
+                            isHardwareTypeActive &&
+                              (!chosenHardwareItem || isActiveEntry(chosenHardwareItem.status)),
+                          );
+                          const selectedHardwareItem = hardwareItemOptions.find(
+                            (option) =>
+                              String(option.id) === row.hardware_item_id,
+                          );
+                          const persistedRow = row.id
+                            ? hardwareMappings.find((item) => item.id === row.id)
+                            : undefined;
+                          const isDeletedRow = isReviewDeleted(
+                            "hardware",
+                            row,
+                            persistedRow,
+                          );
+                          const reviewTooltipRemark = getReviewTooltipRemark(
+                            "hardware",
+                            row,
+                            persistedRow,
+                          );
+                          const isOutOfScope =
+                            !!selectedHardwareItem && !selectedHardwareItem.inScope;
+                          const rowLocked = isRowLocked("hardware", row);
+
+                          return (
+                            <tr
+                              key={row.localId}
+                              className={cn(
+                                "border-b last:border-b-0",
+                                getHardwareRowHighlightClass(row, index),
+                                getReviewRowClass("hardware", row, persistedRow),
+                              )}
+                            >
+                              <td className="px-4 py-3 align-top">
+                                {withDeletedRemarkTooltip(<AssignToPicker
+                                  data={hardwareItemOptions.map((option) => ({
+                                    id: option.id,
+                                    label: option.name,
+                                  }))}
+                                  value={
+                                    row.hardware_item_id
+                                      ? Number(row.hardware_item_id)
+                                      : undefined
+                                  }
+                                  onChange={(value) =>
+                                    void handleHardwareItemChange(
+                                      row.localId,
+                                      value ? String(value) : "",
+                                      hardwareItemOptions,
+                                    )
+                                  }
+                                  disabled={rowLocked}
+                                  placeholder="Search hardware item..."
+                                  emptyLabel={
+                                    hardwareItemOptions.length === 0
+                                      ? "No hardware items available"
+                                      : "Select hardware item"
+                                  }
+                                  className={cn(
+                                    pickerClassName,
+                                    isDeletedRow && "line-through text-red-600",
+                                  )}
+                                />, reviewTooltipRemark || undefined)}
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                {withDeletedRemarkTooltip(<AssignToPicker
+                                  data={itemOptions.map((option) => ({
+                                    id: option.id,
+                                    label: option.name,
+                                  }))}
+                                  value={
+                                    row.hardware_item_option_id
+                                      ? Number(row.hardware_item_option_id)
+                                      : undefined
+                                  }
+                                  onChange={(value) =>
+                                    handleOptionChange(
+                                      row.localId,
+                                      value ? String(value) : "",
+                                      itemOptions.length,
+                                    )
+                                  }
+                                  disabled={
+                                    rowLocked ||
+                                    !row.hardware_item_id ||
+                                    itemOptions.length === 0
+                                  }
+                                  placeholder={
+                                    !row.hardware_item_id
+                                      ? "Select hardware item first"
+                                      : itemOptions.length === 0
+                                        ? "No options available"
+                                        : "Search option..."
+                                  }
+                                  emptyLabel={
+                                    !row.hardware_item_id
+                                      ? "Select hardware item first"
+                                      : itemOptions.length === 0
+                                        ? "No options available"
+                                        : "Select option"
+                                  }
+                                  className={cn(
+                                    pickerClassName,
+                                    isDeletedRow && "line-through text-red-600",
+                                  )}
+                                />, reviewTooltipRemark || undefined)}
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                {withDeletedRemarkTooltip(<input
+                                  type="text"
+                                  value={isOutOfScope ? "Not in our scope" : row.note}
+                                  onChange={(event) =>
+                                    handleNoteChange(row.localId, event.target.value)
+                                  }
+                                  onBlur={() =>
+                                    handleNoteBlur(row, itemOptions.length)
+                                  }
+                                  readOnly={rowLocked || isOutOfScope}
+                                  disabled={rowLocked || isOutOfScope}
+                                  placeholder={
+                                    isOutOfScope ? "" : "Add a note (optional)"
+                                  }
+                                  className={`${pickerClassName} w-full ${
+                                    isOutOfScope ? "text-muted-foreground" : ""
+                                  } ${isDeletedRow ? "line-through text-red-600" : ""}`}
+                                />, reviewTooltipRemark || undefined)}
+                              </td>
+                              {showReviewColumns && !isSpecCompleted &&
+                                renderReviewActionCells(
+                                  "hardware",
+                                  row,
+                                  row.id && vendorId && userId && specification
+                                    ? {
+                                        id: row.id,
+                                        vendor_id: vendorId,
+                                        lead_id: specification.lead_id,
+                                        specs_id: specification.id,
+                                        created_by: userId,
+                                        hardware_type_id: Number(row.hardware_type_id),
+                                        hardware_item_id: Number(
+                                          row.hardware_item_id,
+                                        ),
+                                        hardware_item_option_id:
+                                          row.hardware_item_option_id
+                                            ? Number(row.hardware_item_option_id)
+                                            : null,
+                                        note: row.note || null,
+                                      }
+                                    : null,
+                                  persistedRow,
+                                )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </TabsContent>
           <TabsContent
@@ -3250,8 +3373,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   </thead>
                   <tbody>
                     {lightRows.map((row, index) => {
-                      const unitOptions =
-                        lightUnitQueries[index]?.data?.data ?? [];
+                      const unitOptions = selectableEntries(
+                        lightUnitQueries[index]?.data?.data ?? [],
+                        row.light_carcas_unit_master_id,
+                        activeLightTypeIds.has(Number(row.light_carcas_type_id)),
+                      );
                       const lightTypeOptions =
                         isCustomLightsMode && customLightCarcasType
                           ? [
@@ -3260,7 +3386,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 label: customLightCarcasType.type,
                               },
                             ]
-                          : selectableLightCarcasTypes.map((type) => ({
+                          : selectableEntries(
+                              selectableLightCarcasTypes,
+                              row.light_carcas_type_id,
+                            ).map((type) => ({
                               id: type.id,
                               label: type.type,
                             }));
@@ -3546,7 +3675,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     />, reviewTooltipRemark || undefined)
                                   ) : (
                                     <AssignToPicker
-                                      data={options.map((option) => ({
+                                      data={selectableEntries(
+                                        options,
+                                        row.other_appliances_master_id,
+                                      ).map((option) => ({
                                         id: option.id,
                                         label: option.article_number,
                                       }))}

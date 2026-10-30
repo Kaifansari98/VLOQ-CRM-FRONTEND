@@ -83,15 +83,19 @@ export const useDisconnectCadbid = () => {
   });
 };
 
-export const useLaunchStudio = () => {
+export const useLaunchStudio = (leadId?: number) => {
   const [isLaunching, setIsLaunching] = useState(false);
 
   const launchStudio = async () => {
     setIsLaunching(true);
     try {
-      const url = await getStudioSsoUrl();
+      const url = await getStudioSsoUrl(leadId);
       if (url) {
-        window.open(url, "_blank", "noopener,noreferrer");
+        if (leadId !== undefined) {
+          window.location.assign(url);
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
       }
     } catch (err: any) {
       const msg =

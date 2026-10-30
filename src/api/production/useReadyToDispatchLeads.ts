@@ -66,21 +66,28 @@ export const useMoveLeadToReadyToDispatch = () => {
 };
 
 // ✅ --- Fetch Current Site Photos (Ready-To-Dispatch)
+// Without an instanceId this returns the photos of every instance of the lead.
 export const getCurrentSitePhotos = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos`
+    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data || [];
 };
 
 // ✅ --- React Query Hook
-export const useCurrentSitePhotos = (vendorId?: number, leadId?: number) => {
+export const useCurrentSitePhotos = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["currentSitePhotos", vendorId, leadId],
-    queryFn: () => getCurrentSitePhotos(vendorId!, leadId!),
+    queryKey: ["currentSitePhotos", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getCurrentSitePhotos(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -118,6 +125,8 @@ export interface AssignToSiteReadinessPayload {
   remark?: string;
   user_id: number;
   created_by: number;
+  /** Large-scale vendors: the instance that moves to Site Readiness. */
+  instance_id?: number | null;
 }
 
 export interface SiteReadinessTaskConflict {
@@ -148,13 +157,7 @@ export interface SiteReadinessFollowUpTaskConflict {
  */
 export const assignSiteReadinessTask = async (
   leadId: number,
-  payload: {
-    task_type: string;
-    due_date: string;
-    remark?: string;
-    user_id: number;
-    created_by: number;
-  }
+  payload: AssignToSiteReadinessPayload
 ) => {
   const { data } = await apiClient.post(
     `/leads/production/ready-to-dispatch/leadId/${leadId}/tasks/assign-site-readiness`,
@@ -168,13 +171,8 @@ export const assignSiteReadinessTask = async (
  */
 export const useAssignSiteReadinessTask = (leadId: number) => {
   return useMutation({
-    mutationFn: (payload: {
-      task_type: string;
-      due_date: string;
-      remark?: string;
-      user_id: number;
-      created_by: number;
-    }) => assignSiteReadinessTask(leadId, payload),
+    mutationFn: (payload: AssignToSiteReadinessPayload) =>
+      assignSiteReadinessTask(leadId, payload),
   });
 };
 
@@ -182,9 +180,14 @@ export const useAssignToSiteReadiness = (leadId: number) => {
   return useAssignSiteReadinessTask(leadId);
 };
 
-export const getSiteReadinessTaskConflicts = async (leadId: number) => {
+// With an instanceId, large-scale vendors only see that instance's open Site Readiness task.
+export const getSiteReadinessTaskConflicts = async (
+  leadId: number,
+  instanceId?: number | null
+) => {
   const { data } = await apiClient.get(
-    `/leads/production/ready-to-dispatch/leadId/${leadId}/task-conflicts`
+    `/leads/production/ready-to-dispatch/leadId/${leadId}/task-conflicts`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
 
   return {
@@ -196,12 +199,15 @@ export const getSiteReadinessTaskConflicts = async (leadId: number) => {
 };
 
 // ✅ --- Get Current Site Photos COUNT + Flag (Ready-To-Dispatch)
+// Without an instanceId this counts the photos of every instance of the lead.
 export const getCurrentSitePhotosCount = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ): Promise<{ count: number; hasPhotos: boolean }> => {
   const { data } = await apiClient.get(
-    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos/count`
+    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos/count`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
 
   return data?.data || { count: 0, hasPhotos: false };
@@ -210,22 +216,26 @@ export const getCurrentSitePhotosCount = async (
 // ✅ --- React Query Hook
 export const useCurrentSitePhotosCount = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["currentSitePhotosCount", vendorId, leadId],
-    queryFn: () => getCurrentSitePhotosCount(vendorId!, leadId!),
+    queryKey: ["currentSitePhotosCount", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getCurrentSitePhotosCount(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
 
-export const useSiteReadinessTaskConflicts = (leadId?: number) => {
+export const useSiteReadinessTaskConflicts = (
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery<{
     restrictedTaskConflicts: SiteReadinessTaskConflict[];
     followUpConflicts: SiteReadinessFollowUpTaskConflict[];
   }>({
-    queryKey: ["siteReadinessTaskConflicts", leadId],
-    queryFn: () => getSiteReadinessTaskConflicts(leadId!),
+    queryKey: ["siteReadinessTaskConflicts", leadId, instanceId ?? "all"],
+    queryFn: () => getSiteReadinessTaskConflicts(leadId!, instanceId),
     enabled: !!leadId,
     staleTime: 1000 * 30,
     refetchOnWindowFocus: false,

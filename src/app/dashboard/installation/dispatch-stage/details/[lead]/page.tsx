@@ -127,7 +127,16 @@ export default function DispatchPlanningLeadDetails() {
 
   const updateStatusMutation = useUpdateActivityStatus();
 
-  const { data: readiness } = useCheckReadyForPostDispatch(vendorId, leadIdNum);
+  // Large-scale vendors run the Dispatch stage per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const dispatchInstanceId = handlesLargeScaleProjects ? validInstanceId : null;
+  const { data: readiness } = useCheckReadyForPostDispatch(
+    vendorId,
+    leadIdNum,
+    dispatchInstanceId,
+  );
 
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -180,12 +189,18 @@ export default function DispatchPlanningLeadDetails() {
     }
 
     moveMutation.mutate(
-      { vendorId, leadId: leadIdNum, updated_by: userId },
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updated_by: userId,
+        instanceId: dispatchInstanceId,
+      },
       {
         onSuccess: () => {
           toastManager.add({
-            title:
-              "Lead successfully moved to Under Installation stage!",
+            title: dispatchInstanceId
+              ? "Instance successfully moved to Under Installation stage!"
+              : "Lead successfully moved to Under Installation stage!",
             type: "success",
           });
           setOpenMoveConfirm(false);
@@ -768,10 +783,25 @@ export default function DispatchPlanningLeadDetails() {
       <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move Lead to Under Installation?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {dispatchInstanceId
+                ? "Move Instance to Under Installation?"
+                : "Move Lead to Under Installation?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the current lead from <b>Dispatch Planning</b> to
-              the <b>Under Installation</b> stage. Do you wish to continue?
+              {dispatchInstanceId ? (
+                <>
+                  This will move only this instance from <b>Dispatch</b> to
+                  the <b>Under Installation</b> stage; the lead&apos;s other
+                  instances stay where they are. Do you wish to continue?
+                </>
+              ) : (
+                <>
+                  This will move the current lead from <b>Dispatch Planning</b>{" "}
+                  to the <b>Under Installation</b> stage. Do you wish to
+                  continue?
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
 

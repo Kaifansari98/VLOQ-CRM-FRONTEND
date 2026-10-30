@@ -28,8 +28,8 @@ export function GRNItemsEditor({
   ) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border">
-      <div className="hidden grid-cols-[1.5fr_90px_90px_90px_100px_1.2fr] gap-2 border-b bg-muted/30 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-muted-foreground lg:grid">
+    <div className="overflow-hidden rounded-xl border bg-background shadow-2xs">
+      <div className="hidden grid-cols-[1.5fr_90px_90px_90px_100px_1.2fr] gap-2 border-b bg-muted/20 px-4 py-2.5 text-xs font-semibold text-muted-foreground lg:grid">
         <span>Product</span>
         <span>Received</span>
         <span>Accepted</span>
@@ -60,12 +60,12 @@ export function GRNItemsEditor({
             <div
               key={item.id}
               className={cn(
-                "grid gap-3 px-4 py-4 transition-colors lg:grid-cols-[1.5fr_90px_90px_90px_100px_1.2fr] lg:items-center",
-                rejected > 0 && "bg-red-50/30 dark:bg-red-950/10"
+                "grid gap-3 px-4 py-3.5 transition-colors lg:grid-cols-[1.5fr_90px_90px_90px_100px_1.2fr] lg:items-center",
+                rejected > 0 && "bg-red-50/20 dark:bg-red-950/10"
               )}
             >
               <div>
-                <p className="text-sm font-bold">
+                <p className="text-xs font-bold text-foreground">
                   {item.product.product_name}
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">

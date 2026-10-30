@@ -1,5 +1,6 @@
 "use client";
 
+import { isCadbidEnabled, useCadbidStatus, useLaunchStudio } from "@/hooks/useCadbid";
 import { motion } from "framer-motion";
 import { cn, getAvatarColor, getInitials } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,10 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     ref,
   ) => {
     const { leadId, accountId, canBook } = useDetails();
+    const { data: cadbidStatus, isLoading: cadbidStatusLoading } = useCadbidStatus();
+    const useCadbidDesigns = isCadbidEnabled && cadbidStatus?.connected === true;
+    const { launchStudio, isLaunching } = useLaunchStudio(leadId);
+
     const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id);
     const userId = useAppSelector((state) => state.auth?.user?.id);
     const userType = useAppSelector(
@@ -443,15 +448,19 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                         <span className="inline-flex">
                           <Button
                             size="sm"
-                            disabled={shouldDisableBlockedActions || !isDesignerAssignedIfRequired}
+                            disabled={shouldDisableBlockedActions || !isDesignerAssignedIfRequired || cadbidStatusLoading || isLaunching}
                             className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                             onClick={() => {
-                              if (shouldDisableBlockedActions || !isDesignerAssignedIfRequired) return;
-                              setOpenDesignsModal(true);
+                              if (shouldDisableBlockedActions || !isDesignerAssignedIfRequired || isLaunching || cadbidStatusLoading) return;
+                              if (useCadbidDesigns) {
+                                void launchStudio();
+                              } else {
+                                setOpenDesignsModal(true);
+                              }
                             }}
                           >
-                            <CloudUpload size={16} className="sm:mr-1" />
-                            <span>Upload Designs</span>
+                            {useCadbidDesigns ? <Palette size={16} className="sm:mr-1" /> : <CloudUpload size={16} className="sm:mr-1" />}
+                            <span>{isLaunching ? "Opening Studio…" : useCadbidDesigns ? "Create Design" : "Upload Designs"}</span>
                           </Button>
                         </span>
                       </TooltipTrigger>
@@ -459,7 +468,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                         <TooltipContent side="top" className="max-w-64 text-center">
                           {shouldDisableBlockedActions
                             ? blockedTooltip
-                            : "Please assign a designer before uploading designs."}
+                            : "Please assign a designer before adding designs."}
                         </TooltipContent>
                       )}
                     </Tooltip>

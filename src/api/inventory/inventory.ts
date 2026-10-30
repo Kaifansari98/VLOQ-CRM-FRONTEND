@@ -93,12 +93,13 @@ export interface ProductFilters {
 export const getProducts = async (
   vendorId: number,
   params: {
-    page?: number; search?: string; category_id?: number;
+    page?: number; pageSize?: number; search?: string; category_id?: number;
     brand_id?: number; active?: string; procurement?: string;
   }
 ) => {
   const query = new URLSearchParams();
   if (params.page)        query.set("page",        String(params.page));
+  if (params.pageSize)    query.set("pageSize",    String(params.pageSize));
   if (params.search)      query.set("search",      params.search);
   if (params.category_id) query.set("category_id", String(params.category_id));
   if (params.brand_id)    query.set("brand_id",    String(params.brand_id));

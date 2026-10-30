@@ -118,8 +118,16 @@ export default function DispatchPlanningLeadDetails() {
   const isChatNotification = useIsChatNotification();
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
+  // Large-scale vendors plan dispatch per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const dispatchPlanningInstanceId = handlesLargeScaleProjects
+    ? validInstanceId
+    : null;
+
   const { data: readinessStatus, isLoading: readinessLoading } =
-    useDispatchReadinessStatus(vendorId, leadIdNum);
+    useDispatchReadinessStatus(vendorId, leadIdNum, dispatchPlanningInstanceId);
   const moveMutation = useMoveLeadToDispatch();
 
   const isReadyForDispatch = readinessStatus?.is_ready_for_dispatch ?? false;
@@ -734,9 +742,15 @@ const isBlockActionPending =
       <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Move to Dispatch</AlertDialogTitle>
+            <AlertDialogTitle>
+              {dispatchPlanningInstanceId
+                ? "Confirm Move Instance to Dispatch"
+                : "Confirm Move to Dispatch"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to move this lead to the Dispatch stage?
+              {dispatchPlanningInstanceId
+                ? "Are you sure you want to move this instance to the Dispatch stage? Only this instance moves; the lead's other instances stay where they are."
+                : "Are you sure you want to move this lead to the Dispatch stage?"}
               <br />
               Once moved, this action cannot be undone.
             </AlertDialogDescription>
@@ -749,10 +763,17 @@ const isBlockActionPending =
                   await moveMutation.mutateAsync({
                     vendorId: vendorId!,
                     leadId: leadIdNum,
-                    payload: { updated_by: userId! },
+                    payload: {
+                      updated_by: userId!,
+                      ...(dispatchPlanningInstanceId
+                        ? { instance_id: dispatchPlanningInstanceId }
+                        : {}),
+                    },
                   });
                   toastManager.add({
-                    title: "Lead successfully moved to Dispatch stage 🚚",
+                    title: dispatchPlanningInstanceId
+                      ? "Instance successfully moved to Dispatch stage 🚚"
+                      : "Lead successfully moved to Dispatch stage 🚚",
                     type: "success",
                   });
                   queryClient.invalidateQueries({ queryKey: ["leadStats"] });

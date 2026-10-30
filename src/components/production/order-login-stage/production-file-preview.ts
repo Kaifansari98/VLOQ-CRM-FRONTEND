@@ -123,7 +123,7 @@ export async function matchProductionInventory(
           if (cancelled()) return;
           const result = await fetchProducts(vendorId, { search: code, page, page_size: 100, active });
           for (const product of result.products as InventoryProduct[]) {
-            if (product.vendor_id === vendorId && product.article_code?.trim() === code) found.set(product.id, product);
+            if ((!product.vendor_id || product.vendor_id === vendorId) && product.article_code?.trim() === code) found.set(product.id, product);
           }
           totalPages = result.total_pages;
           page++;

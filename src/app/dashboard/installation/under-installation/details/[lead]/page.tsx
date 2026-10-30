@@ -127,11 +127,12 @@ export default function UnderInstallationLeadDetails() {
   const { data: underDetails } = useUnderInstallationDetails(
     vendorId,
     leadIdNum,
+    validInstanceId,
   );
   const { data: usableHandoverData, isLoading: isLoadingUsableHandover } =
     useGetUsableHandover(vendorId ?? 0, leadIdNum);
   const setStartMutation = useSetActualInstallationStartDate();
-  const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
+  const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum, validInstanceId);
 
   const { data: miscStatus, isLoading: isLoadingMisc } =
     useMiscellaneousResolutionStatus(vendorId, leadIdNum);
@@ -1163,6 +1164,7 @@ export default function UnderInstallationLeadDetails() {
                   leadId: leadIdNum,
                   updated_by: userId!,
                   actual_installation_start_date: new Date().toISOString(),
+                  instance_id: validInstanceId,
                 });
                 setOpenStartModal(false);
               }}

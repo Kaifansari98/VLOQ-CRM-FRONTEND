@@ -46,6 +46,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const PRODUCT_MASTER_BASE = "/dashboard/inventory/master/products/list";
 
@@ -801,7 +803,7 @@ export function ProductMasterFormPage({
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
 
@@ -834,20 +836,25 @@ export function ProductMasterFormPage({
             </BreadcrumbList>
           </Breadcrumb>
         </div>
+
+        <div className="flex items-center gap-2 border-l pl-3">
+          <NotificationBell />
+          <AnimatedThemeToggler />
+        </div>
       </header>
 
       <main className="p-6">
-        <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div className="mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+            <div className="rounded-xl border bg-background p-2.5 text-foreground shadow-xs">
               <PackagePlus size={20} />
             </div>
 
             <div>
-              <h1 className="text-xl font-black">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">
                 {isEdit ? "Edit Product" : "Add New Product"}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Manage item category, units, stock levels, HSN and reorder settings.
               </p>
             </div>
@@ -857,9 +864,9 @@ export function ProductMasterFormPage({
             type="button"
             variant="outline"
             onClick={() => router.push(PRODUCT_MASTER_BASE)}
-            className="gap-2"
+            className="gap-2 h-9 text-xs font-semibold"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={14} />
             Back
           </Button>
         </div>
@@ -876,9 +883,9 @@ export function ProductMasterFormPage({
           <div className="grid gap-6 lg:grid-cols-2">
             {/* COLUMN 1: Basic Information & Taxation */}
             <div className="flex flex-col gap-6">
-              <div className="rounded-3xl border bg-card shadow-sm p-6 space-y-4">
-                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
-                  <span className="h-2 w-2 rounded-full bg-indigo-600" />
+              <div className="rounded-2xl border bg-card shadow-xs p-6 space-y-4">
+                <p className="font-bold text-xs uppercase tracking-wider text-foreground flex items-center gap-2 border-b pb-3 mb-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
                   Basic Information
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1016,9 +1023,9 @@ export function ProductMasterFormPage({
               </div>
 
               {/* Pricing, Taxation, and Units */}
-              <div className="rounded-3xl border bg-card shadow-sm p-6 space-y-4">
-                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-600" />
+              <div className="rounded-2xl border bg-card shadow-xs p-6 space-y-4">
+                <p className="font-bold text-xs uppercase tracking-wider text-foreground flex items-center gap-2 border-b pb-3 mb-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
                   Inventory & Taxation
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1038,7 +1045,7 @@ export function ProductMasterFormPage({
                             endpoint: "/track-trace/units",
                             payloadKey: "unit_name",
                           })}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                          className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
                         >
                           <Plus size={10} /> Add
                         </button>
@@ -1119,7 +1126,7 @@ export function ProductMasterFormPage({
                         <button
                           type="button"
                           onClick={() => setHsnModalOpen(true)}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                          className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
                         >
                           <Plus size={10} /> Add
                         </button>
@@ -1155,9 +1162,9 @@ export function ProductMasterFormPage({
 
             {/* COLUMN 2: Physical Specs, Stock levels, and Suppliers */}
             <div className="flex flex-col gap-6">
-              <div className="rounded-3xl border bg-card shadow-sm p-6 space-y-4">
-                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
-                  <span className="h-2 w-2 rounded-full bg-violet-600" />
+              <div className="rounded-2xl border bg-card shadow-xs p-6 space-y-4">
+                <p className="font-bold text-xs uppercase tracking-wider text-foreground flex items-center gap-2 border-b pb-3 mb-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
                   Physical Specifications
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1180,7 +1187,7 @@ export function ProductMasterFormPage({
                             endpoint: "/track-trace/core-products",
                             payloadKey: "core_product_name",
                           })}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                          className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
                         >
                           <Plus size={10} /> Add
                         </button>
@@ -1219,7 +1226,7 @@ export function ProductMasterFormPage({
                             endpoint: "/track-trace/grades",
                             payloadKey: "grade_name",
                           })}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                          className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
                         >
                           <Plus size={10} /> Add
                         </button>
@@ -1255,7 +1262,7 @@ export function ProductMasterFormPage({
                             endpoint: "/track-trace/types",
                             payloadKey: "type_name",
                           })}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                          className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
                         >
                           <Plus size={10} /> Add
                         </button>
@@ -1291,7 +1298,7 @@ export function ProductMasterFormPage({
                             endpoint: "/track-trace/finishes",
                             payloadKey: "finish_name",
                           })}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                          className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
                         >
                           <Plus size={10} /> Add
                         </button>
@@ -1389,9 +1396,9 @@ export function ProductMasterFormPage({
               </div>
 
               {/* Stock Levels Section */}
-              <div className="rounded-3xl border bg-card p-6 space-y-4 shadow-sm">
-                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <div className="rounded-2xl border bg-card p-6 space-y-4 shadow-xs">
+                <p className="font-bold text-xs uppercase tracking-wider text-foreground flex items-center gap-2 border-b pb-3 mb-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
                   Stock Thresholds
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1439,14 +1446,14 @@ export function ProductMasterFormPage({
 
       {/* Supplier Section (Full-width below Columns) */}
       {!loading && masters && (
-        <div className="mt-6 rounded-3xl border bg-card shadow-sm p-6 space-y-6">
+        <div className="mt-6 rounded-2xl border bg-card shadow-xs p-6 space-y-6">
           <div className="flex items-center justify-between border-b pb-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+              <div className="rounded-xl border bg-background p-2 text-foreground">
                 <Building2 size={18} />
               </div>
               <div>
-                <p className="font-black text-sm">Suppliers Mapping</p>
+                <p className="font-bold text-sm text-foreground">Suppliers Mapping</p>
                 <p className="text-xs text-muted-foreground">Map multiple suppliers with codes and final calculations.</p>
               </div>
             </div>
@@ -1455,7 +1462,7 @@ export function ProductMasterFormPage({
               size="sm"
               variant="outline"
               onClick={addSupplierRow}
-              className="gap-2"
+              className="gap-1.5 text-xs font-semibold h-8"
             >
               <Plus size={14} /> Add Supplier
             </Button>
@@ -1466,7 +1473,7 @@ export function ProductMasterFormPage({
               <button
                 type="button"
                 onClick={addSupplierRow}
-                className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed py-8 text-muted-foreground transition-all hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-600"
+                className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed py-8 text-muted-foreground transition-all hover:border-foreground/30 hover:bg-muted/30 hover:text-foreground"
               >
                 <Building2 size={24} className="mb-2 opacity-50" />
                 <p className="text-sm font-semibold">No suppliers mapped yet</p>
@@ -1486,16 +1493,16 @@ export function ProductMasterFormPage({
                   );
 
                   return (
-                    <div key={index} className="rounded-2xl border p-5 space-y-4 hover:border-indigo-200 transition-all">
+                    <div key={index} className="rounded-xl border p-5 space-y-4 hover:border-border transition-all bg-background">
                       <div className="flex items-center justify-between border-b pb-2">
-                        <span className="text-xs font-bold text-indigo-700 uppercase">Supplier #{index + 1}</span>
+                        <span className="text-xs font-bold font-mono text-foreground uppercase">Supplier #{index + 1}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           onClick={() => removeSupplierRow(index)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </Button>
                       </div>
 
@@ -1570,7 +1577,7 @@ export function ProductMasterFormPage({
                           <input
                             value={row.final_amount}
                             disabled
-                            className="input bg-emerald-50/50 font-bold text-emerald-700"
+                            className="input bg-muted font-bold font-mono text-foreground"
                           />
                         </Field>
                       </div>
@@ -1585,12 +1592,13 @@ export function ProductMasterFormPage({
 
       {/* Form Submission Actions Container */}
       {!loading && masters && (
-        <div className="mt-6 flex justify-end gap-3 rounded-3xl border bg-card p-6 shadow-sm">
+        <div className="mt-6 flex justify-end gap-3 rounded-2xl border bg-card p-4 shadow-xs">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push(PRODUCT_MASTER_BASE)}
             disabled={saving}
+            className="h-9 px-4 text-xs font-semibold"
           >
             Cancel
           </Button>
@@ -1599,9 +1607,9 @@ export function ProductMasterFormPage({
             type="button"
             onClick={submit}
             disabled={saving}
-            className="gap-2"
+            className="gap-2 h-9 px-5 text-xs font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs"
           >
-            {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             {isEdit ? "Update Product" : "Create Product"}
           </Button>
         </div>
@@ -1695,7 +1703,7 @@ export function ProductMasterFormPage({
                     <p className="text-[11px] font-black uppercase text-muted-foreground">
                       CGST
                     </p>
-                    <p className="mt-1 text-sm font-bold text-indigo-600">
+                    <p className="mt-1 text-sm font-bold text-foreground">
                       {(Number(hsnForm.igst_rate || 0) / 2).toFixed(2)}%
                     </p>
                   </div>
@@ -1704,7 +1712,7 @@ export function ProductMasterFormPage({
                     <p className="text-[11px] font-black uppercase text-muted-foreground">
                       SGST
                     </p>
-                    <p className="mt-1 text-sm font-bold text-indigo-600">
+                    <p className="mt-1 text-sm font-bold text-foreground">
                       {(Number(hsnForm.igst_rate || 0) / 2).toFixed(2)}%
                     </p>
                   </div>
@@ -1853,82 +1861,66 @@ export function ProductMasterFormPage({
 
 
         <style jsx>{`
-        .add-hsn-btn {
-  display: inline-flex;
-  height: 46px;
-  min-width: 82px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-radius: 14px;
-  border: 1px solid #c7d2fe;
-  background: #eef2ff;
-  padding: 0 14px;
-  color: #4f46e5;
-  font-size: 13px;
-  font-weight: 800;
-  transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.12s ease;
-}
-
-.add-hsn-btn:hover {
-  border-color: #818cf8;
-  background: #e0e7ff;
-  color: #3730a3;
-  transform: translateY(-1px);
-}
-
-.add-hsn-btn:active {
-  transform: translateY(0);
-}
-  .input {
-    height: 46px;
-    width: 100%;
-    border-radius: 14px;
-    border: 1px solid #d9dee8;
-    background-color: #ffffff;
+  .add-hsn-btn {
+    display: inline-flex;
+    height: 40px;
+    min-width: 82px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--background, #ffffff);
     padding: 0 14px;
-    font-size: 14px;
+    color: var(--foreground, #09090b);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+
+  .add-hsn-btn:hover {
+    background: var(--muted, #f1f5f9);
+    border-color: var(--ring, #94a3b8);
+  }
+
+  .input {
+    height: 40px;
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--border, #e2e8f0);
+    background-color: var(--background, #ffffff);
+    padding: 0 12px;
+    font-size: 13px;
     font-weight: 500;
-    color: #111827;
+    color: var(--foreground, #09090b);
     outline: none;
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.04),
-      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
     transition:
-      border-color 0.18s ease,
-      box-shadow 0.18s ease,
-      background-color 0.18s ease,
-      transform 0.12s ease;
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background-color 0.15s ease;
   }
 
   .input::placeholder {
-    color: #9ca3af;
+    color: var(--muted-foreground, #94a3b8);
     font-weight: 400;
   }
 
   .input:hover:not(:disabled) {
-    border-color: #a5b4fc;
-    background-color: #ffffff;
+    border-color: var(--ring, #94a3b8);
   }
 
   .input:focus {
-    border-color: #6366f1;
-    background-color: #ffffff;
-    box-shadow:
-      0 0 0 3px rgba(99, 102, 241, 0.14),
-      0 1px 2px rgba(15, 23, 42, 0.06);
+    border-color: var(--foreground, #09090b);
+    box-shadow: 0 0 0 1.5px var(--foreground, #09090b);
   }
 
   .input:disabled {
     cursor: not-allowed;
-    border-color: #e5e7eb;
-    background-color: #f8fafc;
-    color: #6b7280;
-    opacity: 1;
+    border-color: var(--border, #e2e8f0);
+    background-color: var(--muted, #f8fafc);
+    color: var(--muted-foreground, #64748b);
+    opacity: 0.8;
   }
 
   select.input {
@@ -1938,19 +1930,13 @@ export function ProductMasterFormPage({
       linear-gradient(45deg, transparent 50%, #6b7280 50%),
       linear-gradient(135deg, #6b7280 50%, transparent 50%);
     background-position:
-      calc(100% - 18px) 19px,
-      calc(100% - 13px) 19px;
+      calc(100% - 16px) 16px,
+      calc(100% - 11px) 16px;
     background-size:
       5px 5px,
       5px 5px;
     background-repeat: no-repeat;
-    padding-right: 38px;
-  }
-
-  select.input:hover {
-    background-image:
-      linear-gradient(45deg, transparent 50%, #4f46e5 50%),
-      linear-gradient(135deg, #4f46e5 50%, transparent 50%);
+    padding-right: 36px;
   }
 
   input[type='number'].input {
@@ -1963,55 +1949,47 @@ export function ProductMasterFormPage({
   }
 
   .stock-card {
-    border-radius: 20px;
-    border: 1px solid #e1e5ee;
-    background: #ffffff;
-    padding: 16px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    transition:
-      border-color 0.18s ease,
-      box-shadow 0.18s ease;
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--background, #ffffff);
+    padding: 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition: border-color 0.15s ease;
   }
 
   .stock-card:hover {
-    border-color: #c7d2fe;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    border-color: var(--ring, #94a3b8);
   }
 
   .stock-title {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.06em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #6b7280;
+    color: var(--muted-foreground, #6b7280);
   }
 
   .supplier-table-wrap {
     width: 100%;
     overflow-x: auto;
-    border-radius: 18px;
-    border: 1px solid #e1e5ee;
-    background: #ffffff;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--background, #ffffff);
   }
 
   .supplier-table-wrap::-webkit-scrollbar {
-    height: 8px;
+    height: 6px;
   }
 
   .supplier-table-wrap::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: var(--muted, #f1f5f9);
     border-radius: 999px;
   }
 
   .supplier-table-wrap::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.38);
+    background: var(--border, #cbd5e1);
     border-radius: 999px;
-  }
-
-  .supplier-table-wrap::-webkit-scrollbar-thumb:hover {
-    background: rgba(99, 102, 241, 0.6);
   }
 
   .supplier-table {
@@ -2023,26 +2001,26 @@ export function ProductMasterFormPage({
   }
 
   .supplier-table thead {
-    background: #f8fafc;
+    background: var(--muted, #f8fafc);
   }
 
   .supplier-table th {
-    height: 44px;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 10px 12px;
-    color: #6b7280;
+    height: 40px;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    padding: 8px 12px;
+    color: var(--muted-foreground, #6b7280);
     font-size: 11px;
-    font-weight: 900;
+    font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     white-space: nowrap;
   }
 
   .supplier-table td {
-    border-bottom: 1px solid #eef2f7;
-    padding: 12px;
+    border-bottom: 1px solid var(--border, #eef2f7);
+    padding: 10px 12px;
     vertical-align: top;
-    background: #ffffff;
+    background: var(--background, #ffffff);
   }
 
   .supplier-table tbody tr:last-child td {
@@ -2050,39 +2028,34 @@ export function ProductMasterFormPage({
   }
 
   .supplier-table tbody tr:hover td {
-    background: #fafbff;
+    background: var(--muted, #f8fafc);
   }
 
   .supplier-input {
-    height: 40px;
+    height: 38px;
     width: 100%;
-    border-radius: 12px;
-    border: 1px solid #d9dee8;
-    background: #ffffff;
-    padding: 0 11px;
-    color: #111827;
+    border-radius: 8px;
+    border: 1px solid var(--border, #d9dee8);
+    background: var(--background, #ffffff);
+    padding: 0 10px;
+    color: var(--foreground, #111827);
     font-size: 12px;
     font-weight: 500;
     outline: none;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
-    transition:
-      border-color 0.16s ease,
-      box-shadow 0.16s ease,
-      background-color 0.16s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .supplier-input::placeholder {
-    color: #9ca3af;
-    font-weight: 400;
+    color: var(--muted-foreground, #9ca3af);
   }
 
   .supplier-input:hover:not(:disabled) {
-    border-color: #a5b4fc;
+    border-color: var(--ring, #94a3b8);
   }
 
   .supplier-input:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.13);
+    border-color: var(--foreground, #09090b);
+    box-shadow: 0 0 0 1.5px var(--foreground, #09090b);
   }
 
   select.supplier-input {
@@ -2092,38 +2065,38 @@ export function ProductMasterFormPage({
       linear-gradient(45deg, transparent 50%, #6b7280 50%),
       linear-gradient(135deg, #6b7280 50%, transparent 50%);
     background-position:
-      calc(100% - 17px) 17px,
-      calc(100% - 12px) 17px;
+      calc(100% - 15px) 15px,
+      calc(100% - 10px) 15px;
     background-size:
       5px 5px,
       5px 5px;
     background-repeat: no-repeat;
-    padding-right: 36px;
+    padding-right: 32px;
   }
 
   .readonly-input {
     border-color: transparent;
-    font-weight: 800;
+    font-weight: 700;
     cursor: default;
     opacity: 1;
   }
 
   .expense-total-input {
-    background: #eef2ff;
-    color: #4338ca;
+    background: var(--muted, #f1f5f9);
+    color: var(--foreground, #09090b);
   }
 
   .final-input {
-    background: #ecfdf5;
-    color: #047857;
-    font-weight: 900;
+    background: var(--muted, #f1f5f9);
+    color: var(--foreground, #09090b);
+    font-weight: 800;
   }
 
   .same-code-check {
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #6b7280;
+    color: var(--muted-foreground, #6b7280);
     font-size: 11px;
     line-height: 1;
     user-select: none;
@@ -2133,7 +2106,7 @@ export function ProductMasterFormPage({
     height: 14px;
     width: 14px;
     cursor: pointer;
-    accent-color: #4f46e5;
+    accent-color: #09090b;
   }
 
   .percent-symbol {
@@ -2144,32 +2117,26 @@ export function ProductMasterFormPage({
     transform: translateY(-50%);
     color: #6b7280;
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .delete-supplier-btn {
     display: inline-flex;
-    height: 38px;
-    width: 38px;
+    height: 36px;
+    width: 36px;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: var(--background, #ffffff);
     color: #dc2626;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    transition:
-      background-color 0.15s ease,
-      border-color 0.15s ease,
-      color 0.15s ease,
-      transform 0.15s ease;
+    transition: all 0.15s ease;
   }
 
   .delete-supplier-btn:hover {
     border-color: #fecaca;
     background: #fef2f2;
     color: #b91c1c;
-    transform: translateY(-1px);
   }
 
   @media (max-width: 768px) {

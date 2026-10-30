@@ -42,10 +42,12 @@ export const useDispatchPlanningLeads = (
    ========================================================== */
 export const getDispatchPlanningInfo = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch-planning/info/vendorId/${vendorId}/leadId/${leadId}`
+    `/leads/installation/dispatch-planning/info/vendorId/${vendorId}/leadId/${leadId}`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -53,10 +55,14 @@ export const getDispatchPlanningInfo = async (
 /**
  * ✅ React Query Hook for Dispatch Planning Info
  */
-export const useDispatchPlanningInfo = (vendorId?: number, leadId?: number) => {
+export const useDispatchPlanningInfo = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["dispatchPlanningInfo", vendorId, leadId],
-    queryFn: () => getDispatchPlanningInfo(vendorId!, leadId!),
+    queryKey: ["dispatchPlanningInfo", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getDispatchPlanningInfo(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -67,10 +73,12 @@ export const useDispatchPlanningInfo = (vendorId?: number, leadId?: number) => {
    ========================================================== */
 export const getDispatchPlanningPayment = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch-planning/payment/vendorId/${vendorId}/leadId/${leadId}`
+    `/leads/installation/dispatch-planning/payment/vendorId/${vendorId}/leadId/${leadId}`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -80,11 +88,12 @@ export const getDispatchPlanningPayment = async (
  */
 export const useDispatchPlanningPayment = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["dispatchPlanningPayment", vendorId, leadId],
-    queryFn: () => getDispatchPlanningPayment(vendorId!, leadId!),
+    queryKey: ["dispatchPlanningPayment", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getDispatchPlanningPayment(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -105,6 +114,8 @@ export interface DispatchPlanningInfoPayload {
   vehicle_approachability: string;
   dispatch_planning_remark?: string;
   created_by: number;
+  /** Large-scale vendors: save the info on this instance. */
+  instance_id?: number;
 }
 
 export const saveDispatchPlanningInfo = async (
@@ -206,10 +217,12 @@ export const usePendingProjectAmount = (vendorId?: number, leadId?: number) => {
    ========================================================== */
 export const getDispatchReadinessStatus = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch-planning/vendorId/${vendorId}/leadId/${leadId}/check-dispatch-readiness`
+    `/leads/installation/dispatch-planning/vendorId/${vendorId}/leadId/${leadId}/check-dispatch-readiness`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -219,11 +232,12 @@ export const getDispatchReadinessStatus = async (
  */
 export const useDispatchReadinessStatus = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["dispatchReadinessStatus", vendorId, leadId],
-    queryFn: () => getDispatchReadinessStatus(vendorId!, leadId!),
+    queryKey: ["dispatchReadinessStatus", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getDispatchReadinessStatus(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -235,7 +249,7 @@ export const useDispatchReadinessStatus = (
 export const moveLeadToDispatch = async (
   vendorId: number,
   leadId: number,
-  payload: { updated_by: number }
+  payload: { updated_by: number; instance_id?: number }
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/dispatch-planning/vendorId/${vendorId}/leadId/${leadId}/move-to-dispatch`,
@@ -256,7 +270,7 @@ export const useMoveLeadToDispatch = () => {
     }: {
       vendorId: number;
       leadId: number;
-      payload: { updated_by: number };
+      payload: { updated_by: number; instance_id?: number };
     }) => moveLeadToDispatch(vendorId, leadId, payload),
   });
 };

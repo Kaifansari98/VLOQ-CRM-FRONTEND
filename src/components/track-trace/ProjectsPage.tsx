@@ -251,6 +251,7 @@ export default function TrackTraceProjectsPage({ fabrication }: { fabrication: "
 
             <TrackTraceProjectTable
               table={projects}
+              vendorTimeZone={data?.vendor_time_zone}
               page={filters.page}
               limit={filters.limit}
               totalCount={pagination?.total}

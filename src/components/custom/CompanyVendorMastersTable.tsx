@@ -112,7 +112,7 @@ const getCompanyVendorColumns = ({
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
             inHouse
-              ? "border-blue-200 bg-blue-500/10 text-blue-600"
+              ? "border-border bg-foreground/10 text-foreground"
               : "border-zinc-200 bg-zinc-100 text-zinc-600",
           )}
         >
@@ -137,14 +137,14 @@ const getCompanyVendorColumns = ({
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
             isActive
-              ? "border-emerald-200 bg-emerald-500/10 text-emerald-600"
+              ? "border-border bg-foreground/10 text-foreground"
               : "border-zinc-200 bg-zinc-100 text-zinc-600",
           )}
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              isActive ? "bg-emerald-500" : "bg-zinc-400",
+              isActive ? "bg-foreground" : "bg-zinc-400",
             )}
           />
           {status || "—"}
@@ -456,14 +456,18 @@ export default function CompanyVendorMastersTable({
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Company Vendor Masters</CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <CardTitle className="text-2xl font-bold tracking-tight">Company Vendor Masters</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
               Manage all company vendor master entries from one place.
             </p>
           </div>
 
-          <Button onClick={() => router.push("/dashboard/inventory/master/company-vendor/create")} className="sm:self-start">
-            <Plus className="mr-2 h-4 w-4" />
+          <Button
+            onClick={() => router.push("/dashboard/inventory/master/company-vendor/create")}
+            size="sm"
+            className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium sm:self-start"
+          >
+            <Plus className="mr-0 h-4 w-4" />
             Create Company Vendor
           </Button>
         </CardHeader>

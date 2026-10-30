@@ -35,6 +35,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import CustomeDatePicker from "@/components/date-picker";
 
 type SelectionState = {
   checked: boolean;
@@ -577,7 +578,7 @@ export default function ConvertPIToPOPage() {
                               <th className="px-3 py-3 text-left">Supplier Code</th>
                               <th className="px-3 py-3 text-left">Payment Term *</th>
                               <th className="px-3 py-3 text-right">Qty *</th>
-                              <th className="px-3 py-3 text-left">Delivery</th>
+                              <th className="px-3 py-3 text-left min-w-[170px] w-[170px]">Delivery</th>
                               <th className="px-3 py-3 text-right">MRP</th>
                               <th className="px-3 py-3 text-right">Disc %</th>
                               <th className="px-3 py-3 text-right">Rate *</th>
@@ -701,18 +702,19 @@ export default function ConvertPIToPOPage() {
                                       />
                                     </td>
 
-                                    <td className="px-3 py-2">
-                                      <input
-                                        type="date"
+                                    <td className="px-3 py-2 min-w-[170px] w-[170px]">
+                                      <CustomeDatePicker
                                         value={sel.expected_delivery_date}
-                                        onChange={(e) =>
+                                        onChange={(val) =>
                                           updateField(
                                             vm.id,
                                             "expected_delivery_date",
-                                            e.target.value
+                                            val ?? ""
                                           )
                                         }
-                                        className={inputClass}
+                                        dateFormat="dd MMM yyyy"
+                                        placeholder="Select date"
+                                        className="h-8 text-xs font-normal"
                                       />
                                     </td>
 

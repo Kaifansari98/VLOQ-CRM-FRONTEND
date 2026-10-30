@@ -50,16 +50,19 @@ export interface SiteReadinessCreateItem {
   updated_by: number;
 }
 
+// instanceId: large-scale vendors keep the checklist per product instance.
 export const createSiteReadiness = async (
   vendorId: number,
   leadId: number,
-  payload: SiteReadinessCreateItem[]
+  payload: SiteReadinessCreateItem[],
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.post(
     `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/create`,
     payload,
     {
       headers: { "Content-Type": "application/json" },
+      params: instanceId ? { instance_id: instanceId } : undefined,
     }
   );
   return data?.data;
@@ -71,11 +74,13 @@ export const useCreateSiteReadiness = () => {
       vendorId,
       leadId,
       payload,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       payload: SiteReadinessCreateItem[];
-    }) => createSiteReadiness(vendorId, leadId, payload),
+      instanceId?: number | null;
+    }) => createSiteReadiness(vendorId, leadId, payload, instanceId),
   });
 };
 
@@ -86,12 +91,17 @@ export const useCreateSiteReadiness = () => {
 export const getSiteReadinessRecords = async (
   vendorId: number,
   leadId?: number,
-  accountId?: number
+  accountId?: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
     `/leads/installation/site-readiness/vendorId/${vendorId}/all`,
     {
-      params: { leadId, accountId },
+      params: {
+        leadId,
+        accountId,
+        ...(instanceId ? { instance_id: instanceId } : {}),
+      },
     }
   );
   return data?.data;
@@ -126,13 +136,15 @@ export interface SiteReadinessUpdateItem {
 export const updateSiteReadiness = async (
   vendorId: number,
   leadId: number,
-  payload: SiteReadinessUpdateItem[]
+  payload: SiteReadinessUpdateItem[],
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/update`,
     payload,
     {
       headers: { "Content-Type": "application/json" },
+      params: instanceId ? { instance_id: instanceId } : undefined,
     }
   );
   return data?.data;
@@ -144,11 +156,13 @@ export const useUpdateSiteReadiness = () => {
       vendorId,
       leadId,
       payload,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       payload: SiteReadinessUpdateItem[];
-    }) => updateSiteReadiness(vendorId, leadId, payload),
+      instanceId?: number | null;
+    }) => updateSiteReadiness(vendorId, leadId, payload, instanceId),
   });
 };
 
@@ -161,11 +175,13 @@ export const uploadCurrentSitePhotosAtSiteReadiness = async (
   leadId: number,
   accountId: number,
   createdBy: number,
-  files: File[]
+  files: File[],
+  instanceId?: number | null
 ) => {
   const formData = new FormData();
   formData.append("account_id", String(accountId));
   formData.append("created_by", String(createdBy));
+  if (instanceId) formData.append("instance_id", String(instanceId));
 
   files.forEach((file) => formData.append("files", file));
 
@@ -188,19 +204,22 @@ export const useUploadCurrentSitePhotosAtSiteReadiness = () => {
       accountId,
       createdBy,
       files,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       accountId: number;
       createdBy: number;
       files: File[];
+      instanceId?: number | null;
     }) =>
       uploadCurrentSitePhotosAtSiteReadiness(
         vendorId,
         leadId,
         accountId,
         createdBy,
-        files
+        files,
+        instanceId
       ),
   });
 };
@@ -211,22 +230,29 @@ export const useUploadCurrentSitePhotosAtSiteReadiness = () => {
    ========================================================== */
 export const getCurrentSitePhotosAtSiteReadiness = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/current-site-photos`
+    `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/current-site-photos`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
 
 export const useCurrentSitePhotosAtSiteReadiness = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["currentSitePhotosAtSiteReadiness", vendorId, leadId],
+    queryKey: ["currentSitePhotosAtSiteReadiness", vendorId, leadId, instanceId ?? "all"],
     queryFn: () =>
-      getCurrentSitePhotosAtSiteReadiness(vendorId as number, leadId as number),
+      getCurrentSitePhotosAtSiteReadiness(
+        vendorId as number,
+        leadId as number,
+        instanceId
+      ),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -237,7 +263,8 @@ export const useCurrentSitePhotosAtSiteReadiness = (
    ========================================================== */
 export const checkSiteReadinessCompletion = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ): Promise<{
   vendor_id: number;
   lead_id: number;
@@ -246,18 +273,20 @@ export const checkSiteReadinessCompletion = async (
   is_site_readiness_completed: boolean;
 }> => {
   const { data } = await apiClient.get(
-    `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/is-site-readiness-completed`
+    `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/is-site-readiness-completed`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
 
 export const useCheckSiteReadinessCompletion = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["checkSiteReadinessCompletion", vendorId, leadId],
-    queryFn: () => checkSiteReadinessCompletion(vendorId!, leadId!),
+    queryKey: ["checkSiteReadinessCompletion", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => checkSiteReadinessCompletion(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -266,14 +295,16 @@ export const useCheckSiteReadinessCompletion = (
    🔹 8️⃣ Move Lead to Dispatch Planning Stage
    @route PUT /leads/installation/site-readiness/vendorId/:vendorId/leadId/:leadId/move-to-dispatch-planning
    ========================================================== */
+// instanceId: large-scale vendors move one product instance, not the whole lead.
 export const moveLeadToDispatchPlanning = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/move-to-dispatch-planning`,
-    { updated_by }
+    { updated_by, ...(instanceId ? { instance_id: instanceId } : {}) }
   );
   return data?.data;
 };
@@ -284,11 +315,13 @@ export const useMoveLeadToDispatchPlanning = () => {
       vendorId,
       leadId,
       updated_by,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       updated_by: number;
-    }) => moveLeadToDispatchPlanning(vendorId, leadId, updated_by),
+      instanceId?: number | null;
+    }) => moveLeadToDispatchPlanning(vendorId, leadId, updated_by, instanceId),
   });
 };
 

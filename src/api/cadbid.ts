@@ -53,12 +53,12 @@ export const disconnectCadbid = async (): Promise<void> => {
   );
 };
 
-export const getStudioSsoUrl = async (): Promise<string> => {
+export const getStudioSsoUrl = async (leadId?: number): Promise<string> => {
   const res = await apiClient.post<{
     success: boolean;
     data: { url: string };
     message?: string;
-  }>("/cadbid/studio-sso");
+  }>("/cadbid/studio-sso", leadId === undefined ? undefined : { leadId });
   return res.data.data.url;
 };
 

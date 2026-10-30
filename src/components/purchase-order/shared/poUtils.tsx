@@ -69,36 +69,36 @@ export const STATUS_CFG: Record<
 > = {
   Draft: {
     label: "Draft",
-    color: "bg-slate-100 text-slate-700 border-slate-200",
+    color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700",
     soft: "bg-slate-50 text-slate-700",
     icon: Pencil,
     next: ["Approved", "Cancelled"],
   },
   Approved: {
     label: "Approved",
-    color: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    soft: "bg-indigo-50 text-indigo-700",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60",
+    soft: "bg-emerald-50 text-emerald-700",
     icon: CheckCircle2,
     next: ["Cancelled"],
   },
   PartiallyReceived: {
     label: "Partially Received",
-    color: "bg-amber-100 text-amber-700 border-amber-200",
+    color: "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60",
     soft: "bg-amber-50 text-amber-700",
     icon: Clock,
     next: ["Cancelled"],
   },
   Received: {
     label: "Received",
-    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60",
     soft: "bg-emerald-50 text-emerald-700",
     icon: PackageCheck,
     next: [],
   },
   Cancelled: {
     label: "Cancelled",
-    color: "bg-red-100 text-red-700 border-red-200",
-    soft: "bg-red-50 text-red-700",
+    color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/60 dark:text-gray-300 dark:border-gray-700",
+    soft: "bg-gray-50 text-gray-700",
     icon: XCircle,
     next: [],
   },
@@ -172,9 +172,9 @@ export function StatusBadge({ status }: { status: POStatus }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${cfg?.color}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${cfg?.color}`}
     >
-      <Icon size={12} />
+      <Icon size={12} className="shrink-0" />
       {cfg?.label ?? status}
     </span>
   );

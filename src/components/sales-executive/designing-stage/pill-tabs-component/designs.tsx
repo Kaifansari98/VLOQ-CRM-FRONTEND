@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { Palette, Images, PenTool, ArrowLeft, Package } from "lucide-react";
+import { Palette, Images, PenTool, Package } from "lucide-react";
 import {
   useLeadStatus,
   useDesignsDoc,
@@ -23,9 +23,7 @@ import {
 import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
-import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
-import { Badge } from "@/components/ui/badge";
 import ViewSpecsModal from "./modals/view-specs-modal";
 import { useB2BRequirementTypes, useProductTypes } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
@@ -98,7 +96,6 @@ const DesigningTab = () => {
     useDeleteDocument(leadId);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedSpec, setSelectedSpec] =
     useState<LeadSpecificationEntry | null>(null);
 
@@ -193,11 +190,6 @@ const DesigningTab = () => {
     );
   }, [handlesLargeScaleProjects, structureInstances, sortedDesignDocs, productTypes]);
 
-  const selectedGroup = useMemo(
-    () =>
-      groupedDesignDocs.find((group) => group.id === selectedGroupId) || null,
-    [groupedDesignDocs, selectedGroupId],
-  );
 
   // Group B2B documents by Requirement Type
   const b2bGroupedDocs = useMemo(() => {
@@ -275,6 +267,90 @@ const DesigningTab = () => {
         (userType === "sales-executive" && leadStatus === "designing-stage");
 
   // ✅ Render Design Documents using DocumentCard
+  const renderDocumentCards = (docs: any[]) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {docs.map(
+        (doc: any, index: number) => {
+          const hasSpec = !!doc.specification?.name;
+
+          return (
+            <div key={doc.id} className="relative mt-8">
+              {hasSpec && (
+                <>
+                  <div className="absolute top-[20px] left-[-7px] h-[14px] w-[14px] rounded-full border-2 border-background bg-muted-foreground shadow-sm z-20" />
+
+                  <svg
+                    className="absolute pointer-events-none z-10"
+                    style={{
+                      left: "-20px",
+                      top: "-30px",
+                      width: "100px",
+                      height: "100px",
+                      overflow: "visible",
+                    }}
+                  >
+                    <path
+                      d="M 20,57 L 12,57 Q 6,57 6,51 L 6,17 Q 6,9 14,9 L 44,9"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      className="text-muted-foreground/60"
+                    />
+                    <path
+                      d="M 39,6 L 44,9 L 39,12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-muted-foreground/60"
+                    />
+                  </svg>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedSpec({
+                        id: doc.specification.id,
+                        name: doc.specification.name,
+                        lead_id: Number(leadId),
+                        vendor_id: Number(vendorId),
+                        created_by: Number(userId),
+                        created_at: doc.created_at,
+                        lights_remark: null,
+                        appliances_remark: null,
+                        stone_remark: null,
+                        sinks_remark: null,
+                        faucets_remark: null,
+                        item_code_id: null,
+                      })
+                    }
+                    className="absolute -top-7 left-6 z-10 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {doc.specification.name}
+                  </button>
+                </>
+              )}
+
+              <DocumentCard
+                doc={{
+                  id: doc.id,
+                  originalName: doc.doc_og_name,
+                  created_at: doc.created_at,
+                  signedUrl: doc.signedUrl,
+                }}
+                isLatest={index === 0}
+                canDelete={canDelete}
+                onDelete={(id) => setConfirmDelete(id)}
+              />
+            </div>
+          );
+        },
+      )}
+    </div>
+  );
+
   return (
     <div className="">
       <section
@@ -298,32 +374,19 @@ const DesigningTab = () => {
           <div className="flex items-center gap-2">
             <PenTool size={20} className="shrink-0" />
             <h1 className="text-lg font-semibold tracking-tight">
-              {handlesLargeScaleProjects && selectedGroup
-                ? selectedGroup.title
-                : "Designs"}
+              Designs
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            {handlesLargeScaleProjects && selectedGroup && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedGroupId(null)}
-              >
-                <ArrowLeft size={14} className="mr-1" />
-                Back
-              </Button>
-            )}
             <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
               {isB2b
                 ? `${designDocs.length} ${designDocs.length === 1 ? "Document" : "Documents"}`
-                : handlesLargeScaleProjects && !selectedGroup
+                : handlesLargeScaleProjects
                   ? `${groupedDesignDocs.length} ${
                       groupedDesignDocs.length === 1 ? "Item Group" : "Item Groups"
                     }`
-                  : `${(selectedGroup?.docs || designDocs).length} ${
-                      (selectedGroup?.docs || designDocs).length === 1
+                  : `${designDocs.length} ${
+                      designDocs.length === 1
                         ? "Document"
                         : "Documents"
                     }`}
@@ -381,126 +444,28 @@ const DesigningTab = () => {
                 </div>
               ))}
             </div>
-          ) : handlesLargeScaleProjects && !selectedGroup ? (
-            <div className="grid gap-4 md:grid-cols-2">
+          ) : handlesLargeScaleProjects ? (
+            <div className="space-y-8">
+              {groupedDesignDocs.length === 0 && <p className="py-4 text-sm text-muted-foreground">No design documents found.</p>}
               {groupedDesignDocs.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => setSelectedGroupId(group.id)}
-                  className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Package className="h-4 w-4" />
-                        <span className="text-xs font-medium uppercase tracking-wide">
-                          Item Group
-                        </span>
-                      </div>
-                      <p className="line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200 break-words">
-                        {group.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {group.subtitle}
-                      </p>
-                    </div>
-                    <Badge variant="outline">
-                      {group.docs.length} {group.docs.length === 1 ? "file" : "files"}
-                    </Badge>
+                <section key={group.id} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 border-b pb-2">
+                    <h2 className="text-base font-semibold break-words">{group.title}</h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">{group.docs.length} {group.docs.length === 1 ? "file" : "files"}</span>
                   </div>
-                </button>
+                  {group.docs.length > 0 ? renderDocumentCards(group.docs) : (
+                    <p className="py-4 text-sm text-muted-foreground">No design documents added to this item group yet.</p>
+                  )}
+                </section>
               ))}
             </div>
-          ) : (selectedGroup ? selectedGroup.docs : sortedDesignDocs).length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(selectedGroup ? selectedGroup.docs : sortedDesignDocs).map(
-                (doc: any, index: number) => {
-                  const hasSpec = !!doc.specification?.name;
-
-                  return (
-                    <div key={doc.id} className="relative mt-8">
-                      {hasSpec && (
-                        <>
-                          <div className="absolute top-[20px] left-[-7px] h-[14px] w-[14px] rounded-full border-2 border-background bg-muted-foreground shadow-sm z-20" />
-
-                          <svg
-                            className="absolute pointer-events-none z-10"
-                            style={{
-                              left: "-20px",
-                              top: "-30px",
-                              width: "100px",
-                              height: "100px",
-                              overflow: "visible",
-                            }}
-                          >
-                            <path
-                              d="M 20,57 L 12,57 Q 6,57 6,51 L 6,17 Q 6,9 14,9 L 44,9"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              className="text-muted-foreground/60"
-                            />
-                            <path
-                              d="M 39,6 L 44,9 L 39,12"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-muted-foreground/60"
-                            />
-                          </svg>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedSpec({
-                                id: doc.specification.id,
-                                name: doc.specification.name,
-                                lead_id: Number(leadId),
-                                vendor_id: Number(vendorId),
-                                created_by: Number(userId),
-                                created_at: doc.created_at,
-                                lights_remark: null,
-                                appliances_remark: null,
-                                stone_remark: null,
-                                sinks_remark: null,
-                                faucets_remark: null,
-                                item_code_id: null,
-                              })
-                            }
-                            className="absolute -top-7 left-6 z-10 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                          >
-                            {doc.specification.name}
-                          </button>
-                        </>
-                      )}
-
-                      <DocumentCard
-                        doc={{
-                          id: doc.id,
-                          originalName: doc.doc_og_name,
-                          created_at: doc.created_at,
-                          signedUrl: doc.signedUrl,
-                        }}
-                        isLatest={index === 0}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(id)}
-                      />
-                    </div>
-                  );
-                },
-              )}
-            </div>
+          ) : sortedDesignDocs.length > 0 ? (
+            renderDocumentCards(sortedDesignDocs)
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
               <Images size={42} className="text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">
-                {handlesLargeScaleProjects && selectedGroup
-                  ? "No design documents found for this product type."
-                  : "No design documents found."}
+                No design documents found.
               </p>
             </div>
           )}

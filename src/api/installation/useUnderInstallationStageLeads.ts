@@ -262,10 +262,11 @@ export const moveLeadToUnderInstallation = async (
   vendorId: number,
   leadId: number,
   updated_by: number,
+  instanceId?: number | null,
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-under-installation`,
-    { updated_by },
+    { updated_by, ...(instanceId ? { instance_id: instanceId } : {}) },
   );
   return data?.data;
 };
@@ -281,11 +282,14 @@ export const useMoveLeadToUnderInstallation = () => {
       vendorId,
       leadId,
       updated_by,
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
       updated_by: number;
-    }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
+      /** Large-scale vendors: move only this instance. */
+      instanceId?: number | null;
+    }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by, instanceId),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -348,9 +352,11 @@ export const useUnderInstallationStageLeads = (
 export const getUnderInstallationDetails = async (
   vendorId: number,
   leadId: number,
+  instanceId?: number | null,
 ) => {
   const { data } = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/some_under_installation_details`,
+    { params: instanceId ? { instance_id: instanceId } : undefined },
   );
   return data?.data;
 };
@@ -361,10 +367,11 @@ export const getUnderInstallationDetails = async (
 export const useUnderInstallationDetails = (
   vendorId?: number,
   leadId?: number,
+  instanceId?: number | null,
 ) => {
   return useQuery({
-    queryKey: ["underInstallationDetails", vendorId, leadId],
-    queryFn: () => getUnderInstallationDetails(vendorId!, leadId!),
+    queryKey: ["underInstallationDetails", vendorId, leadId, instanceId ?? null],
+    queryFn: () => getUnderInstallationDetails(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -378,6 +385,7 @@ export interface SetActualStartPayload {
   leadId: number;
   updated_by: number;
   actual_installation_start_date: string | Date; // ISO or Date object
+  instance_id?: number | null; // large-scale vendors start installation per instance
 }
 
 export const setActualInstallationStartDate = async ({
@@ -385,12 +393,14 @@ export const setActualInstallationStartDate = async ({
   leadId,
   updated_by,
   actual_installation_start_date,
+  instance_id,
 }: SetActualStartPayload) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/set-actual-installation-start-date`,
     {
       updated_by,
       actual_installation_start_date,
+      ...(instance_id ? { instance_id } : {}),
     },
   );
 
@@ -423,7 +433,10 @@ export const useSetActualInstallationStartDate = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
-        title: error?.message || "Failed to update installation start date",
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update installation start date",
         type: "error",
       });
     },
@@ -431,17 +444,26 @@ export const useSetActualInstallationStartDate = () => {
 };
 
 /** GET mapped installers */
-export const getMappedInstallers = async (vendorId: number, leadId: number) => {
+export const getMappedInstallers = async (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
   const { data } = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installers`,
+    { params: instanceId ? { instance_id: instanceId } : undefined },
   );
   return data.data;
 };
 
-export const useMappedInstallers = (vendorId?: number, leadId?: number) => {
+export const useMappedInstallers = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null,
+) => {
   return useQuery({
-    queryKey: ["mappedInstallers", vendorId, leadId],
-    queryFn: () => getMappedInstallers(vendorId!, leadId!),
+    queryKey: ["mappedInstallers", vendorId, leadId, instanceId ?? null],
+    queryFn: () => getMappedInstallers(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -458,6 +480,7 @@ export const addInstallersAndEndDate = async ({
     updated_by: number;
     expected_installation_end_date: string;
     installers: { installer_id: number }[];
+    instance_id?: number | null; // large-scale vendors work per instance
   };
 }) => {
   const res = await apiClient.post(
@@ -474,6 +497,8 @@ export const useAddInstallersAndEndDate = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["underInstallationDetails"] });
       qc.invalidateQueries({ queryKey: ["mappedInstallers"] });
+      qc.invalidateQueries({ queryKey: ["usableHandoverReady"] });
+      qc.invalidateQueries({ queryKey: ["finalHandoverReady"] });
     },
   });
 };
@@ -490,6 +515,7 @@ export const updateInstallationDetailsAPI = async ({
     updated_by: number;
     expected_installation_end_date?: string;
     installers?: { installer_id: number }[];
+    instance_id?: number | null; // large-scale vendors work per instance
   };
 }) => {
   const res = await apiClient.put(
@@ -506,6 +532,8 @@ export const useUpdateInstallationDetails = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["underInstallationDetails"] });
       qc.invalidateQueries({ queryKey: ["mappedInstallers"] });
+      qc.invalidateQueries({ queryKey: ["usableHandoverReady"] });
+      qc.invalidateQueries({ queryKey: ["finalHandoverReady"] });
     },
   });
 };
@@ -532,12 +560,14 @@ export const setInstallationCompletionAPI = async ({
   updated_by,
   is_carcass_installation_completed,
   is_shutter_installation_completed,
+  instance_id,
 }: {
   vendorId: number;
   leadId: number;
   updated_by: number;
   is_carcass_installation_completed?: boolean;
   is_shutter_installation_completed?: boolean;
+  instance_id?: number | null;
 }) => {
   const res = await apiClient.post(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/set-installation-completion`,
@@ -545,6 +575,7 @@ export const setInstallationCompletionAPI = async ({
       updated_by,
       is_carcass_installation_completed,
       is_shutter_installation_completed,
+      ...(instance_id ? { instance_id } : {}),
     },
   );
   return res.data;
@@ -557,12 +588,14 @@ export const updateInstallationCompletionAPI = async ({
   updated_by,
   is_carcass_installation_completed,
   is_shutter_installation_completed,
+  instance_id,
 }: {
   vendorId: number;
   leadId: number;
   updated_by: number;
   is_carcass_installation_completed?: boolean;
   is_shutter_installation_completed?: boolean;
+  instance_id?: number | null;
 }) => {
   const res = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/update-installation-completion`,
@@ -570,6 +603,7 @@ export const updateInstallationCompletionAPI = async ({
       updated_by,
       is_carcass_installation_completed,
       is_shutter_installation_completed,
+      ...(instance_id ? { instance_id } : {}),
     },
   );
   return res.data;
@@ -614,6 +648,7 @@ export const uploadInstallationDayWise = async ({
   update_date,
   remark,
   files,
+  instance_id,
 }: {
   vendorId: number;
   leadId: number;
@@ -622,12 +657,14 @@ export const uploadInstallationDayWise = async ({
   update_date: string; // yyyy-mm-dd
   remark?: string;
   files: File[];
+  instance_id?: number | null;
 }) => {
   const formData = new FormData();
   formData.append("created_by", created_by.toString());
   if (account_id) formData.append("account_id", account_id.toString());
   formData.append("update_date", update_date);
   if (remark) formData.append("remark", remark);
+  if (instance_id) formData.append("instance_id", instance_id.toString());
 
   files.forEach((file) => formData.append("files", file));
 
@@ -648,12 +685,15 @@ export const uploadInstallationDayWise = async ({
 export const fetchInstallationUpdates = async ({
   vendorId,
   leadId,
+  instanceId,
 }: {
   vendorId: number;
   leadId: number;
+  instanceId?: number | null;
 }) => {
   const response = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installation-updates-day-wise`,
+    { params: instanceId ? { instance_id: instanceId } : undefined },
   );
 
   return response.data.data;
@@ -665,10 +705,14 @@ export const useUploadInstallationUpdate = () => {
   });
 };
 
-export const useInstallationUpdates = (vendorId: number, leadId: number) => {
+export const useInstallationUpdates = (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
   return useQuery({
-    queryKey: ["installation-updates", vendorId, leadId],
-    queryFn: () => fetchInstallationUpdates({ vendorId, leadId }),
+    queryKey: ["installation-updates", vendorId, leadId, instanceId ?? null],
+    queryFn: () => fetchInstallationUpdates({ vendorId, leadId, instanceId }),
   });
 };
 
@@ -1710,17 +1754,23 @@ export function useMoveToFinalHandover() {
 export const fetchUsableHandoverReady = async (
   vendorId: number,
   leadId: number,
+  instanceId?: number | null,
 ) => {
   const res = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-ready-flag`,
+    { params: instanceId ? { instance_id: instanceId } : undefined },
   );
   return res.data.data;
 };
 
-export const useUsableHandoverReady = (vendorId: number, leadId: number) => {
+export const useUsableHandoverReady = (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
   return useQuery({
-    queryKey: ["usableHandoverReady", vendorId, leadId],
-    queryFn: () => fetchUsableHandoverReady(vendorId, leadId),
+    queryKey: ["usableHandoverReady", vendorId, leadId, instanceId ?? null],
+    queryFn: () => fetchUsableHandoverReady(vendorId, leadId, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -1729,18 +1779,24 @@ export const useUsableHandoverReady = (vendorId: number, leadId: number) => {
 export const fetchFinalHandoverReady = async (
   vendorId: number,
   leadId: number,
+  instanceId?: number | null,
 ) => {
   const res = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-final-handover-ready`,
+    { params: instanceId ? { instance_id: instanceId } : undefined },
   );
 
   return res.data.data; // contains { success, isReady, message, step }
 };
 
-export const useFinalHandoverReady = (vendorId: number, leadId: number) => {
+export const useFinalHandoverReady = (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
   return useQuery({
-    queryKey: ["finalHandoverReady", vendorId, leadId],
-    queryFn: () => fetchFinalHandoverReady(vendorId, leadId),
+    queryKey: ["finalHandoverReady", vendorId, leadId, instanceId ?? null],
+    queryFn: () => fetchFinalHandoverReady(vendorId, leadId, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };

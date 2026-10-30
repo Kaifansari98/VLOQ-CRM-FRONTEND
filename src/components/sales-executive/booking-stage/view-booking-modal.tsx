@@ -23,7 +23,9 @@ import {
   UserPlus,
   UserPen,
   Package,
+  MapPin,
 } from "lucide-react";
+import BillingInformationModal from "@/components/payment-screen/BillingInformationModal";
 import { DocumentBooking, PaymentDetails } from "@/types/booking-types";
 import UploadFinalDoc from "./add-final-doc";
 import {
@@ -220,6 +222,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const [reassignConfirmOpen, setReassignConfirmOpen] = useState(false);
   const [mrpModalOpen, setMrpModalOpen] = useState(false);
   const [totalProjectModalOpen, setTotalProjectModalOpen] = useState(false);
+  const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [bookingAmountModalOpen, setBookingAmountModalOpen] = useState(false);
   const [initialSitePhotosOpen, setInitialSitePhotosOpen] = useState(false);
   const [replaceInitialDocId, setReplaceInitialDocId] = useState<number | null>(
@@ -1362,6 +1365,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       Product-type totals captured during booking submission.
                     </p>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setBillingModalOpen(true)}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Billing Information
+                  </Button>
                 </div>
 
                 <div className="p-5">
@@ -2219,6 +2230,19 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               </div>
             )}
         </div>
+
+        {vendorId && (
+          <BillingInformationModal
+            open={billingModalOpen}
+            onOpenChange={setBillingModalOpen}
+            leadId={leadId}
+            vendorId={vendorId}
+            productTypeTabs={productTypeGroups.map(({ productTypeId, label }) => ({
+              productTypeId,
+              label,
+            }))}
+          />
+        )}
 
         {/* -------- Upload Modal -------- */}
         <UploadFinalDoc

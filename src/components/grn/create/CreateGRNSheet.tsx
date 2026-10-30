@@ -303,12 +303,12 @@ export function CreateGRNSheet({
       <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-5xl flex-col border-l bg-background shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-950/40">
+            <div className="rounded-lg bg-muted p-2 text-foreground">
               <ClipboardList size={18} />
             </div>
 
             <div>
-              <p className="text-base font-black">Create Goods Receipt Note</p>
+              <p className="text-base font-semibold text-foreground">Create Goods Receipt Note</p>
               <p className="text-xs text-muted-foreground">
                 Receive material against approved purchase order.
               </p>
@@ -317,7 +317,7 @@ export function CreateGRNSheet({
 
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <X size={18} />
           </button>
@@ -332,7 +332,7 @@ export function CreateGRNSheet({
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <div className="flex-1">
-                  <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
+                  <label className="text-xs font-semibold text-foreground">
                     PO ID / PO No *
                   </label>
 
@@ -341,14 +341,14 @@ export function CreateGRNSheet({
                     onChange={(e) => setPoInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && loadPO()}
                     placeholder="Example: 12 or PO-000001"
-                    className={`${inputBase} mt-1`}
+                    className={`${inputBase} mt-1.5`}
                   />
                 </div>
 
                 <Button
                   onClick={loadPO}
                   disabled={poLoading}
-                  className="h-9 rounded-xl bg-indigo-600 text-xs font-bold hover:bg-indigo-700"
+                  className="h-9 rounded-md bg-foreground text-background text-xs font-medium hover:bg-foreground/90 px-4"
                 >
                   {poLoading ? (
                     <Loader2 size={14} className="animate-spin" />
@@ -359,19 +359,19 @@ export function CreateGRNSheet({
               </div>
 
               {poData && (
-                <div className="mt-4 rounded-2xl border bg-indigo-50/60 p-4 dark:bg-indigo-950/20">
+                <div className="mt-4 rounded-xl border bg-muted/30 p-4">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-xl bg-white p-2 text-indigo-600 shadow-sm dark:bg-background">
+                    <div className="rounded-lg bg-background p-2 text-foreground border shadow-2xs">
                       <Building2 size={16} />
                     </div>
 
                     <div>
-                      <p className="text-sm font-black">
+                      <p className="text-sm font-semibold text-foreground">
                         {poData.companyVendor.company_name}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {poData.companyVendor.vendor_code} · PO:{" "}
-                        <span className="font-mono">{poData.po_no}</span> ·{" "}
+                        <span className="font-mono text-foreground font-medium">{poData.po_no}</span> ·{" "}
                         {poData.items.length} items · Previous GRNs:{" "}
                         {fmtN(poData.grns.length)}
                       </p>
@@ -427,7 +427,7 @@ export function CreateGRNSheet({
             size="sm"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-xl"
+            className="rounded-md text-xs font-medium h-9 px-4"
           >
             Cancel
           </Button>
@@ -437,7 +437,7 @@ export function CreateGRNSheet({
             onClick={handleSubmit}
             disabled={submitting || !poData}
             className={cn(
-              "rounded-xl bg-indigo-600 font-bold hover:bg-indigo-700",
+              "rounded-md bg-foreground text-background font-medium text-xs hover:bg-foreground/90 h-9 px-4 disabled:opacity-40",
               "gap-1.5",
             )}
           >

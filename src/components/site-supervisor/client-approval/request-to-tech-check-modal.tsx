@@ -72,13 +72,36 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         | null
         | undefined,
   );
+  const currentUserType = useAppSelector(
+    (s) =>
+      s.auth.user?.user_type?.user_type ||
+      s.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
 
   const { data: techCheckUsers, isLoading } = useTechCheckUsers(vendorId!);
   const { mutate, isPending } = useRequestToTechCheck();
 
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
-  const activeUsers = techCheckUsers ?? [];
+
+  const rawUsers = techCheckUsers ?? [];
+  const activeUsers = React.useMemo(
+    () =>
+      rawUsers.filter((user: any) => {
+        const isUserSuperAdmin =
+          String(user.user_type?.user_type || "")
+            .trim()
+            .toLowerCase() === "super-admin";
+        if (isUserSuperAdmin) {
+          return isSuperAdmin;
+        }
+        return true;
+      }),
+    [rawUsers, isSuperAdmin],
+  );
   const isUsersLoading = isLoading;
   const assignUserLabel =
     vendorCustomUserTypeMode === true
@@ -97,11 +120,15 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
       ? "Assign this lead to the eligible user"
       : "Assign this lead to";
 
-  const mappedUsers =
-    activeUsers?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+  const mappedUsers = React.useMemo(
+    () =>
+      activeUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+        subLabel: user.user_email || user.email || "",
+      })),
+    [activeUsers],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),

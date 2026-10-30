@@ -146,6 +146,7 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 export default function DispatchPlanningDetails({
   leadId,
   accountId,
+  instanceId,
 }: DispatchPlanningDetailsProps) {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
@@ -157,6 +158,11 @@ export default function DispatchPlanningDetails({
   const isAccountLocInEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
   );
+  // Large-scale vendors plan dispatch (info + payment) per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const scopedInstanceId = handlesLargeScaleProjects ? instanceId ?? null : null;
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -189,7 +195,7 @@ export default function DispatchPlanningDetails({
     data: dispatchInfoData,
     isLoading: loadingDispatchInfo,
     refetch: refetchDispatchInfo,
-  } = useDispatchPlanningInfo(vendorId, leadId);
+  } = useDispatchPlanningInfo(vendorId, leadId, scopedInstanceId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
@@ -239,7 +245,7 @@ export default function DispatchPlanningDetails({
     data: paymentData,
     isLoading: loadingPaymentInfo,
     refetch: refetchPaymentInfo,
-  } = useDispatchPlanningPayment(vendorId, leadId);
+  } = useDispatchPlanningPayment(vendorId, leadId, scopedInstanceId);
 
   const { data: pendingAmountData } = usePendingProjectAmount(vendorId, leadId);
   const project_pending_amount = pendingAmountData?.pending_amount ?? 0;
@@ -296,6 +302,17 @@ export default function DispatchPlanningDetails({
     }
   }, [dispatchInfoData, setValueDispatch]);
 
+  // Switching instance: drop the previous instance's payment from the form.
+  useEffect(() => {
+    resetPayment({
+      pending_payment: "",
+      pending_payment_details: "",
+      payment_proof_file: [],
+    });
+    setPaymentSaved(false);
+    setExistingPaymentDoc(null);
+  }, [scopedInstanceId, resetPayment]);
+
   // Load payment info data
   useEffect(() => {
     if (paymentData) {
@@ -331,6 +348,7 @@ export default function DispatchPlanningDetails({
           ? "true"
           : "false",
         created_by: userId,
+        ...(scopedInstanceId ? { instance_id: scopedInstanceId } : {}),
       };
 
       await saveInfoMutation.mutateAsync({ vendorId, leadId, payload });
@@ -384,6 +402,9 @@ export default function DispatchPlanningDetails({
       );
       formData.append("account_id", accountId.toString());
       formData.append("created_by", userId.toString());
+      if (scopedInstanceId) {
+        formData.append("instance_id", scopedInstanceId.toString());
+      }
 
       if (data.payment_proof_file && data.payment_proof_file.length > 0) {
         formData.append("payment_proof_file", data.payment_proof_file[0]);

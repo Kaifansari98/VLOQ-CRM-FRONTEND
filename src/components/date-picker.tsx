@@ -17,6 +17,8 @@ interface CustomeDatePickerProps {
   value?: string;
   onChange: (value?: string) => void;
   className?: string;
+  dateFormat?: string;
+  placeholder?: string;
   restriction?:
     | "none"
     | "pastOnly"
@@ -39,6 +41,8 @@ export default function CustomeDatePicker({
   value,
   onChange,
   className,
+  dateFormat,
+  placeholder,
   restriction = "none",
   minDate,
   disabledReason,
@@ -48,9 +52,12 @@ export default function CustomeDatePicker({
   disabledDatesReason,
   disableSundays = false,
 }: CustomeDatePickerProps) {
-  const [date, setDate] = React.useState<Date | undefined>(
-    value ? parseISO(value) : undefined
-  );
+  const [open, setOpen] = React.useState(false);
+  const [date, setDate] = React.useState<Date | undefined>(() => {
+    if (!value) return undefined;
+    const parsed = parseISO(value);
+    return isValid(parsed) ? parsed : undefined;
+  });
   const disabledDateSet = React.useMemo(
     () => new Set(disabledDates ?? []),
     [disabledDates]
@@ -73,14 +80,19 @@ export default function CustomeDatePicker({
   );
 
   React.useEffect(() => {
-    if (value) setDate(parseISO(value));
-    else setDate(undefined);
+    if (value) {
+      const parsed = parseISO(value);
+      setDate(isValid(parsed) ? parsed : undefined);
+    } else {
+      setDate(undefined);
+    }
   }, [value]);
 
   const handleSelect = (selected?: Date) => {
     if (selected) {
       setDate(selected);
       onChange(format(selected, "yyyy-MM-dd"));
+      setOpen(false);
     } else {
       setDate(undefined);
       onChange(undefined);
@@ -201,7 +213,7 @@ export default function CustomeDatePicker({
   }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative w-full">
           <Button
@@ -209,27 +221,30 @@ export default function CustomeDatePicker({
             variant="outline"
             className={cn(
               "w-full justify-start text-xs font-normal",
-              date && "pr-7",
-              className
+              className,
+              date && "!pr-8 has-[>svg]:!pr-8"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-            {date ? <span className="truncate">{format(date, "PPP")}</span> : <span>Pick a date</span>}
+            <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            {date && isValid(date) ? (
+              <span className="truncate">{format(date, dateFormat ?? "PPP")}</span>
+            ) : (
+              <span className="truncate text-muted-foreground">{placeholder ?? "Pick a date"}</span>
+            )}
           </Button>
           {date && (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute top-1/2 right-1 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              aria-label="Clear date"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none"
               onClick={handleReset}
             >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+              <X className="h-3 w-3" />
+            </button>
           )}
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 z-[100]" align="start">
         <Calendar
           mode="single"
           selected={date}

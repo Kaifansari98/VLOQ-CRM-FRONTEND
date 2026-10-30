@@ -106,13 +106,23 @@ export const convertPIToPO = async (vendorId: number, payload: {
   return data.data as { purchase_orders: { id: number; po_no: string }[]; count: number };
 };
 
-export const listPurchaseOrders = async (vendorId: number, params: { page?: number; status?: string; search?: string }) => {
+export const listPurchaseOrders = async (
+  vendorId: number,
+  params: { page?: number; status?: string; search?: string; limit?: number }
+) => {
   const q = new URLSearchParams();
   if (params.page) q.set("page", String(params.page));
   if (params.status) q.set("status", params.status);
   if (params.search) q.set("search", params.search);
+  if (params.limit) q.set("limit", String(params.limit));
   const { data } = await apiClient.get(`/purchase-orders/${vendorId}?${q}`);
-  return data.data as { purchase_orders: PurchaseOrder[]; total: number; page: number; page_size: number; total_pages: number };
+  return data.data as {
+    purchase_orders: PurchaseOrder[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
 };
 
 export interface POGRNItem {

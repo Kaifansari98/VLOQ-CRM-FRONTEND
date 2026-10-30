@@ -59,6 +59,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import CustomeDatePicker from "@/components/date-picker";
 
 type ProductRow = {
   row_id: string;
@@ -1286,19 +1287,20 @@ function ProductSupplierTable({
                     />
                   </td>
 
-                  <td className="px-2 py-2">
-                    <input
-                      type="date"
+                  <td className="px-2 py-2 min-w-[130px]">
+                    <CustomeDatePicker
                       value={entry.required_by_date || ""}
-                      onChange={(e) =>
+                      onChange={(val) =>
                         updateSupplierRow(
                           rowIndex,
                           vendorIndex,
                           "required_by_date",
-                          e.target.value
+                          val || ""
                         )
                       }
-                      className={tableInputClass}
+                      dateFormat="dd MMM yyyy"
+                      placeholder="Pick date"
+                      className="h-8 w-full text-xs font-normal"
                     />
                   </td>
 

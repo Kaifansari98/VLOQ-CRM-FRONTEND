@@ -176,12 +176,13 @@ export const exportLeadSpecificationPdf = (
 
   addSection(
     "Shutter",
-    ["Shutter Type", "Shutter Material", "Shutter Material Finish"],
+    ["Shutter Type", "Shutter Material", "Shutter Outer Finish", "Shutter Inner Finish"],
     specification.shutterMaterialMappings.map((row) => ({
       values: [
         row.shutterType?.name,
         row.shutterMaterial?.name,
-        row.shutterMaterialFinish?.name,
+        row.shutterOuterFinish?.name,
+        row.shutterInnerFinish?.name,
       ],
       reviewStatus: getReviewStatus(row, includeReviewColors),
     })),
@@ -189,13 +190,13 @@ export const exportLeadSpecificationPdf = (
 
   addSection(
     "Hardware",
-    ["Carcass Legs", "Skirting", "Colors", "Note"],
+    ["Hardware Type", "Hardware Item", "Hardware Item Options", "Note"],
     specification.hardwareMappings.map((row) => ({
       values: [
-        row.carcassLegs?.name,
-        row.skirtingCarcassLegs?.name,
-        row.skirtingCarcassLegsColor?.color,
-        row.skirtingCarcassLegs && !row.skirtingCarcassLegs.inScope
+        row.hardwareType?.name,
+        row.hardwareItem?.name,
+        row.hardwareItemOption?.name,
+        row.hardwareItem && !row.hardwareItem.inScope
           ? "Not in our scope"
           : row.note,
       ],

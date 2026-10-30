@@ -261,11 +261,12 @@ export const useStates = () => {
 
 export interface TimeZoneItem {
   id: number;
-  country: string;
-  time_zone_name: string;
-  time_zone: string | null;
-  active: boolean;
-  mins: number | null;
+  name: string;
+  time_zone_code: string;
+  time_zone_name?: string;
+  country?: string;
+  is_active: boolean;
+  active?: boolean;
 }
 
 export const fetchTimeZones = async (params?: {

@@ -49,6 +49,7 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 interface InstallationDayWiseReportsProps {
   vendorId: number;
   leadId: number;
+  instanceId?: number | null;
   accountId?: number;
   accessBtn?: boolean;
   disabledReason?: string;
@@ -72,6 +73,7 @@ interface ReportCard {
 export default function InstallationDayWiseReports({
   vendorId,
   leadId,
+  instanceId,
   accountId,
   accessBtn,
   disabledReason,
@@ -95,7 +97,7 @@ export default function InstallationDayWiseReports({
 
   // API hooks
   const uploadMutation = useUploadInstallationUpdate();
-  const { data: reports, refetch } = useInstallationUpdates(vendorId, leadId);
+  const { data: reports, refetch } = useInstallationUpdates(vendorId, leadId, instanceId);
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -161,6 +163,7 @@ export default function InstallationDayWiseReports({
         update_date: selectedDate,
         remark: remark.trim() || undefined,
         files,
+        instance_id: instanceId,
       },
       {
         onSuccess: () => {
