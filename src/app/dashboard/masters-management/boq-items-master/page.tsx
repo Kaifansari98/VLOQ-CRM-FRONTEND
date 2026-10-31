@@ -14,7 +14,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Button } from "@/components/ui/button";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
@@ -48,7 +48,17 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { useSaveBoqMaster } from "@/hooks/useSaveBoqMaster";
+import { useSaveBoqMaster, useDeleteBoqMaster, type BoqMasterKind } from "@/hooks/useSaveBoqMaster";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   useProductItemCodes,
   useProductSubStructures,
@@ -73,6 +83,44 @@ type MasterRow = {
   _parentIsActive?: boolean;
 };
 
+function DeleteConfirmDialog({
+  item,
+  onClose,
+  onConfirm,
+  isPending,
+}: {
+  item: { name: string; label: string } | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <AlertDialog open={item !== null} onOpenChange={(open) => { if (!open && !isPending) onClose(); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {item?.label}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete &ldquo;{item?.name}&rdquo;? This will remove it from active listings and options without affecting existing records.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+          >
+            {isPending ? "Deleting..." : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function MasterListingTable({
   title,
   description,
@@ -87,6 +135,7 @@ function MasterListingTable({
   errorMessage,
   onAction,
   onEdit,
+  onDelete,
   onToggleStatus,
   isTogglingStatus = false,
   togglingId = null,
@@ -104,6 +153,7 @@ function MasterListingTable({
   errorMessage?: string;
   onAction?: () => void;
   onEdit: (row: MasterRow) => void;
+  onDelete?: (row: MasterRow) => void;
   onToggleStatus?: (row: MasterRow, nextChecked: boolean) => void;
   isTogglingStatus?: boolean;
   togglingId?: number | null;
@@ -208,14 +258,41 @@ function MasterListingTable({
         enableSorting: false,
         enableGlobalFilter: false,
         cell: ({ row }) => (
-          <Button type="button" variant="ghost" size="icon" aria-label="Edit entry" title="Edit entry"
-            onClick={(event) => { event.stopPropagation(); onEdit(row.original); }}>
-            <Pencil className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Edit entry"
+              title="Edit entry"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(row.original);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Delete entry"
+                title="Delete entry"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(row.original);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         ),
       },
     ],
-    [showDescription, showParent, showSpecification, onEdit, onToggleStatus, isTogglingStatus, togglingId],
+    [showDescription, showParent, showSpecification, onEdit, onDelete, onToggleStatus, isTogglingStatus, togglingId],
   );
 
   const table = useReactTable({
@@ -300,6 +377,43 @@ export default function BoqItemsMasterPage() {
   const updateProductStructureStatusMutation = useUpdateProductStructureStatus();
   const updateProductSubStructureStatusMutation = useUpdateProductSubStructureStatus();
   const updateProductItemCodeStatusMutation = useUpdateProductItemCodeStatus();
+
+  const [deleteTarget, setDeleteTarget] = React.useState<{
+    id: number;
+    name: string;
+    kind: BoqMasterKind;
+    label: string;
+  } | null>(null);
+  const deleteProductItemCodeMutation = useDeleteBoqMaster("product-item-code");
+  const deleteProductSubStructureMutation = useDeleteBoqMaster("product-sub-structure");
+  const deleteProductStructureMutation = useDeleteBoqMaster("product-structure");
+  const deleteProductTypeMutation = useDeleteBoqMaster("product-type");
+
+  const getDeleteMutation = (kind?: BoqMasterKind) => {
+    switch (kind) {
+      case "product-item-code":
+        return deleteProductItemCodeMutation;
+      case "product-sub-structure":
+        return deleteProductSubStructureMutation;
+      case "product-structure":
+        return deleteProductStructureMutation;
+      case "product-type":
+        return deleteProductTypeMutation;
+      default:
+        return null;
+    }
+  };
+
+  const activeDeleteMutation = getDeleteMutation(deleteTarget?.kind);
+  const isDeleting = activeDeleteMutation?.isPending ?? false;
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget || !activeDeleteMutation) return;
+    activeDeleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => setDeleteTarget(null),
+    });
+  };
+
 
   const [togglingItemGroupId, setTogglingItemGroupId] = React.useState<number | null>(null);
   const [togglingItemCategoryId, setTogglingItemCategoryId] = React.useState<number | null>(null);
@@ -718,6 +832,7 @@ export default function BoqItemsMasterPage() {
                     setItemCodeSpecification(item.specification ?? "");
                     setOpenCreateItemCodeModal(true);
                   }}
+                  onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "product-item-code", label: "Item Code" })}
                   onToggleStatus={handleToggleItemCodeStatus}
                   isTogglingStatus={updateProductItemCodeStatusMutation.isPending}
                   togglingId={togglingItemCodeId}
@@ -755,6 +870,7 @@ export default function BoqItemsMasterPage() {
                     setSubItemCategoryProductStructureId(String(item.product_structure_id ?? ""));
                     setOpenCreateSubItemCategoryModal(true);
                   }}
+                  onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "product-sub-structure", label: "Sub-Item Category" })}
                   onToggleStatus={handleToggleSubItemCategoryStatus}
                   isTogglingStatus={updateProductSubStructureStatusMutation.isPending}
                   togglingId={togglingSubItemCategoryId}
@@ -792,6 +908,7 @@ export default function BoqItemsMasterPage() {
                     setItemCategoryProductTypeId(item.product_type_id ? String(item.product_type_id) : "");
                     setOpenCreateItemCategoryModal(true);
                   }}
+                  onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "product-structure", label: "Item Category" })}
                   onToggleStatus={handleToggleItemCategoryStatus}
                   isTogglingStatus={updateProductStructureStatusMutation.isPending}
                   togglingId={togglingItemCategoryId}
@@ -822,6 +939,7 @@ export default function BoqItemsMasterPage() {
                     setItemGroupTypeValue(row.name ?? "");
                     setOpenCreateItemGroupModal(true);
                   }}
+                  onDelete={(row) => setDeleteTarget({ id: row.id, name: row.name, kind: "product-type", label: "Item Group" })}
                   onToggleStatus={handleToggleItemGroupStatus}
                   isTogglingStatus={updateProductTypeStatusMutation.isPending}
                   togglingId={togglingItemGroupId}
@@ -1132,6 +1250,13 @@ export default function BoqItemsMasterPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        item={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        isPending={isDeleting}
+      />
     </>
   );
 }

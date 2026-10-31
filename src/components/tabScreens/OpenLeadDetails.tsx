@@ -1001,7 +1001,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     () =>
       structureInstances.filter(
         (item: any) =>
-          item?.isLargeScaleProjectInstance === true || item?.product_item_code_id,
+          (item?.isLargeScaleProjectInstance === true || item?.product_item_code_id) &&
+          item.productItemCode?.is_deleted !== true,
       ),
     [structureInstances],
   );
@@ -1044,30 +1045,33 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     const isActive = (status?: string | null) =>
       (status ?? "active").toLowerCase() === "active";
 
-    // Exclude items that are inactive at ANY level in the hierarchy:
+    // Exclude items that are deleted or inactive at ANY level in the hierarchy:
     // Item Code → Sub-Item Category → Item Category → Item Group
     const activeItems = productItemCodes.filter((item: any) => {
-      // 1. Item Code itself
+      // 0. Item Code itself soft-delete check
+      if (item.is_deleted === true) return false;
+
+      // 1. Item Code itself active check
       if (!isActive(item.status)) return false;
 
       // 2. Sub-Item Category (subProductStructure)
       const sub = item.subProductStructure;
       if (sub) {
-        if (!isActive(sub.status)) return false;
+        if (sub.is_deleted === true || !isActive(sub.status)) return false;
         // 3. Item Category via subProductStructure path
         const cat = sub.productStructure;
         if (cat) {
-          if (!isActive(cat.status)) return false;
+          if (cat.is_deleted === true || !isActive(cat.status)) return false;
           // 4. Item Group via subProductStructure path
-          if (!isActive(cat.productType?.status)) return false;
+          if (cat.productType?.is_deleted === true || !isActive(cat.productType?.status)) return false;
         }
       } else {
         // 3. Item Category directly on item
         const cat = item.productStructure;
         if (cat) {
-          if (!isActive(cat.status)) return false;
+          if (cat.is_deleted === true || !isActive(cat.status)) return false;
           // 4. Item Group via productStructure path
-          if (!isActive(cat.productType?.status)) return false;
+          if (cat.productType?.is_deleted === true || !isActive(cat.productType?.status)) return false;
         }
       }
 
@@ -2252,42 +2256,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     value={
                       (() => {
                         const derivedTypes: string[] = [];
+
+                        // 1. Direct explicit product types from lead.productMappings (primary source of truth)
+                        if (lead?.productMappings && Array.isArray(lead.productMappings)) {
+                          lead.productMappings.forEach((pm: any) => {
+                            const pType = pm.productType?.type || pm.product_type?.type;
+                            if (pType) derivedTypes.push(pType);
+                          });
+                        }
+
+                        // 2. Direct product types from structure instances
                         const instancesToUse = (structureInstancesData?.data || displayInstances || []);
-
                         instancesToUse.forEach((si: any) => {
-                          // 1. Structure master lookup for specific structure types (Kitchen, Wardrobe, etc.)
-                          const structId = si.product_structure_id;
-                          const pstObj = productStructureTypes?.data?.find(
-                            (pst: any) => pst.id === structId,
-                          );
-
-                          if (pstObj) {
-                            const pstName = (pstObj.type || "").trim().toLowerCase();
-                            if (pstName && productTypes?.data) {
-                              const matchedPt = productTypes.data.find((pt: any) => {
-                                const ptName = pt.type.trim().toLowerCase();
-                                if (ptName === pstName) return true;
-                                if (pstName.includes("kitchen") && ptName.includes("kitchen")) return true;
-                                if (pstName.includes("wardrobe") && ptName.includes("wardrobe")) return true;
-                                return false;
-                              });
-                              if (matchedPt?.type) {
-                                derivedTypes.push(matchedPt.type);
-                                return;
-                              }
-                            }
-                            if (pstObj.product_type_id && productTypes?.data) {
-                              const pt = productTypes.data.find(
-                                (t: any) => t.id === pstObj.product_type_id,
-                              );
-                              if (pt?.type && pt.type.toLowerCase() !== "others" && pt.type.toLowerCase() !== "other furniture") {
-                                derivedTypes.push(pt.type);
-                                return;
-                              }
-                            }
-                          }
-
-                          // 2. Direct product_type_id or productType relation on instance
                           const typeId = si.product_type_id;
                           if (typeId && productTypes?.data) {
                             const found = productTypes.data.find((pt: any) => pt.id === typeId);
@@ -2303,37 +2283,49 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                             return;
                           }
 
-                          // 3. Match si.title against valid productTypes in master list (flexible matching e.g. "Consoles" / "Console")
+                          // Structure master lookup (by explicit product_type_id or exact name match)
+                          const structId = si.product_structure_id;
+                          const pstObj = productStructureTypes?.data?.find(
+                            (pst: any) => pst.id === structId,
+                          );
+
+                          if (pstObj) {
+                            if (pstObj.product_type_id && productTypes?.data) {
+                              const pt = productTypes.data.find(
+                                (t: any) => t.id === pstObj.product_type_id,
+                              );
+                              if (pt?.type && pt.type.toLowerCase() !== "others" && pt.type.toLowerCase() !== "other furniture") {
+                                derivedTypes.push(pt.type);
+                                return;
+                              }
+                            }
+                            const pstName = (pstObj.type || "").trim().toLowerCase();
+                            if (pstName && productTypes?.data) {
+                              const matchedPt = productTypes.data.find(
+                                (pt: any) => pt.type.trim().toLowerCase() === pstName,
+                              );
+                              if (matchedPt?.type) {
+                                derivedTypes.push(matchedPt.type);
+                                return;
+                              }
+                            }
+                          }
+
+                          // Match si.title against valid productTypes in master list (exact match)
                           if (si.title && productTypes?.data) {
                             const titleName = si.title.trim().toLowerCase();
-                            const matchedType = productTypes.data.find((pt: any) => {
-                              const ptName = pt.type.trim().toLowerCase();
-                              if (ptName === titleName) return true;
-                              if (ptName.length >= 3 && (titleName.includes(ptName) || ptName.includes(titleName))) return true;
-                              return false;
-                            });
+                            const matchedType = productTypes.data.find(
+                              (pt: any) => pt.type.trim().toLowerCase() === titleName,
+                            );
                             if (matchedType?.type) {
                               derivedTypes.push(matchedType.type);
                               return;
                             }
                           }
-
-                          // 4. Fallback to instance title if clean and not generic
-                          if (si.title && si.title !== "—" && si.title.toLowerCase() !== "others") {
-                            derivedTypes.push(si.title);
-                          }
                         });
 
-                        // 5. From productMappings if no derived types from instances
-                        if (derivedTypes.length === 0 && lead.productMappings && Array.isArray(lead.productMappings)) {
-                          lead.productMappings.forEach((pm: any) => {
-                            const pType = pm.productType?.type || pm.product_type?.type;
-                            if (pType) derivedTypes.push(pType);
-                          });
-                        }
-
-                        // 6. From leadProductStructureMapping if still empty
-                        if (derivedTypes.length === 0 && lead.leadProductStructureMapping && Array.isArray(lead.leadProductStructureMapping)) {
+                        // 3. Fallback to leadProductStructureMapping if still empty
+                        if (derivedTypes.length === 0 && lead?.leadProductStructureMapping && Array.isArray(lead.leadProductStructureMapping)) {
                           lead.leadProductStructureMapping.forEach((ps: any) => {
                             const pType = ps.productStructure?.productType?.type;
                             if (pType) derivedTypes.push(pType);
@@ -2343,11 +2335,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                         const uniqueTypes = Array.from(new Set(derivedTypes.filter(Boolean)));
                         if (uniqueTypes.length > 0) return uniqueTypes.join(", ");
 
-                        const fromMappings = lead.productMappings
-                          ?.map((pm: any) => pm.productType?.type || pm.product_type?.type)
-                          ?.filter(Boolean)
-                          ?.join(", ");
-                        return fromMappings || undefined;
+                        return undefined;
                       })()
                     }
                   />

@@ -638,6 +638,9 @@ export default function OnlineLeadDetailsPage() {
     if (remark.includes("product structure instance added")) {
       return Edit3;
     }
+    if (remark.includes("remove") || remark.includes("delete") || remark.includes("cleared")) {
+      return Trash2;
+    }
     if (remark.includes("created") || remark.includes("added") || statusName.includes("created") || remark.includes("generation")) {
       return Upload;
     }
@@ -696,9 +699,26 @@ export default function OnlineLeadDetailsPage() {
     // Replace all underscores with spaces for clean display
     const cleanText = remarkText.replace(/_/g, " ");
 
-    if (cleanText.startsWith("Product structure instance added")) {
+    if (
+      cleanText.startsWith("Product structure instance added") ||
+      cleanText.startsWith("Product structure instance removed") ||
+      cleanText.startsWith("Product structure instance updated")
+    ) {
       return (
         <p className="text-[14px] text-foreground font-semibold leading-relaxed">
+          {cleanText}
+        </p>
+      );
+    }
+
+    if (
+      !cleanText.includes("**") &&
+      !cleanText.includes("?") &&
+      !cleanText.includes(" | ") &&
+      !cleanText.includes("\n")
+    ) {
+      return (
+        <p className="text-[14px] text-foreground font-medium leading-relaxed">
           {cleanText}
         </p>
       );
