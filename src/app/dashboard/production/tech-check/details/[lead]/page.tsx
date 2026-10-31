@@ -87,13 +87,16 @@ import {
   useApproveMultipleDocuments,
   useApproveTechCheck,
   useRejectTechCheck,
+  useReviewLeadSpecifications,
 } from "@/api/tech-check";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import BaseModal from "@/components/utils/baseModal";
 import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
-import TechCheckSpecificationReview, {
+import TechCheckSpecificationReview from "@/components/production/tech-check-stage/TechCheckSpecificationReview";
+import {
+  getItemGroupSpecifications,
   getLatestItemCodeSpecifications,
-} from "@/components/production/tech-check-stage/TechCheckSpecificationReview";
+} from "@/components/production/tech-check-stage/specification-documents";
 import { cn } from "@/lib/utils";
 import TextAreaInput from "@/components/origin-text-area";
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
@@ -186,6 +189,9 @@ export default function ClientApprovalLeadDetails() {
   }, [instanceId]);
 
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
+  const [selectedSpecIds, setSelectedSpecIds] = useState<number[]>([]);
+  const { mutate: reviewSpecificationsMutate, isPending: reviewingSpecs } =
+    useReviewLeadSpecifications();
   const [openRemarkModal, setOpenRemarkModal] = useState(false);
   const [remark, setRemark] = useState("");
   const [openFinalRejectConfirm, setOpenFinalRejectConfirm] = useState(false);
@@ -441,6 +447,41 @@ export default function ClientApprovalLeadDetails() {
 
   const hasRejectedDocs = docs.some((d) => d.tech_check_status === "REJECTED");
 
+  // Specifications of the item group selected on the page
+  const itemGroupSpecifications = getItemGroupSpecifications(
+    leadSpecifications,
+    structureInstances,
+    selectedProductTypeId,
+  );
+  const reviewStatDocs = [...docs, ...itemGroupSpecifications];
+  const selectedDocumentCount = selectedDocs.length + selectedSpecIds.length;
+
+  const submitSpecificationReview = (
+    status: "APPROVED" | "REJECTED",
+    rejectionRemark?: string,
+  ) => {
+    if (selectedSpecIds.length === 0) return;
+    reviewSpecificationsMutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        specificationIds: selectedSpecIds,
+        status,
+        remark: rejectionRemark,
+      },
+      {
+        onSuccess: () =>
+          toastManager.add({
+            title:
+              status === "APPROVED"
+                ? "Specification approved successfully!"
+                : "Specification rejected successfully!",
+            type: "success",
+          }),
+      },
+    );
+  };
+
   const isFastProductionLead =
     lead?.is_fast_production === true || lead?.fast_production_request === true;
 
@@ -526,6 +567,10 @@ export default function ClientApprovalLeadDetails() {
   useEffect(() => {
     setSelectedDocs([]);
   }, [validInstanceId]);
+
+  useEffect(() => {
+    setSelectedSpecIds([]);
+  }, [selectedProductTypeId, validInstanceId]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -1439,7 +1484,7 @@ export default function ClientApprovalLeadDetails() {
                       Total
                     </p>
                     <p className="text-2xl font-bold text-foreground">
-                      {docs.length}
+                      {reviewStatDocs.length}
                     </p>
                   </div>
                 </div>
@@ -1474,7 +1519,7 @@ export default function ClientApprovalLeadDetails() {
                     </p>
                     <p className="text-2xl font-bold text-foreground">
                       {
-                        docs.filter((d) => d.tech_check_status === "APPROVED")
+                        reviewStatDocs.filter((d) => d.tech_check_status === "APPROVED")
                           .length
                       }
                     </p>
@@ -1510,7 +1555,7 @@ export default function ClientApprovalLeadDetails() {
                       Selected
                     </p>
                     <p className="text-2xl font-bold text-foreground">
-                      {selectedDocs.length}
+                      {selectedDocumentCount}
                     </p>
                   </div>
                 </div>
@@ -1545,7 +1590,7 @@ export default function ClientApprovalLeadDetails() {
                     </p>
                     <p className="text-2xl font-bold text-foreground">
                       {
-                        docs.filter((d) => d.tech_check_status === "REJECTED")
+                        reviewStatDocs.filter((d) => d.tech_check_status === "REJECTED")
                           .length
                       }
                     </p>
@@ -1562,9 +1607,19 @@ export default function ClientApprovalLeadDetails() {
               structureInstances={structureInstances}
               itemGroupProductTypeId={selectedProductTypeId}
               userId={userId ?? 0}
-              canReview={canAccessTechCheckWorkflow}
               canRevise={canAccessUploadRevisedDocs}
               disabled={shouldDisableBlockedActions}
+              selectedSpecIds={selectedSpecIds}
+              onToggleSpec={
+                canAccessTechCheckWorkflow
+                  ? (specId) =>
+                      setSelectedSpecIds((prev) =>
+                        prev.includes(specId)
+                          ? prev.filter((id) => id !== specId)
+                          : [...prev, specId],
+                      )
+                  : undefined
+              }
             />
           )}
 
@@ -1825,12 +1880,12 @@ export default function ClientApprovalLeadDetails() {
           {/* Action Footer */}
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 py-5 px-3 md:py-4 md:px-6">
             <div className="text-sm border py-1 px-3 rounded-md bg-muted ">
-              {selectedDocs.length > 0 ? (
+              {selectedDocumentCount > 0 ? (
                 <p className="text-gray-700 dark:text-gray-300">
                   <span className="font-semibold text-amber-600 dark:text-amber-400">
-                    {selectedDocs.length}
+                    {selectedDocumentCount}
                   </span>{" "}
-                  document{selectedDocs.length !== 1 ? "s" : ""} selected
+                  document{selectedDocumentCount !== 1 ? "s" : ""} selected
                 </p>
               ) : (
                 <p className="text-gray-500 dark:text-gray-400">
@@ -1842,9 +1897,9 @@ export default function ClientApprovalLeadDetails() {
             <div className="flex gap-3">
               <Button
                 variant="destructive"
-                disabled={selectedDocs.length === 0}
+                disabled={selectedDocumentCount === 0}
                 onClick={() => {
-                  if (selectedDocs.length === 0) {
+                  if (selectedDocumentCount === 0) {
                     toastManager.add({
                       title: "Please select at least one document.",
                       type: "error",
@@ -1856,13 +1911,13 @@ export default function ClientApprovalLeadDetails() {
                 }}
               >
                 <XCircle size={16} />
-                Reject Selected ({selectedDocs.length})
+                Reject Selected ({selectedDocumentCount})
               </Button>
               <Button
                 variant="default"
-                disabled={selectedDocs.length === 0}
+                disabled={selectedDocumentCount === 0}
                 onClick={() => {
-                  if (selectedDocs.length === 0) {
+                  if (selectedDocumentCount === 0) {
                     toastManager.add({
                       title: "Please select at least one document.",
                       type: "error",
@@ -1874,7 +1929,7 @@ export default function ClientApprovalLeadDetails() {
                 }}
               >
                 <CheckCircle2 size={16} />
-                Approve Selected ({selectedDocs.length})
+                Approve Selected ({selectedDocumentCount})
               </Button>
             </div>
           </div>
@@ -1895,7 +1950,7 @@ export default function ClientApprovalLeadDetails() {
             <AlertCircle className="flex-shrink-0 mt-0.5" size={18} />
             <div className="text-sm">
               <p className="font-medium">
-                Selected Documents: {selectedDocs.length}
+                Selected Documents: {selectedDocumentCount}
               </p>
               <p className="text-xs">
                 Your remark will be sent to the client for all selected
@@ -1919,6 +1974,17 @@ export default function ClientApprovalLeadDetails() {
                     <span className="truncate font-medium">
                       {doc.doc_og_name}
                     </span>
+                  </div>
+                ))}
+              {itemGroupSpecifications
+                .filter((spec) => selectedSpecIds.includes(spec.id))
+                .map((spec) => (
+                  <div
+                    key={`spec-${spec.id}`}
+                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-md border"
+                  >
+                    <FileText size={14} className="flex-shrink-0" />
+                    <span className="truncate font-medium">{spec.name}</span>
                   </div>
                 ))}
             </div>
@@ -1988,21 +2054,25 @@ export default function ClientApprovalLeadDetails() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                rejectTechCheckMutate({
-                  vendorId: vendorId!,
-                  leadId: leadIdNum,
-                  userId: userId!,
-                  instanceId: instanceIdNum!,
-                  payload: { rejectedDocs: selectedDocs, remark },
-                });
+                if (selectedDocs.length > 0) {
+                  rejectTechCheckMutate({
+                    vendorId: vendorId!,
+                    leadId: leadIdNum,
+                    userId: userId!,
+                    instanceId: instanceIdNum!,
+                    payload: { rejectedDocs: selectedDocs, remark },
+                  });
+                }
+                submitSpecificationReview("REJECTED", remark);
 
                 setOpenFinalRejectConfirm(false);
                 setSelectedDocs([]);
+                setSelectedSpecIds([]);
                 setRemark("");
               }}
-              disabled={rejecting}
+              disabled={rejecting || reviewingSpecs}
             >
-              {rejecting ? "Rejecting..." : "Confirm"}
+              {rejecting || reviewingSpecs ? "Rejecting..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2017,8 +2087,8 @@ export default function ClientApprovalLeadDetails() {
           <AlertDialogHeader>
             <AlertDialogTitle>Approve Selected Documents?</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to approve {selectedDocs.length} document
-              {selectedDocs.length !== 1 ? "s" : ""}. This action will mark them
+              You are about to approve {selectedDocumentCount} document
+              {selectedDocumentCount !== 1 ? "s" : ""}. This action will mark them
               as approved and they will be processed accordingly.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2033,20 +2103,24 @@ export default function ClientApprovalLeadDetails() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                approveMultipleDocsMutate({
-                  vendorId: vendorId!,
-                  leadId: leadIdNum,
-                  userId: userId!,
-                  instanceId: instanceIdNum!,
-                  approvedDocs: selectedDocs,
-                });
+                if (selectedDocs.length > 0) {
+                  approveMultipleDocsMutate({
+                    vendorId: vendorId!,
+                    leadId: leadIdNum,
+                    userId: userId!,
+                    instanceId: instanceIdNum!,
+                    approvedDocs: selectedDocs,
+                  });
+                }
+                submitSpecificationReview("APPROVED");
                 setOpenApproveConfirmModal(false);
                 setSelectedDocs([]);
+                setSelectedSpecIds([]);
               }}
-              disabled={approvingDocs}
+              disabled={approvingDocs || reviewingSpecs}
               className=""
             >
-              {approvingDocs ? "Approving..." : "Confirm Approval"}
+              {approvingDocs || reviewingSpecs ? "Approving..." : "Confirm Approval"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2125,7 +2199,6 @@ export default function ClientApprovalLeadDetails() {
             vendorId={vendorId}
             structureInstances={structureInstances}
             userId={userId ?? 0}
-            canReview={false}
             canRevise={canAccessUploadRevisedDocs}
             disabled={shouldDisableBlockedActions}
           />

@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useApprovedTechCheckDocuments } from "@/api/production/order-login";
 import { useDeleteDocument } from "@/api/leads";
-import {
-  getLeadSpecificationPdfData,
-  type LeadSpecificationEntry,
-} from "@/api/designingStageQueries";
+import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
+import { SpecificationDocumentCard } from "@/components/production/tech-check-stage/specification-documents";
 import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
@@ -57,72 +55,6 @@ interface ApprovedDocsSectionProps {
     signed_url: string | null;
     created_at: string;
   }>;
-}
-
-// Specifications have no stored file, so the PDF is generated when its card is shown
-function SpecificationDocumentCard({
-  vendorId,
-  specification,
-}: {
-  vendorId: number;
-  specification: LeadSpecificationEntry;
-}) {
-  const [file, setFile] = useState<{ fileName: string; url: string } | null>(
-    null,
-  );
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    let isCancelled = false;
-    let objectUrl: string | null = null;
-
-    Promise.all([
-      getLeadSpecificationPdfData(
-        vendorId,
-        specification.lead_id,
-        specification.id,
-      ),
-      import("@/utils/pdf/specifications-pdf"),
-    ])
-      .then(([pdfData, pdfModule]) => {
-        if (isCancelled) return;
-        const pdfFile = pdfModule.createLeadSpecificationPdfFile(
-          pdfData.file_name || specification.name,
-          pdfData,
-        );
-        objectUrl = pdfFile.url;
-        setFile(pdfFile);
-      })
-      .catch(() => {
-        if (!isCancelled) setHasError(true);
-      });
-
-    return () => {
-      isCancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [vendorId, specification.id, specification.lead_id, specification.name]);
-
-  if (!file) {
-    return (
-      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-        {hasError
-          ? `Failed to load ${specification.name}.`
-          : `Preparing ${specification.name}...`}
-      </div>
-    );
-  }
-
-  return (
-    <DocumentCard
-      doc={{
-        id: specification.id,
-        originalName: file.fileName,
-        signedUrl: file.url,
-        created_at: specification.created_at,
-      }}
-    />
-  );
 }
 
 export default function ApprovedDocsSection({
