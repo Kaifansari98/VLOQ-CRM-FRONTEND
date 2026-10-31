@@ -87,21 +87,28 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
 
-  const rawUsers = techCheckUsers ?? [];
-  const activeUsers = React.useMemo(
-    () =>
-      rawUsers.filter((user: any) => {
-        const isUserSuperAdmin =
-          String(user.user_type?.user_type || "")
-            .trim()
-            .toLowerCase() === "super-admin";
-        if (isUserSuperAdmin) {
-          return isSuperAdmin;
-        }
-        return true;
-      }),
-    [rawUsers, isSuperAdmin],
+  // Standard vendors assign only to users of the tech-check user type
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
+  const isTechCheckOnlyFlow =
+    !handlesLargeScaleProjects && vendorCustomUserTypeMode !== true;
+
+  const activeUsers = React.useMemo(() => {
+    const rawUsers = techCheckUsers ?? [];
+    return rawUsers.filter((user: any) => {
+      const userType = String(user.user_type?.user_type || "")
+        .trim()
+        .toLowerCase();
+      if (isTechCheckOnlyFlow) {
+        return userType === "tech-check";
+      }
+      if (userType === "super-admin") {
+        return isSuperAdmin;
+      }
+      return true;
+    });
+  }, [isTechCheckOnlyFlow, techCheckUsers, isSuperAdmin]);
   const isUsersLoading = isLoading;
   const assignUserLabel =
     vendorCustomUserTypeMode === true
@@ -270,27 +277,33 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-6"
               >
-                <FormField
-                  control={form.control}
-                  name="assign_to_user_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        {assignUserLabel}
-                      </FormLabel>
-                      <FormControl>
-                        <AssignToPicker
-                          data={mappedUsers}
-                          value={field.value}
-                          onChange={(value) =>
-                            field.onChange(Number(value) || 0)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {isTechCheckOnlyFlow && mappedUsers.length === 0 ? (
+                  <p className="text-sm text-destructive">
+                    No active Tech Check user found. Please add one to continue.
+                  </p>
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="assign_to_user_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          {assignUserLabel}
+                        </FormLabel>
+                        <FormControl>
+                          <AssignToPicker
+                            data={mappedUsers}
+                            value={field.value}
+                            onChange={(value) =>
+                              field.onChange(Number(value) || 0)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
                     type="button"
@@ -299,7 +312,13 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isPending}>
+                  <Button
+                    type="submit"
+                    disabled={
+                      isPending ||
+                      (isTechCheckOnlyFlow && mappedUsers.length === 0)
+                    }
+                  >
                     {isPending ? "Requesting..." : "Submit Request"}
                   </Button>
                 </div>
