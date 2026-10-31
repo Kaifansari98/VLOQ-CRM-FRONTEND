@@ -1378,6 +1378,27 @@ export const createCompanyVendor = async (
   return res.data
 }
 
+export const bulkUploadCompanyVendors = async (
+  vendorId: number,
+  file: File,
+  userId: number,
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", String(userId));
+
+  const res = await apiClient.post(
+    `/vendor/company-vendors/vendorId/${vendorId}/bulk-upload`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+  return res.data;
+};
+
 export const updateInstallerUser = async (
   id: number,
   payload: UpdateInstallerUserMasterPayload,

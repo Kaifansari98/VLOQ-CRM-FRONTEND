@@ -11,7 +11,19 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Plus } from "lucide-react";
+import {
+  Plus,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  X,
+} from "lucide-react";
+import ExcelJS from "exceljs";
+import { bulkUploadCompanyVendors } from "@/api/typesMasterApi";
+import { toastManager } from "@/components/ui/toast";
 
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/store";
@@ -182,17 +194,268 @@ interface SimpleCompanyVendorMastersTableProps {
   vendorIdOverride?: number;
 }
 
+
+interface PreviewResult {
+  totalRows: number;
+  validCount: number;
+  failedCount: number;
+  errors: string[];
+  criticalError?: string;
+}
+
+function parseCSVText(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  const cleanText = text.replace(/^\uFEFF/, "");
+
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    const nextChar = cleanText[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        field += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      row.push(field);
+      field = "";
+    } else if ((char === "\r" || char === "\n") && !inQuotes) {
+      if (char === "\r" && nextChar === "\n") {
+        i++;
+      }
+      row.push(field);
+      if (row.some((c) => c.trim().length > 0)) {
+        rows.push(row);
+      }
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    if (row.some((c) => c.trim().length > 0)) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+const parseFileForPreview = async (
+  file: File,
+  currentVendors: any[]
+): Promise<PreviewResult> => {
+  const workbook = new ExcelJS.Workbook();
+  const fileName = file.name.toLowerCase();
+
+  if (fileName.endsWith(".csv")) {
+    const text = await file.text();
+    const parsedRows = parseCSVText(text);
+    if (parsedRows.length <= 1) {
+      return {
+        totalRows: 0,
+        validCount: 0,
+        failedCount: 0,
+        errors: [],
+        criticalError: "Uploaded sheet contains no data rows",
+      };
+    }
+    const sheet = workbook.addWorksheet("CSV");
+    parsedRows.forEach((r) => sheet.addRow(r));
+  } else {
+    const arrayBuffer = await file.arrayBuffer();
+    await workbook.xlsx.load(arrayBuffer);
+  }
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet || worksheet.actualRowCount <= 1) {
+    return {
+      totalRows: 0,
+      validCount: 0,
+      failedCount: 0,
+      errors: [],
+      criticalError: "Uploaded sheet contains no data rows",
+    };
+  }
+
+  const getCellValue = (val: any): string => {
+    if (val === null || val === undefined) return "";
+    if (typeof val === "object") {
+      if ("text" in val) return String(val.text ?? "");
+      if ("result" in val) return String(val.result ?? "");
+      if ("formula" in val) return String(val.result ?? val.formula ?? "");
+    }
+    return String(val).trim();
+  };
+
+  const headers: Record<number, string> = {};
+  const rows: Record<string, string>[] = [];
+
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) {
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const raw = getCellValue(cell.value);
+        const clean = raw.replace(/\*/g, "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
+        headers[colNumber] = clean;
+      });
+    } else {
+      const rowData: Record<string, string> = {};
+      let hasAnyData = false;
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const key = headers[colNumber];
+        if (key) {
+          const val = getCellValue(cell.value);
+          if (val) hasAnyData = true;
+          rowData[key] = val;
+        }
+      });
+      if (hasAnyData) {
+        rows.push(rowData);
+      }
+    }
+  });
+
+  if (rows.length === 0) {
+    return {
+      totalRows: 0,
+      validCount: 0,
+      failedCount: 0,
+      errors: [],
+      criticalError: "Uploaded sheet contains no data rows",
+    };
+  }
+
+  const findValue = (row: Record<string, string>, aliases: string[]) => {
+    const keys = Object.keys(row);
+    for (const alias of aliases) {
+      const foundKey = keys.find((k) => k === alias || k.includes(alias));
+      if (foundKey && row[foundKey] !== undefined) {
+        return row[foundKey];
+      }
+    }
+    return "";
+  };
+
+  const allHeaderKeys = Object.values(headers).filter(Boolean);
+  const hasVendorCodeHeader = allHeaderKeys.some((k) => k.includes("vendor code") || k.includes("code"));
+  const hasCompanyNameHeader = allHeaderKeys.some((k) => k.includes("company") || k.includes("vendor name"));
+
+  if (!hasVendorCodeHeader || !hasCompanyNameHeader) {
+    return {
+      totalRows: rows.length,
+      validCount: 0,
+      failedCount: rows.length,
+      errors: [],
+      criticalError:
+        "Required columns are missing in sheet. Expected at minimum: 'Vendor Code', 'Company Name', 'Point of Contact', 'Contact No'",
+    };
+  }
+
+  const existingCodeSet = new Set(
+    (currentVendors || []).map((v: any) => String(v.vendor_code || "").trim().toLowerCase())
+  );
+
+  const seenSheetCodes = new Set<string>();
+  const errors: string[] = [];
+  let validCount = 0;
+
+  let rowNum = 1;
+  for (const row of rows) {
+    rowNum++;
+    const rawCode = findValue(row, ["vendor code", "vendor_code", "company code", "code"]);
+    const rawCompany = findValue(row, ["company name", "company_name", "company", "vendor name"]);
+    const rawPoc = findValue(row, ["point of contact", "point_of_contact", "contact person", "poc"]);
+    const rawContact = findValue(row, ["contact no", "contact_no", "contact number", "mobile", "phone", "contact"]);
+
+    const vendorCode = rawCode ? String(rawCode).trim() : "";
+    const companyName = rawCompany ? String(rawCompany).trim() : "";
+    const pointOfContact = rawPoc ? String(rawPoc).trim() : "";
+    const contactNo = rawContact ? String(rawContact).trim() : "";
+
+    if (!vendorCode) {
+      errors.push(`Row ${rowNum}: Vendor Code is required`);
+      continue;
+    }
+
+    if (!companyName) {
+      errors.push(`Row ${rowNum}: Company Name is required`);
+      continue;
+    }
+
+    if (!pointOfContact) {
+      errors.push(`Row ${rowNum}: Point of Contact is required`);
+      continue;
+    }
+
+    const cleanContact = contactNo.replace(/\D/g, "");
+    const normalizedContact =
+      cleanContact.length === 12 && cleanContact.startsWith("91")
+        ? cleanContact.slice(2)
+        : cleanContact;
+
+    if (!normalizedContact || normalizedContact.length < 10) {
+      errors.push(`Row ${rowNum}: Valid 10-digit Contact No is required (got: "${contactNo}")`);
+      continue;
+    }
+
+    const lowerCode = vendorCode.toLowerCase();
+    if (seenSheetCodes.has(lowerCode)) {
+      errors.push(`Row ${rowNum}: Duplicate Vendor Code "${vendorCode}" found in uploaded sheet`);
+      continue;
+    }
+    seenSheetCodes.add(lowerCode);
+
+    if (existingCodeSet.has(lowerCode)) {
+      errors.push(`Row ${rowNum}: Vendor Code "${vendorCode}" already exists in database`);
+      continue;
+    }
+
+    validCount++;
+  }
+
+  return {
+    totalRows: rows.length,
+    validCount,
+    failedCount: rows.length - validCount,
+    errors,
+  };
+};
+
 export default function SimpleCompanyVendorMastersTable({
   vendorIdOverride,
 }: SimpleCompanyVendorMastersTableProps) {
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
+  const user = useAppSelector((state) => state.auth.user);
+  const userId = user?.id;
+  const vendorId = vendorIdOverride ?? user?.vendor_id;
+
+  const isSuperAdmin = React.useMemo(() => {
+    if (!user) return false;
+    const roleName = (
+      user.user_type?.user_type ||
+      user.user_role ||
+      ""
+    ).toLowerCase().trim();
+    return (
+      roleName === "super-admin" ||
+      roleName === "superadmin" ||
+      roleName === "super admin" ||
+      roleName === "super_admin"
+    );
+  }, [user]);
   
   // List filtered for Field Masters (is_inventory_company_vendor = false)
   const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId, false);
   
   // Fetch all vendors to check duplicate errors across database
-  const { data: allVendorsData } = useCompanyVendorsForMaster(vendorId);
+  const { data: allVendorsData, refetch: refetchAllVendors } = useCompanyVendorsForMaster(vendorId);
   const allVendors = allVendorsData?.data || [];
 
   const createCompanyVendorMutation = useCreateCompanyVendor(vendorId);
@@ -207,6 +470,151 @@ export default function SimpleCompanyVendorMastersTable({
   const [openConfirmStatusModal, setOpenConfirmStatusModal] = React.useState(false);
   const [editingRow, setEditingRow] = React.useState<CompanyVendorRow | null>(null);
   const [statusTargetRow, setStatusTargetRow] = React.useState<CompanyVendorRow | null>(null);
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [uploadFile, setUploadFile] = React.useState<File | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [uploadResult, setUploadResult] = React.useState<{
+    totalRows: number;
+    successCount: number;
+    failedCount: number;
+    errors: string[];
+  } | null>(null);
+  const [previewResult, setPreviewResult] = React.useState<PreviewResult | null>(null);
+  const [isParsing, setIsParsing] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Company Vendors");
+
+    worksheet.columns = [
+      { header: "Vendor Code *", key: "vendor_code", width: 18 },
+      { header: "Company Name *", key: "company_name", width: 32 },
+      { header: "Point of Contact *", key: "point_of_contact", width: 24 },
+      { header: "Contact No *", key: "contact_no", width: 20 },
+      { header: "In House (Yes/No)", key: "in_house", width: 18 },
+      { header: "Email", key: "email", width: 28 },
+      { header: "Address", key: "address", width: 36 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1E293B" },
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 24;
+
+    worksheet.addRow({
+      vendor_code: "CV-001",
+      company_name: "Apex Wood Solutions",
+      point_of_contact: "Rahul Verma",
+      contact_no: "9876543210",
+      in_house: "No",
+      email: "contact@apexwood.com",
+      address: "Plot 45, Industrial Area, Pune",
+    });
+    worksheet.addRow({
+      vendor_code: "CV-002",
+      company_name: "Furnix In-House Factory",
+      point_of_contact: "Sunil Patil",
+      contact_no: "9823012345",
+      in_house: "Yes",
+      email: "factory@furnix.in",
+      address: "Unit 2, MIDC Bhosari, Pune",
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Company_Vendor_Master_Template.xlsx";
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleFileSelect = async (selectedFile: File) => {
+    const validExtensions = [".xlsx", ".xls", ".csv"];
+    const fileName = selectedFile.name.toLowerCase();
+    const isValid = validExtensions.some((ext) => fileName.endsWith(ext));
+
+    if (!isValid) {
+      toastManager.add({
+        title: "Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.",
+        type: "error",
+      });
+      return;
+    }
+
+    setUploadFile(selectedFile);
+    setUploadResult(null);
+    setPreviewResult(null);
+    setIsParsing(true);
+
+    try {
+      const preview = await parseFileForPreview(selectedFile, allVendors);
+      setPreviewResult(preview);
+    } catch (err: any) {
+      setPreviewResult({
+        totalRows: 0,
+        validCount: 0,
+        failedCount: 0,
+        errors: [],
+        criticalError:
+          "Failed to parse file: " +
+          (err.message || "Invalid or unsupported file format. Please ensure standard Excel/CSV format."),
+      });
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!uploadFile || !vendorId || !userId) return;
+
+    setIsUploading(true);
+    setUploadResult(null);
+
+    try {
+      const res = await bulkUploadCompanyVendors(vendorId, uploadFile, userId);
+      if (res.success) {
+        setUploadResult(res.data);
+        refetch();
+        refetchAllVendors();
+        if (res.data.successCount > 0) {
+          toastManager.add({
+            title: `Successfully imported ${res.data.successCount} company vendor(s).`,
+            type: "success",
+          });
+        }
+        if (res.data.failedCount > 0) {
+          toastManager.add({
+            title: `${res.data.failedCount} row(s) could not be imported. Please review the errors below.`,
+            type: "error",
+          });
+        }
+      } else {
+        toastManager.add({
+          title: res.message || "Failed to upload company vendors",
+          type: "error",
+        });
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.message || err.message || "Failed to upload company vendors",
+        type: "error",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const [form, setForm] = React.useState({
     vendor_code: "",
     company_name: "",
@@ -512,10 +920,27 @@ export default function SimpleCompanyVendorMastersTable({
             </p>
           </div>
 
-          <Button onClick={() => setOpenCreateModal(true)} className="sm:self-start">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Company Vendor
-          </Button>
+          <div className="flex items-center gap-2 sm:self-start">
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setUploadFile(null);
+                  setUploadResult(null);
+                  setPreviewResult(null);
+                  setIsParsing(false);
+                  setOpenUploadModal(true);
+                }}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Bulk Upload
+              </Button>
+            )}
+            <Button onClick={() => setOpenCreateModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Company Vendor
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -667,6 +1092,273 @@ export default function SimpleCompanyVendorMastersTable({
                 : statusTargetRow?.status === "active"
                   ? "Mark Inactive"
                   : "Mark Active"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Upload Modal (Super Admin Only) */}
+      <Dialog
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setUploadFile(null);
+            setUploadResult(null);
+            setIsUploading(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Bulk Upload Company Vendors
+            </DialogTitle>
+            <DialogDescription>
+              Upload an Excel (.xlsx, .xls) or CSV (.csv) file to import multiple company vendor master entries.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Template Download Alert */}
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/40">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Need the standard format?</p>
+                <p className="text-xs text-muted-foreground">
+                  Download our pre-formatted sample Excel sheet with column headers and sample data.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={downloadTemplate}
+                className="shrink-0 ml-3"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Template
+              </Button>
+            </div>
+
+            {/* Drag & Drop File Upload Area */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleFileSelect(e.dataTransfer.files[0]);
+                }
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors",
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-muted-foreground/25 hover:border-muted-foreground/50 bg-background",
+                uploadFile && "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10"
+              )}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleFileSelect(e.target.files[0]);
+                  }
+                }}
+              />
+
+              {uploadFile ? (
+                <div className="flex items-center justify-between p-2">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg text-emerald-600">
+                      <FileSpreadsheet className="h-6 w-6" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-foreground">{uploadFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(uploadFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUploadFile(null);
+                      setUploadResult(null);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Click to upload or drag & drop</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Excel (.xlsx, .xls) or CSV (.csv) up to 10MB
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Parsing State */}
+            {isParsing && (
+              <div className="flex items-center justify-center p-4 rounded-lg border bg-muted/20 text-muted-foreground text-sm gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Validating rows and checking duplicates...</span>
+              </div>
+            )}
+
+            {/* Validation Preview (Before Upload) */}
+            {!uploadResult && !isParsing && previewResult && (
+              <div className="space-y-3 pt-1">
+                {previewResult.criticalError ? (
+                  <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3 text-xs text-red-700 dark:text-red-400 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                    <span>{previewResult.criticalError}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        {previewResult.validCount > 0 ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {previewResult.validCount > 0
+                            ? `${previewResult.validCount} of ${previewResult.totalRows} row(s) will be added`
+                            : `0 of ${previewResult.totalRows} row(s) will be added`}
+                        </span>
+                      </div>
+                      {previewResult.failedCount > 0 ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                          {previewResult.failedCount} Skipped / Won't Add
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          All Valid
+                        </span>
+                      )}
+                    </div>
+
+                    {previewResult.errors.length > 0 && (
+                      <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3">
+                        <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 mb-2">
+                          <AlertCircle className="h-4 w-4" /> Row Issues ({previewResult.errors.length}) — These rows will be skipped
+                        </p>
+                        <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-red-700 dark:text-red-400">
+                          {previewResult.errors.map((err: string, i: number) => (
+                            <p key={i} className="leading-relaxed font-mono text-[11px]">
+                              • {err}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Upload Results & Feedback (After Upload) */}
+            {uploadResult && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+                      Imported {uploadResult.successCount} of {uploadResult.totalRows} rows
+                    </span>
+                  </div>
+                  {uploadResult.failedCount > 0 && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                      {uploadResult.failedCount} Failed
+                    </span>
+                  )}
+                </div>
+
+                {uploadResult.errors.length > 0 && (
+                  <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3">
+                    <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 mb-2">
+                      <AlertCircle className="h-4 w-4" /> Row Issues ({uploadResult.errors.length})
+                    </p>
+                    <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-red-700 dark:text-red-400">
+                      {uploadResult.errors.map((err, i) => (
+                        <p key={i} className="leading-relaxed font-mono text-[11px]">
+                          • {err}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-3 sm:gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isUploading}
+              onClick={() => setOpenUploadModal(false)}
+            >
+              {uploadResult ? "Close" : "Cancel"}
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                !uploadFile ||
+                isUploading ||
+                isParsing ||
+                !!uploadResult ||
+                (previewResult ? previewResult.validCount === 0 : false)
+              }
+              onClick={handleUploadSubmit}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : isParsing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Validating...
+                </>
+              ) : uploadResult ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Imported
+                </>
+              ) : previewResult && previewResult.validCount === 0 ? (
+                "No Valid Rows to Import"
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {previewResult && previewResult.validCount > 0
+                    ? `Upload & Import (${previewResult.validCount} rows)`
+                    : "Upload & Import"}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
