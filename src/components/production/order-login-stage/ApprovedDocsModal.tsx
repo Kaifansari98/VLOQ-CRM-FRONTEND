@@ -253,9 +253,15 @@ export default function ApprovedDocsSection({
       }
     });
 
-    // Latest specification of each item code, under its item group
+    // Latest specification of each item code once Tech Check approved it, under its item group
     specifications.forEach((spec) => {
-      if (!spec.is_latest_for_item_code || !spec.item_code_id) return;
+      if (
+        !spec.is_latest_for_item_code ||
+        !spec.item_code_id ||
+        spec.tech_check_status !== "APPROVED"
+      ) {
+        return;
+      }
       const productTypeId = itemCodeToProductTypeMap.get(spec.item_code_id);
       if (productTypeId) getOrCreateGroup(productTypeId).specs.push(spec);
     });
