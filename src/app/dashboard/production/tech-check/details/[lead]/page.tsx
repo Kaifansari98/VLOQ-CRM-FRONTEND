@@ -1560,6 +1560,7 @@ export default function ClientApprovalLeadDetails() {
               leadId={leadIdNum}
               vendorId={vendorId}
               structureInstances={structureInstances}
+              itemGroupProductTypeId={selectedProductTypeId}
               userId={userId ?? 0}
               canReview={canAccessTechCheckWorkflow}
               canRevise={canAccessUploadRevisedDocs}

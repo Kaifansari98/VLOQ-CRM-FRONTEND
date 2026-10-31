@@ -46,6 +46,8 @@ interface TechCheckSpecificationReviewProps {
   leadId: number;
   vendorId: number;
   structureInstances: any[];
+  /** Only show specifications of this item group. */
+  itemGroupProductTypeId?: number | null;
   userId: number;
   canReview: boolean;
   canRevise: boolean;
@@ -56,6 +58,7 @@ export default function TechCheckSpecificationReview({
   leadId,
   vendorId,
   structureInstances,
+  itemGroupProductTypeId,
   userId,
   canReview,
   canRevise,
@@ -74,6 +77,17 @@ export default function TechCheckSpecificationReview({
   const groups = useMemo(() => {
     const itemCodeGroups = new Map<number, string>();
     structureInstances.forEach((instance: any) => {
+      const productTypeId =
+        instance.product_type_id ||
+        instance.product_type?.id ||
+        instance.productType?.id ||
+        instance.productItemCode?.productStructure?.productType?.id;
+      if (
+        itemGroupProductTypeId &&
+        Number(productTypeId) !== Number(itemGroupProductTypeId)
+      ) {
+        return;
+      }
       if (instance.productItemCode?.id) {
         itemCodeGroups.set(
           instance.productItemCode.id,
@@ -84,12 +98,13 @@ export default function TechCheckSpecificationReview({
 
     const grouped = new Map<string, LeadSpecificationEntry[]>();
     getLatestItemCodeSpecifications(specifications).forEach((spec) => {
+      if (itemGroupProductTypeId && !itemCodeGroups.has(spec.item_code_id!)) return;
       const title = itemCodeGroups.get(spec.item_code_id!) || "Other Specifications";
       grouped.set(title, [...(grouped.get(title) ?? []), spec]);
     });
 
     return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [specifications, structureInstances]);
+  }, [itemGroupProductTypeId, specifications, structureInstances]);
 
   const specificationCount = groups.reduce(
     (total, [, specs]) => total + specs.length,
