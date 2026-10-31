@@ -38,7 +38,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import AssignToPicker from "@/components/assign-to-picker";
-import { useBackendUsers, useTechCheckUsers } from "@/api/client-approval";
+import { useBackendUsers } from "@/api/client-approval";
 import { useApproveTechCheck } from "@/api/tech-check";
 import CustomeDatePicker from "@/components/date-picker";
 import { addDays, format } from "date-fns";
@@ -121,17 +121,11 @@ export default function MoveToOrderLoginModal({
   const isSuperAdmin =
     String(currentUserType).trim().toLowerCase() === "super-admin";
 
-  // Standard vendors assign only to users of the tech-check user type
-  const isTechCheckUserFlow =
+  // Standard vendors assign only to users of the backend user type
+  const isBackendOnlyFlow =
     !handlesLargeScaleProjects && vendorCustomUserTypeMode !== true;
 
-  const { data: backendUsers, isLoading: isBackendUsersLoading } =
-    useBackendUsers(vendorId!);
-  const { data: techCheckUsers, isLoading: isTechCheckUsersLoading } =
-    useTechCheckUsers(vendorId!);
-  const isLoading = isTechCheckUserFlow
-    ? isTechCheckUsersLoading
-    : isBackendUsersLoading;
+  const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate: approveTechCheck, isPending } = useApproveTechCheck();
   const { data: leadStatusData } = useLeadStatus(data.id, vendorId);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -141,21 +135,15 @@ export default function MoveToOrderLoginModal({
   const dialogTitle =
     vendorCustomUserTypeMode === true
       ? "Assign User for Order Login"
-      : isTechCheckUserFlow
-        ? "Move To Order Login"
-        : "Assign Backend User";
+      : "Assign Backend User";
   const assignUserLabel =
     vendorCustomUserTypeMode === true
       ? "Assign Eligible User for Order Login"
-      : isTechCheckUserFlow
-        ? "Assign To Tech Check User"
-        : "Assign To Backend User";
+      : "Assign To Backend User";
   const loadingUsersLabel =
     vendorCustomUserTypeMode === true
       ? "Loading users..."
-      : isTechCheckUserFlow
-        ? "Loading tech check users..."
-        : "Loading backend users...";
+      : "Loading backend users...";
   const confirmTitle =
     vendorCustomUserTypeMode === true
       ? "Confirm Order Login Assignment"
@@ -206,20 +194,20 @@ export default function MoveToOrderLoginModal({
   );
 
   const activeUsers = useMemo(() => {
-    const rawUsers = (isTechCheckUserFlow ? techCheckUsers : backendUsers) ?? [];
+    const rawUsers = backendUsers ?? [];
     return rawUsers.filter((user: any) => {
       const userType = String(user.user_type?.user_type || "")
         .trim()
         .toLowerCase();
-      if (isTechCheckUserFlow) {
-        return userType === "tech-check";
+      if (isBackendOnlyFlow) {
+        return userType === "backend";
       }
       if (userType === "super-admin") {
         return isSuperAdmin;
       }
       return true;
     });
-  }, [isTechCheckUserFlow, techCheckUsers, backendUsers, isSuperAdmin]);
+  }, [isBackendOnlyFlow, backendUsers, isSuperAdmin]);
 
   const mappedUsers = useMemo(
     () =>
@@ -231,8 +219,8 @@ export default function MoveToOrderLoginModal({
     [activeUsers],
   );
 
-  const singleTechCheckUser =
-    isTechCheckUserFlow && mappedUsers.length === 1 ? mappedUsers[0] : null;
+  const singleBackendUser =
+    isBackendOnlyFlow && mappedUsers.length === 1 ? mappedUsers[0] : null;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -256,12 +244,12 @@ export default function MoveToOrderLoginModal({
     }
   }, [open, form]);
 
-  const singleTechCheckUserId = singleTechCheckUser?.id;
+  const singleBackendUserId = singleBackendUser?.id;
   useEffect(() => {
-    if (open && singleTechCheckUserId) {
-      form.setValue("assign_to_user_id", singleTechCheckUserId);
+    if (open && singleBackendUserId) {
+      form.setValue("assign_to_user_id", singleBackendUserId);
     }
-  }, [open, singleTechCheckUserId, form]);
+  }, [open, singleBackendUserId, form]);
 
   // ❇️ Final Confirm Submit
   const handleConfirmSubmit = () => {
@@ -351,17 +339,17 @@ export default function MoveToOrderLoginModal({
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
-                  {singleTechCheckUser ? (
+                  {singleBackendUser ? (
                     <p className="text-sm text-muted-foreground">
                       This lead will be assigned to{" "}
                       <strong className="text-foreground">
-                        {singleTechCheckUser.label}
+                        {singleBackendUser.label}
                       </strong>
                       .
                     </p>
-                  ) : isTechCheckUserFlow && mappedUsers.length === 0 ? (
+                  ) : isBackendOnlyFlow && mappedUsers.length === 0 ? (
                     <p className="text-sm text-destructive">
-                      No active Tech Check user found. Please add one to
+                      No active Backend user found. Please add one to
                       continue.
                     </p>
                   ) : (
@@ -458,7 +446,7 @@ export default function MoveToOrderLoginModal({
                       type="submit"
                       disabled={
                         isPending ||
-                        (isTechCheckUserFlow && mappedUsers.length === 0)
+                        (isBackendOnlyFlow && mappedUsers.length === 0)
                       }
                     >
                       {isPending ? "Processing..." : "Move To Order Login"}
