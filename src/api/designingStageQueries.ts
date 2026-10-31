@@ -656,6 +656,8 @@ export interface LeadSpecificationEntry {
   is_editable?: boolean;
   is_completed?: boolean;
   completed_marked_at?: string | null;
+  tech_check_status?: "PENDING" | "APPROVED" | "REJECTED" | "REVISED" | null;
+  tech_check_remark?: string | null;
 }
 
 export const getLeadSpecifications = async (

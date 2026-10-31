@@ -90,6 +90,10 @@ import {
 } from "@/api/tech-check";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import BaseModal from "@/components/utils/baseModal";
+import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
+import TechCheckSpecificationReview, {
+  getLatestItemCodeSpecifications,
+} from "@/components/production/tech-check-stage/TechCheckSpecificationReview";
 import { cn } from "@/lib/utils";
 import TextAreaInput from "@/components/origin-text-area";
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
@@ -166,6 +170,7 @@ export default function ClientApprovalLeadDetails() {
   const [openRejectDocsModal, setOpenRejectDocsModal] = useState(false);
 
   const [openUploadDocsModal, setOpenUploadDocsModal] = useState(false);
+  const [openReviseSpecsModal, setOpenReviseSpecsModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
   const [openOrderLoginModal, setOpenOrderLoginModal] = useState(false);
@@ -263,6 +268,14 @@ export default function ClientApprovalLeadDetails() {
     leadIdNum,
     vendorId,
   );
+
+  const { data: leadSpecifications = [] } = useLeadSpecifications(
+    vendorId,
+    handlesLargeScaleProjects ? leadIdNum : undefined,
+  );
+  const structureInstances: any[] = Array.isArray(structureInstancesData?.data)
+    ? structureInstancesData.data
+    : [];
 
   const largeScaleGroups = useMemo(() => {
     if (!handlesLargeScaleProjects) return [];
@@ -738,7 +751,22 @@ export default function ClientApprovalLeadDetails() {
     return null;
   })();
 
+  const latestSpecifications = getLatestItemCodeSpecifications(leadSpecifications);
+  const hasReviseSpecAction = latestSpecifications.some(
+    (spec) => spec.tech_check_status === "REJECTED" || !spec.is_completed,
+  );
+  const instanceItemCodeId = validInstanceId
+    ? structureInstances.find((instance: any) => instance.id === validInstanceId)
+        ?.productItemCode?.id
+    : undefined;
+  const unapprovedSpecification = latestSpecifications.find(
+    (spec) =>
+      spec.tech_check_status !== "APPROVED" &&
+      (!instanceItemCodeId || spec.item_code_id === instanceItemCodeId),
+  );
+
   const isMoveToOrderLoginDisabled =
+    Boolean(unapprovedSpecification) ||
     hasPendingFastProductionRequest ||
     (isFastProductionLead && !isFastProductionApproved) ||
     (handlesLargeScaleProjects
@@ -749,6 +777,9 @@ export default function ClientApprovalLeadDetails() {
         (requiredApprovalCount > 0 && approvedCount < requiredApprovalCount));
 
   const moveToOrderLoginTooltipMsg = (() => {
+    if (unapprovedSpecification) {
+      return `Specification "${unapprovedSpecification.name}" must be approved before moving to Order Login.`;
+    }
     if (hasPendingFastProductionRequest) {
       return "Fast Production approval is pending.";
     }
@@ -1242,6 +1273,22 @@ export default function ClientApprovalLeadDetails() {
                   Upload Revised Docs
                 </Button>
               ))}
+
+            {/* Rejected / incomplete specifications */}
+            {!isAuditor &&
+              handlesLargeScaleProjects &&
+              canAccessUploadRevisedDocs &&
+              !shouldDisableBlockedActions &&
+              hasReviseSpecAction && (
+                <Button
+                  onClick={() => setOpenReviseSpecsModal(true)}
+                  variant="outline"
+                  className="w-max"
+                >
+                  <UploadIcon size={16} />
+                  Revise Specs
+                </Button>
+              )}
           </div>
         </div>
 
@@ -1507,6 +1554,18 @@ export default function ClientApprovalLeadDetails() {
               </div>
             </div>
           </div>
+
+          {handlesLargeScaleProjects && (
+            <TechCheckSpecificationReview
+              leadId={leadIdNum}
+              vendorId={vendorId}
+              structureInstances={structureInstances}
+              userId={userId ?? 0}
+              canReview={canAccessTechCheckWorkflow}
+              canRevise={canAccessUploadRevisedDocs}
+              disabled={shouldDisableBlockedActions}
+            />
+          )}
 
           {/* Document List */}
           {docs.length === 0 ? (
@@ -2051,6 +2110,26 @@ export default function ClientApprovalLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+      <BaseModal
+        open={openReviseSpecsModal}
+        onOpenChange={setOpenReviseSpecsModal}
+        title="Revise Specifications"
+        size="lg"
+        description="Create a revised copy of rejected specifications and complete it to send it for approval again."
+      >
+        <div className="py-4">
+          <TechCheckSpecificationReview
+            leadId={leadIdNum}
+            vendorId={vendorId}
+            structureInstances={structureInstances}
+            userId={userId ?? 0}
+            canReview={false}
+            canRevise={canAccessUploadRevisedDocs}
+            disabled={shouldDisableBlockedActions}
+          />
+        </div>
+      </BaseModal>
 
       <UploadMoreClientDocumentationModal
         open={openUploadDocsModal}

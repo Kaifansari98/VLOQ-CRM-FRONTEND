@@ -93,6 +93,8 @@ interface ViewSpecsModalProps {
   showReviewColumns?: boolean;
   contentClassName?: string;
   stackSections?: boolean;
+  notice?: string;
+  allowRevisedDocsPrivilege?: boolean;
 }
 
 type CarcassRow = {
@@ -287,6 +289,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   specification,
   readOnly = false,
   showReviewColumns = false,
+  notice,
+  allowRevisedDocsPrivilege = false,
   contentClassName,
   stackSections = false,
 }) => {
@@ -309,6 +313,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         (showReviewColumns &&
           customPrivilegeCodes.includes(
             "project.client_documentation.specifications.upload",
+          )) ||
+        (allowRevisedDocsPrivilege &&
+          customPrivilegeCodes.includes(
+            "production.tech_check.tech_check_action.upload_revised_docs_action",
           ))
       : true);
 
@@ -2620,6 +2628,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             )}
           </div>
         </DialogHeader>
+        {notice && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
+            {notice}
+          </p>
+        )}
 
         <Tabs
           defaultValue="carcass"
