@@ -437,11 +437,11 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                                   const designType = detectDesignType(doc.doc_og_name);
 
                                   return (
-                                    <SelectItem key={doc.id} value={String(doc.id)} className="pl-3 pr-8">
-                                      <div className="flex items-center gap-2 max-w-full">
-                                        {designType && (
+                                    <SelectItem key={doc.id} value={String(doc.id)} className="pl-3 pr-8 py-1.5">
+                                      <div className="flex items-center gap-2.5 w-full min-w-0">
+                                        {designType ? (
                                           <span
-                                            className={`shrink-0 px-1.5 py-0.5 rounded-[3px] text-[10px] font-bold text-white leading-none ${
+                                            className={`shrink-0 w-[44px] h-[17px] rounded-[3px] text-[9px] font-bold text-white leading-none flex items-center justify-center tracking-tight shadow-3xs ${
                                               designType === "2D"
                                                 ? "bg-[#0070F3]"
                                                 : designType === "3D"
@@ -451,8 +451,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                                           >
                                             {designType}
                                           </span>
+                                        ) : (
+                                          <span className="shrink-0 w-[44px]" />
                                         )}
-                                        <span className="truncate">{doc.doc_og_name}</span>
+                                        <span className="truncate text-xs font-medium text-neutral-800 dark:text-neutral-200">
+                                          {doc.doc_og_name}
+                                        </span>
                                       </div>
                                     </SelectItem>
                                   );
