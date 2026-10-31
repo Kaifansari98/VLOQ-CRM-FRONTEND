@@ -51,6 +51,11 @@ import CustomeTooltip from "@/components/custom-tooltip";
 import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
 import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
 import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
+import { useBookingLeadById } from "@/hooks/booking-stage/use-booking";
+import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
+import { getDesignRevisionKey } from "@/lib/design-revision";
+import { urlToFile } from "@/utils/file.utils";
+import { Lock } from "lucide-react";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -70,7 +75,14 @@ interface Props {
   isFastProductionEnabled?: boolean;
 }
 
-const formSchema = z
+const getLockedDocMimeType = (fileName: string) => {
+  if (/\.pdf$/i.test(fileName)) return "application/pdf";
+  if (/\.(jpg|jpeg)$/i.test(fileName)) return "image/jpeg";
+  if (/\.png$/i.test(fileName)) return "image/png";
+  return "application/octet-stream";
+};
+
+const getFormSchema = (hasLockedRequiredDocuments: boolean) => z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
     task_type: z.string().min(1, "Task Type is required"),
@@ -81,7 +93,10 @@ const formSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.task_type === "Final Measurements") {
-      if (!data.required_documents || data.required_documents.length === 0) {
+      if (
+        !hasLockedRequiredDocuments &&
+        (!data.required_documents || data.required_documents.length === 0)
+      ) {
         ctx.addIssue({
           path: ["required_documents"],
           message: "Required documents are mandatory",
@@ -264,6 +279,35 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     leadData?.data?.lead?.siteSupervisors?.[0]?.supervisor?.id ??
     leadData?.data?.lead?.siteSupervisors?.[0]?.user_id ??
     undefined;
+
+  // Large-scale vendors: designs selected at booking are always sent as Required Documents
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const { data: bookingLeadData, isLoading: bookingDocsLoading } =
+    useBookingLeadById(vendorId, handlesLargeScaleProjects ? leadId : undefined);
+  const { data: designDocsData, isLoading: designDocsLoading } = useDesignsDoc(
+    vendorId ?? 0,
+    handlesLargeScaleProjects ? leadId : 0,
+  );
+  const lockedRequiredDocuments = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+    const designNames = new Set(
+      (designDocsData?.data?.documents ?? []).map((doc) => doc.doc_og_name),
+    );
+    return (bookingLeadData?.documents ?? []).filter(
+      (doc) =>
+        doc.s3Key.includes("final-documents-booking") &&
+        (designNames.has(doc.originalName) ||
+          !!getDesignRevisionKey(doc.originalName)),
+    );
+  }, [handlesLargeScaleProjects, bookingLeadData?.documents, designDocsData?.data?.documents]);
+  const hasLockedRequiredDocuments = lockedRequiredDocuments.length > 0;
+  const lockedRequiredDocumentsLoading = bookingDocsLoading || designDocsLoading;
+  const formSchema = React.useMemo(
+    () => getFormSchema(hasLockedRequiredDocuments),
+    [hasLockedRequiredDocuments],
+  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -1035,6 +1079,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       }
 
       if (values.task_type === "Final Measurements") {
+        const lockedDocumentFiles = await Promise.all(
+          lockedRequiredDocuments.map((doc) =>
+            urlToFile(
+              doc.signedUrl,
+              doc.originalName,
+              getLockedDocMimeType(doc.originalName),
+            ),
+          ),
+        );
+
         await uploadCSPMutation.mutateAsync({
           lead_id: leadId,
           account_id: accountId,
@@ -1042,7 +1096,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           assigned_to: values.assign_lead_to!,
           created_by: userId!,
           site_photos: values.current_site_photos!,
-          required_documents: values.required_documents ?? [],
+          required_documents: [
+            ...lockedDocumentFiles,
+            ...(values.required_documents ?? []),
+          ],
         });
       }
 
@@ -1435,6 +1492,19 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                       Required Documents{" "}
                       <span className="text-red-500">*</span>
                     </FormLabel>
+                    {hasLockedRequiredDocuments && (
+                      <ul className="space-y-2">
+                        {lockedRequiredDocuments.map((doc) => (
+                          <li
+                            key={doc.id}
+                            className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                          >
+                            <Lock className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{doc.originalName}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <FormControl>
                       <FileUploadField
                         value={field.value || []}
@@ -1490,12 +1560,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 disabled={
                   mutation.isPending ||
                   uploadCSPMutation.isPending ||
+                  form.formState.isSubmitting ||
                   (form.watch("task_type") === "Final Measurements" &&
-                    (!form.watch("required_documents")?.length ||
+                    (lockedRequiredDocumentsLoading ||
+                      (!hasLockedRequiredDocuments &&
+                        !form.watch("required_documents")?.length) ||
                       !form.watch("current_site_photos")?.length))
                 }
               >
-                {uploadCSPMutation.isPending || mutation.isPending
+                {uploadCSPMutation.isPending ||
+                mutation.isPending ||
+                form.formState.isSubmitting
                   ? "Submitting..."
                   : "Submit"}
               </Button>
