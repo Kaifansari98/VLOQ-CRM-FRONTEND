@@ -1505,15 +1505,31 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         ))}
                       </ul>
                     )}
-                    <FormControl>
-                      <FileUploadField
-                        value={field.value || []}
-                        onChange={field.onChange}
-                        accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
-                        multiple
-                        maxFiles={10}
-                      />
-                    </FormControl>
+                    {handlesLargeScaleProjects ? (
+                      !hasLockedRequiredDocuments && (
+                        <p
+                          className={
+                            lockedRequiredDocumentsLoading
+                              ? "text-sm text-muted-foreground"
+                              : "text-sm text-destructive"
+                          }
+                        >
+                          {lockedRequiredDocumentsLoading
+                            ? "Loading design files..."
+                            : "No design files were selected at booking for this lead."}
+                        </p>
+                      )
+                    ) : (
+                      <FormControl>
+                        <FileUploadField
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                          multiple
+                          maxFiles={10}
+                        />
+                      </FormControl>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
