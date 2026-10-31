@@ -1327,6 +1327,37 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number, isInventory
   };
 }
 
+export interface UserDetailData {
+  id: number;
+  vendor_id: number;
+  franchise_id: number | null;
+  user_name: string;
+  designation?: string | null;
+  user_contact: string;
+  user_email: string;
+  user_timezone?: string;
+  status: string;
+  created_at: string;
+  user_type: {
+    id?: number;
+    user_type: string;
+  };
+  franchise?: {
+    id: number;
+    franchise_name: string;
+  } | null;
+  franchises: { id: number; franchise_name: string }[];
+  franchise_ids: number[];
+}
+
+export const fetchUserDetail = async (userId: number, vendorId?: number) => {
+  const res = await apiClient.get<{ success: boolean; data: UserDetailData }>(
+    `/users/detail/${userId}`,
+    { params: vendorId ? { vendorId } : {} },
+  );
+  return res.data;
+};
+
 export const fetchUsersForMaster = async (
   vendorId: number,
   params: {
