@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useApprovedTechCheckDocuments } from "@/api/production/order-login";
 import { useDeleteDocument } from "@/api/leads";
+import {
+  getLeadSpecificationPdfData,
+  type LeadSpecificationEntry,
+} from "@/api/designingStageQueries";
+import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 import SectionHeader from "@/utils/sectionHeader";
 import { ImageComponent } from "@/components/utils/ImageCard";
@@ -53,6 +59,72 @@ interface ApprovedDocsSectionProps {
   }>;
 }
 
+// Specifications have no stored file, so the PDF is generated when its card is shown
+function SpecificationDocumentCard({
+  vendorId,
+  specification,
+}: {
+  vendorId: number;
+  specification: LeadSpecificationEntry;
+}) {
+  const [file, setFile] = useState<{ fileName: string; url: string } | null>(
+    null,
+  );
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let objectUrl: string | null = null;
+
+    Promise.all([
+      getLeadSpecificationPdfData(
+        vendorId,
+        specification.lead_id,
+        specification.id,
+      ),
+      import("@/utils/pdf/specifications-pdf"),
+    ])
+      .then(([pdfData, pdfModule]) => {
+        if (isCancelled) return;
+        const pdfFile = pdfModule.createLeadSpecificationPdfFile(
+          pdfData.file_name || specification.name,
+          pdfData,
+        );
+        objectUrl = pdfFile.url;
+        setFile(pdfFile);
+      })
+      .catch(() => {
+        if (!isCancelled) setHasError(true);
+      });
+
+    return () => {
+      isCancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [vendorId, specification.id, specification.lead_id, specification.name]);
+
+  if (!file) {
+    return (
+      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+        {hasError
+          ? `Failed to load ${specification.name}.`
+          : `Preparing ${specification.name}...`}
+      </div>
+    );
+  }
+
+  return (
+    <DocumentCard
+      doc={{
+        id: specification.id,
+        originalName: file.fileName,
+        signedUrl: file.url,
+        created_at: specification.created_at,
+      }}
+    />
+  );
+}
+
 export default function ApprovedDocsSection({
   leadId,
   instanceId,
@@ -76,6 +148,17 @@ export default function ApprovedDocsSection({
   );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
+
+  const shouldLoadSpecifications =
+    handlesLargeScaleProjects && !isSmallOrderRequestLead;
+  const { data: specifications = [] } = useLeadSpecifications(
+    vendorId,
+    shouldLoadSpecifications ? leadId : undefined,
+  );
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<
@@ -117,8 +200,27 @@ export default function ApprovedDocsSection({
         title: string;
         subtitle?: string;
         docs: any[];
+        specs: LeadSpecificationEntry[];
       }
     >();
+
+    const getOrCreateGroup = (productTypeId: number) => {
+      const existingGroup = grouped.get(productTypeId);
+      if (existingGroup) return existingGroup;
+
+      const itemGroup = itemGroups.find(
+        (group) => Number(group.productTypeId) === productTypeId,
+      );
+      const newGroup = {
+        productTypeId,
+        title: itemGroup?.title || `Item Group ${productTypeId}`,
+        subtitle: itemGroup?.subtitle,
+        docs: [] as any[],
+        specs: [] as LeadSpecificationEntry[],
+      };
+      grouped.set(productTypeId, newGroup);
+      return newGroup;
+    };
 
     scopedDocs.forEach((file: any) => {
       const productTypeId = Number(
@@ -132,22 +234,30 @@ export default function ApprovedDocsSection({
       );
       if (!productTypeId) return;
 
-      const existingGroup = grouped.get(productTypeId);
-      const itemGroup = itemGroups.find(
-        (group) => Number(group.productTypeId) === productTypeId,
-      );
+      getOrCreateGroup(productTypeId).docs.push(file);
+    });
 
-      if (existingGroup) {
-        existingGroup.docs.push(file);
-        return;
+    const rawInstances: any[] = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+    const itemCodeToProductTypeMap = new Map<number, number>();
+    rawInstances.forEach((inst: any) => {
+      const itemCodeId = inst.productItemCode?.id;
+      const productTypeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+      if (itemCodeId && productTypeId) {
+        itemCodeToProductTypeMap.set(Number(itemCodeId), Number(productTypeId));
       }
+    });
 
-      grouped.set(productTypeId, {
-        productTypeId,
-        title: itemGroup?.title || `Item Group ${productTypeId}`,
-        subtitle: itemGroup?.subtitle,
-        docs: [file],
-      });
+    // Latest specification of each item code, under its item group
+    specifications.forEach((spec) => {
+      if (!spec.is_latest_for_item_code || !spec.item_code_id) return;
+      const productTypeId = itemCodeToProductTypeMap.get(spec.item_code_id);
+      if (productTypeId) getOrCreateGroup(productTypeId).specs.push(spec);
     });
 
     return Array.from(grouped.values()).sort((a, b) =>
@@ -159,6 +269,8 @@ export default function ApprovedDocsSection({
     isSmallOrderRequestLead,
     itemGroups,
     scopedDocs,
+    specifications,
+    structureInstancesData?.data,
   ]);
 
   const selectedLargeScaleGroup = useMemo(
@@ -170,6 +282,7 @@ export default function ApprovedDocsSection({
   );
 
   const selectedLargeScaleDocs = selectedLargeScaleGroup?.docs ?? [];
+  const selectedLargeScaleSpecs = selectedLargeScaleGroup?.specs ?? [];
 
   const { approvedImages, approvedDocuments } = useMemo(() => {
     const images: any[] = [];
@@ -311,27 +424,29 @@ export default function ApprovedDocsSection({
                         <div className="flex items-center gap-2 text-sm">
                           <FolderOpen className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">
-                            {group.docs.length} file
-                            {group.docs.length === 1 ? "" : "s"}
+                            {group.docs.length + group.specs.length} file
+                            {group.docs.length + group.specs.length === 1 ? "" : "s"}
                           </span>
                         </div>
                       </div>
 
-                      {group.docs.length > 0 ? (
+                      {group.docs.length + group.specs.length > 0 ? (
                         <div className="flex -space-x-2">
-                          {group.docs.slice(0, 4).map((doc: any, idx: number) => (
-                            <div
-                              key={doc.id}
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border bg-neutral-100 dark:bg-neutral-800"
-                              style={{ zIndex: 4 - idx }}
-                            >
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          ))}
+                          {[...group.docs, ...group.specs]
+                            .slice(0, 4)
+                            .map((doc: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex h-10 w-10 items-center justify-center rounded-lg border bg-neutral-100 dark:bg-neutral-800"
+                                style={{ zIndex: 4 - idx }}
+                              >
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            ))}
 
-                          {group.docs.length > 4 ? (
+                          {group.docs.length + group.specs.length > 4 ? (
                             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-200 text-xs font-medium text-muted-foreground dark:bg-neutral-700">
-                              +{group.docs.length - 4}
+                              +{group.docs.length + group.specs.length - 4}
                             </div>
                           ) : null}
                         </div>
@@ -436,12 +551,32 @@ export default function ApprovedDocsSection({
             </DialogDescription>
           </DialogHeader>
 
-          {selectedLargeScaleDocs.length === 0 ? (
+          {selectedLargeScaleDocs.length === 0 &&
+          selectedLargeScaleSpecs.length === 0 ? (
             <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
               No approved documents found for this item group.
             </div>
           ) : (
             <div className="space-y-4">
+              {selectedLargeScaleSpecs.length > 0 && vendorId && (
+                <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
+                  <SectionHeader
+                    title="Specifications"
+                    docCount={selectedLargeScaleSpecs.length}
+                  />
+
+                  <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedLargeScaleSpecs.map((spec) => (
+                      <SpecificationDocumentCard
+                        key={spec.id}
+                        vendorId={vendorId}
+                        specification={spec}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {approvedImages.length > 0 && (
                 <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
                   <SectionHeader

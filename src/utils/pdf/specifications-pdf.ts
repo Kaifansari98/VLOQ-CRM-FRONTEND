@@ -61,11 +61,10 @@ const getReviewStatus = (
   return null;
 };
 
-export const exportLeadSpecificationPdf = (
-  specificationName: string,
+const buildLeadSpecificationPdf = (
   specification: LeadSpecificationPdfData,
   includeReviewColors = false,
-): void => {
+): jsPDF => {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const rows: RowInput[] = [];
   const rejectedRowIndexes = new Set<number>();
@@ -312,5 +311,25 @@ export const exportLeadSpecificationPdf = (
     });
   }
 
-  doc.save(`${safeFilename(specificationName)}.pdf`);
+  return doc;
 };
+
+export const exportLeadSpecificationPdf = (
+  specificationName: string,
+  specification: LeadSpecificationPdfData,
+  includeReviewColors = false,
+): void => {
+  buildLeadSpecificationPdf(specification, includeReviewColors).save(
+    `${safeFilename(specificationName)}.pdf`,
+  );
+};
+
+export const createLeadSpecificationPdfFile = (
+  specificationName: string,
+  specification: LeadSpecificationPdfData,
+) => ({
+  fileName: `${safeFilename(specificationName)}.pdf`,
+  url: URL.createObjectURL(
+    buildLeadSpecificationPdf(specification).output("blob"),
+  ),
+});
