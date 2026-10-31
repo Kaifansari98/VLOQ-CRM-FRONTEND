@@ -203,6 +203,28 @@ const Combo2D3DIcon: React.FC = () => (
   </div>
 );
 
+const DesignTypeThumbnail: React.FC<{ type: DesignType }> = ({ type }) => {
+  const styles = {
+    "2D": "text-neutral-400 dark:text-neutral-500",
+    "3D": "text-neutral-400 dark:text-neutral-500",
+    "2D + 3D": "text-neutral-400 dark:text-neutral-500",
+  } as const;
+
+  return (
+    <div className={`flex h-full w-full items-center justify-center ${styles[type]}`}>
+      {type === "2D + 3D" ? (
+        <span className="relative block h-full w-full font-extrabold tracking-wide">
+          <span className="absolute left-1 top-1 text-3xl leading-none">2D</span>
+          <span className="absolute left-1/2 top-1/2 h-px w-[140%] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-current opacity-60" aria-hidden="true" />
+          <span className="absolute bottom-1 right-1 text-3xl leading-none">3D</span>
+        </span>
+      ) : (
+        <span className="px-1 text-center text-3xl font-extrabold leading-tight tracking-wide">{type}</span>
+      )}
+    </div>
+  );
+};
+
 interface DocumentData {
   id: number;
   originalName: string;
@@ -708,7 +730,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   }
 
   if (effectiveDesignType) {
-    const isThemeImage = isImage && doc.signedUrl;
     const isThemeVideo = isVideo && doc.signedUrl;
 
     const tagBg =
@@ -752,13 +773,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
 
           {/* Left: Thumbnail Box with Colored Tag at Bottom-Left as shown in image */}
           <div className="relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex items-center justify-center shadow-xs">
-            {isThemeImage ? (
-              <img
-                src={doc.signedUrl}
-                alt={displayOriginalName}
-                className="w-full h-full object-cover"
-              />
-            ) : isThemeVideo ? (
+            {isThemeVideo ? (
               <div
                 className="relative w-full h-full cursor-pointer flex items-center justify-center"
                 onClick={(e) => {
@@ -777,12 +792,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                   <Play className="w-5 h-5 text-white" />
                 </div>
               </div>
-            ) : effectiveDesignType === "2D" ? (
-              <Blueprint2DIcon />
-            ) : effectiveDesignType === "3D" ? (
-              <Model3DIcon />
             ) : (
-              <Combo2D3DIcon />
+              <DesignTypeThumbnail type={effectiveDesignType} />
             )}
 
           </div>
@@ -870,7 +881,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
 
             {/* Design Tag at right bottom corner */}
             <span
-              className={`px-1.5 py-0.5 rounded-[4px] text-[10px] sm:text-[11px] font-bold text-white shadow-xs leading-none tracking-wide select-none flex items-center justify-center shrink-0 ml-auto ${tagBg}`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white shadow-xs leading-none tracking-wide whitespace-nowrap select-none flex items-center justify-center shrink-0 ml-auto ${tagBg}`}
             >
               {effectiveDesignType}
             </span>
