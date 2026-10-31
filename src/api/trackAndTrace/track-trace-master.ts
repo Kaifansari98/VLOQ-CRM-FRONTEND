@@ -107,6 +107,24 @@ export const updateMachine = async ({
   return res.data.data;
 };
 
+export const deleteMachineApi = async ({
+  id,
+  vendor_id,
+  deleted_by,
+}: {
+  id: number;
+  vendor_id: number;
+  deleted_by?: number;
+}): Promise<{ success: boolean; message: string; data?: MachineData }> => {
+  const res = await apiClient.delete(
+    `/track-trace-master/machines/${id}/vendor/${vendor_id}`,
+    {
+      data: { deleted_by },
+    },
+  );
+  return res.data;
+};
+
 export const fetchVendorLeads = async (
   token: string,
   projectId: string,
