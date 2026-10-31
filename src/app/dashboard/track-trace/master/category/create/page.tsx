@@ -112,6 +112,10 @@ function CategoryFormContent() {
   const editId = editIdParam ? Number(editIdParam) : null;
 
   const user = useAppSelector((state) => state.auth.user);
+  // Inventory vendors manage categories from the Inventory Masters page
+  const categoryListUrl = user?.vendor?.is_inventory_enabled === true
+    ? "/dashboard/masters-management/inventory-masters?tab=category"
+    : "/dashboard/track-trace/master/category";
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
   const vendorId = user?.vendor_id;
   const userId = user?.id;
@@ -467,7 +471,7 @@ function CategoryFormContent() {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      router.push("/dashboard/track-trace/master/category");
+      router.push(categoryListUrl);
     } finally {
       setIsSubmitting(false);
     }
@@ -490,7 +494,7 @@ function CategoryFormContent() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard/track-trace/master/category">
+                <BreadcrumbLink href={categoryListUrl}>
                   Project Categories
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -1217,7 +1221,7 @@ function CategoryFormContent() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/dashboard/track-trace/master/category")}
+              onClick={() => router.push(categoryListUrl)}
               disabled={isPending || isSubmitting}
             >
               Cancel

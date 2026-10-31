@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -19,6 +21,7 @@ import {
   ListFilter,
   Pencil,
   Plus,
+  Shield,
   UserCog,
   UserPlus,
   XCircle,
@@ -32,8 +35,6 @@ import { cn } from "@/lib/utils";
 import {
   useUsersForMaster,
   useCreateUser,
-  usePrivilegeMasters,
-  useUpdateUserPrivileges,
   useUpdateUser,
   useUserTypes,
 } from "@/hooks/useTypesMaster";
@@ -67,7 +68,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import type { CreateUserMasterPayload, UpdateUserMasterPayload } from "@/api/typesMasterApi";
-import { PrivilegeMasterEntry, fetchUsersForMaster } from "@/api/typesMasterApi";
+import { fetchUsersForMaster } from "@/api/typesMasterApi";
 
 type UserMasterRow = {
   srNo: number;
@@ -111,6 +112,8 @@ function normalizeNumberArray(values: number[]) {
 function getUserMasterColumns(
   isEmployeeMaster: boolean,
   isHrmsMasterEnabled?: boolean,
+  onManagePrivileges?: (row: UserMasterRow) => void,
+  onEdit?: (row: UserMasterRow) => void,
 ): ColumnDef<UserMasterRow>[] {
   const baseColumns: ColumnDef<UserMasterRow>[] = [
     {
@@ -214,6 +217,51 @@ function getUserMasterColumns(
       enableHiding: false,
     },
   );
+
+  baseColumns.push({
+    id: "actions",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Actions" />
+    ),
+    cell: ({ row }) => {
+      const user = row.original;
+      const isCustom = user.user_type?.trim().toLowerCase() === "custom";
+
+      return (
+        <div
+          className="flex items-center gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Edit User"
+              onClick={() => onEdit(user)}
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </Button>
+          )}
+
+          {isCustom && onManagePrivileges && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10"
+              title="Manage Privileges"
+              onClick={() => onManagePrivileges(user)}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              <span>Privileges</span>
+            </Button>
+          )}
+        </div>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  });
 
   return baseColumns;
 }
@@ -342,6 +390,15 @@ export default function UserMastersTable({
   userTypeFilter,
   entityName = "User",
 }: UserMastersTableProps) {
+  const router = useRouter();
+
+  const handleManagePrivileges = (row: { id: number }) => {
+    router.push(
+      `/dashboard/masters-management/user-master/${row.id}/privileges${
+        vendorIdOverride ? `?vendor_id=${vendorIdOverride}` : ""
+      }`
+    );
+  };
   const vendorId =
     vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
 
@@ -376,19 +433,6 @@ export default function UserMastersTable({
   const [form, setForm] = React.useState(defaultForm);
   const [originalForm, setOriginalForm] = React.useState(defaultForm);
   const [showPassword, setShowPassword] = React.useState(false);
-  const [openPrivilegesModal, setOpenPrivilegesModal] = React.useState(false);
-  const [openPrivilegeSection, setOpenPrivilegeSection] = React.useState<
-    string | null
-  >(null);
-  const [openLeadPrivilegeSection, setOpenLeadPrivilegeSection] =
-    React.useState<string | null>(null);
-  const [activeGeneralPrivilegeTab, setActiveGeneralPrivilegeTab] =
-    React.useState<string>("general_tools");
-  const [selectedPrivilegeIds, setSelectedPrivilegeIds] = React.useState<
-    number[]
-  >([]);
-  const [privilegeSearch, setPrivilegeSearch] = React.useState("");
-  const deferredPrivilegeSearch = React.useDeferredValue(privilegeSearch);
   const [isExporting, setIsExporting] = React.useState(false);
 
   const authUser = useAppSelector((state) => state.auth.user);
@@ -435,28 +479,8 @@ export default function UserMastersTable({
   const employeeUserTypeId = employeeUserType?.id
     ? String(employeeUserType.id)
     : "";
-  const {
-    data: privilegeMastersData,
-    isLoading: isLoadingPrivilegeMasters,
-    isError: isPrivilegeMastersError,
-  } = usePrivilegeMasters({
-    enabled: openPrivilegesModal,
-    search: deferredPrivilegeSearch,
-    userId: editingUserId,
-    vendorIdOverride: vendorId,
-  });
-
-  React.useEffect(() => {
-    if (privilegeMastersData?.data?.length && !openPrivilegeSection) {
-      setOpenPrivilegeSection(privilegeMastersData.data[0].id);
-    }
-  }, [privilegeMastersData?.data, openPrivilegeSection]);
-
-
-  console.log("privilages data: ", privilegeMastersData)
   const createUserMutation = useCreateUser(vendorId);
   const updateUserMutation = useUpdateUser(vendorId);
-  const updateUserPrivilegesMutation = useUpdateUserPrivileges(vendorId);
 
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>
@@ -519,9 +543,60 @@ export default function UserMastersTable({
 
   const totalPages = data?.pagination?.totalPages ?? 1;
 
+  const handleRowDoubleClick = React.useCallback(
+    (row: UserMasterRow) => {
+      const fallbackUserTypeId =
+        row.user_type_id ??
+        userTypesData?.data?.find(
+          (ut) =>
+            ut.user_type?.trim().toLowerCase() ===
+            row.user_type?.trim().toLowerCase(),
+        )?.id ??
+        (isEmployeeMaster && !isHrmsMasterEnabled && employeeUserType?.id
+          ? employeeUserType.id
+          : null);
+
+      const prefilled = {
+        user_name: row.user_name,
+        designation: row.designation || "",
+        user_contact: row.user_contact,
+        user_email: row.user_email,
+        password: "",
+        franchise_ids: [...row.franchise_ids],
+        user_type_id: fallbackUserTypeId ? String(fallbackUserTypeId) : "",
+        status: (row.status === "active" || row.status === "inactive"
+          ? row.status
+          : "active") as "active" | "inactive",
+      };
+      setForm(prefilled);
+      setOriginalForm(prefilled);
+      setEditingUserId(row.id);
+      setEditingUserType(row.user_type);
+      setModalMode("edit");
+      setOpenCreateModal(true);
+    },
+    [
+      userTypesData?.data,
+      isEmployeeMaster,
+      isHrmsMasterEnabled,
+      employeeUserType?.id,
+    ],
+  );
+
   const columns = React.useMemo(
-    () => getUserMasterColumns(isEmployeeMaster, isHrmsMasterEnabled),
-    [isEmployeeMaster, isHrmsMasterEnabled],
+    () =>
+      getUserMasterColumns(
+        isEmployeeMaster,
+        isHrmsMasterEnabled,
+        handleManagePrivileges,
+        handleRowDoubleClick,
+      ),
+    [
+      isEmployeeMaster,
+      isHrmsMasterEnabled,
+      handleManagePrivileges,
+      handleRowDoubleClick,
+    ],
   );
 
   const table = useReactTable({
@@ -548,25 +623,6 @@ export default function UserMastersTable({
     () => passwordStrength.filter((r) => r.met).length,
     [form.password],
   );
-  const privilegeMasters = React.useMemo(() => {
-    const list: PrivilegeMasterEntry[] = [];
-    const sections = privilegeMastersData?.data ?? [];
-    sections.forEach((section) => {
-      if (section.children) {
-        section.children.forEach((child) => {
-          list.push(...child.privileges);
-        });
-      }
-      if (section.tabs) {
-        section.tabs.forEach((tab) => {
-          tab.groups.forEach((group) => {
-            list.push(...group.privileges);
-          });
-        });
-      }
-    });
-    return list;
-  }, [privilegeMastersData?.data]);
   const userTypeOptions = React.useMemo(
     () =>
       (userTypesData?.data ?? [])
@@ -608,49 +664,6 @@ export default function UserMastersTable({
     if (hrmsAdmin) list.push({ id: hrmsAdmin.id, label: "HRMS Admin" });
     return list;
   }, [userTypesData?.data]);
-  const serverSelectedPrivilegeIds = React.useMemo(
-    () =>
-      normalizeNumberArray(
-        privilegeMasters
-          .filter((privilege) => privilege.is_selected)
-          .map((privilege) => privilege.id),
-      ),
-    [privilegeMasters],
-  );
-  const normalizedSelectedPrivilegeIds = React.useMemo(
-    () => normalizeNumberArray(selectedPrivilegeIds),
-    [selectedPrivilegeIds],
-  );
-  const hasPrivilegeSelectionChanged = !areNumberArraysEqual(
-    normalizedSelectedPrivilegeIds,
-    serverSelectedPrivilegeIds,
-  );
-
-  React.useEffect(() => {
-    if (!openPrivilegesModal || deferredPrivilegeSearch.trim()) return;
-
-    setSelectedPrivilegeIds((current) =>
-      areNumberArraysEqual(current, serverSelectedPrivilegeIds)
-        ? current
-        : serverSelectedPrivilegeIds,
-    );
-  }, [
-    openPrivilegesModal,
-    serverSelectedPrivilegeIds,
-    deferredPrivilegeSearch,
-  ]);
-
-  const handleSaveUserPrivileges = () => {
-    if (!editingUserId || !vendorId) return;
-
-    updateUserPrivilegesMutation.mutate({
-      userId: editingUserId,
-      payload: {
-        vendor_id: vendorId,
-        privilege_ids: normalizedSelectedPrivilegeIds,
-      },
-    });
-  };
 
   const resetForm = () => {
     setSupervisorConfirmation(null);
@@ -671,12 +684,6 @@ export default function UserMastersTable({
     setModalMode("create");
     setEditingUserId(null);
     setEditingUserType(null);
-    setOpenPrivilegesModal(false);
-    setOpenPrivilegeSection(privilegeMastersData?.data?.[0]?.id ?? null);
-    setOpenLeadPrivilegeSection(null);
-    setActiveGeneralPrivilegeTab("general_tools");
-    setSelectedPrivilegeIds([]);
-    setPrivilegeSearch("");
   };
 
   React.useEffect(() => {
@@ -730,38 +737,6 @@ export default function UserMastersTable({
     isPasswordValid &&
     form.franchise_ids.length > 0 &&
     effectiveUserTypeId;
-
-  const handleRowDoubleClick = (row: UserMasterRow) => {
-    const fallbackUserTypeId =
-      row.user_type_id ??
-      userTypesData?.data?.find(
-        (ut) =>
-          ut.user_type?.trim().toLowerCase() ===
-          row.user_type?.trim().toLowerCase(),
-      )?.id ??
-      (isEmployeeMaster && !isHrmsMasterEnabled && employeeUserType?.id
-        ? employeeUserType.id
-        : null);
-
-    const prefilled = {
-      user_name: row.user_name,
-      designation: row.designation || "",
-      user_contact: row.user_contact,
-      user_email: row.user_email,
-      password: "",
-      franchise_ids: [...row.franchise_ids],
-      user_type_id: fallbackUserTypeId ? String(fallbackUserTypeId) : "",
-      status: (row.status === "active" || row.status === "inactive"
-        ? row.status
-        : "active") as "active" | "inactive",
-    };
-    setForm(prefilled);
-    setOriginalForm(prefilled);
-    setEditingUserId(row.id);
-    setEditingUserType(row.user_type);
-    setModalMode("edit");
-    setOpenCreateModal(true);
-  };
 
   const handleSubmitError = (error: unknown, confirm: () => void) => {
     const response = (error as { response?: { data?: {
@@ -1462,12 +1437,18 @@ export default function UserMastersTable({
 
             <div className="flex items-center justify-between gap-2 pt-4 border-t mt-2">
               <div className="w-fit h-auto">
-                {isEditingCustomUser && (
+                {isEditingCustomUser && editingUserId && (
                   <Button
                     size="sm"
-                    onClick={() => setOpenPrivilegesModal(true)}
+                    variant="outline"
+                    className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                    onClick={() => {
+                      setOpenCreateModal(false);
+                      handleManagePrivileges({ id: editingUserId });
+                    }}
                   >
-                    User Privileges
+                    <Shield className="h-3.5 w-3.5" />
+                    Manage User Privileges
                   </Button>
                 )}
               </div>
@@ -1516,432 +1497,7 @@ export default function UserMastersTable({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={openPrivilegesModal}
-        onOpenChange={(open) => {
-          setOpenPrivilegesModal(open);
-          if (!open) {
-            setOpenPrivilegeSection(privilegeMastersData?.data?.[0]?.id ?? null);
-            setOpenLeadPrivilegeSection(null);
-            setActiveGeneralPrivilegeTab("general_tools");
-            setSelectedPrivilegeIds([]);
-            setPrivilegeSearch("");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[760px] h-[80vh] max-h-[80vh] p-0 overflow-hidden flex flex-col">
-          <div className="flex items-start justify-between gap-4 px-6 py-5 border-b">
-            <div className="space-y-1">
-              <DialogTitle className="text-base font-semibold leading-tight">
-                User Privileges
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                Manage custom privilege access for this user from here.
-              </DialogDescription>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
-            {(privilegeMastersData?.data ?? []).map((section) => {
-              const isOpen = openPrivilegeSection === section.id;
-
-              return (
-                <div
-                  key={section.id}
-                  className="overflow-hidden rounded-xl border bg-background"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenPrivilegeSection((current) =>
-                        current === section.id ? null : section.id,
-                      )
-                    }
-                    className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/40"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {section.title}
-                      </p>
-                      <p className="text-xs leading-5 text-muted-foreground">
-                        {section.description}
-                      </p>
-                    </div>
-                    <ChevronDown
-                      className={cn(
-                        "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                        isOpen && "rotate-180",
-                      )}
-                    />
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t bg-muted/20 px-4 py-3">
-                      {section.tabs && section.tabs.length > 0 ? (
-                        <Tabs
-                          value={activeGeneralPrivilegeTab}
-                          onValueChange={(value) =>
-                            setActiveGeneralPrivilegeTab(
-                              value,
-                            )
-                          }
-                          className="gap-3"
-                        >
-                          <TabsList className="h-auto gap-2 p-1">
-                            {section.tabs.map((tab) => (
-                              <TabsTrigger key={tab.id} value={tab.id}>
-                                {tab.title}
-                              </TabsTrigger>
-                            ))}
-                          </TabsList>
-
-                          {section.tabs.map((tab) => (
-                            <TabsContent key={tab.id} value={tab.id} className="space-y-2">
-                              {tab.groups.length === 0 ? (
-                                <div className="rounded-lg border bg-background px-4 py-3 text-xs text-muted-foreground">
-                                  No {tab.title.toLowerCase()} privileges found yet.
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="mb-3">
-                                    <Input
-                                      value={privilegeSearch}
-                                      onChange={(e) =>
-                                        setPrivilegeSearch(e.target.value)
-                                      }
-                                      placeholder="Search by code or action..."
-                                      className="h-9 bg-background"
-                                      disabled={
-                                        updateUserPrivilegesMutation.isPending
-                                      }
-                                    />
-                                  </div>
-
-                                  {isLoadingPrivilegeMasters ? (
-                                    <div className="text-xs text-muted-foreground">
-                                      Loading privilege actions...
-                                    </div>
-                                  ) : isPrivilegeMastersError ? (
-                                    <div className="text-xs text-destructive">
-                                      Failed to load privilege actions.
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2">
-                                      {tab.groups.map((group) => {
-                                        return (
-                                          <div
-                                            key={group.id}
-                                            className="overflow-hidden rounded-lg border bg-background"
-                                          >
-                                            <div className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-                                              <p className="text-sm font-medium text-foreground">
-                                                {group.title}
-                                              </p>
-                                            </div>
-
-                                            <div className="border-t bg-muted/20 px-4 py-3">
-                                              <div className="space-y-2">
-                                                {group.privileges.map(
-                                                  (privilege) => {
-                                                    const isChecked =
-                                                      selectedPrivilegeIds.includes(
-                                                        privilege.id,
-                                                      );
-
-                                                    return (
-                                                      <label
-                                                        key={privilege.id}
-                                                        className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
-                                                      >
-                                                        <Checkbox
-                                                          checked={isChecked}
-                                                          disabled={
-                                                            updateUserPrivilegesMutation.isPending
-                                                          }
-                                                          onCheckedChange={(
-                                                            checked,
-                                                          ) =>
-                                                            setSelectedPrivilegeIds(
-                                                              (current) => {
-                                                                if (checked) {
-                                                                  return current.includes(
-                                                                    privilege.id,
-                                                                  )
-                                                                    ? current
-                                                                    : [
-                                                                        ...current,
-                                                                        privilege.id,
-                                                                      ];
-                                                                }
-
-                                                                return current.filter(
-                                                                  (id) =>
-                                                                    id !==
-                                                                    privilege.id,
-                                                                );
-                                                              },
-                                                            )
-                                                          }
-                                                        />
-                                                        <div className="space-y-0.5">
-                                                          <p className="text-sm font-medium text-foreground">
-                                                            {privilege.action}
-                                                          </p>
-                                                          <p className="text-xs text-muted-foreground">
-                                                            {privilege.code}
-                                                          </p>
-                                                        </div>
-                                                      </label>
-                                                    );
-                                                  },
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </TabsContent>
-                          ))}
-                        </Tabs>
-                      ) : section.children && section.children.length > 0 ? (
-                        <div className="space-y-2">
-                          {section.children.map((child) => {
-                            const isLeadSectionOpen =
-                              openLeadPrivilegeSection === child.id;
-                            const childPrivileges = child.privileges;
-
-                            return (
-                              <div
-                                key={child.id}
-                                className="overflow-hidden rounded-lg border bg-background"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setOpenLeadPrivilegeSection((current) =>
-                                      current === child.id ? null : child.id,
-                                    )
-                                  }
-                                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
-                                >
-                                  <p className="text-sm font-medium text-foreground">
-                                    {child.title}
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    {(() => {
-                                      const allChildIds = childPrivileges.map((p) => p.id);
-                                      const selCount = allChildIds.filter(
-                                        (id) =>
-                                          selectedPrivilegeIds.includes(id),
-                                      ).length;
-                                      if (allChildIds.length === 0) return null;
-                                      return (
-                                        <span
-                                          className={cn(
-                                            "inline-flex rounded-full px-2 py-0.5 text-xs font-medium border",
-                                            selCount === allChildIds.length
-                                              ? "bg-emerald-500/15 text-emerald-600 border-emerald-200"
-                                              : selCount > 0
-                                                ? "bg-primary/10 text-primary border-primary/20"
-                                                : "bg-muted text-muted-foreground",
-                                          )}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          {selCount}/{allChildIds.length}
-                                        </span>
-                                      );
-                                    })()}
-                                    <ChevronDown
-                                      className={cn(
-                                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                                        isLeadSectionOpen && "rotate-180",
-                                      )}
-                                    />
-                                  </div>
-                                </button>
-
-                                {isLeadSectionOpen && (
-                                  <div className="border-t bg-muted/20 px-4 py-3">
-                                    {(() => {
-                                      const allChildIds = childPrivileges.map((p) => p.id);
-                                      const selCount = allChildIds.filter(
-                                        (id) =>
-                                          selectedPrivilegeIds.includes(id),
-                                      ).length;
-                                      const isAllSelected =
-                                        allChildIds.length > 0 &&
-                                        selCount === allChildIds.length;
-                                      if (allChildIds.length === 0) return null;
-                                      return (
-                                        <div className="mb-3 flex items-center justify-between gap-2">
-                                          <button
-                                            type="button"
-                                            disabled={
-                                              updateUserPrivilegesMutation.isPending
-                                            }
-                                            onClick={() =>
-                                              setSelectedPrivilegeIds(
-                                                (current) => {
-                                                  if (isAllSelected) {
-                                                    return current.filter(
-                                                      (id) =>
-                                                        !allChildIds.includes(
-                                                          id,
-                                                        ),
-                                                    );
-                                                  }
-                                                  return Array.from(
-                                                    new Set([
-                                                      ...current,
-                                                      ...allChildIds,
-                                                    ]),
-                                                  );
-                                                },
-                                              )
-                                            }
-                                            className={cn(
-                                              "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                                              isAllSelected
-                                                ? "border-emerald-200 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                                                : "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10",
-                                            )}
-                                          >
-                                            <CheckIcon className="h-3.5 w-3.5" />
-                                            {isAllSelected
-                                              ? "Deselect All"
-                                              : "Select All"}
-                                          </button>
-                                          <span className="text-xs text-muted-foreground">
-                                            {selCount} of {allChildIds.length}{" "}
-                                            selected
-                                          </span>
-                                        </div>
-                                      );
-                                    })()}
-                                    <div className="mb-3">
-                                      <Input
-                                        value={privilegeSearch}
-                                        onChange={(e) =>
-                                          setPrivilegeSearch(e.target.value)
-                                        }
-                                        placeholder="Search by code or action..."
-                                        className="h-9 bg-background"
-                                        disabled={
-                                          updateUserPrivilegesMutation.isPending
-                                        }
-                                      />
-                                    </div>
-                                    {isLoadingPrivilegeMasters ? (
-                                      <div className="text-xs text-muted-foreground">
-                                        Loading privilege actions...
-                                      </div>
-                                    ) : isPrivilegeMastersError ? (
-                                      <div className="text-xs text-destructive">
-                                        Failed to load privilege actions.
-                                      </div>
-                                    ) : childPrivileges.length === 0 ? (
-                                      <div className="text-xs text-muted-foreground">
-                                        No privilege actions found for this
-                                        section.
-                                      </div>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {childPrivileges.map((privilege) => {
-                                          const isChecked =
-                                            selectedPrivilegeIds.includes(
-                                              privilege.id,
-                                            );
-
-                                          return (
-                                            <label
-                                              key={privilege.id}
-                                              className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
-                                            >
-                                              <Checkbox
-                                                checked={isChecked}
-                                                disabled={
-                                                  updateUserPrivilegesMutation.isPending
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                  setSelectedPrivilegeIds(
-                                                    (current) => {
-                                                      if (checked) {
-                                                        return current.includes(
-                                                          privilege.id,
-                                                        )
-                                                          ? current
-                                                          : [
-                                                              ...current,
-                                                              privilege.id,
-                                                            ];
-                                                      }
-
-                                                      return current.filter(
-                                                        (id) =>
-                                                          id !== privilege.id,
-                                                      );
-                                                    },
-                                                  )
-                                                }
-                                              />
-                                              <div className="space-y-0.5">
-                                                <p className="text-sm font-medium text-foreground">
-                                                  {privilege.action}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                  {privilege.code}
-                                                </p>
-                                              </div>
-                                            </label>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-muted-foreground">
-                          Privilege options for {section.title.toLowerCase()}{" "}
-                          will be added here next.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
-            <Button
-              variant="outline"
-              onClick={() => setOpenPrivilegesModal(false)}
-              disabled={updateUserPrivilegesMutation.isPending}
-            >
-              Close
-            </Button>
-            <Button
-              onClick={handleSaveUserPrivileges}
-              disabled={
-                !editingUserId ||
-                !vendorId ||
-                !hasPrivilegeSelectionChanged ||
-                updateUserPrivilegesMutation.isPending
-              }
-            >
-              {updateUserPrivilegesMutation.isPending
-                ? "Saving..."
-                : "Save Privileges"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      
     </>
   );
 }

@@ -158,6 +158,42 @@ export const useRejectTechCheck = () => {
   });
 };
 
+// ✅ --- Approve / Reject latest Specifications ---
+export const reviewLeadSpecifications = async ({
+  vendorId,
+  leadId,
+  specificationIds,
+  status,
+  remark,
+}: {
+  vendorId: number;
+  leadId: number;
+  specificationIds: number[];
+  status: "APPROVED" | "REJECTED";
+  remark?: string;
+}) => {
+  const { data } = await apiClient.post(
+    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/specifications/review`,
+    { specificationIds, status, remark },
+  );
+  return data;
+};
+
+export const useReviewLeadSpecifications = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: reviewLeadSpecifications,
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],
+      });
+    },
+    onError: (error: unknown) => {
+      toastError(error);
+    },
+  });
+};
+
 // ✅ --- Approve Multiple Documents ---
 export const approveMultipleDocuments = async ({
   vendorId,

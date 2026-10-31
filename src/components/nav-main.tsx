@@ -166,7 +166,6 @@ export function NavMain({
   trackTraceItems,
   inventoryItems,
   mastersItems,
-  inventoryMasterItems,
   integrationItems,
   crmGroupLabel,
 }: {
@@ -174,7 +173,6 @@ export function NavMain({
   trackTraceItems?: NavItem[];
   inventoryItems?: NavItem[];
   mastersItems?: NavItem[];
-  inventoryMasterItems?: NavItem[];
   integrationItems?: NavItem[];
   crmGroupLabel?: string;
 }) {
@@ -437,7 +435,6 @@ export function NavMain({
     ...(trackTraceItems ?? []),
     ...(inventoryItems ?? []),
     ...(enhancedMastersItems ?? []),
-    ...(inventoryMasterItems ?? [])
   ];
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -714,16 +711,12 @@ export function NavMain({
         </SidebarGroup>
       )}
 
-      {((inventoryItems?.length ?? 0) > 0 ||
-        (inventoryMasterItems?.length ?? 0) > 0) && (
+      {(inventoryItems?.length ?? 0) > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Inventory Management</SidebarGroupLabel>
 
             <SidebarMenu>
               {inventoryItems?.map((item) => renderItem(item))}
-
-              {/* Displays Master below Inventory */}
-              {inventoryMasterItems?.map((item) => renderItem(item))}
             </SidebarMenu>
           </SidebarGroup>
         )}

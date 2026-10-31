@@ -251,7 +251,8 @@ export default function SpecificationsTab() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          {canUpload && (
+          {/* Item groups have their own Add Specs button */}
+          {canUpload && !(handlesLargeScaleProjects && groupedSpecifications.length > 0) && (
             <Button size="sm" onClick={() => openCreateSpecification()}>
               <Plus size={16} className="mr-1" />
               <span>Add Specs</span>

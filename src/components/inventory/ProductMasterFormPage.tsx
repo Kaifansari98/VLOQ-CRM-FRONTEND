@@ -49,7 +49,7 @@ import { useRouter } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 
-const PRODUCT_MASTER_BASE = "/dashboard/inventory/master/products/list";
+const PRODUCT_MASTER_BASE = "/dashboard/masters-management/inventory-masters?tab=products";
 
 const emptyForm: ProductPayload = {
   category_id: 0,

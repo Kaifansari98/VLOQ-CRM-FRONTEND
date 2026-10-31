@@ -279,7 +279,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           {/* Tabs wrapper (scrollable on mobile) */}
           <div
             className={cn(
-              "flex space-x-6 overflow-x-auto pb-px scrollbar-none border-b",
+              "flex space-x-6 overflow-x-auto pb-px scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden border-b",
               "max-w-full sm:max-w-none",
               className,
             )}
