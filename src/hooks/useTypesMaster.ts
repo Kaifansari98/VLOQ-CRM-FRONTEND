@@ -11,6 +11,7 @@ import {
   createIssueLogType,
   fetchInstallerUsersForMaster,
   fetchUsersForMaster,
+  fetchUserDetail,
   fetchPrivilegeMasters,
   fetchCompanyVendorsForMaster,
   fetchCarcassTypes,
@@ -163,6 +164,17 @@ export const useCompanyVendorsForMaster = (
     queryKey: getCompanyVendorsMasterQueryKey(vendorId, isInventory),
     queryFn: () => fetchCompanyVendorsForMaster(vendorId!, isInventory),
     enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useUserDetail = (userId?: number | null, vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: ["userDetail", userId, vendorId],
+    queryFn: () => fetchUserDetail(userId!, vendorId),
+    enabled: !!userId && !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
   });

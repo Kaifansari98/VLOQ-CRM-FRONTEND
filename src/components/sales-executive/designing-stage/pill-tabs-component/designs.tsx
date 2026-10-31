@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
 import { Palette, Images, PenTool, Package } from "lucide-react";
@@ -21,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
-import DocumentCard from "@/components/utils/documentCard";
+import DocumentCard, { detectDesignType } from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
 import ComingSoon from "@/components/generics/ComingSoon";
 import ViewSpecsModal from "./modals/view-specs-modal";
@@ -39,6 +40,8 @@ const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
   });
 
 const UNASSIGNED_GROUP_ID = "__unassigned__";
+type DesignFilter = "ALL" | "2D" | "3D" | "2D + 3D";
+const DESIGN_FILTERS: DesignFilter[] = ["ALL", "2D", "3D", "2D + 3D"];
 const normalizeGroupKey = (value?: string | null) =>
   value?.trim().toLowerCase() || UNASSIGNED_GROUP_ID;
 
@@ -98,6 +101,56 @@ const DesigningTab = () => {
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [selectedSpec, setSelectedSpec] =
     useState<LeadSpecificationEntry | null>(null);
+  const [designFilters, setDesignFilters] = useState<Record<string, DesignFilter>>({});
+
+  const getDocumentDesignType = (doc: any) =>
+    detectDesignType(doc.doc_og_name) || "2D + 3D";
+
+  const filterDocuments = (groupId: string, docs: any[]) => {
+    const filter = designFilters[groupId] || "ALL";
+    return filter === "ALL"
+      ? docs
+      : docs.filter((doc) => getDocumentDesignType(doc) === filter);
+  };
+
+  const renderDesignFilters = (groupId: string, docs: any[]) => {
+    const activeFilter = designFilters[groupId] || "ALL";
+
+    const getFilterCount = (filter: DesignFilter) =>
+      filter === "ALL"
+        ? docs.length
+        : docs.filter((doc) => getDocumentDesignType(doc) === filter).length;
+
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1 rounded-lg border border-border bg-muted/30 p-1" role="tablist" aria-label="Filter designs by type">
+        {DESIGN_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === filter}
+            onClick={() => setDesignFilters((current) => ({ ...current, [groupId]: filter }))}
+            className={`relative overflow-hidden rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+              activeFilter === filter
+                ? "text-background"
+                : "text-muted-foreground hover:bg-background hover:text-foreground"
+            }`}
+          >
+            {activeFilter === filter && (
+              <span
+                className="absolute inset-0 rounded-md bg-foreground shadow-sm"
+              />
+            )}
+            <span className="relative z-10">
+              {filter === "ALL"
+                ? `All designs (${getFilterCount(filter)})`
+                : `${filter === "2D + 3D" ? "2D + 3D designs" : `${filter} designs`} (${getFilterCount(filter)})`}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   const groupedDesignDocs = useMemo(() => {
     if (!handlesLargeScaleProjects) {
@@ -451,13 +504,34 @@ const DesigningTab = () => {
               {groupedDesignDocs.length === 0 && <p className="py-4 text-sm text-muted-foreground">No design documents found.</p>}
               {groupedDesignDocs.map((group) => (
                 <section key={group.id} className="space-y-3">
-                  <div className="flex items-center justify-between gap-3 border-b pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2">
                     <h2 className="text-base font-semibold break-words">{group.title}</h2>
-                    <span className="shrink-0 text-xs text-muted-foreground">{group.docs.length} {group.docs.length === 1 ? "file" : "files"}</span>
+                    {renderDesignFilters(group.id, group.docs)}
                   </div>
-                  {group.docs.length > 0 ? renderDocumentCards(group.docs) : (
-                    <p className="py-4 text-sm text-muted-foreground">No design documents added to this item group yet.</p>
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {filterDocuments(group.id, group.docs).length > 0 ? (
+                      <motion.div
+                        key={`${group.id}-${designFilters[group.id] || "ALL"}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                      >
+                        {renderDocumentCards(filterDocuments(group.id, group.docs))}
+                      </motion.div>
+                    ) : (
+                      <motion.p
+                        key={`${group.id}-${designFilters[group.id] || "ALL"}-empty`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="py-4 text-sm text-muted-foreground"
+                      >
+                        No design documents added to this item group yet.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </section>
               ))}
             </div>
