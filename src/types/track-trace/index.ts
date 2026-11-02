@@ -141,6 +141,9 @@ export interface MachineData {
   created_at: string;
   updated_at: string;
   updated_by: number;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: number | null;
   rules_count?: number;
   active_rules_count?: number;
   has_rules?: boolean;
