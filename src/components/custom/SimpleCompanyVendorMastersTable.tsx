@@ -175,7 +175,7 @@ const getCompanyVendorColumns = ({
       const isActive = original.status === "active";
 
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Button variant="outline" size="sm" onClick={() => onEdit(original)}>
             Edit
           </Button>
@@ -985,7 +985,7 @@ export default function SimpleCompanyVendorMastersTable({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Company Vendor</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               Enter vendor code, company name, contact details and type.
             </DialogDescription>
           </DialogHeader>
@@ -1023,7 +1023,7 @@ export default function SimpleCompanyVendorMastersTable({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Company Vendor</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               Update vendor details for this entry.
             </DialogDescription>
           </DialogHeader>
@@ -1063,7 +1063,7 @@ export default function SimpleCompanyVendorMastersTable({
                 ? "Mark Company Vendor Inactive"
                 : "Mark Company Vendor Active"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               {statusTargetRow?.status === "active"
                 ? "This company vendor will be marked inactive."
                 : "This company vendor will be marked active again."}
@@ -1109,13 +1109,13 @@ export default function SimpleCompanyVendorMastersTable({
           }
         }}
       >
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
               Bulk Upload Company Vendors
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               Upload an Excel (.xlsx, .xls) or CSV (.csv) file to import multiple company vendor master entries.
             </DialogDescription>
           </DialogHeader>
@@ -1177,13 +1177,13 @@ export default function SimpleCompanyVendorMastersTable({
               />
 
               {uploadFile ? (
-                <div className="flex items-center justify-between p-2">
+                <div className="flex items-center justify-between p-2 min-w-0 gap-2">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg text-emerald-600">
                       <FileSpreadsheet className="h-6 w-6" />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-medium text-foreground">{uploadFile.name}</p>
+                      <p className="text-sm font-medium text-foreground truncate max-w-[240px] sm:max-w-[340px]">{uploadFile.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {(uploadFile.size / 1024).toFixed(1)} KB
                       </p>
@@ -1236,12 +1236,12 @@ export default function SimpleCompanyVendorMastersTable({
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border bg-muted/30 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         {previewResult.validCount > 0 ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
                         )}
                         <span className="text-sm font-medium">
                           {previewResult.validCount > 0
@@ -1261,13 +1261,13 @@ export default function SimpleCompanyVendorMastersTable({
                     </div>
 
                     {previewResult.errors.length > 0 && (
-                      <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3">
+                      <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3 min-w-0">
                         <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 mb-2">
-                          <AlertCircle className="h-4 w-4" /> Row Issues ({previewResult.errors.length}) — These rows will be skipped
+                          <AlertCircle className="h-4 w-4 shrink-0" /> Row Issues ({previewResult.errors.length}) — These rows will be skipped
                         </p>
-                        <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-red-700 dark:text-red-400">
+                        <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-red-700 dark:text-red-400 pr-1">
                           {previewResult.errors.map((err: string, i: number) => (
-                            <p key={i} className="leading-relaxed font-mono text-[11px]">
+                            <p key={i} className="leading-relaxed font-mono text-[11px] break-words break-all">
                               • {err}
                             </p>
                           ))}
@@ -1283,8 +1283,8 @@ export default function SimpleCompanyVendorMastersTable({
             {uploadResult && (
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between p-3 rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                     <span className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
                       Imported {uploadResult.successCount} of {uploadResult.totalRows} rows
                     </span>
@@ -1297,13 +1297,13 @@ export default function SimpleCompanyVendorMastersTable({
                 </div>
 
                 {uploadResult.errors.length > 0 && (
-                  <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3">
+                  <div className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-3 min-w-0">
                     <p className="text-xs font-semibold text-red-800 dark:text-red-300 flex items-center gap-1.5 mb-2">
-                      <AlertCircle className="h-4 w-4" /> Row Issues ({uploadResult.errors.length})
+                      <AlertCircle className="h-4 w-4 shrink-0" /> Row Issues ({uploadResult.errors.length})
                     </p>
-                    <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-red-700 dark:text-red-400">
+                    <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-red-700 dark:text-red-400 pr-1">
                       {uploadResult.errors.map((err, i) => (
-                        <p key={i} className="leading-relaxed font-mono text-[11px]">
+                        <p key={i} className="leading-relaxed font-mono text-[11px] break-words break-all">
                           • {err}
                         </p>
                       ))}
@@ -1314,7 +1314,7 @@ export default function SimpleCompanyVendorMastersTable({
             )}
           </div>
 
-          <DialogFooter className="gap-3 sm:gap-3 pt-2">
+          <DialogFooter className="flex flex-row items-center justify-end gap-3 pt-2">
             <Button
               type="button"
               variant="outline"

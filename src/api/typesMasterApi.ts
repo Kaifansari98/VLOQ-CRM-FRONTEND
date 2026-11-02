@@ -1413,13 +1413,17 @@ export const bulkUploadCompanyVendors = async (
   vendorId: number,
   file: File,
   userId: number,
+  isInventory: boolean = false,
 ) => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("userId", String(userId));
+  if (isInventory) {
+    formData.append("is_inventory", "true");
+  }
 
   const res = await apiClient.post(
-    `/vendor/company-vendors/vendorId/${vendorId}/bulk-upload`,
+    `/vendor/company-vendors/vendorId/${vendorId}/bulk-upload${isInventory ? "?is_inventory=true" : ""}`,
     formData,
     {
       headers: {
