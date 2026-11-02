@@ -1457,15 +1457,6 @@ export default function ProductMasterPage() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium h-8 text-xs"
-            onClick={handleAddProduct}
-          >
-            <Plus size={14} />
-            Add New Product
-          </Button>
-
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>
@@ -1475,13 +1466,19 @@ export default function ProductMasterPage() {
         <div className="flex w-full flex-col gap-5">
 
           {/* ── Title ── */}
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Product Master
-            </h1>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Review product specifications, stock levels, categories and procurement details.
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Product Master
+              </h1>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Review product specifications, stock levels, categories and procurement details.
+              </p>
+            </div>
+            <Button size="sm" className="shrink-0 gap-1.5" onClick={handleAddProduct}>
+              <Plus className="size-4" />
+              Add Product
+            </Button>
           </div>
 
           {/* ── 4 KPI Stat Cards (Matching Reference) ── */}
