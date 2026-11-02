@@ -10,40 +10,50 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { cn } from "@/lib/utils";
 import { type ProductionPreviewRow } from "./production-file-preview";
 
-const stockColors = {
-  ready: "text-green-600 dark:text-green-500",
-  low: "text-orange-600 dark:text-orange-500",
-  unavailable: "text-red-600 dark:text-red-500",
-};
-
 const stockChipColors = {
   ready: "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400",
   low: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400",
-  unavailable: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400",
+  zero: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400",
+  unavailable: "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-400",
 };
 
 const stockDotColors = {
   ready: "bg-green-500",
   low: "bg-orange-500",
-  unavailable: "bg-red-500",
+  zero: "bg-red-500",
+  unavailable: "bg-slate-400",
 };
 
 const stockLabels = {
-  ready: "In stock",
-  low: "Low stock",
+  ready: "In Stock",
+  low: "Low Stock",
+  zero: "0 Stock",
   unavailable: "Unavailable",
 };
+
+const stockFilters = [
+  { value: "all", label: "All", hint: "All material rows" },
+  { value: "ready", label: stockLabels.ready, hint: "Required quantity covered without falling below minimum stock" },
+  { value: "low", label: stockLabels.low, hint: "Some stock available, but insufficient for the requirement or below minimum afterward" },
+  { value: "zero", label: stockLabels.zero, hint: "No available stock for the remaining required quantity" },
+  { value: "unavailable", label: stockLabels.unavailable, hint: "Inventory cannot be verified: invalid, unmatched, inactive, or incompatible rows" },
+] as const;
+type StockFilter = typeof stockFilters[number]["value"];
 
 // Whichever of frozen/issued is further along already deducted stock (freezing deducts
 // immediately; issuing deducts only the portion beyond what was frozen), so only what's
 // left past that should be weighed against what's still available.
 const neededQty = (row: ProductionPreviewRow) => Math.max(0, Math.round((row.qty - Math.max(row.frozenQty ?? 0, row.issuedQty ?? 0)) * 1e8) / 1e8);
 
-export function getMaterialStockState(row: ProductionPreviewRow): keyof typeof stockColors {
-  if (row.status !== "ready" || row.available === undefined) return "unavailable";
+export function getMaterialStockState(row: ProductionPreviewRow): keyof typeof stockLabels {
+  if (!["ready", "shortage"].includes(row.status) || row.available === undefined || !Number.isFinite(row.available)) return "unavailable";
+  const need = neededQty(row);
+  if (need === 0) return "ready";
+  if (row.available <= 0) return "zero";
+  if (row.available < need) return "low";
   const minimum = row.product?.min_stock_qty;
-  const leftover = Math.round((row.available - neededQty(row)) * 1e8) / 1e8;
-  return minimum != null && minimum !== "" && Number.isFinite(Number(minimum)) && leftover >= Number(minimum)
+  const leftover = Math.round((row.available - need) * 1e8) / 1e8;
+  return minimum != null && minimum !== "" && Number.isFinite(Number(minimum)) && leftover < Number(minimum)
     ? "low" : "ready";
 }
 
@@ -62,51 +72,52 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
   const allSelected = selectableRows.length > 0 && selectedCount === selectableRows.length;
   const clearSelection = () => setSelectedRowKeys(new Set());
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState<StockFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const categories = useMemo(() => Array.from(new Set(rows.map((row) => row.category).filter(Boolean))).sort(), [rows]);
-  const stockCounts = useMemo(() => {
-    const counts = { ready: 0, low: 0, unavailable: 0 };
-    if (isMaterialIssueView && checked) {
+  const filterCounts = useMemo(() => {
+    const counts = { all: rows.length, ready: 0, low: 0, zero: 0, unavailable: 0 };
+    if (checked) {
       rows.forEach((row) => { counts[getMaterialStockState(row)] += 1; });
     }
     return counts;
-  }, [rows, isMaterialIssueView, checked]);
-  const filterCounts = useMemo(() => ({
-    all: rows.length,
-    attention: rows.filter((row) => row.status !== "ready").length,
-    ready: rows.filter((row) => row.status === "ready").length,
-  }), [rows]);
+  }, [rows, checked]);
   const filtered = useMemo(() => rows.filter((row) => {
     const query = search.trim().toLowerCase();
-    return (filter === "all" || (filter === "attention" ? row.status !== "ready" : row.status === "ready")) &&
+    return (!checked || filter === "all" || getMaterialStockState(row) === filter) &&
       (!categoryFilter || row.category === categoryFilter) &&
       (!query || [row.articleCode, row.name, row.product?.product_name, row.category, row.type, row.source].some((value) => value?.toLowerCase().includes(query)));
-  }), [rows, search, filter, categoryFilter]);
+  }), [rows, search, filter, categoryFilter, checked]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / 25));
   const currentPage = Math.min(page, pageCount);
   const visibleRows = filtered.slice((currentPage - 1) * 25, currentPage * 25);
   return <div className="space-y-4">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-3">
                 <div className="relative sm:w-80"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input aria-label="Search preview products" placeholder="Search name, article code, category…" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} className="pl-9" /></div>
-                <div className="inline-flex items-center gap-0.5 self-start rounded-lg bg-muted/60 p-1">
-                  {([["all", "All"], ["attention", "Needs attention"], ["ready", "In stock"]] as const).map(([value, label]) => <button
+                <div role="group" aria-label="Filter materials by stock status" className="flex w-full items-center gap-1 overflow-x-auto rounded-xl border bg-muted/40 p-1.5">
+                  {stockFilters.map(({ value, label, hint }) => <button
                     key={value}
                     type="button"
                     disabled={!checked && value !== "all"}
+                    aria-pressed={(!checked ? "all" : filter) === value}
+                    title={hint}
                     onClick={() => { setFilter(value); setPage(1); }}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
-                      filter === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      "inline-flex min-h-10 shrink-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 sm:px-4 sm:text-sm",
+                      (!checked ? "all" : filter) === value ? "border-border bg-background text-foreground shadow-sm" : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground"
                     )}
-                  >{label} <span className="ml-1 tabular-nums text-[10px] text-muted-foreground">{filterCounts[value]}</span></button>)}
+                  >{value !== "all" && <span aria-hidden="true" className={cn("size-2 shrink-0 rounded-full", stockDotColors[value])} />}
+                    {label}
+                    <span className={cn("min-w-6 rounded-md px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums", (!checked ? "all" : filter) === value ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                      {checked || value === "all" ? filterCounts[value] : "—"}
+                    </span></button>)}
                 </div>
               </div>
               {isMaterialIssueView && <div aria-label="Stock color legend" className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-xs">
                 <span className="mr-1 font-medium text-muted-foreground">Stock status:</span>
                 {(Object.keys(stockLabels) as Array<keyof typeof stockLabels>).map((state) => <span key={state} className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium", stockChipColors[state])}>
-                  <span className={cn("size-1.5 rounded-full", stockDotColors[state])} />{stockLabels[state]} ({stockCounts[state]})
+                  <span className={cn("size-1.5 rounded-full", stockDotColors[state])} />{stockLabels[state]} ({checked ? filterCounts[state] : "—"})
                 </span>)}
               </div>}
               <div className="overflow-hidden rounded-xl border shadow-sm">
