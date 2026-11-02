@@ -86,9 +86,20 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   return data;
 };
 
-export const getAllSiteSuperVisors = async (vendorId: number) => {
+export const getAllSiteSuperVisors = async (
+  vendorId: number,
+  franchiseId?: number,
+  leadId?: number
+) => {
+  const params: Record<string, any> = {};
+  if (franchiseId) params.franchise_id = franchiseId;
+  if (leadId) params.lead_id = leadId;
+
   const { data } = await apiClient.get(
-    `/leads/site-supervisor/vendor/${vendorId}`
+    `/leads/site-supervisor/vendor/${vendorId}`,
+    {
+      params: Object.keys(params).length > 0 ? params : undefined,
+    }
   );
   return data;
 };

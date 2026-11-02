@@ -249,6 +249,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     isError,
   } = useBookingLeadById(vendorId, leadId);
   const { data, isLoading: loading } = useLeadById(leadId, vendorId, userId);
+  const lead = data?.data?.lead;
+  const leadFranchiseId =
+    leadData?.franchiseId ?? lead?.franchise_id ?? undefined;
   const { data: leadStatus, error } = useLeadStatus(leadId, vendorId);
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
@@ -256,7 +259,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     handlesLargeScaleProjects,
   );
   const { data: siteSupervisorsData, isLoading: loadingSupervisors } =
-    useSiteSupervisors(vendorId!);
+    useSiteSupervisors(vendorId, leadFranchiseId, leadId);
   const { mutate: reassignSupervisor, isPending: reassigning } =
     useReassignSiteSupervisor();
   const { mutate: updateMrp, isPending: updatingMrp } = useUpdateMrpValue();
@@ -385,7 +388,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const isSupervisorAssigned =
     siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
 
-  const lead = data?.data?.lead;
   const isDesignerAssignedIfRequired =
     !isCustomVendor ||
     loading ||
@@ -1044,6 +1046,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             },
           );
           queryClient.invalidateQueries({
+            queryKey: ["bookingLeadById", vendorId, leadId],
+          });
+          queryClient.invalidateQueries({
             queryKey: ["bookingLead", leadId],
           });
           queryClient.invalidateQueries({
@@ -1051,6 +1056,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           });
           queryClient.invalidateQueries({
             queryKey: ["vendorSiteSupervisors", vendorId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["site-supervisors"],
           });
           setReassignConfirmOpen(false);
           setReassignOpen(false);
