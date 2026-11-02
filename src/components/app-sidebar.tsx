@@ -23,6 +23,7 @@ import {
   Magnet,
   TriangleAlert,
   CalendarCheck,
+  Package,
 } from "lucide-react";
 
 import { MetaIcon } from "@/components/icons/meta-icon";
@@ -379,6 +380,11 @@ const data = {
         { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
         { title: "Issued Projects", url: "/dashboard/inventory/material-issue/issued-items" },
       ],
+    },
+    {
+      title: "Products Master",
+      url: "/dashboard/inventory/master/products/list",
+      icon: Package,
     },
   ],
   inventoryMasterNav: [

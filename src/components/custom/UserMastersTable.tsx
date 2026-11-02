@@ -927,6 +927,7 @@ export default function UserMastersTable({
                 ? " already has a site supervisor."
                 : " already have site supervisors."}
               {" Are you sure you want to assign this user as an additional site supervisor?"}
+              {vendorData?.data?.handlesLargeScaleProjects === false && " All existing leads with an account in the selected franchises will be assigned to this user, replacing their current site supervisor assignments and previous supervisors in existing lead chats."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

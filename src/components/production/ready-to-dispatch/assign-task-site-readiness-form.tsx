@@ -187,9 +187,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     return formatLocalDate(minDate);
   }, [normalizedUserType]);
 
-  const { data: assignedSiteSupervisor } = useAssignedSiteSupervisor(
+  const { data: assignedSiteSupervisor, isFetching: refreshingSupervisor } = useAssignedSiteSupervisor(
     vendorId,
     leadId,
+    open,
   );
 
   const {
@@ -562,6 +563,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   ]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (values.task_type === "Site Readiness" && refreshingSupervisor) return;
     if (values.task_type === "Approval Request") {
       approvalRequestMutation.mutate(
         {
@@ -925,7 +927,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
               <Button
                 type="submit"
                 className="text-sm"
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || (isSiteReadinessTask && refreshingSupervisor)}
               >
                 {mutation.isPending ? "Submitting..." : "Submit"}
               </Button>

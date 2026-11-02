@@ -360,11 +360,14 @@ export const getAssignedSiteSupervisor = async (
 
 export const useAssignedSiteSupervisor = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  enabled = true,
 ) => {
   return useQuery({
     queryKey: ["assignedSiteSupervisor", vendorId, leadId],
     queryFn: () => getAssignedSiteSupervisor(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    enabled: enabled && !!vendorId && !!leadId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 };

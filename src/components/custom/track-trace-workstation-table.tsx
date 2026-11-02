@@ -55,6 +55,7 @@ import {
   AlertCircle,
   Plus,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { useMachineRules } from "@/hooks/track-trace-hooks/useCutListRulesHooks";
@@ -66,6 +67,7 @@ interface TrackTraceWorkstationTableProps {
   onEditClick: (machine: MachineData) => void;
   onAssignUsersClick: (machineId: number) => void;
   onManageRulesClick?: (machine: MachineData) => void;
+  onDeleteClick?: (machine: MachineData) => void;
   cutlistConfiguration?: string;
   className?: string;
 }
@@ -467,6 +469,7 @@ export default function TrackTraceWorkstationTable({
   onEditClick,
   onAssignUsersClick,
   onManageRulesClick,
+  onDeleteClick,
   cutlistConfiguration = "default",
   className,
 }: TrackTraceWorkstationTableProps) {
@@ -835,13 +838,25 @@ export default function TrackTraceWorkstationTable({
                   <Sheet size={14} />
                   Manage MCP
                 </DropdownMenuItem>
+                {onDeleteClick && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                      onClick={() => onDeleteClick(row.original)}
+                    >
+                      <Trash2 size={14} />
+                      Delete Workstation
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         ),
       },
     ],
-    [onEditClick, onAssignUsersClick, onManageRulesClick, cutlistConfiguration, isRuleManage, router]
+    [onEditClick, onAssignUsersClick, onManageRulesClick, onDeleteClick, cutlistConfiguration, isRuleManage, router]
   );
 
   const tableInstance = useReactTable({
