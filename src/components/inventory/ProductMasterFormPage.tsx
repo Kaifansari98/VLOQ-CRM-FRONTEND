@@ -182,8 +182,8 @@ export function ProductMasterFormPage({
   const [quickAddModal, setQuickAddModal] = useState<{
     open: boolean;
     title: string;
-    fieldKey: "grade_id" | "type_id" | "finish_id" | "core_product_id" | "primary_unit_id";
-    nameKey: "grades" | "types" | "finishes" | "coreProducts" | "units";
+    fieldKey: "brand_id" | "grade_id" | "type_id" | "finish_id" | "core_product_id" | "primary_unit_id";
+    nameKey: "brands" | "grades" | "types" | "finishes" | "coreProducts" | "units";
     items: { id: number; name: string }[];
     placeholder: string;
     endpoint: string;
@@ -979,7 +979,31 @@ export function ProductMasterFormPage({
                     />
                   </Field>
 
-                  <Field label="Brand">
+                  <Field label={
+                    <div className="flex items-center justify-between w-full">
+                      <span>Brand</span>
+                      <button
+                        type="button"
+                        aria-label="Add brand"
+                        onClick={() => setQuickAddModal({
+                          open: true,
+                          title: "Brand",
+                          fieldKey: "brand_id",
+                          nameKey: "brands",
+                          items: (masters.brands || []).map((brand) => ({
+                            id: brand.id,
+                            name: `${brand.brand_name}${brand.brand_short_name ? ` (${brand.brand_short_name})` : ""}`,
+                          })),
+                          placeholder: "Enter brand name",
+                          endpoint: "/track-trace/brands",
+                          payloadKey: "brand_name",
+                        })}
+                        className="inline-flex items-center gap-0.5 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
+                      >
+                        <Plus size={10} /> Add
+                      </button>
+                    </div>
+                  }>
                     <AssignToPicker
                       data={masters.brands?.map((b) => ({
                         id: b.id,
