@@ -411,6 +411,13 @@ const data = {
       ],
     },
   ],
+  hrmsManagementNav: [
+    {
+      title: "Employees Master",
+      url: "/dashboard/masters-management/hrms-masters/employee-master",
+      icon: Users,
+    },
+  ],
   hrmsMastersNav: [
     {
       title: "HRMS Masters",
@@ -624,13 +631,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
     : data.user;
 
-  const { navItems, trackTraceItems, inventoryItems, mastersItems, integrationItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, hrmsItems, mastersItems, integrationItems } = React.useMemo(() => {
     // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
     if (isMasterAdmin) {
       return {
         navItems: data.masterAdminNav,
         trackTraceItems: [],
         inventoryItems: [],
+        hrmsItems: [],
         mastersItems: [],
         integrationItems: [],
       };
@@ -648,6 +656,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
         trackTraceItems: [],
         inventoryItems: [],
+        hrmsItems: [],
         mastersItems: [],
         integrationItems: [],
       };
@@ -665,6 +674,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
         trackTraceItems: [],
         inventoryItems: [],
+        hrmsItems: [],
         mastersItems: [],
         integrationItems: [],
       };
@@ -1107,6 +1117,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       navItems: resolvedNavItems,
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
+      hrmsItems: isSuperAdmin && isCrmEnabled && isHrmsMasterEnabled
+        ? data.hrmsManagementNav
+        : [],
       mastersItems: finalMastersItems,
       integrationItems: finalIntegrationItems,
     };
@@ -1220,6 +1233,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items={navItems}
           trackTraceItems={trackTraceItems}
           inventoryItems={inventoryItems}
+          hrmsItems={hrmsItems}
           mastersItems={mastersItems}
           integrationItems={integrationItems}
           crmGroupLabel={userType === "employee" || isHrmsAdmin ? "HRMS" : undefined}
