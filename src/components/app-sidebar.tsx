@@ -417,6 +417,11 @@ const data = {
       url: "/dashboard/masters-management/hrms-masters/employee-master",
       icon: Users,
     },
+    {
+      title: "Employees Attendance",
+      url: "/dashboard/hrms/employees-attendance",
+      icon: CalendarCheck,
+    },
   ],
   hrmsMastersNav: [
     {
@@ -644,7 +649,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
     }
 
-    // employee only sees Dashboard
+    // Employees can access their dashboard and personal attendance.
     if (userType === "employee") {
       return {
         navItems: [
@@ -656,13 +661,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
         trackTraceItems: [],
         inventoryItems: [],
-        hrmsItems: [],
+        hrmsItems: isHrmsMasterEnabled
+          ? data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          : [],
         mastersItems: [],
         integrationItems: [],
       };
     }
 
-    // HRMS Admin only sees Attendance section
+    // HRMS admins retain attendance administration and personal attendance.
     if (isHrmsAdmin) {
       return {
         navItems: [
@@ -674,7 +681,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
         trackTraceItems: [],
         inventoryItems: [],
-        hrmsItems: [],
+        hrmsItems: isHrmsMasterEnabled
+          ? data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          : [],
         mastersItems: [],
         integrationItems: [],
       };
@@ -1117,8 +1126,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       navItems: resolvedNavItems,
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
-      hrmsItems: isSuperAdmin && isCrmEnabled && isHrmsMasterEnabled
-        ? data.hrmsManagementNav
+      hrmsItems: isHrmsMasterEnabled
+        ? isSuperAdmin
+          ? data.hrmsManagementNav
+          : data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
         : [],
       mastersItems: finalMastersItems,
       integrationItems: finalIntegrationItems,
