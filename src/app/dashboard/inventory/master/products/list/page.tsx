@@ -35,7 +35,7 @@ import {
   History, TrendingUp, Download, Upload,
   ArrowUp, ArrowDown, Clock, Loader2, Pencil,
   Eye,
-  FileSpreadsheet, AlertCircle,
+  FileSpreadsheet, AlertCircle, Sparkles,
 } from "lucide-react";
 import {
   Select,
@@ -1829,6 +1829,7 @@ function ProductBulkUploadModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [readingFile, setReadingFile] = useState(false);
   const [fileError, setFileError] = useState("");
+  const [previewTab, setPreviewTab] = useState<"all" | "ready" | "issues">("all");
   const [preview, setPreview] = useState<{
     headers: string[];
     rows: { rowNumber: number; values: string[]; issues: string[] }[];
@@ -1884,6 +1885,7 @@ function ProductBulkUploadModal({
       const codeIndex = normalizedHeaders.indexOf("item code");
       const nameIndex = normalizedHeaders.indexOf("product name");
       const categoryIndex = normalizedHeaders.indexOf("category");
+      const brandIndex = normalizedHeaders.indexOf("brand");
       const codeRows = new Map<string, number[]>();
       const productRows = new Map<string, number[]>();
       rows.forEach((row) => {
@@ -1891,8 +1893,9 @@ function ProductBulkUploadModal({
         if (code) codeRows.set(code, [...(codeRows.get(code) ?? []), row.rowNumber]);
         const productName = row.values[nameIndex]?.trim().toLowerCase();
         const categoryName = row.values[categoryIndex]?.trim().toLowerCase();
+        const brandName = brandIndex >= 0 ? (row.values[brandIndex]?.trim().toLowerCase() || "nobrand") : "nobrand";
         if (productName && categoryName) {
-          const key = `${categoryName}:${productName}`;
+          const key = `${categoryName}:${brandName}:${productName}`;
           productRows.set(key, [...(productRows.get(key) ?? []), row.rowNumber]);
         }
       });
@@ -1903,7 +1906,7 @@ function ProductBulkUploadModal({
       });
       productRows.forEach((rowNumbers) => {
         if (rowNumbers.length > 1) rowNumbers.forEach((rowNumber) => {
-          rows.find((row) => row.rowNumber === rowNumber)?.issues.push("Product Name is duplicated in this Excel file for this category");
+          rows.find((row) => row.rowNumber === rowNumber)?.issues.push("Product Name is duplicated in this Excel file for this category and brand");
         });
       });
 
@@ -1925,7 +1928,8 @@ function ProductBulkUploadModal({
                 if (code?.trim()) existingCodes.add(code.trim().toLowerCase());
               });
               if (product.product_name?.trim() && product.category?.category_name?.trim()) {
-                existingProducts.add(`${product.category.category_name.trim().toLowerCase()}:${product.product_name.trim().toLowerCase()}`);
+                const bName = product.brand?.brand_name?.trim().toLowerCase() || "nobrand";
+                existingProducts.add(`${product.category.category_name.trim().toLowerCase()}:${bName}:${product.product_name.trim().toLowerCase()}`);
               }
             });
             totalPages = response.total_pages || 1;
@@ -1937,14 +1941,10 @@ function ProductBulkUploadModal({
           if (code && existingCodes.has(code)) row.issues.push("Item Code already exists in Product Master");
           const categoryName = row.values[categoryIndex]?.trim().toLowerCase();
           const productName = row.values[nameIndex]?.trim().toLowerCase();
-          if (categoryName && productName && existingProducts.has(`${categoryName}:${productName}`)) {
-            row.issues.push("Product with this name already exists in this category");
-          }
-          const prefix = categoryName ? categoryPrefixes.get(categoryName) : "";
-          if (code && prefix) {
-            const normalizedCode = code.toUpperCase();
-            const hasPrefix = normalizedCode === prefix || normalizedCode.startsWith(`${prefix}-`) || normalizedCode.startsWith(`${prefix}_`);
-            if (!hasPrefix) row.issues.push(`Item Code must start with category prefix ${prefix}-`);
+          const brandName = brandIndex >= 0 ? (row.values[brandIndex]?.trim().toLowerCase() || "nobrand") : "nobrand";
+          if (categoryName && productName && existingProducts.has(`${categoryName}:${brandName}:${productName}`)) {
+            const bDisplay = brandIndex >= 0 && row.values[brandIndex]?.trim() ? ` for brand "${row.values[brandIndex].trim()}"` : "";
+            row.issues.push(`Product with this name already exists in this category${bDisplay}`);
           }
         });
       } catch (error) {
@@ -2157,52 +2157,210 @@ function ProductBulkUploadModal({
         )}
       </DialogContent>
     </Dialog>
-    {preview && !result && (
-      <Dialog open onOpenChange={(open) => { if (!open && !uploading) setPreview(null); }}>
-        <DialogContent className="w-[min(96vw,88rem)] min-w-0 max-w-none sm:max-w-[min(96vw,88rem)] max-h-[90vh] p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b bg-muted/20">
-            <DialogTitle className="flex items-center gap-2 text-base font-bold"><FileSpreadsheet className="size-5 text-emerald-700" /> Excel Upload Preview</DialogTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Review rows and fix duplicate item codes before uploading.</p>
-          </div>
-          <div className="min-w-0 space-y-4 p-5">
-            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2"><p className="text-xs text-muted-foreground">File</p><p className="mt-0.5 truncate text-xs font-medium">{selectedFile?.name}</p></div>
-              <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2"><p className="text-xs text-muted-foreground">Data rows</p><p className="mt-0.5 text-xs font-medium">{preview.rows.length}</p></div>
-              <div className="min-w-0 rounded-md border bg-emerald-50/60 px-3 py-2"><p className="text-xs text-muted-foreground">Ready rows</p><p className="mt-0.5 text-xs font-semibold text-emerald-700">{preview.rows.filter((row) => row.issues.length === 0 && preview.missingHeaders.length === 0).length}</p></div>
-              <div className={cn("min-w-0 rounded-md border px-3 py-2", preview.rows.some((row) => row.issues.length) || preview.missingHeaders.length ? "border-amber-300 bg-amber-50/70" : "bg-muted/20")}><p className="text-xs text-muted-foreground">Needs attention</p><p className="mt-0.5 text-xs font-semibold">{preview.rows.filter((row) => row.issues.length).length + (preview.missingHeaders.length ? 1 : 0)}</p></div>
+    {preview && !result && (() => {
+      const readyRows = preview.rows.filter((row) => row.issues.length === 0 && preview.missingHeaders.length === 0);
+      const issueRows = preview.rows.filter((row) => row.issues.length > 0);
+      const displayedRows = previewTab === "ready" ? readyRows : previewTab === "issues" ? issueRows : preview.rows;
+
+      return (
+        <Dialog open onOpenChange={(open) => { if (!open && !uploading) setPreview(null); }}>
+          <DialogContent className="w-[min(96vw,88rem)] min-w-0 max-w-none sm:max-w-[min(96vw,88rem)] max-h-[90vh] p-0 overflow-hidden">
+            <div className="px-5 py-4 border-b bg-muted/20">
+              <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                <FileSpreadsheet className="size-5 text-emerald-700" /> Excel Upload Preview
+              </DialogTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Review fields, verify auto-generated codes, and inspect any errors before confirming upload.
+              </p>
             </div>
-            {preview.missingHeaders.length > 0 && <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"><AlertCircle className="size-4 shrink-0" />Required columns missing: {preview.missingHeaders.join(", ")}</div>}
-            {preview.duplicateCheckFailed && <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"><AlertCircle className="size-4 shrink-0" />Could not check item codes against Product Master. The server will validate duplicates during upload.</div>}
-            <div className="min-w-0 max-w-full max-h-[52vh] overflow-auto rounded-md border bg-background">
-              <table className="w-full min-w-max text-[11px]">
-                <thead className="sticky top-0 z-10 bg-muted text-left text-[10px] uppercase tracking-wide text-muted-foreground"><tr><th className="border-r px-2.5 py-2">Excel Row</th>{preview.headers.map((header, index) => <th key={`${header}-${index}`} className="min-w-[120px] whitespace-nowrap border-r px-2.5 py-2">{header || `Column ${index + 1}`}</th>)}<th className="min-w-[240px] px-2.5 py-2">Validation</th></tr></thead>
-                <tbody className="divide-y">
-                  {preview.rows.map((row) => <tr key={row.rowNumber} className={row.issues.length ? "bg-destructive/5" : "bg-background"}>
-                    <td className="border-r px-2.5 py-2 font-mono text-muted-foreground">{row.rowNumber}</td>
-                    {preview.headers.map((header, index) => {
-                      const isCode = header?.toLowerCase().replace(/\*/g, "").trim() === "item code";
-                      const isDuplicate = isCode && row.issues.some((issue) => issue.toLowerCase().includes("item code"));
-                      return <td key={`${header}-${index}`} className={cn("max-w-[240px] truncate border-r px-2.5 py-2", isDuplicate && "bg-amber-100 font-semibold text-amber-800")} title={row.values[index]}>{row.values[index] || <span className="text-muted-foreground/50">—</span>}{isDuplicate && <span className="ml-1">(duplicate)</span>}</td>;
-                    })}
-                    <td className="px-2.5 py-2">{row.issues.length ? <span className="text-destructive">{row.issues.join("; ")}</span> : <span className="text-emerald-700">Passed</span>}</td>
-                  </tr>)}
-                  {preview.rows.length === 0 && <tr><td colSpan={preview.headers.length + 2} className="px-4 py-10 text-center text-muted-foreground">No data rows found in this worksheet.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 border-t pt-3">
-              <Button variant="outline" size="sm" disabled={uploading} onClick={() => { setPreview(null); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}>Choose another file</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={onClose} disabled={uploading}>Cancel</Button>
-                <Button size="sm" disabled={uploading || !selectedFile || !preview.rows.length || preview.missingHeaders.length > 0 || preview.rows.some((row) => row.issues.length > 0)} onClick={() => selectedFile && onUpload(selectedFile)}>
-                  {uploading ? <><Loader2 className="mr-2 size-4 animate-spin" />Uploading…</> : <><Upload className="mr-2 size-4" />Upload {preview.rows.length} rows</>}
+            <div className="min-w-0 space-y-3.5 p-5">
+              {/* Summary Cards */}
+              <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">File Name</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-foreground">{selectedFile?.name}</p>
+                </div>
+                <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">Total Rows</p>
+                  <p className="mt-0.5 text-xs font-bold text-foreground">{preview.rows.length}</p>
+                </div>
+                <div className="min-w-0 rounded-md border bg-emerald-50/70 border-emerald-200 px-3 py-2">
+                  <p className="text-[11px] text-emerald-800 font-medium">Ready to Upload</p>
+                  <p className="mt-0.5 text-xs font-bold text-emerald-700">{readyRows.length}</p>
+                </div>
+                <div className={cn("min-w-0 rounded-md border px-3 py-2", issueRows.length || preview.missingHeaders.length ? "border-amber-300 bg-amber-50/70" : "bg-muted/20")}>
+                  <p className="text-[11px] text-muted-foreground">Needs Attention</p>
+                  <p className={cn("mt-0.5 text-xs font-bold", issueRows.length ? "text-amber-800" : "text-foreground")}>
+                    {issueRows.length + (preview.missingHeaders.length ? 1 : 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Master Auto-creation Note Banner */}
+              <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50/60 px-3 py-2 text-xs text-blue-900">
+                <Sparkles className="size-4 shrink-0 text-blue-600" />
+                <span>
+                  <strong>Master Auto-Creation:</strong> Missing master records (Brand, Category, Sub Category, Core Product, Grade, Finish, Type, Item Group, Unit, HSN) will be auto-created on upload. Empty Item Codes will be auto-generated with sequential category prefixes (e.g. ACCE-001).
+                </span>
+              </div>
+
+              {preview.missingHeaders.length > 0 && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <AlertCircle className="size-4 shrink-0" />
+                  Required columns missing: {preview.missingHeaders.join(", ")}
+                </div>
+              )}
+
+              {/* Filter Tabs */}
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant={previewTab === "all" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-2.5 font-medium"
+                    onClick={() => setPreviewTab("all")}
+                  >
+                    All Rows ({preview.rows.length})
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={previewTab === "ready" ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-7 text-xs px-2.5 font-medium",
+                      previewTab !== "ready" && "text-emerald-700 hover:text-emerald-800 border-emerald-200"
+                    )}
+                    onClick={() => setPreviewTab("ready")}
+                  >
+                    Ready ({readyRows.length})
+                  </Button>
+                  {issueRows.length > 0 && (
+                    <Button
+                      type="button"
+                      variant={previewTab === "issues" ? "destructive" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "h-7 text-xs px-2.5 font-medium",
+                        previewTab !== "issues" && "text-destructive hover:text-destructive border-destructive/30"
+                      )}
+                      onClick={() => setPreviewTab("issues")}
+                    >
+                      Issues ({issueRows.length})
+                    </Button>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Showing {displayedRows.length} of {preview.rows.length} rows
+                </span>
+              </div>
+
+              {/* Preview Table */}
+              <div className="min-w-0 max-w-full max-h-[48vh] overflow-auto rounded-md border bg-background">
+                <table className="w-full min-w-max text-[11px]">
+                  <thead className="sticky top-0 z-10 bg-muted text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="border-r px-2.5 py-2 w-14 text-center">Row</th>
+                      {preview.headers.map((header, index) => (
+                        <th key={`${header}-${index}`} className="min-w-[120px] whitespace-nowrap border-r px-2.5 py-2">
+                          {header || `Column ${index + 1}`}
+                        </th>
+                      ))}
+                      <th className="min-w-[200px] px-2.5 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {displayedRows.map((row) => (
+                      <tr key={row.rowNumber} className={row.issues.length ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/30"}>
+                        <td className="border-r px-2.5 py-2 font-mono text-center text-muted-foreground">{row.rowNumber}</td>
+                        {preview.headers.map((header, index) => {
+                          const isCode = header?.toLowerCase().replace(/\*/g, "").trim() === "item code";
+                          const val = row.values[index];
+                          const isDuplicate = isCode && row.issues.some((issue) => issue.toLowerCase().includes("item code"));
+
+                          if (isCode && !val) {
+                            return (
+                              <td key={`${header}-${index}`} className="border-r px-2.5 py-2">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 font-medium border border-blue-200">
+                                  Auto-generate
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td
+                              key={`${header}-${index}`}
+                              className={cn("max-w-[240px] truncate border-r px-2.5 py-2", isDuplicate && "bg-amber-100 font-semibold text-amber-800")}
+                              title={val}
+                            >
+                              {val || <span className="text-muted-foreground/40">—</span>}
+                              {isDuplicate && <span className="ml-1 text-[10px] text-amber-800 font-bold">(duplicate)</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="px-2.5 py-2">
+                          {row.issues.length ? (
+                            <span className="text-destructive font-medium flex items-start gap-1">
+                              <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+                              <span>{row.issues.join("; ")}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                              <CheckCircle2 className="size-3.5" /> Ready
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {displayedRows.length === 0 && (
+                      <tr>
+                        <td colSpan={preview.headers.length + 2} className="px-4 py-8 text-center text-muted-foreground">
+                          No rows to show in this view.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 border-t pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => {
+                    setPreview(null);
+                    setSelectedFile(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                  }}
+                >
+                  Choose another file
                 </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={onClose} disabled={uploading}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={uploading || !selectedFile || readyRows.length === 0 || preview.missingHeaders.length > 0}
+                    onClick={() => selectedFile && onUpload(selectedFile)}
+                    className="bg-foreground text-background hover:bg-foreground/90 font-medium"
+                  >
+                    {uploading ? (
+                      <><Loader2 className="mr-2 size-4 animate-spin" />Uploading…</>
+                    ) : (
+                      <><Upload className="mr-2 size-4" />Upload {preview.rows.length} rows</>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    )}
+          </DialogContent>
+        </Dialog>
+      );
+    })()}
     </>
   );
 }
