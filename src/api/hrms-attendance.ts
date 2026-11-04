@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import type { AttendanceCorrection, AttendanceEntry } from "@/lib/hrms/attendance";
+import type { AttendanceLogEvent, AttendanceLogRow, AttendanceLogSummary, LogStatus } from "@/lib/hrms/attendance-logs";
 
 export interface ServerCorrection extends Omit<AttendanceCorrection, "date" | "createdAt"> {
   attendance_date: string;
@@ -56,5 +57,36 @@ export function useAttendanceCorrectionInbox(vendorId: number | undefined, page:
   return useQuery({ queryKey: ["attendance-corrections", vendorId, page], enabled: !!vendorId,
     queryFn: async () => (await apiClient.get<{ data: { items: ServerCorrection[]; total: number; total_pages: number; vendor_time_zone: string } }>("/attendance/corrections", { params: { status: "PENDING", page } })).data.data,
     refetchOnWindowFocus: true,
+  });
+}
+
+export type AttendanceLogFilters = { from: string; to: string; search?: string; location?: string; role?: string; unit?: string; status?: string; page?: number; page_size?: number };
+export type AttendanceLogsResponse = {
+  range: { from: string; to: string; today: string; max_days: number }; vendor_time_zone: string; server_time: string;
+  total: number; page: number; page_size: number; total_pages: number; counts: Record<LogStatus, number>;
+  filters: { locations: { value: string; label: string; unit: string | null }[]; roles: string[] };
+  overview: { employees: number; check_ins: number; needs_review: number; work_minutes: number };
+  rows: AttendanceLogRow[]; summary: AttendanceLogSummary[];
+};
+const logParams = (filters: AttendanceLogFilters) => Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== undefined && value !== "" && value !== "all"));
+
+export function useAttendanceLogs(vendorId: number | undefined, filters: AttendanceLogFilters, enabled = true) {
+  return useQuery({
+    queryKey: ["attendance-logs", vendorId, filters], enabled: !!vendorId && enabled,
+    queryFn: async () => (await apiClient.get<{ data: AttendanceLogsResponse }>("/attendance/logs", { params: logParams(filters) })).data.data,
+    placeholderData: keepPreviousData, refetchOnWindowFocus: true, refetchInterval: 60000, retry: 1,
+  });
+}
+
+export async function exportAttendanceLogs(filters: AttendanceLogFilters) {
+  const { page: _page, page_size: _size, ...rest } = filters;
+  return (await apiClient.get<{ data: { rows: AttendanceLogRow[] } }>("/attendance/logs", { params: { ...logParams(rest), export: true } })).data.data.rows;
+}
+
+export function useAttendanceLogDetail(vendorId: number | undefined, attendanceId: number | null) {
+  return useQuery({
+    queryKey: ["attendance-logs", vendorId, "detail", attendanceId], enabled: !!vendorId && !!attendanceId,
+    queryFn: async () => (await apiClient.get<{ data: AttendanceLogRow & { events: AttendanceLogEvent[] } }>(`/attendance/logs/${attendanceId}`)).data.data,
+    retry: 1,
   });
 }

@@ -23,6 +23,7 @@ import {
   Magnet,
   TriangleAlert,
   CalendarCheck,
+  FileClock,
   Package,
 } from "lucide-react";
 
@@ -421,6 +422,11 @@ const data = {
       title: "Employees Attendance",
       url: "/dashboard/hrms/employees-attendance",
       icon: CalendarCheck,
+    },
+    {
+      title: "Attendance Logs",
+      url: "/dashboard/hrms/attendance-logs",
+      icon: FileClock,
     },
   ],
   hrmsMastersNav: [
@@ -1128,7 +1134,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       inventoryItems: finalInventoryItems,
       hrmsItems: isHrmsMasterEnabled
         ? isSuperAdmin
-          ? data.hrmsManagementNav
+          ? data.hrmsManagementNav.filter(item => item.title !== "Attendance Logs" || userType === "super-admin")
           : data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
         : [],
       mastersItems: finalMastersItems,
