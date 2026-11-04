@@ -5,6 +5,7 @@ import {
   downloadProductBulkTemplate, uploadProductBulkSheet, BulkUploadProductResult,
   Product, ProductListResponse, ProductFilters, SyncResult,
 } from "@/api/inventory/inventory";
+import { fetchProductMasters } from "@/api/inventory/product-master";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -34,6 +35,7 @@ import {
   History, TrendingUp, Download, Upload,
   ArrowUp, ArrowDown, Clock, Loader2, Pencil,
   Eye,
+  FileSpreadsheet, AlertCircle,
 } from "lucide-react";
 import {
   Select,
@@ -1794,6 +1796,7 @@ export default function ProductMasterPage() {
         <ProductBulkUploadModal
           uploading={bulkUploading}
           result={bulkUploadResult}
+          vendorId={Number(vendorId)}
           onDownloadTemplate={handleDownloadProductTemplate}
           onUpload={handleUploadProductBulk}
           onClose={() => setShowBulkUpload(false)}
@@ -1808,12 +1811,14 @@ export default function ProductMasterPage() {
 function ProductBulkUploadModal({
   uploading,
   result,
+  vendorId,
   onDownloadTemplate,
   onUpload,
   onClose,
 }: {
   uploading: boolean;
   result: BulkUploadProductResult | null;
+  vendorId: number;
   onDownloadTemplate: () => void;
   onUpload: (file: File) => void;
   onClose: () => void;
@@ -1821,11 +1826,138 @@ function ProductBulkUploadModal({
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const [fileError, setFileError] = useState("");
+  const [preview, setPreview] = useState<{
+    headers: string[];
+    rows: { rowNumber: number; values: string[]; issues: string[] }[];
+    missingHeaders: string[];
+    duplicateCheckFailed: boolean;
+  } | null>(null);
 
-  const handleFile = (file: File | undefined) => {
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!file.name.endsWith(".xlsx")) return;
-    onUpload(file);
+    setFileError("");
+    setPreview(null);
+    setSelectedFile(null);
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setFileError("Choose an .xlsx Excel file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError("The file is larger than the 10 MB limit.");
+      return;
+    }
+    setSelectedFile(file);
+    setReadingFile(true);
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.worksheets[0];
+      if (!sheet) throw new Error("No worksheet was found in this Excel file.");
+      const headers: string[] = [];
+      sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
+        headers[col - 1] = String(cell.value ?? "").trim();
+      });
+      const normalizedHeaders = headers.map((header) => header.toLowerCase().replace(/\*/g, "").trim());
+      const missingHeaders = ["product name", "category", "primary unit"].filter((name) => !normalizedHeaders.includes(name));
+      const rows: { rowNumber: number; values: string[]; issues: string[] }[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const values = headers.map((_, index) => {
+          const value = row.getCell(index + 1).value;
+          if (value === null || value === undefined) return "";
+          if (typeof value === "object" && "text" in value) return String(value.text ?? "").trim();
+          return String(value).trim();
+        });
+        if (!values.some((value) => value.trim())) return;
+        const at = (name: string) => values[normalizedHeaders.indexOf(name)]?.trim() ?? "";
+        const issues: string[] = [];
+        if (!at("product name")) issues.push("Product Name is required");
+        if (!at("category")) issues.push("Category is required");
+        if (!at("primary unit")) issues.push("Primary Unit is required");
+        rows.push({ rowNumber, values, issues });
+      });
+
+      const codeIndex = normalizedHeaders.indexOf("item code");
+      const nameIndex = normalizedHeaders.indexOf("product name");
+      const categoryIndex = normalizedHeaders.indexOf("category");
+      const codeRows = new Map<string, number[]>();
+      const productRows = new Map<string, number[]>();
+      rows.forEach((row) => {
+        const code = row.values[codeIndex]?.trim().toLowerCase();
+        if (code) codeRows.set(code, [...(codeRows.get(code) ?? []), row.rowNumber]);
+        const productName = row.values[nameIndex]?.trim().toLowerCase();
+        const categoryName = row.values[categoryIndex]?.trim().toLowerCase();
+        if (productName && categoryName) {
+          const key = `${categoryName}:${productName}`;
+          productRows.set(key, [...(productRows.get(key) ?? []), row.rowNumber]);
+        }
+      });
+      codeRows.forEach((rowNumbers) => {
+        if (rowNumbers.length > 1) rowNumbers.forEach((rowNumber) => {
+          rows.find((row) => row.rowNumber === rowNumber)?.issues.push("Item Code is duplicated in this Excel file");
+        });
+      });
+      productRows.forEach((rowNumbers) => {
+        if (rowNumbers.length > 1) rowNumbers.forEach((rowNumber) => {
+          rows.find((row) => row.rowNumber === rowNumber)?.issues.push("Product Name is duplicated in this Excel file for this category");
+        });
+      });
+
+      let duplicateCheckFailed = false;
+      try {
+        const existingCodes = new Set<string>();
+        const existingProducts = new Set<string>();
+        const masters = await fetchProductMasters(vendorId);
+        const categoryPrefixes = new Map(
+          masters.categories.map((category) => [category.category_name.trim().toLowerCase(), category.prefix?.trim().toUpperCase().replace(/[-_]+$/, "") || ""])
+        );
+        for (const active of ["Yes", "No"]) {
+          let page = 1;
+          let totalPages = 1;
+          do {
+            const response = await getProducts(vendorId, { page, pageSize: 1000, active });
+            response.products.forEach((product) => {
+              [product.item_code, product.article_code].forEach((code) => {
+                if (code?.trim()) existingCodes.add(code.trim().toLowerCase());
+              });
+              if (product.product_name?.trim() && product.category?.category_name?.trim()) {
+                existingProducts.add(`${product.category.category_name.trim().toLowerCase()}:${product.product_name.trim().toLowerCase()}`);
+              }
+            });
+            totalPages = response.total_pages || 1;
+            page += 1;
+          } while (page <= totalPages);
+        }
+        rows.forEach((row) => {
+          const code = row.values[codeIndex]?.trim().toLowerCase();
+          if (code && existingCodes.has(code)) row.issues.push("Item Code already exists in Product Master");
+          const categoryName = row.values[categoryIndex]?.trim().toLowerCase();
+          const productName = row.values[nameIndex]?.trim().toLowerCase();
+          if (categoryName && productName && existingProducts.has(`${categoryName}:${productName}`)) {
+            row.issues.push("Product with this name already exists in this category");
+          }
+          const prefix = categoryName ? categoryPrefixes.get(categoryName) : "";
+          if (code && prefix) {
+            const normalizedCode = code.toUpperCase();
+            const hasPrefix = normalizedCode === prefix || normalizedCode.startsWith(`${prefix}-`) || normalizedCode.startsWith(`${prefix}_`);
+            if (!hasPrefix) row.issues.push(`Item Code must start with category prefix ${prefix}-`);
+          }
+        });
+      } catch (error) {
+        console.error("Could not check existing product item codes", error);
+        duplicateCheckFailed = true;
+      }
+      setPreview({ headers, rows, missingHeaders, duplicateCheckFailed });
+    } catch (error) {
+      setSelectedFile(null);
+      setFileError(error instanceof Error ? error.message : "Could not read this Excel file.");
+    } finally {
+      setReadingFile(false);
+    }
   };
 
   const handleDownloadErrorFile = () => {
@@ -1848,7 +1980,8 @@ function ProductBulkUploadModal({
   };
 
   return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
+    <>
+    <Dialog open={!preview || !!result} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg p-0 overflow-hidden">
         <div className="px-5 py-4 border-b bg-muted/20">
           <DialogTitle className="text-base font-bold flex items-center gap-2 text-foreground">
@@ -1910,14 +2043,14 @@ function ProductBulkUploadModal({
                 uploading ? "pointer-events-none opacity-60 border-muted" : ""
               )}
             >
-              {uploading ? (
+              {uploading || readingFile ? (
                 <Loader2 size={28} className="animate-spin text-foreground" />
               ) : (
                 <Upload size={28} className="text-muted-foreground/40" />
               )}
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  {uploading ? "Processing Bulk Products..." : "2. Drop .xlsx here or click to browse"}
+                  {uploading ? "Uploading Products..." : readingFile ? "Checking Excel rows…" : "2. Drop .xlsx here or click to browse"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Only .xlsx files · Max 10 MB</p>
               </div>
@@ -1929,6 +2062,7 @@ function ProductBulkUploadModal({
               className="hidden"
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
+            {fileError && <p className="text-xs text-red-700" role="alert">{fileError}</p>}
 
             <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 space-y-1.5">
               <p className="text-xs font-bold text-foreground mb-1">Important Upload Guidelines</p>
@@ -2023,6 +2157,53 @@ function ProductBulkUploadModal({
         )}
       </DialogContent>
     </Dialog>
+    {preview && !result && (
+      <Dialog open onOpenChange={(open) => { if (!open && !uploading) setPreview(null); }}>
+        <DialogContent className="w-[min(96vw,88rem)] min-w-0 max-w-none sm:max-w-[min(96vw,88rem)] max-h-[90vh] p-0 overflow-hidden">
+          <div className="px-5 py-4 border-b bg-muted/20">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold"><FileSpreadsheet className="size-5 text-emerald-700" /> Excel Upload Preview</DialogTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Review rows and fix duplicate item codes before uploading.</p>
+          </div>
+          <div className="min-w-0 space-y-4 p-5">
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2"><p className="text-xs text-muted-foreground">File</p><p className="mt-0.5 truncate text-xs font-medium">{selectedFile?.name}</p></div>
+              <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2"><p className="text-xs text-muted-foreground">Data rows</p><p className="mt-0.5 text-xs font-medium">{preview.rows.length}</p></div>
+              <div className="min-w-0 rounded-md border bg-emerald-50/60 px-3 py-2"><p className="text-xs text-muted-foreground">Ready rows</p><p className="mt-0.5 text-xs font-semibold text-emerald-700">{preview.rows.filter((row) => row.issues.length === 0 && preview.missingHeaders.length === 0).length}</p></div>
+              <div className={cn("min-w-0 rounded-md border px-3 py-2", preview.rows.some((row) => row.issues.length) || preview.missingHeaders.length ? "border-amber-300 bg-amber-50/70" : "bg-muted/20")}><p className="text-xs text-muted-foreground">Needs attention</p><p className="mt-0.5 text-xs font-semibold">{preview.rows.filter((row) => row.issues.length).length + (preview.missingHeaders.length ? 1 : 0)}</p></div>
+            </div>
+            {preview.missingHeaders.length > 0 && <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"><AlertCircle className="size-4 shrink-0" />Required columns missing: {preview.missingHeaders.join(", ")}</div>}
+            {preview.duplicateCheckFailed && <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"><AlertCircle className="size-4 shrink-0" />Could not check item codes against Product Master. The server will validate duplicates during upload.</div>}
+            <div className="min-w-0 max-w-full max-h-[52vh] overflow-auto rounded-md border bg-background">
+              <table className="w-full min-w-max text-[11px]">
+                <thead className="sticky top-0 z-10 bg-muted text-left text-[10px] uppercase tracking-wide text-muted-foreground"><tr><th className="border-r px-2.5 py-2">Excel Row</th>{preview.headers.map((header, index) => <th key={`${header}-${index}`} className="min-w-[120px] whitespace-nowrap border-r px-2.5 py-2">{header || `Column ${index + 1}`}</th>)}<th className="min-w-[240px] px-2.5 py-2">Validation</th></tr></thead>
+                <tbody className="divide-y">
+                  {preview.rows.map((row) => <tr key={row.rowNumber} className={row.issues.length ? "bg-destructive/5" : "bg-background"}>
+                    <td className="border-r px-2.5 py-2 font-mono text-muted-foreground">{row.rowNumber}</td>
+                    {preview.headers.map((header, index) => {
+                      const isCode = header?.toLowerCase().replace(/\*/g, "").trim() === "item code";
+                      const isDuplicate = isCode && row.issues.some((issue) => issue.toLowerCase().includes("item code"));
+                      return <td key={`${header}-${index}`} className={cn("max-w-[240px] truncate border-r px-2.5 py-2", isDuplicate && "bg-amber-100 font-semibold text-amber-800")} title={row.values[index]}>{row.values[index] || <span className="text-muted-foreground/50">—</span>}{isDuplicate && <span className="ml-1">(duplicate)</span>}</td>;
+                    })}
+                    <td className="px-2.5 py-2">{row.issues.length ? <span className="text-destructive">{row.issues.join("; ")}</span> : <span className="text-emerald-700">Passed</span>}</td>
+                  </tr>)}
+                  {preview.rows.length === 0 && <tr><td colSpan={preview.headers.length + 2} className="px-4 py-10 text-center text-muted-foreground">No data rows found in this worksheet.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 border-t pt-3">
+              <Button variant="outline" size="sm" disabled={uploading} onClick={() => { setPreview(null); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}>Choose another file</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={onClose} disabled={uploading}>Cancel</Button>
+                <Button size="sm" disabled={uploading || !selectedFile || !preview.rows.length || preview.missingHeaders.length > 0 || preview.rows.some((row) => row.issues.length > 0)} onClick={() => selectedFile && onUpload(selectedFile)}>
+                  {uploading ? <><Loader2 className="mr-2 size-4 animate-spin" />Uploading…</> : <><Upload className="mr-2 size-4" />Upload {preview.rows.length} rows</>}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }
 
