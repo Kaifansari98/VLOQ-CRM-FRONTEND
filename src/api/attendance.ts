@@ -7,10 +7,14 @@ export interface AttendanceLogItem {
   vendor_id: number;
   franchise_id?: number | null;
   user_id: number;
-  action: "IN" | "OUT";
+  action: "IN" | "OUT" | "BREAK_START" | "BREAK_END" | "CORRECTED";
   action_time: string;
   action_time_local?: string | null;
   source: "MANUAL" | "PHONE" | "CARD";
+  actor_id?: number | null;
+  correction_id?: number | null;
+  before_values?: unknown;
+  after_values?: unknown;
   created_at?: string;
 }
 

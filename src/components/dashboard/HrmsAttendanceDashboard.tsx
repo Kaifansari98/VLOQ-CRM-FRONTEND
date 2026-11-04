@@ -73,7 +73,7 @@ export default function HrmsAttendanceDashboard() {
   // Filter States (Default: "Pick a date" / all dates)
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "CHECKED_IN" | "COMPLETED">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "CHECKED_IN" | "ON_BREAK" | "COMPLETED">("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const limit = 20;
@@ -338,6 +338,7 @@ export default function HrmsAttendanceDashboard() {
                 <SelectContent>
                   <SelectItem value="ALL">All Status</SelectItem>
                   <SelectItem value="CHECKED_IN">Checked In</SelectItem>
+                  <SelectItem value="ON_BREAK">On Break</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>
                 </SelectContent>
               </Select>
@@ -614,7 +615,7 @@ export default function HrmsAttendanceDashboard() {
                         </div>
                         <div>
                           <div className="font-semibold text-sm">
-                            Punch {log.action}
+                            {{ IN: "Checked in", OUT: "Checked out", BREAK_START: "Break started", BREAK_END: "Break ended", CORRECTED: "Attendance corrected" }[log.action]}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             Source: <span className="font-mono">{log.source || "MANUAL"}</span>

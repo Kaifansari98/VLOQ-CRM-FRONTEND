@@ -32,6 +32,7 @@ import {
   useFastProductionRequestDraft,
 } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
+import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
@@ -238,9 +239,22 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }
 
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const largeScaleProjectsFlag = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects,
+  );
+  const useCurrentSupervisor = largeScaleProjectsFlag === false && vendorCustomUserTypeMode !== true;
+  const {
+    data: currentSupervisor,
+    isPending: supervisorPending,
+    isFetching: supervisorRefreshing,
+    isError: assignedSupervisorError,
+  } = useAssignedSiteSupervisor(vendorId, leadId, open && useCurrentSupervisor);
+  const waitingForSupervisor = useCurrentSupervisor && (supervisorPending || supervisorRefreshing);
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   console.log("Assigned site supervisor: ", siteSupervisorCheck)
-  const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
+  const isSiteSupervisorAssigned = useCurrentSupervisor
+    ? !!currentSupervisor?.user_id
+    : siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
   const {
     data: taskConflicts,
     isLoading: restrictedTaskConflictsLoading,
@@ -274,16 +288,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const assignedSiteSupervisorFromMapping =
     leadData?.data?.lead?.assigned_site_supervisor_from_mapping ?? null;
-  const assignedSiteSupervisorId =
-    assignedSiteSupervisorFromMapping?.user_id ??
+  const assignedSiteSupervisorId = useCurrentSupervisor
+    ? currentSupervisor?.user_id
+    : assignedSiteSupervisorFromMapping?.user_id ??
     leadData?.data?.lead?.siteSupervisors?.[0]?.supervisor?.id ??
     leadData?.data?.lead?.siteSupervisors?.[0]?.user_id ??
     undefined;
 
   // Large-scale vendors: designs selected at booking are always sent as Required Documents
-  const handlesLargeScaleProjects = useAppSelector(
-    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
-  );
+  const handlesLargeScaleProjects = largeScaleProjectsFlag === true;
   const { data: bookingLeadData, isLoading: bookingDocsLoading } =
     useBookingLeadById(vendorId, handlesLargeScaleProjects ? leadId : undefined);
   const { data: designDocsData, isLoading: designDocsLoading } = useDesignsDoc(
@@ -533,6 +546,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const baseFinalMeasurementUsers = React.useMemo(() => {
     if (assignedSiteSupervisorId) {
+      if (useCurrentSupervisor && currentSupervisor?.supervisor) {
+        return [currentSupervisor.supervisor];
+      }
       const assigned = (siteSupervisors?.data?.site_supervisors ?? []).find(
         (user: any) => user.id === assignedSiteSupervisorId
       );
@@ -551,7 +567,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         return true;
       },
     );
-  }, [assignedSiteSupervisorId, siteSupervisors, isSuperAdmin]);
+  }, [assignedSiteSupervisorId, siteSupervisors, isSuperAdmin, useCurrentSupervisor, currentSupervisor]);
 
   const finalMeasurementUsers = React.useMemo(() => {
     if (vendorCustomUserTypeMode === true) {
@@ -791,10 +807,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }, [taskType, assignedSiteSupervisorId, form, isCustomUser, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
-    if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned && !vendorCustomUserTypeMode) {
+    if (!waitingForSupervisor && siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned && !vendorCustomUserTypeMode) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege, vendorCustomUserTypeMode]);
+  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege, vendorCustomUserTypeMode, waitingForSupervisor]);
 
   React.useEffect(() => {
     if (!open) {
@@ -971,6 +987,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   ]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (values.task_type === "Final Measurements" &&
+        (waitingForSupervisor || (useCurrentSupervisor && assignedSupervisorError))) return;
     try {
       if (values.task_type === "Approval Request") {
         approvalRequestMutation.mutate(
@@ -1416,6 +1434,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         value={field.value}
                         onChange={field.onChange}
                         disabled={
+                          (taskType === "Final Measurements" && waitingForSupervisor) ||
                           isSelfAssignTask ||
                           (taskType === "Final Measurements" &&
                             !!assignedSiteSupervisorId &&
@@ -1423,6 +1442,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         }
                       />
                     </FormControl>
+                    {taskType === "Final Measurements" && useCurrentSupervisor && assignedSupervisorError && (
+                      <p role="alert" className="text-sm text-destructive">Could not load the assigned supervisor. Reopen this form to retry.</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1578,7 +1600,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                   uploadCSPMutation.isPending ||
                   form.formState.isSubmitting ||
                   (form.watch("task_type") === "Final Measurements" &&
-                    (lockedRequiredDocumentsLoading ||
+                    (waitingForSupervisor ||
+                      (useCurrentSupervisor && assignedSupervisorError) ||
+                      lockedRequiredDocumentsLoading ||
                       (!hasLockedRequiredDocuments &&
                         !form.watch("required_documents")?.length) ||
                       !form.watch("current_site_photos")?.length))

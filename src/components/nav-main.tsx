@@ -165,6 +165,7 @@ export function NavMain({
   items,
   trackTraceItems,
   inventoryItems,
+  hrmsItems,
   mastersItems,
   integrationItems,
   crmGroupLabel,
@@ -172,6 +173,7 @@ export function NavMain({
   items: NavItem[];
   trackTraceItems?: NavItem[];
   inventoryItems?: NavItem[];
+  hrmsItems?: NavItem[];
   mastersItems?: NavItem[];
   integrationItems?: NavItem[];
   crmGroupLabel?: string;
@@ -434,6 +436,7 @@ export function NavMain({
     ...enhancedNavItems,
     ...(trackTraceItems ?? []),
     ...(inventoryItems ?? []),
+    ...(hrmsItems ?? []),
     ...(enhancedMastersItems ?? []),
   ];
 
@@ -720,6 +723,15 @@ export function NavMain({
             </SidebarMenu>
           </SidebarGroup>
         )}
+
+      {(hrmsItems?.length ?? 0) > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>HRMS Management</SidebarGroupLabel>
+          <SidebarMenu>
+            {hrmsItems?.map((item) => renderItem(item))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
 
       {enhancedMastersItems && enhancedMastersItems.length > 0 && (
         <SidebarGroup>

@@ -23,6 +23,7 @@ import {
   Magnet,
   TriangleAlert,
   CalendarCheck,
+  FileClock,
   Package,
 } from "lucide-react";
 
@@ -411,6 +412,23 @@ const data = {
       ],
     },
   ],
+  hrmsManagementNav: [
+    {
+      title: "Employees Master",
+      url: "/dashboard/masters-management/hrms-masters/employee-master",
+      icon: Users,
+    },
+    {
+      title: "Employees Attendance",
+      url: "/dashboard/hrms/employees-attendance",
+      icon: CalendarCheck,
+    },
+    {
+      title: "Attendance Logs",
+      url: "/dashboard/hrms/attendance-logs",
+      icon: FileClock,
+    },
+  ],
   hrmsMastersNav: [
     {
       title: "HRMS Masters",
@@ -624,19 +642,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
     : data.user;
 
-  const { navItems, trackTraceItems, inventoryItems, mastersItems, integrationItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, hrmsItems, mastersItems, integrationItems } = React.useMemo(() => {
     // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
     if (isMasterAdmin) {
       return {
         navItems: data.masterAdminNav,
         trackTraceItems: [],
         inventoryItems: [],
+        hrmsItems: [],
         mastersItems: [],
         integrationItems: [],
       };
     }
 
-    // employee only sees Dashboard
+    // Employees can access their dashboard and personal attendance.
     if (userType === "employee") {
       return {
         navItems: [
@@ -648,12 +667,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
         trackTraceItems: [],
         inventoryItems: [],
+        hrmsItems: isHrmsMasterEnabled
+          ? data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          : [],
         mastersItems: [],
         integrationItems: [],
       };
     }
 
-    // HRMS Admin only sees Attendance section
+    // HRMS admins retain attendance administration and personal attendance.
     if (isHrmsAdmin) {
       return {
         navItems: [
@@ -665,6 +687,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
         trackTraceItems: [],
         inventoryItems: [],
+        hrmsItems: isHrmsMasterEnabled
+          ? data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          : [],
         mastersItems: [],
         integrationItems: [],
       };
@@ -1107,6 +1132,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       navItems: resolvedNavItems,
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
+      hrmsItems: isHrmsMasterEnabled
+        ? isSuperAdmin
+          ? data.hrmsManagementNav.filter(item => item.title !== "Attendance Logs" || userType === "super-admin")
+          : data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+        : [],
       mastersItems: finalMastersItems,
       integrationItems: finalIntegrationItems,
     };
@@ -1220,6 +1250,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items={navItems}
           trackTraceItems={trackTraceItems}
           inventoryItems={inventoryItems}
+          hrmsItems={hrmsItems}
           mastersItems={mastersItems}
           integrationItems={integrationItems}
           crmGroupLabel={userType === "employee" || isHrmsAdmin ? "HRMS" : undefined}

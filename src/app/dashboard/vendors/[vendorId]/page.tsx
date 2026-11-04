@@ -50,6 +50,7 @@ export default function VendorDetailPage() {
 
   const [openCreate, setOpenCreate] = React.useState(false);
   const [form, setForm] = React.useState(EMPTY_FORM);
+  const [codeError, setCodeError] = React.useState("");
   const [mapOpen, setMapOpen] = React.useState(false);
   const [savedMapLocation, setSavedMapLocation] = React.useState<{
     lat: number;
@@ -64,12 +65,16 @@ export default function VendorDetailPage() {
     (event: React.ChangeEvent<HTMLInputElement>) => {
       let value = event.target.value;
       if (field === "contact_number") value = value.replace(/\D/g, "").slice(0, 10);
-      if (field === "franchise_code") value = value.toUpperCase();
+      if (field === "franchise_code") {
+        value = value.toUpperCase();
+        setCodeError("");
+      }
       setForm((prev) => ({ ...prev, [field]: value }));
     };
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
+    setCodeError("");
     setSavedMapLocation(null);
   };
 
@@ -109,6 +114,9 @@ export default function VendorDetailPage() {
       setOpenCreate(false);
       resetForm();
     } catch (error: any) {
+      if (error?.response?.data?.code === "FRANCHISE_CODE_EXISTS") {
+        setCodeError(error.response.data.message);
+      }
       toastManager.add({
         title: error?.response?.data?.message || "Failed to create franchise",
         type: "error",
@@ -176,9 +184,10 @@ export default function VendorDetailPage() {
           </DialogHeader>
 
           <form className="space-y-4 mt-2" onSubmit={handleSubmit}>
+            <p className="text-xs text-muted-foreground">All six fields below are required. Choosing an address from the map is optional.</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="franchise_name">Franchise Name</Label>
+                <Label htmlFor="franchise_name">Franchise Name <span className="text-xs text-muted-foreground">(Required)</span></Label>
                 <Input
                   id="franchise_name"
                   value={form.franchise_name}
@@ -189,20 +198,27 @@ export default function VendorDetailPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="franchise_code">Franchise Code</Label>
+                <Label htmlFor="franchise_code">Franchise Code <span className="text-xs text-muted-foreground">(Required)</span></Label>
                 <Input
                   id="franchise_code"
                   value={form.franchise_code}
                   onChange={handleFieldChange("franchise_code")}
                   placeholder="Enter franchise code"
+                  aria-invalid={!!codeError}
+                  aria-describedby={codeError ? "franchise-code-error" : "franchise-code-hint"}
                   required
                 />
+                {codeError ? (
+                  <p id="franchise-code-error" role="alert" className="text-xs text-destructive">{codeError}</p>
+                ) : (
+                  <p id="franchise-code-hint" className="text-xs text-muted-foreground">Must be unique within this vendor.</p>
+                )}
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="contact_person">Contact Person</Label>
+                <Label htmlFor="contact_person">Contact Person <span className="text-xs text-muted-foreground">(Required)</span></Label>
                 <Input
                   id="contact_person"
                   value={form.contact_person}
@@ -213,7 +229,7 @@ export default function VendorDetailPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="contact_number">Contact Number</Label>
+                <Label htmlFor="contact_number">Contact Number <span className="text-xs text-muted-foreground">(Required)</span></Label>
                 <Input
                   id="contact_number"
                   inputMode="numeric"
@@ -226,7 +242,7 @@ export default function VendorDetailPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="contact_email">Contact Email</Label>
+              <Label htmlFor="contact_email">Contact Email <span className="text-xs text-muted-foreground">(Required)</span></Label>
               <Input
                 id="contact_email"
                 type="email"
@@ -239,7 +255,7 @@ export default function VendorDetailPage() {
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label>Address</Label>
+                <Label>Address <span className="text-xs text-muted-foreground">(Required)</span></Label>
                 <Button
                   type="button"
                   variant="outline"
