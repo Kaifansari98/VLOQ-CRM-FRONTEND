@@ -218,9 +218,7 @@ export default function EmployeeDashboard() {
         badgeVariant: "outline" as const,
         bgClass: "bg-muted text-foreground border border-border",
         icon: LogOut,
-        description: isPunchOutFrozen
-          ? `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. Punch OUT button is frozen for this session (refresh page to punch OUT again).`
-          : `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. You can punch OUT again if needed.`,
+        description: `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. This attendance session is complete.`,
       };
     }
 
@@ -340,7 +338,7 @@ export default function EmployeeDashboard() {
                 size="default"
                 variant={hasMarkedIn && !isPunchOutFrozen ? "default" : "outline"}
                 onClick={() => handlePunch("OUT")}
-                disabled={!hasMarkedIn || isPunchOutFrozen || markMutation.isPending || isLoadingToday}
+                disabled={!hasMarkedIn || !!attendance?.check_out || isPunchOutFrozen || markMutation.isPending || isLoadingToday}
                 className={`h-10 px-5 min-w-[180px] text-sm font-medium transition-all ${
                   !hasMarkedIn
                     ? "opacity-40 cursor-not-allowed bg-muted/40 text-muted-foreground border border-border"
@@ -395,7 +393,7 @@ export default function EmployeeDashboard() {
 
           {hasMarkedIn && (
             <p className="text-xs text-muted-foreground italic">
-               Note : Only one IN Checked is permitted per calendar date. You can Checked OUT multiple times if your day involves breaks or shift departure.
+               One check-in is permitted per calendar date. Use Employees Attendance to record breaks, then check out once when your workday ends.
             </p>
           )}
         </CardContent>
