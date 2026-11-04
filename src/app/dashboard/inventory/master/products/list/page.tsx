@@ -1422,6 +1422,7 @@ export default function ProductMasterPage() {
       const result = await uploadProductBulkSheet(Number(vendorId), Number(userId), file);
       setBulkUploadResult(result);
       fetchProducts();
+      getProductFilters(Number(vendorId)).then(setFiltersData).catch(console.error);
     } catch (e: any) {
       console.error("Bulk upload failed", e);
     } finally {
@@ -1932,8 +1933,9 @@ function ProductBulkUploadModal({
             <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 space-y-1.5">
               <p className="text-xs font-bold text-foreground mb-1">Important Upload Guidelines</p>
               {[
-                "Mandatory fields: Product Name, Category, Item Code (Must be unique), Primary Unit.",
-                "Non-mandatory fields can be left blank, but if filled, values must match system Master tables.",
+                "Mandatory fields: Product Name, Category, Primary Unit.",
+                "Item Code is optional: if left blank, system auto-generates a unique sequential item code based on 4-letter Category prefix (e.g. ACCE-001, FURN-001).",
+                "If master elements (Brand, Category, Sub Category, Core Product, Grade, Finish, Type, Item Group, Unit, HSN) are not already in master tables, they will be automatically created for your vendor without duplication.",
                 "If Barcode is left empty, system auto-generates a unique barcode.",
                 "If errors occur in any rows, valid rows will be saved and an Error Report will be provided.",
               ].map((t, i) => (
@@ -1985,7 +1987,7 @@ function ProductBulkUploadModal({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Review the downloaded error file to fix misspelled master names or missing compulsory values, then re-upload.
+                  Review the downloaded error file to fix missing compulsory values or duplicate item codes, then re-upload.
                 </p>
                 {result.errors?.length > 0 && (
                   <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1 border-t pt-2">
