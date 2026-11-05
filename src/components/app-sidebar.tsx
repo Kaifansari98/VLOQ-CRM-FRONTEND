@@ -24,6 +24,8 @@ import {
   TriangleAlert,
   CalendarCheck,
   FileClock,
+  CalendarDays,
+  NotebookTabs,
   Package,
 } from "lucide-react";
 
@@ -428,6 +430,16 @@ const data = {
       url: "/dashboard/hrms/attendance-logs",
       icon: FileClock,
     },
+    {
+      title: "Leaves Management",
+      url: "/dashboard/hrms/leaves-management",
+      icon: CalendarDays,
+    },
+    {
+      title: "My Leaves",
+      url: "/dashboard/hrms/my-leaves",
+      icon: NotebookTabs,
+    },
   ],
   hrmsMastersNav: [
     {
@@ -668,7 +680,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         trackTraceItems: [],
         inventoryItems: [],
         hrmsItems: isHrmsMasterEnabled
-          ? data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          ? data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
           : [],
         mastersItems: [],
         integrationItems: [],
@@ -688,7 +700,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         trackTraceItems: [],
         inventoryItems: [],
         hrmsItems: isHrmsMasterEnabled
-          ? data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          ? data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
           : [],
         mastersItems: [],
         integrationItems: [],
@@ -1134,8 +1146,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       inventoryItems: finalInventoryItems,
       hrmsItems: isHrmsMasterEnabled
         ? isSuperAdmin
-          ? data.hrmsManagementNav.filter(item => item.title !== "Attendance Logs" || userType === "super-admin")
-          : data.hrmsManagementNav.filter(item => item.title === "Employees Attendance")
+          ? data.hrmsManagementNav.filter(item => !["Attendance Logs", "Leaves Management"].includes(item.title) || userType === "super-admin")
+          : data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
         : [],
       mastersItems: finalMastersItems,
       integrationItems: finalIntegrationItems,
