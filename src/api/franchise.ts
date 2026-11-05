@@ -6,6 +6,7 @@ export interface FranchiseSummary {
   vendor_id: number;
   franchise_name: string;
   franchise_code?: string | null;
+  Department?: "BRANCH" | "FRANCHISE" | "FACTORY" | string | null;
   is_head_office?: boolean;
   moduled_for_b2b?: boolean;
   status?: string | null;

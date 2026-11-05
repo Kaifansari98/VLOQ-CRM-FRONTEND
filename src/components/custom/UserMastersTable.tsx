@@ -15,9 +15,16 @@ import {
 import {
   CheckIcon,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Download,
   EyeIcon,
   EyeOffIcon,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  Trash2,
+  Upload,
   ListFilter,
   Pencil,
   Plus,
@@ -68,11 +75,28 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import type { CreateUserMasterPayload, UpdateUserMasterPayload } from "@/api/typesMasterApi";
-import { fetchUsersForMaster } from "@/api/typesMasterApi";
+import { fetchUsersForMaster, uploadUserDocument, fetchUserDocumentUrl } from "@/api/typesMasterApi";
+import DocumentCard from "@/components/utils/documentCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toastManager } from "@/components/ui/toast";
+
+const toast = {
+  success: (message: string) => toastManager.add({ title: message, type: "success" }),
+  error: (message: string) => toastManager.add({ title: message, type: "error" }),
+};
 
 type UserMasterRow = {
   srNo: number;
   id: number;
+  employee_code?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
   user_name: string;
   designation?: string;
   user_contact: string;
@@ -83,6 +107,7 @@ type UserMasterRow = {
   franchise_id: number | null;
   franchise_ids: number[];
   user_type_id: number | null;
+  created_at?: string;
 };
 
 function formatUserTypeLabel(value?: string | null) {
@@ -109,6 +134,150 @@ function normalizeNumberArray(values: number[]) {
   return Array.from(new Set(values)).sort((left, right) => left - right);
 }
 
+
+function DocumentUploadBox({
+  label,
+  fileUrl,
+  fileName,
+  signedUrlOverride,
+  createdAt,
+  onUpload,
+  onRemove,
+  isUploading,
+}: {
+  label: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  signedUrlOverride?: string | null;
+  createdAt?: string;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+  isUploading?: boolean;
+}) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [signedUrl, setSignedUrl] = React.useState<string>("");
+  const [loadingUrl, setLoadingUrl] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (!fileUrl) {
+      setSignedUrl("");
+      return;
+    }
+    if (signedUrlOverride) {
+      setSignedUrl(signedUrlOverride);
+      return;
+    }
+    if (
+      fileUrl.startsWith("http://") ||
+      fileUrl.startsWith("https://") ||
+      fileUrl.startsWith("blob:")
+    ) {
+      setSignedUrl(fileUrl);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingUrl(true);
+    fetchUserDocumentUrl(fileUrl)
+      .then((url) => {
+        if (isMounted) {
+          setSignedUrl(url || fileUrl);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch signed URL:", err);
+        if (isMounted) {
+          setSignedUrl(fileUrl);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingUrl(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fileUrl, signedUrlOverride]);
+
+  const displayName = React.useMemo(() => {
+    const defaultLabel = label.replace(/^Upload\s+/i, "");
+    const extFromUrl = fileUrl?.split("?")[0]?.split(".").pop()?.toLowerCase();
+    const extFromName = fileName?.split(".").pop()?.toLowerCase();
+    const validExt =
+      extFromName && extFromName.length <= 5
+        ? extFromName
+        : extFromUrl && extFromUrl.length <= 5
+        ? extFromUrl
+        : "pdf";
+
+    const name = fileName?.trim() || fileUrl?.split("/").pop()?.split("?")[0] || "";
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(name);
+    if (!name || isUuid) {
+      return `${defaultLabel.replace(/\s+/g, "_")}.${validExt}`;
+    }
+    return name.includes(".") ? name : `${name}.${validExt}`;
+  }, [label, fileUrl, fileName]);
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium">{label}</Label>
+      {fileUrl ? (
+        <div className="w-full">
+          {loadingUrl && !signedUrl ? (
+            <div className="flex items-center justify-center p-6 border rounded-xl bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+              <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+              <span className="text-xs text-muted-foreground">Loading preview...</span>
+            </div>
+          ) : (
+            <DocumentCard
+              doc={{
+                id: 1,
+                originalName: displayName,
+                signedUrl: signedUrl || fileUrl,
+                created_at: createdAt || undefined,
+              }}
+              canDelete={true}
+              onDelete={() => onRemove()}
+              className="w-full"
+            />
+          )}
+        </div>
+
+          ) : (
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="relative flex flex-col items-center justify-center p-2.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 hover:bg-accent/40 cursor-pointer transition-colors"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onUpload(file);
+              }
+            }}
+          />
+          {isUploading ? (
+            <div className="flex items-center gap-1.5 py-1">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">Uploading...</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-0.5 py-0.5 text-center">
+              <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium">Upload File</span>
+              <span className="text-[10px] text-muted-foreground">PDF, JPG, PNG (Max 10MB)</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getUserMasterColumns(
   isEmployeeMaster: boolean,
   isHrmsMasterEnabled?: boolean,
@@ -127,6 +296,23 @@ function getUserMasterColumns(
       enableSorting: false,
       enableHiding: false,
     },
+  ];
+
+  if (isEmployeeMaster && isHrmsMasterEnabled) {
+    baseColumns.push({
+      accessorKey: "employee_code",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Employee Code" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("employee_code") || "—"}</span>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    });
+  }
+
+  baseColumns.push(
     {
       accessorKey: "user_name",
       header: ({ column }) => (
@@ -160,7 +346,7 @@ function getUserMasterColumns(
       enableSorting: false,
       enableHiding: false,
     },
-  ];
+  );
 
   if (!isEmployeeMaster || isHrmsMasterEnabled) {
     baseColumns.push({
@@ -370,6 +556,14 @@ function getStrengthText(score: number) {
 
 const defaultForm = {
   user_name: "",
+  employee_code: "",
+  department: "",
+  aadhar_no: "",
+  pan_no: "",
+  permanent_address: "",
+  current_address: "",
+  aadhar_card_file: "",
+  pan_card_file: "",
   designation: "",
   user_contact: "",
   user_email: "",
@@ -434,6 +628,15 @@ export default function UserMastersTable({
   const [originalForm, setOriginalForm] = React.useState(defaultForm);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+  const [modalStep, setModalStep] = React.useState<1 | 2>(1);
+  const [uploadingAadhar, setUploadingAadhar] = React.useState(false);
+  const [uploadingPan, setUploadingPan] = React.useState(false);
+  const [aadharFileName, setAadharFileName] = React.useState("");
+  const [panFileName, setPanFileName] = React.useState("");
+  const [sameAddress, setSameAddress] = React.useState(false);
+  const [aadharSignedUrl, setAadharSignedUrl] = React.useState("");
+  const [panSignedUrl, setPanSignedUrl] = React.useState("");
+  const [editingUserCreatedAt, setEditingUserCreatedAt] = React.useState<string | undefined>(undefined);
 
   const authUser = useAppSelector((state) => state.auth.user);
   const { data: vendorData } = useVendorById(vendorId);
@@ -443,8 +646,10 @@ export default function UserMastersTable({
     authUser?.vendor?.is_hrms_master_enabled === true ||
     (authUser as any)?.vendorMaster?.is_hrms_master_enabled === true;
 
+  const isHrmsEmployeeFlow = isEmployeeMaster && isHrmsMasterEnabled;
+
   const effectiveEntityName =
-    isEmployeeMaster && isHrmsMasterEnabled ? "User" : entityName;
+    isHrmsEmployeeFlow ? "User" : entityName;
 
   const queryUserType =
     isEmployeeMaster && isHrmsMasterEnabled
@@ -468,6 +673,35 @@ export default function UserMastersTable({
     vendorId,
     !!vendorId,
   );
+
+  const filteredFranchises = React.useMemo(() => {
+    if (!isHrmsEmployeeFlow) return franchisesData;
+    if (!form.department) return franchisesData;
+
+    const depUpper = form.department.trim().toUpperCase();
+    return franchisesData.filter((fr) => {
+      const fDep = (fr.Department || (fr as any).department || "").trim().toUpperCase();
+      if (fDep) {
+        return fDep === depUpper;
+      }
+      return true;
+    });
+  }, [franchisesData, isHrmsEmployeeFlow, form.department]);
+
+  const handleDepartmentChange = (val: string) => {
+    const nextDepUpper = val.trim().toUpperCase();
+    const matchingFranchises = franchisesData.filter((fr) => {
+      const fDep = (fr.Department || (fr as any).department || "").trim().toUpperCase();
+      return !fDep || fDep === nextDepUpper;
+    });
+    const validIds = new Set(matchingFranchises.map((fr) => fr.id));
+
+    setForm((f) => ({
+      ...f,
+      department: val,
+      franchise_ids: f.franchise_ids.filter((id) => validIds.has(id)),
+    }));
+  };
   const { data: userTypesData } = useUserTypes();
   const employeeUserType = React.useMemo(
     () =>
@@ -514,6 +748,15 @@ export default function UserMastersTable({
         .map((item, index) => ({
           srNo: pagination.pageIndex * pagination.pageSize + index + 1,
           id: item.id,
+          employee_code: item.employee_code ?? "\u2014",
+          department: item.department ?? "",
+          aadhar_no: item.aadhar_no ?? "",
+          pan_no: item.pan_no ?? "",
+          permanent_address: item.permanent_address ?? "",
+          current_address: item.current_address ?? "",
+          aadhar_card_file: item.aadhar_card_file ?? "",
+          pan_card_file: item.pan_card_file ?? "",
+          created_at: (item as any).created_at ?? "",
           user_name: item.user_name,
           designation: item.designation ?? "",
           user_contact: item.user_contact,
@@ -538,6 +781,9 @@ export default function UserMastersTable({
       userTypeFilter,
       isEmployeeMaster,
       isHrmsMasterEnabled,
+      isHrmsEmployeeFlow,
+      router,
+      vendorIdOverride,
     ],
   );
 
@@ -545,6 +791,13 @@ export default function UserMastersTable({
 
   const handleRowDoubleClick = React.useCallback(
     (row: UserMasterRow) => {
+      if (isHrmsEmployeeFlow) {
+        router.push(
+          `/dashboard/masters-management/hrms-masters/employee-master/edit/${row.id}` +
+            (vendorIdOverride ? `?vendor_id=${vendorIdOverride}` : ""),
+        );
+        return;
+      }
       const fallbackUserTypeId =
         row.user_type_id ??
         userTypesData?.data?.find(
@@ -556,8 +809,33 @@ export default function UserMastersTable({
           ? employeeUserType.id
           : null);
 
+      const normalizeDept = (d?: string | null) => {
+        if (!d || d === "—") return "";
+        const lower = d.trim().toLowerCase();
+        if (lower === "branch") return "Branch";
+        if (lower === "franchise") return "Franchise";
+        if (lower === "factory") return "Factory";
+        return d.trim();
+      };
+
+      let initialDept = normalizeDept(row.department);
+      if (!initialDept && row.franchise_ids?.length) {
+        const matchedFranchise = franchisesData.find((fr) => row.franchise_ids.includes(fr.id));
+        if (matchedFranchise?.Department) {
+          initialDept = normalizeDept(matchedFranchise.Department);
+        }
+      }
+
       const prefilled = {
         user_name: row.user_name,
+        employee_code: row.employee_code && row.employee_code !== "—" ? row.employee_code : "",
+        department: initialDept,
+        aadhar_no: row.aadhar_no || "",
+        pan_no: row.pan_no || "",
+        permanent_address: row.permanent_address || "",
+        current_address: row.current_address || "",
+        aadhar_card_file: row.aadhar_card_file || "",
+        pan_card_file: row.pan_card_file || "",
         designation: row.designation || "",
         user_contact: row.user_contact,
         user_email: row.user_email,
@@ -573,13 +851,38 @@ export default function UserMastersTable({
       setEditingUserId(row.id);
       setEditingUserType(row.user_type);
       setModalMode("edit");
+      setModalStep(1);
+      setEditingUserCreatedAt(row.created_at || undefined);
+      setAadharSignedUrl("");
+      setPanSignedUrl("");
+      setAadharFileName(
+        row.aadhar_card_file
+          ? row.aadhar_card_file.split("/").pop() || "Aadhar_Card"
+          : ""
+      );
+      setPanFileName(
+        row.pan_card_file
+          ? row.pan_card_file.split("/").pop() || "PAN_Card"
+          : ""
+      );
+      setSameAddress(
+        Boolean(
+          row.permanent_address &&
+          row.current_address &&
+          row.permanent_address.trim() === row.current_address.trim()
+        )
+      );
       setOpenCreateModal(true);
     },
     [
       userTypesData?.data,
       isEmployeeMaster,
       isHrmsMasterEnabled,
+      isHrmsEmployeeFlow,
+      router,
+      vendorIdOverride,
       employeeUserType?.id,
+      franchisesData,
     ],
   );
 
@@ -594,6 +897,9 @@ export default function UserMastersTable({
     [
       isEmployeeMaster,
       isHrmsMasterEnabled,
+      isHrmsEmployeeFlow,
+      router,
+      vendorIdOverride,
       handleManagePrivileges,
       handleRowDoubleClick,
     ],
@@ -665,6 +971,54 @@ export default function UserMastersTable({
     return list;
   }, [userTypesData?.data]);
 
+  const handleUploadAadhar = async (file: File) => {
+    if (!vendorId) return;
+    setUploadingAadhar(true);
+    try {
+      const res = await uploadUserDocument(file, vendorId);
+      if (res.file_url) {
+        setForm((f) => ({ ...f, aadhar_card_file: res.file_url }));
+        setAadharFileName(file.name);
+        if (res.signed_url) setAadharSignedUrl(res.signed_url);
+        toast.success("Aadhar card uploaded successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to upload Aadhar card");
+    } finally {
+      setUploadingAadhar(false);
+    }
+  };
+
+  const handleUploadPan = async (file: File) => {
+    if (!vendorId) return;
+    setUploadingPan(true);
+    try {
+      const res = await uploadUserDocument(file, vendorId);
+      if (res.file_url) {
+        setForm((f) => ({ ...f, pan_card_file: res.file_url }));
+        setPanFileName(file.name);
+        if (res.signed_url) setPanSignedUrl(res.signed_url);
+        toast.success("PAN card uploaded successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to upload PAN card");
+    } finally {
+      setUploadingPan(false);
+    }
+  };
+
+  const handleRemoveAadhar = () => {
+    setForm((f) => ({ ...f, aadhar_card_file: "" }));
+    setAadharFileName("");
+    setAadharSignedUrl("");
+  };
+
+  const handleRemovePan = () => {
+    setForm((f) => ({ ...f, pan_card_file: "" }));
+    setPanFileName("");
+    setPanSignedUrl("");
+  };
+
   const resetForm = () => {
     setSupervisorConfirmation(null);
     let defaultUserTypeId = "";
@@ -684,6 +1038,15 @@ export default function UserMastersTable({
     setModalMode("create");
     setEditingUserId(null);
     setEditingUserType(null);
+    setModalStep(1);
+    setUploadingAadhar(false);
+    setUploadingPan(false);
+    setAadharFileName("");
+    setPanFileName("");
+    setAadharSignedUrl("");
+    setPanSignedUrl("");
+    setEditingUserCreatedAt(undefined);
+    setSameAddress(false);
   };
 
   React.useEffect(() => {
@@ -736,7 +1099,8 @@ export default function UserMastersTable({
     form.user_email.trim() &&
     isPasswordValid &&
     form.franchise_ids.length > 0 &&
-    effectiveUserTypeId;
+    effectiveUserTypeId &&
+    (!isHrmsEmployeeFlow || Boolean(form.department?.trim()));
 
   const handleSubmitError = (error: unknown, confirm: () => void) => {
     const response = (error as { response?: { data?: {
@@ -779,8 +1143,32 @@ export default function UserMastersTable({
     if (form.user_name.trim() !== originalForm.user_name.trim())
       payload.user_name = form.user_name.trim();
 
+    if (form.employee_code?.trim() !== (originalForm.employee_code || "").trim())
+      payload.employee_code = form.employee_code?.trim() || null;
+
     if (form.designation.trim() !== (originalForm.designation || "").trim())
       payload.designation = form.designation.trim() || null;
+
+    if ((form.department || "").trim() !== (originalForm.department || "").trim())
+      payload.department = form.department?.trim() || null;
+
+    if ((form.aadhar_no || "").trim() !== (originalForm.aadhar_no || "").trim())
+      payload.aadhar_no = form.aadhar_no?.trim() || null;
+
+    if ((form.pan_no || "").trim() !== (originalForm.pan_no || "").trim())
+      payload.pan_no = form.pan_no?.trim() || null;
+
+    if ((form.permanent_address || "").trim() !== (originalForm.permanent_address || "").trim())
+      payload.permanent_address = form.permanent_address?.trim() || null;
+
+    if ((form.current_address || "").trim() !== (originalForm.current_address || "").trim())
+      payload.current_address = form.current_address?.trim() || null;
+
+    if ((form.aadhar_card_file || "").trim() !== (originalForm.aadhar_card_file || "").trim())
+      payload.aadhar_card_file = form.aadhar_card_file?.trim() || null;
+
+    if ((form.pan_card_file || "").trim() !== (originalForm.pan_card_file || "").trim())
+      payload.pan_card_file = form.pan_card_file?.trim() || null;
 
     const currContact = extractNational(form.user_contact);
     const origContact = extractNational(originalForm.user_contact);
@@ -829,6 +1217,13 @@ export default function UserMastersTable({
         password: form.password,
         user_type_id: Number(effectiveUserTypeId),
         status: form.status,
+        department: form.department?.trim() || undefined,
+        aadhar_no: form.aadhar_no?.trim() || undefined,
+        pan_no: form.pan_no?.trim() || undefined,
+        permanent_address: form.permanent_address?.trim() || undefined,
+        current_address: form.current_address?.trim() || undefined,
+        aadhar_card_file: form.aadhar_card_file?.trim() || undefined,
+        pan_card_file: form.pan_card_file?.trim() || undefined,
       }
     );
   };
@@ -855,6 +1250,7 @@ export default function UserMastersTable({
 
       worksheet.columns = [
         { header: "Sr No", key: "srNo", width: 8 },
+        ...(isHrmsEmployeeFlow ? [{ header: "Employee Code", key: "employee_code", width: 18 }] : []),
         { header: "Name", key: "name", width: 25 },
         { header: "Contact No", key: "contact", width: 18 },
         { header: "Email", key: "email", width: 30 },
@@ -872,6 +1268,7 @@ export default function UserMastersTable({
       exportRows.forEach((item, index) => {
         worksheet.addRow({
           srNo: index + 1,
+          employee_code: item.employee_code || "-",
           name: item.user_name,
           contact: item.user_contact,
           email: item.user_email,
@@ -970,6 +1367,13 @@ export default function UserMastersTable({
                 />
                 <Button
                   onClick={() => {
+                    if (isHrmsEmployeeFlow) {
+                      router.push(
+                        "/dashboard/masters-management/hrms-masters/employee-master/create" +
+                          (vendorIdOverride ? `?vendor_id=${vendorIdOverride}` : ""),
+                      );
+                      return;
+                    }
                     resetForm();
                     setOpenCreateModal(true);
                   }}
@@ -982,6 +1386,13 @@ export default function UserMastersTable({
             </div>
             <Button
               onClick={() => {
+                if (isHrmsEmployeeFlow) {
+                  router.push(
+                    "/dashboard/masters-management/hrms-masters/employee-master/create" +
+                      (vendorIdOverride ? `?vendor_id=${vendorIdOverride}` : ""),
+                  );
+                  return;
+                }
                 resetForm();
                 setOpenCreateModal(true);
               }}
@@ -1019,103 +1430,442 @@ export default function UserMastersTable({
           if (!open) resetForm();
         }}
       >
-        <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-6 pt-6 pb-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              {modalMode === "edit" ? (
-                <UserCog size={18} className="text-primary" />
-              ) : (
-                <UserPlus size={18} className="text-primary" />
-              )}
+          <div className="flex items-center justify-between gap-3 px-6 pt-6 pb-0">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                {modalMode === "edit" ? (
+                  <UserCog size={18} className="text-primary" />
+                ) : (
+                  <UserPlus size={18} className="text-primary" />
+                )}
+              </div>
+              <div className="flex flex-col">
+                <DialogTitle className="text-base font-semibold leading-tight">
+                  {modalMode === "edit" ? `Edit ${effectiveEntityName}` : `Create ${effectiveEntityName}`}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground leading-tight mt-0.5">
+                  {modalMode === "edit"
+                    ? `Update the details for this ${effectiveEntityName.toLowerCase()}.`
+                    : isHrmsEmployeeFlow
+                    ? modalStep === 1
+                      ? "Enter basic user, department & credentials (Step 1 of 2)"
+                      : "Enter IDs & addresses (Step 2 of 2)"
+                    : `Add a new ${effectiveEntityName.toLowerCase()} for this vendor.`}
+                </DialogDescription>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <DialogTitle className="text-base font-semibold leading-tight">
-                {modalMode === "edit" ? `Edit ${effectiveEntityName}` : `Create ${effectiveEntityName}`}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground leading-tight mt-0.5">
-                {modalMode === "edit"
-                  ? `Update the details for this ${effectiveEntityName.toLowerCase()}.`
-                  : `Add a new ${effectiveEntityName.toLowerCase()} for this vendor.`}
-              </DialogDescription>
-            </div>
+            {isHrmsEmployeeFlow && (
+              <div className="flex items-center gap-1.5 text-xs font-medium">
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] transition-colors ${
+                    modalStep === 1
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  1. Basic
+                </span>
+                <span className="text-muted-foreground text-[10px]">→</span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] transition-colors ${
+                    modalStep === 2
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  2. Details
+                </span>
+              </div>
+            )}
           </div>
           <div className="mx-6 border-b" />
 
-          <div className="px-6 pb-5 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {isEmployeeMaster ? (
-                <>
-                  {/* Row 1: User Name | Contact No. */}
-                  <div className="space-y-2">
-                    <Label htmlFor="user-name">User Name</Label>
-                    <Input
-                      id="user-name"
-                      value={form.user_name}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, user_name: e.target.value }))
-                      }
-                      placeholder="Enter user name"
-                    />
-                  </div>
+          <div className="px-6 pb-5 space-y-4 max-h-[75vh] overflow-y-auto">
+            {isHrmsEmployeeFlow && modalStep === 2 ? (
+              /* ================== STEP 2 (Employee Details) ================== */
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                {/* Aadhar No & PAN No */}
+                <div className="space-y-2">
+                  <Label htmlFor="employee-aadhar-no">Aadhar Card No.</Label>
+                  <Input
+                    id="employee-aadhar-no"
+                    placeholder="12-digit Aadhar"
+                    maxLength={12}
+                    value={form.aadhar_no}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 12);
+                      setForm((f) => ({ ...f, aadhar_no: val }));
+                    }}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label>Contact No.</Label>
-                    <PhoneInput
-                      defaultCountry="IN"
-                      placeholder="Enter contact number"
-                      value={form.user_contact}
-                      onChange={(val) =>
-                        setForm((f) => ({ ...f, user_contact: val }))
-                      }
-                      validateIndianNumber={true}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="employee-pan-no">PAN Card No.</Label>
+                  <Input
+                    id="employee-pan-no"
+                    placeholder="10-digit PAN (e.g. ABCDE1234F)"
+                    maxLength={10}
+                    value={form.pan_no}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase().slice(0, 10);
+                      setForm((f) => ({ ...f, pan_no: val }));
+                    }}
+                  />
+                </div>
 
-                  {/* Row 2: Email | Status */}
-                  <div className="space-y-2">
-                    <Label htmlFor="user-email">Email</Label>
-                    <Input
-                      id="user-email"
-                      type="email"
-                      value={form.user_email}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, user_email: e.target.value }))
-                      }
-                      placeholder="Enter email"
-                    />
-                  </div>
+                {/* Aadhar & PAN Document Uploads */}
+                <div className="space-y-2">
+                  <DocumentUploadBox
+                    label="Upload Aadhar Card"
+                    fileUrl={form.aadhar_card_file}
+                    fileName={aadharFileName}
+                    signedUrlOverride={aadharSignedUrl}
+                    createdAt={editingUserCreatedAt}
+                    onUpload={handleUploadAadhar}
+                    onRemove={handleRemoveAadhar}
+                    isUploading={uploadingAadhar}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <div className="flex h-9 items-center gap-4 rounded-md border px-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={form.status === "active"}
-                          onCheckedChange={(checked) =>
-                            setForm((f) => ({
-                              ...f,
-                              status: checked ? "active" : "inactive",
-                            }))
+                <div className="space-y-2">
+                  <DocumentUploadBox
+                    label="Upload PAN Card"
+                    fileUrl={form.pan_card_file}
+                    fileName={panFileName}
+                    signedUrlOverride={panSignedUrl}
+                    createdAt={editingUserCreatedAt}
+                    onUpload={handleUploadPan}
+                    onRemove={handleRemovePan}
+                    isUploading={uploadingPan}
+                  />
+                </div>
+
+                {/* Permanent Address */}
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="employee-permanent-address">Permanent Address</Label>
+                  <Textarea
+                    id="employee-permanent-address"
+                    rows={2}
+                    placeholder="Enter permanent address..."
+                    value={form.permanent_address}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm((f) => {
+                        const next = { ...f, permanent_address: val };
+                        if (sameAddress) next.current_address = val;
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+
+                {/* Current Address */}
+                <div className="space-y-2 col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="employee-current-address">Current Address</Label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="rounded border-zinc-300 text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
+                        checked={sameAddress}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSameAddress(checked);
+                          if (checked) {
+                            setForm((f) => ({ ...f, current_address: f.permanent_address }));
                           }
-                        />
-                        <span className="text-sm">Active</span>
-                      </label>
-                      <span className="text-xs text-muted-foreground">
-                        {form.status === "active"
-                          ? "User will be active"
-                          : "User will be inactive"}
-                      </span>
-                    </div>
+                        }}
+                      />
+                      Same as Permanent Address
+                    </label>
                   </div>
+                  <Textarea
+                    id="employee-current-address"
+                    rows={2}
+                    placeholder="Enter current address..."
+                    value={form.current_address}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSameAddress(false);
+                      setForm((f) => ({ ...f, current_address: val }));
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* ================== STEP 1 (Basic & Login Info) ================== */
+              <div className="grid grid-cols-2 gap-4">
+                {isEmployeeMaster ? (
+                  <>
+                    {modalMode === "edit" && form.employee_code ? (
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="employee-code">Employee Code</Label>
+                        <Input
+                          id="employee-code"
+                          value={form.employee_code}
+                          disabled
+                          className="bg-muted font-mono"
+                        />
+                      </div>
+                    ) : null}
+                    {/* Row 1: User Name | Contact No. */}
+                    <div className="space-y-2">
+                      <Label htmlFor="user-name">User Name</Label>
+                      <Input
+                        id="user-name"
+                        value={form.user_name}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, user_name: e.target.value }))
+                        }
+                        placeholder="Enter user name"
+                      />
+                    </div>
 
-                  {/* Row 3: If HRMS Master is enabled, render User Type and Designation side-by-side, with Franchise spanning 2 cols */}
-                  {isHrmsMasterEnabled ? (
-                    <>
+                    <div className="space-y-2">
+                      <Label>Contact No.</Label>
+                      <PhoneInput
+                        defaultCountry="IN"
+                        placeholder="Enter contact number"
+                        value={form.user_contact}
+                        onChange={(val) =>
+                          setForm((f) => ({ ...f, user_contact: val }))
+                        }
+                        validateIndianNumber={true}
+                      />
+                    </div>
+
+                    {/* Row 2: Email | Status */}
+                    <div className="space-y-2">
+                      <Label htmlFor="user-email">Email</Label>
+                      <Input
+                        id="user-email"
+                        type="email"
+                        value={form.user_email}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, user_email: e.target.value }))
+                        }
+                        placeholder="Enter email"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <div className="flex h-9 items-center gap-4 rounded-md border px-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={form.status === "active"}
+                            onCheckedChange={(checked) =>
+                              setForm((f) => ({
+                                ...f,
+                                status: checked ? "active" : "inactive",
+                              }))
+                            }
+                          />
+                          <span className="text-sm">Active</span>
+                        </label>
+                        <span className="text-xs text-muted-foreground">
+                          {form.status === "active"
+                            ? "User will be active"
+                            : "User will be inactive"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 3: If HRMS Master is enabled, render User Type and Designation side-by-side, with Franchise spanning 2 cols */}
+                    {isHrmsMasterEnabled ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label>User Type</Label>
+                          <AssignToPicker
+                            data={hrmsUserTypeOptions}
+                            value={
+                              form.user_type_id ? Number(form.user_type_id) : undefined
+                            }
+                            onChange={(selectedId) =>
+                              setForm((f) => ({
+                                ...f,
+                                user_type_id: selectedId ? String(selectedId) : "",
+                              }))
+                            }
+                            placeholder="Select user type..."
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="user-designation">Designation</Label>
+                          <Input
+                            id="user-designation"
+                            value={form.designation}
+                            onChange={(e) =>
+                              setForm((f) => ({ ...f, designation: e.target.value }))
+                            }
+                            placeholder="Enter designation"
+                          />
+                        </div>
+
+                        {/* Department & Franchise on same row */}
+                        <div className="space-y-2">
+                          <Label htmlFor="employee-department">
+                            Department <span className="text-destructive">*</span>
+                          </Label>
+                          <Select
+                            value={form.department}
+                            onValueChange={handleDepartmentChange}
+                          >
+                            <SelectTrigger id="employee-department" className="h-9 w-full">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Branch">Branch</SelectItem>
+                              <SelectItem value="Franchise">Franchise</SelectItem>
+                              <SelectItem value="Factory">Factory</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="employee-franchise-search">
+                            Franchise <span className="text-destructive">*</span>
+                          </Label>
+                          <MultipleSelector
+                            inputProps={{
+                              id: "employee-franchise-search",
+                              name: "employee-franchise-search",
+                              autoComplete: "off",
+                              autoCapitalize: "none",
+                              spellCheck: false,
+                            }}
+                            options={filteredFranchises.map((fr) => ({
+                              value: String(fr.id),
+                              label: fr.franchise_name,
+                            }))}
+                            value={form.franchise_ids.map((id) => ({
+                              value: String(id),
+                              label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                            }))}
+                            onChange={(selected) =>
+                              setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                            }
+                            placeholder={
+                              form.department
+                                ? `Select ${form.department} franchises...`
+                                : "Select franchises..."
+                            }
+                            hidePlaceholderWhenSelected
+                            showSelectedOptionsInDropdown
+                          />
+                          {form.department && filteredFranchises.length === 0 && (
+                            <p className="text-[11px] text-amber-600 mt-1">
+                              No franchises under {form.department}.
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="user-designation">Designation</Label>
+                          <Input
+                            id="user-designation"
+                            value={form.designation}
+                            onChange={(e) =>
+                              setForm((f) => ({ ...f, designation: e.target.value }))
+                            }
+                            placeholder="Enter designation"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="employee-franchise-search">Franchise</Label>
+                          <MultipleSelector
+                            inputProps={{
+                              id: "employee-franchise-search",
+                              name: "employee-franchise-search",
+                              autoComplete: "off",
+                              autoCapitalize: "none",
+                              spellCheck: false,
+                            }}
+                            options={franchisesData.map((fr) => ({
+                              value: String(fr.id),
+                              label: fr.franchise_name,
+                            }))}
+                            value={form.franchise_ids.map((id) => ({
+                              value: String(id),
+                              label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                            }))}
+                            onChange={(selected) =>
+                              setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                            }
+                            placeholder="Select franchises..."
+                            hidePlaceholderWhenSelected
+                            showSelectedOptionsInDropdown
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Row 1: User Name | Designation */}
+                    <div className="space-y-2">
+                      <Label htmlFor="user-name">User Name</Label>
+                      <Input
+                        id="user-name"
+                        value={form.user_name}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, user_name: e.target.value }))
+                        }
+                        placeholder="Enter user name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="user-designation">Designation</Label>
+                      <Input
+                        id="user-designation"
+                        value={form.designation}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, designation: e.target.value }))
+                        }
+                        placeholder="Enter designation"
+                      />
+                    </div>
+
+                    {/* Row 2: Contact No. | Email */}
+                    <div className="space-y-2">
+                      <Label>Contact No.</Label>
+                      <PhoneInput
+                        defaultCountry="IN"
+                        placeholder="Enter contact number"
+                        value={form.user_contact}
+                        onChange={(val) =>
+                          setForm((f) => ({ ...f, user_contact: val }))
+                        }
+                        validateIndianNumber={true}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="user-email">Email</Label>
+                      <Input
+                        id="user-email"
+                        type="email"
+                        value={form.user_email}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, user_email: e.target.value }))
+                        }
+                        placeholder="Enter email"
+                      />
+                    </div>
+
+                    {/* Row 3: User Type | Franchise */}
+                    {!isEditingCustomUser && (
                       <div className="space-y-2">
                         <Label>User Type</Label>
                         <AssignToPicker
-                          data={hrmsUserTypeOptions}
+                          data={userTypeOptions}
                           value={
                             form.user_type_id ? Number(form.user_type_id) : undefined
                           }
@@ -1128,317 +1878,175 @@ export default function UserMastersTable({
                           placeholder="Select user type..."
                         />
                       </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="user-designation">Designation</Label>
-                        <Input
-                          id="user-designation"
-                          value={form.designation}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, designation: e.target.value }))
-                          }
-                          placeholder="Enter designation"
-                        />
-                      </div>
-
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="employee-franchise-search">Franchise</Label>
-                        <MultipleSelector
-                          inputProps={{
-                            id: "employee-franchise-search",
-                            name: "employee-franchise-search",
-                            autoComplete: "off",
-                            autoCapitalize: "none",
-                            spellCheck: false,
-                          }}
-                          options={franchisesData.map((fr) => ({
-                            value: String(fr.id),
-                            label: fr.franchise_name,
-                          }))}
-                          value={form.franchise_ids.map((id) => ({
-                            value: String(id),
-                            label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
-                          }))}
-                          onChange={(selected) =>
-                            setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
-                          }
-                          placeholder="Select franchises..."
-                          hidePlaceholderWhenSelected
-                          showSelectedOptionsInDropdown
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="user-designation">Designation</Label>
-                        <Input
-                          id="user-designation"
-                          value={form.designation}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, designation: e.target.value }))
-                          }
-                          placeholder="Enter designation"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="employee-franchise-search">Franchise</Label>
-                        <MultipleSelector
-                          inputProps={{
-                            id: "employee-franchise-search",
-                            name: "employee-franchise-search",
-                            autoComplete: "off",
-                            autoCapitalize: "none",
-                            spellCheck: false,
-                          }}
-                          options={franchisesData.map((fr) => ({
-                            value: String(fr.id),
-                            label: fr.franchise_name,
-                          }))}
-                          value={form.franchise_ids.map((id) => ({
-                            value: String(id),
-                            label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
-                          }))}
-                          onChange={(selected) =>
-                            setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
-                          }
-                          placeholder="Select franchises..."
-                          hidePlaceholderWhenSelected
-                          showSelectedOptionsInDropdown
-                        />
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Row 1: User Name | Designation */}
-                  <div className="space-y-2">
-                    <Label htmlFor="user-name">User Name</Label>
-                    <Input
-                      id="user-name"
-                      value={form.user_name}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, user_name: e.target.value }))
-                      }
-                      placeholder="Enter user name"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="user-designation">Designation</Label>
-                    <Input
-                      id="user-designation"
-                      value={form.designation}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, designation: e.target.value }))
-                      }
-                      placeholder="Enter designation"
-                    />
-                  </div>
-
-                  {/* Row 2: Contact No. | Email */}
-                  <div className="space-y-2">
-                    <Label>Contact No.</Label>
-                    <PhoneInput
-                      defaultCountry="IN"
-                      placeholder="Enter contact number"
-                      value={form.user_contact}
-                      onChange={(val) =>
-                        setForm((f) => ({ ...f, user_contact: val }))
-                      }
-                      validateIndianNumber={true}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="user-email">Email</Label>
-                    <Input
-                      id="user-email"
-                      type="email"
-                      value={form.user_email}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, user_email: e.target.value }))
-                      }
-                      placeholder="Enter email"
-                    />
-                  </div>
-
-                  {/* Row 3: User Type | Franchise */}
-                  {!isEditingCustomUser && (
-                    <div className="space-y-2">
-                      <Label>User Type</Label>
-                      <AssignToPicker
-                        data={userTypeOptions}
-                        value={
-                          form.user_type_id ? Number(form.user_type_id) : undefined
-                        }
-                        onChange={(selectedId) =>
-                          setForm((f) => ({
-                            ...f,
-                            user_type_id: selectedId ? String(selectedId) : "",
-                          }))
-                        }
-                        placeholder="Select user type..."
-                      />
-                    </div>
-                  )}
-
-                  <div
-                    className={cn(
-                      "space-y-2",
-                      isEditingCustomUser && "col-span-2",
                     )}
-                  >
-                    <Label htmlFor="user-franchise-search">Franchise</Label>
-                    <MultipleSelector
-                      inputProps={{
-                        id: "user-franchise-search",
-                        name: "franchise-search",
-                        autoComplete: "off",
-                        autoCapitalize: "none",
-                        spellCheck: false,
-                      }}
-                      options={franchisesData.map((fr) => ({
-                        value: String(fr.id),
-                        label: fr.franchise_name,
-                      }))}
-                      value={form.franchise_ids.map((id) => ({
-                        value: String(id),
-                        label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
-                      }))}
-                      onChange={(selected) =>
-                        setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
-                      }
-                      placeholder="Select franchises..."
-                      hidePlaceholderWhenSelected
-                      showSelectedOptionsInDropdown
-                    />
-                  </div>
 
-                  {/* Row 4: Status */}
-                  <div className="col-span-2 space-y-2">
-                    <Label>Status</Label>
-                    <div className="flex h-9 items-center gap-4 rounded-md border px-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={form.status === "active"}
-                          onCheckedChange={(checked) =>
-                            setForm((f) => ({
-                              ...f,
-                              status: checked ? "active" : "inactive",
-                            }))
-                          }
-                        />
-                        <span className="text-sm">Active</span>
-                      </label>
-                      <span className="text-xs text-muted-foreground">
-                        {form.status === "active"
-                          ? "User will be active"
-                          : "User will be inactive"}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Row 4: Password (full width) */}
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="user-password">
-                  Password
-                  {modalMode === "edit" && (
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      (leave blank to keep current)
-                    </span>
-                  )}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="user-password"
-                    name="new-password"
-                    autoComplete="new-password"
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, password: e.target.value }))
-                    }
-                    placeholder={
-                      modalMode === "edit"
-                        ? "Leave blank to keep current password"
-                        : "Enter password"
-                    }
-                    className="pe-9 h-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center text-muted-foreground/70 hover:text-foreground transition-colors"
-                  >
-                    {showPassword ? (
-                      <EyeOffIcon size={15} />
-                    ) : (
-                      <EyeIcon size={15} />
-                    )}
-                  </button>
-                </div>
-
-                {/* Strength bar — always shown in create, only shown when typing in edit */}
-                {(modalMode === "create" || form.password.length > 0) && (
-                  <>
                     <div
-                      role="progressbar"
-                      aria-valuemin={0}
-                      aria-valuemax={5}
-                      aria-valuenow={passwordStrengthScore}
-                      aria-label="Password strength"
-                      className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
+                      className={cn(
+                        "space-y-2",
+                        isEditingCustomUser && "col-span-2",
+                      )}
                     >
-                      <div
-                        className={`h-full transition-all duration-500 ease-out ${getStrengthColor(passwordStrengthScore)}`}
-                        style={{
-                          width: `${(passwordStrengthScore / 5) * 100}%`,
+                      <Label htmlFor="user-franchise-search">Franchise</Label>
+                      <MultipleSelector
+                        inputProps={{
+                          id: "user-franchise-search",
+                          name: "franchise-search",
+                          autoComplete: "off",
+                          autoCapitalize: "none",
+                          spellCheck: false,
                         }}
+                        options={franchisesData.map((fr) => ({
+                          value: String(fr.id),
+                          label: fr.franchise_name,
+                        }))}
+                        value={form.franchise_ids.map((id) => ({
+                          value: String(id),
+                          label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                        }))}
+                        onChange={(selected) =>
+                          setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                        }
+                        placeholder="Select franchises..."
+                        hidePlaceholderWhenSelected
+                        showSelectedOptionsInDropdown
                       />
                     </div>
 
-                    <p className="text-xs font-medium text-foreground mb-1.5">
-                      {getStrengthText(passwordStrengthScore)}
-                    </p>
-
-                    <ul className="space-y-1">
-                      {passwordStrength.map((req) => (
-                        <li key={req.text} className="flex items-center gap-2">
-                          {req.met ? (
-                            <CheckIcon
-                              size={13}
-                              className="text-emerald-500 shrink-0"
-                            />
-                          ) : (
-                            <XIcon
-                              size={13}
-                              className="text-muted-foreground/60 shrink-0"
-                            />
-                          )}
-                          <span
-                            className={`text-xs ${req.met ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}
-                          >
-                            {req.text}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                    {/* Row 4: Status */}
+                    <div className="col-span-2 space-y-2">
+                      <Label>Status</Label>
+                      <div className="flex h-9 items-center gap-4 rounded-md border px-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={form.status === "active"}
+                            onCheckedChange={(checked) =>
+                              setForm((f) => ({
+                                ...f,
+                                status: checked ? "active" : "inactive",
+                              }))
+                            }
+                          />
+                          <span className="text-sm">Active</span>
+                        </label>
+                        <span className="text-xs text-muted-foreground">
+                          {form.status === "active"
+                            ? "User will be active"
+                            : "User will be inactive"}
+                        </span>
+                      </div>
+                    </div>
                   </>
                 )}
-              </div>
-            </div>
 
+                {/* Password (full width) */}
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="user-password">
+                    Password
+                    {modalMode === "edit" && (
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                        (leave blank to keep current)
+                      </span>
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="user-password"
+                      name="new-password"
+                      autoComplete="new-password"
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, password: e.target.value }))
+                      }
+                      placeholder={
+                        modalMode === "edit"
+                          ? "Leave blank to keep current password"
+                          : "Enter password"
+                      }
+                      className="pe-9 h-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center text-muted-foreground/70 hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOffIcon size={15} />
+                      ) : (
+                        <EyeIcon size={15} />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Strength bar */}
+                  {(modalMode === "create" || form.password.length > 0) && (
+                    <>
+                      <div
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={5}
+                        aria-valuenow={passwordStrengthScore}
+                        aria-label="Password strength"
+                        className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
+                      >
+                        <div
+                          className={`h-full transition-all duration-500 ease-out ${getStrengthColor(passwordStrengthScore)}`}
+                          style={{
+                            width: `${(passwordStrengthScore / 5) * 100}%`,
+                          }}
+                        />
+                      </div>
+
+                      <p className="text-xs font-medium text-foreground mb-1.5">
+                        {getStrengthText(passwordStrengthScore)}
+                      </p>
+
+                      <ul className="space-y-1">
+                        {passwordStrength.map((req) => (
+                          <li key={req.text} className="flex items-center gap-2">
+                            {req.met ? (
+                              <CheckIcon
+                                size={13}
+                                className="text-emerald-500 shrink-0"
+                              />
+                            ) : (
+                              <XIcon
+                                size={13}
+                                className="text-muted-foreground/60 shrink-0"
+                              />
+                            )}
+                            <span
+                              className={`text-xs ${req.met ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}
+                            >
+                              {req.text}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
             <div className="flex items-center justify-between gap-2 pt-4 border-t mt-2">
               <div className="w-fit h-auto">
-                {isEditingCustomUser && editingUserId && (
+                {isHrmsEmployeeFlow && modalStep === 2 ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => setModalStep(1)}
+                    disabled={createUserMutation.isPending || updateUserMutation.isPending}
+                  >
+                    <ChevronLeft size={14} />
+                    Back
+                  </Button>
+                ) : isEditingCustomUser && editingUserId ? (
                   <Button
                     size="sm"
                     variant="outline"
@@ -1451,8 +2059,9 @@ export default function UserMastersTable({
                     <Shield className="h-3.5 w-3.5" />
                     Manage User Privileges
                   </Button>
-                )}
+                ) : null}
               </div>
+
               <div className="w-fit h-auto flex items-center justify-between gap-2">
                 <Button
                   variant="outline"
@@ -1467,31 +2076,46 @@ export default function UserMastersTable({
                 >
                   Cancel
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={modalMode === "edit" ? handleSave : handleCreate}
-                  disabled={
-                    !isFormValid ||
-                    !vendorId ||
-                    createUserMutation.isPending ||
-                    updateUserMutation.isPending
-                  }
-                >
-                  {modalMode === "edit" ? (
-                    updateUserMutation.isPending ? (
-                      "Saving..."
+
+                {isHrmsEmployeeFlow && modalStep === 1 ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setModalStep(2)}
+                    disabled={!isFormValid || !vendorId}
+                    className="gap-1.5"
+                  >
+                    Next
+                    <ChevronRight size={14} />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={modalMode === "edit" ? handleSave : handleCreate}
+                    disabled={
+                      !isFormValid ||
+                      !vendorId ||
+                      createUserMutation.isPending ||
+                      updateUserMutation.isPending ||
+                      uploadingAadhar ||
+                      uploadingPan
+                    }
+                  >
+                    {modalMode === "edit" ? (
+                      updateUserMutation.isPending ? (
+                        "Saving..."
+                      ) : (
+                        <>
+                          <Pencil size={13} className="mr-1.5" />
+                          Save Changes
+                        </>
+                      )
+                    ) : createUserMutation.isPending ? (
+                      "Creating..."
                     ) : (
-                      <>
-                        <Pencil size={13} className="mr-1.5" />
-                        Save Changes
-                      </>
-                    )
-                  ) : createUserMutation.isPending ? (
-                    "Creating..."
-                  ) : (
-                    `Create ${effectiveEntityName}`
-                  )}
-                </Button>
+                      `Create ${effectiveEntityName}`
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
