@@ -5,6 +5,7 @@ import { AlertTriangle, Building2, CalendarDays, CheckCheck, ChevronLeft, Chevro
 import { useAppSelector } from "@/redux/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import CustomeDatePicker from "@/components/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -95,8 +96,30 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
   const changePeriod = (value: string) => {
     setPeriod(value);
     if (!today || value === "custom") return;
-    setStart(value === "yesterday" ? shiftLogDate(today, -1) : value === "week" ? shiftLogDate(today, -6) : today);
-    setEnd(value === "yesterday" ? shiftLogDate(today, -1) : today);
+    if (value === "yesterday") {
+      const y = shiftLogDate(today, -1);
+      setStart(y);
+      setEnd(y);
+    } else if (value === "week") {
+      setStart(shiftLogDate(today, -6));
+      setEnd(today);
+    } else if (value === "this_month") {
+      const [yearStr, monthStr] = today.split("-");
+      const startOfMonth = `${yearStr}-${monthStr}-01`;
+      setStart(startOfMonth);
+      setEnd(today);
+    } else if (value === "last_month") {
+      const [yearNum, monthNum] = today.split("-").map(Number);
+      const prevDate = new Date(Date.UTC(yearNum, monthNum - 2, 1));
+      const prevYear = prevDate.getUTCFullYear();
+      const prevMonth = String(prevDate.getUTCMonth() + 1).padStart(2, "0");
+      const lastDayOfPrevMonth = new Date(Date.UTC(yearNum, monthNum - 1, 0)).getUTCDate();
+      setStart(`${prevYear}-${prevMonth}-01`);
+      setEnd(`${prevYear}-${prevMonth}-${String(lastDayOfPrevMonth).padStart(2, "0")}`);
+    } else {
+      setStart(today);
+      setEnd(today);
+    }
   };
   const exportRecords = async () => {
     setExporting(true);
@@ -118,13 +141,13 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
     {loadError && <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-xs text-destructive"><AlertTriangle className="mt-0.5 size-4 shrink-0" /><p>{loadError}</p></div>}
 
     <section className="rounded-xl border bg-background p-4 shadow-sm" aria-label="Attendance log filters">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div className="relative w-full lg:max-w-sm"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input aria-label="Search employees" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search employee name, role or designation…" className="h-9 pl-9" /></div><div className="flex flex-wrap items-center gap-2"><Select value={period} onValueChange={changePeriod}><SelectTrigger aria-label="Attendance date range" className="h-9 w-40"><CalendarDays className="mr-1 size-3.5 text-muted-foreground" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="today">Today</SelectItem><SelectItem value="yesterday">Yesterday</SelectItem><SelectItem value="week">Last 7 days</SelectItem><SelectItem value="custom">Custom range</SelectItem></SelectContent></Select><p className="text-xs text-muted-foreground">{start && end ? start === end ? dateLabel(start, true) : `${dateLabel(start)} – ${dateLabel(end, true)}` : "Loading dates…"}</p></div></div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div className="relative w-full lg:max-w-sm"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input aria-label="Search employees" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search employee name, role or designation…" className="h-9 pl-9" /></div><div className="flex flex-wrap items-center gap-2"><Select value={period} onValueChange={changePeriod}><SelectTrigger aria-label="Attendance date range" className="h-9 w-40"><CalendarDays className="mr-1 size-3.5 text-muted-foreground" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="today">Today</SelectItem><SelectItem value="yesterday">Yesterday</SelectItem><SelectItem value="week">Last 7 days</SelectItem><SelectItem value="this_month">This month</SelectItem><SelectItem value="last_month">Last month</SelectItem><SelectItem value="custom">Custom range</SelectItem></SelectContent></Select><p className="text-xs text-muted-foreground">{start && end ? start === end ? dateLabel(start, true) : `${dateLabel(start)} – ${dateLabel(end, true)}` : "Loading dates…"}</p></div></div>
       <div className="mt-3 flex flex-wrap items-end gap-3">{[
         { label: "Location", value: location, set: setLocation, options: (data?.filters.locations ?? []).map(item => ({ value: item.value, label: item.label })), all: "All locations" },
         { label: "Role", value: role, set: setRole, options: (data?.filters.roles ?? []).map(value => ({ value, label: value })), all: "All roles" },
         { label: "Unit type", value: unit, set: setUnit, options: ["BRANCH", "FRANCHISE", "FACTORY"].map(value => ({ value, label: titleCase(value) })), all: "All unit types" },
       ].map(filter => <div key={filter.label} className="min-w-36 flex-1 space-y-1.5 lg:max-w-56"><Label className="text-[11px] text-muted-foreground">{filter.label}</Label><Select value={filter.value} onValueChange={filter.set}><SelectTrigger aria-label={`Filter ${filter.label.toLowerCase()}`} className="h-9 w-full"><SelectValue>{filter.value === "all" ? filter.all : filter.options.find(option => option.value === filter.value)?.label ?? locationLabels.get(filter.value) ?? filter.value}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">{filter.all}</SelectItem>{filter.options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>)}{activeFilters && <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground" onClick={reset}><X className="size-3.5" />Clear filters</Button>}</div>
-      {period === "custom" && <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2 lg:max-w-lg"><div className="space-y-1.5"><Label htmlFor="logs-from" className="text-xs">From date</Label><Input id="logs-from" type="date" value={start} max={today} onChange={event => setStart(event.target.value)} /></div><div className="space-y-1.5"><Label htmlFor="logs-to" className="text-xs">To date</Label><Input id="logs-to" type="date" value={end} min={start || undefined} max={today} onChange={event => setEnd(event.target.value)} /></div><p className="text-[11px] text-muted-foreground sm:col-span-2">Ranges can cover up to {data?.range.max_days ?? 31} days.</p></div>}
+      {period === "custom" && <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2 lg:max-w-lg"><div className="space-y-1.5"><Label htmlFor="logs-from" className="text-xs">From date</Label><CustomeDatePicker value={start} onChange={val => setStart(val || "")} className="h-10 w-full" placeholder="Select from date" dateFormat="dd MMM yyyy" restriction="pastOnly" /></div><div className="space-y-1.5"><Label htmlFor="logs-to" className="text-xs">To date</Label><CustomeDatePicker value={end} onChange={val => setEnd(val || "")} className="h-10 w-full" placeholder="Select to date" dateFormat="dd MMM yyyy" minDate={start || undefined} restriction="pastOnly" /></div><p className="text-[11px] text-muted-foreground sm:col-span-2">Ranges can cover up to {data?.range.max_days ?? 31} days.</p></div>}
       {invalidRange && <p role="alert" className="mt-3 text-xs text-destructive">The start date must be on or before the end date.</p>}
     </section>
 
