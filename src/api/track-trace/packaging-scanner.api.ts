@@ -212,6 +212,7 @@ export interface AddManualPackingItemPayload {
   cut_list_id: number;
   qty: number;
   user_id: number;
+  location_name?: string;
 }
 
 export interface AddManualPackingItemResponse {
