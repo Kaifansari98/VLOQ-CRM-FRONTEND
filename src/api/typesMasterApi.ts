@@ -98,6 +98,23 @@ export interface UserMasterEntry {
   id: number;
   vendor_id: number;
   franchise_id?: number | null;
+  employee_code?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_name: string;
   designation?: string | null;
   user_contact: string;
@@ -1338,6 +1355,23 @@ export interface UserDetailData {
   user_timezone?: string;
   status: string;
   created_at: string;
+  employee_code?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_type: {
     id?: number;
     user_type: string;
@@ -1667,6 +1701,23 @@ export interface CreateUserMasterPayload {
   franchise_ids?: number[];
   vendor_id: number;
   franchise_id: number;
+  employee_code?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_name: string;
   designation?: string | null;
   user_contact: string;
@@ -1723,6 +1774,23 @@ export const createUser = async (payload: CreateUserMasterPayload) => {
 export interface UpdateUserMasterPayload {
   confirm_additional_supervisor?: boolean;
   franchise_ids?: number[];
+  employee_code?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_name?: string;
   designation?: string | null;
   user_contact?: string;
@@ -1902,4 +1970,25 @@ export const deleteDetailedCompanyVendor = async (id: number, vendorId: number, 
     }
   );
   return res.data;
+};
+export const uploadUserDocument = async (file: File, vendorId?: number) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (vendorId) formData.append("vendor_id", String(vendorId));
+  const res = await apiClient.post<{ success: boolean; file_url: string; filename: string; signed_url?: string }>(
+    "/users/upload-document",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+  return res.data;
+};
+
+export const fetchUserDocumentUrl = async (key: string) => {
+  const res = await apiClient.get<{ success: boolean; url: string }>(
+    "/users/document-url",
+    { params: { key } }
+  );
+  return res.data?.url || key;
 };

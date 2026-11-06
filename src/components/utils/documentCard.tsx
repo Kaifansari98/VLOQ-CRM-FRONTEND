@@ -244,6 +244,7 @@ interface DocumentCardProps {
   compact?: boolean;
   isDesignDoc?: boolean;
   designType?: DesignType;
+  className?: string;
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
@@ -458,6 +459,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   compact = false,
   isDesignDoc = false,
   designType: propDesignType,
+  className,
 }) => {
   const params = useParams();
   const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
@@ -920,7 +922,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           group relative flex items-center gap-4 rounded-xl p-4
           border bg-white dark:bg-neutral-900
           hover:bg-muted/40 dark:hover:bg-neutral-800
-          transition-all duration-200 w-full min-w-[250px] sm:min-w-[300px]
+          transition-all duration-200 w-full min-w-0 ${className || ""}
           @container
           ${isLatest
             ? "border-emerald-400 ring-1 ring-emerald-200 dark:border-emerald-500/70 dark:ring-emerald-500/20"

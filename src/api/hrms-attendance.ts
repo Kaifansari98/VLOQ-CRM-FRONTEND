@@ -25,9 +25,13 @@ export function useHrmsAttendance(vendorId?: number, userId?: number, month?: st
     queryFn: async () => {
       const { data } = await apiClient.get<{ data: { entries: ServerEntry[]; current: ServerEntry | null; corrections: ServerCorrection[]; vendor_time_zone: string; server_time: string; can_review: boolean } }>("/attendance/workspace", { params: { month } });
       const result = data.data;
-      return { ...result, entries: result.entries.map(mapEntry), current: result.current ? mapEntry(result.current) : null, corrections: result.corrections.map(mapCorrection) };
+      return { ...result, queryMonth: month, entries: result.entries.map(mapEntry), current: result.current ? mapEntry(result.current) : null, corrections: result.corrections.map(mapCorrection) };
     },
-    staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 30000, retry: 1,
+    placeholderData: keepPreviousData,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
+    refetchInterval: 30000,
+    retry: 1,
   });
 }
 
