@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Clock3, Coffee, CreditCard, Download, FileClock, LogIn, LogOut, MapPin, Monitor, PencilLine, RefreshCw, Search, ShieldCheck, Smartphone, Users, X } from "lucide-react";
+import { AlertTriangle, Building2, Calendar, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, Clock3, Coffee, CreditCard, Download, FileClock, LogIn, LogOut, MapPin, Monitor, PencilLine, RefreshCw, Search, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,16 @@ import CustomeDatePicker from "@/components/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MonthPicker } from "@/components/ui/month-picker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -18,9 +28,9 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { attendanceDate } from "@/lib/hrms/attendance";
+import { attendanceDate, formatDuration, workMilliseconds } from "@/lib/hrms/attendance";
 import { attendanceLogCsv, logDuration, logStatuses, logTime, shiftLogDate, titleCase, type AttendanceLogEvent, type AttendanceLogRow, type LogStatus } from "@/lib/hrms/attendance-logs";
-import { exportAttendanceLogs, useAttendanceLogDetail, useAttendanceLogs } from "@/api/hrms-attendance";
+import { exportAttendanceLogs, useAttendanceLogDetail, useAttendanceLogs, useHrmsAttendance } from "@/api/hrms-attendance";
 
 const PAGE_SIZE = 20;
 const colors: Record<LogStatus, string> = {
@@ -91,6 +101,36 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
   const loadError = logs.isError ? (logs.error as any)?.response?.data?.message || "Could not load attendance logs." : null;
   const locationLabels = new Map((data?.filters.locations ?? []).map(item => [item.value, item.label]));
 
+  const [monthSearch, setMonthSearch] = useState("");
+
+  const monthsList = useMemo(() => {
+    if (!today) return [];
+    const [curYear, curMonth] = today.split("-").map(Number);
+    // Months of the current year up to current month, with current month on top
+    const list: { key: string; label: string; year: number; month: number; start: string; end: string }[] = [];
+    for (let m = curMonth; m >= 1; m--) {
+      const date = new Date(Date.UTC(curYear, m - 1, 1));
+      const monthKey = `${curYear}-${String(m).padStart(2, "0")}`;
+      const lastDay = new Date(Date.UTC(curYear, m, 0)).getUTCDate();
+      const monthName = new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", month: "long", year: "numeric" }).format(date);
+      const isCurrent = m === curMonth;
+      list.push({
+        key: monthKey,
+        label: isCurrent ? `${monthName} (Current)` : monthName,
+        year: curYear,
+        month: m,
+        start: `${monthKey}-01`,
+        end: isCurrent ? today : `${monthKey}-${String(lastDay).padStart(2, "0")}`,
+      });
+    }
+    return list;
+  }, [today]);
+
+  const filteredMonths = useMemo(() => {
+    if (!monthSearch.trim()) return monthsList;
+    return monthsList.filter(m => m.label.toLowerCase().includes(monthSearch.toLowerCase().trim()));
+  }, [monthsList, monthSearch]);
+
   const activeFilters = !!search || location !== "all" || role !== "all" || unit !== "all" || status !== "all" || period !== "today";
   const reset = () => { setSearch(""); setLocation("all"); setRole("all"); setUnit("all"); setStatus("all"); setPeriod("today"); setStart(today); setEnd(today); };
   const changePeriod = (value: string) => {
@@ -103,19 +143,13 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
     } else if (value === "week") {
       setStart(shiftLogDate(today, -6));
       setEnd(today);
-    } else if (value === "this_month") {
-      const [yearStr, monthStr] = today.split("-");
-      const startOfMonth = `${yearStr}-${monthStr}-01`;
-      setStart(startOfMonth);
-      setEnd(today);
-    } else if (value === "last_month") {
-      const [yearNum, monthNum] = today.split("-").map(Number);
-      const prevDate = new Date(Date.UTC(yearNum, monthNum - 2, 1));
-      const prevYear = prevDate.getUTCFullYear();
-      const prevMonth = String(prevDate.getUTCMonth() + 1).padStart(2, "0");
-      const lastDayOfPrevMonth = new Date(Date.UTC(yearNum, monthNum - 1, 0)).getUTCDate();
-      setStart(`${prevYear}-${prevMonth}-01`);
-      setEnd(`${prevYear}-${prevMonth}-${String(lastDayOfPrevMonth).padStart(2, "0")}`);
+    } else if (value.startsWith("month_")) {
+      const selectedMonthKey = value.replace("month_", "");
+      const found = monthsList.find(m => m.key === selectedMonthKey);
+      if (found) {
+        setStart(found.start);
+        setEnd(found.end);
+      }
     } else {
       setStart(today);
       setEnd(today);
@@ -141,7 +175,96 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
     {loadError && <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-xs text-destructive"><AlertTriangle className="mt-0.5 size-4 shrink-0" /><p>{loadError}</p></div>}
 
     <section className="rounded-xl border bg-background p-4 shadow-sm" aria-label="Attendance log filters">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div className="relative w-full lg:max-w-sm"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input aria-label="Search employees" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search employee name, role or designation…" className="h-9 pl-9" /></div><div className="flex flex-wrap items-center gap-2"><Select value={period} onValueChange={changePeriod}><SelectTrigger aria-label="Attendance date range" className="h-9 w-40"><CalendarDays className="mr-1 size-3.5 text-muted-foreground" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="today">Today</SelectItem><SelectItem value="yesterday">Yesterday</SelectItem><SelectItem value="week">Last 7 days</SelectItem><SelectItem value="this_month">This month</SelectItem><SelectItem value="last_month">Last month</SelectItem><SelectItem value="custom">Custom range</SelectItem></SelectContent></Select><p className="text-xs text-muted-foreground">{start && end ? start === end ? dateLabel(start, true) : `${dateLabel(start)} – ${dateLabel(end, true)}` : "Loading dates…"}</p></div></div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:max-w-sm">
+          <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+          <Input aria-label="Search employees" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search employee name, role or designation…" className="h-9 pl-9" />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-9 w-44 justify-between font-normal text-foreground">
+                <span className="flex items-center gap-2 truncate">
+                  <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">
+                    {period === "today"
+                      ? "Today"
+                      : period === "yesterday"
+                      ? "Yesterday"
+                      : period === "week"
+                      ? "This week"
+                      : period === "custom"
+                      ? "Custom range"
+                      : period.startsWith("month_")
+                      ? monthsList.find(m => m.key === period.replace("month_", ""))?.label || "Select month"
+                      : "Today"}
+                  </span>
+                </span>
+                <ChevronRight className="size-3.5 rotate-90 shrink-0 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 p-1">
+              <DropdownMenuItem onClick={() => changePeriod("today")}>
+                <span className="flex-1">Today</span>
+                {period === "today" && <Check className="size-4 text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changePeriod("yesterday")}>
+                <span className="flex-1">Yesterday</span>
+                {period === "yesterday" && <Check className="size-4 text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changePeriod("week")}>
+                <span className="flex-1">This week</span>
+                {period === "week" && <Check className="size-4 text-primary" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer [&>svg]:hidden">
+                  <span className="flex-1">Select Month</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-56 rounded-xl p-2 shadow-xl border bg-popover">
+                  <div className="mb-2 px-1">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Search month..."
+                        value={monthSearch}
+                        onChange={e => setMonthSearch(e.target.value)}
+                        className="h-8 pl-8 pr-2 text-xs bg-muted/40 rounded-lg focus-visible:ring-1"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                    {filteredMonths.map(m => {
+                      const isSelected = period === `month_${m.key}`;
+                      return (
+                        <DropdownMenuItem
+                          key={m.key}
+                          onClick={() => changePeriod(`month_${m.key}`)}
+                          className={cn("text-xs flex items-center justify-between rounded-lg px-2.5 py-1.5 cursor-pointer transition-colors", isSelected ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted")}
+                        >
+                          <span className="truncate">{m.label}</span>
+                          {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {!filteredMonths.length && (
+                      <p className="py-3 text-center text-xs text-muted-foreground">No month found</p>
+                    )}
+                  </div>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuItem onClick={() => changePeriod("custom")}>
+                <span className="flex-1">Custom range</span>
+                {period === "custom" && <Check className="size-4 text-primary" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <p className="text-xs text-muted-foreground">{start && end ? start === end ? dateLabel(start, true) : `${dateLabel(start)} – ${dateLabel(end, true)}` : "Loading dates…"}</p>
+        </div>
+      </div>
       <div className="mt-3 flex flex-wrap items-end gap-3">{[
         { label: "Location", value: location, set: setLocation, options: (data?.filters.locations ?? []).map(item => ({ value: item.value, label: item.label })), all: "All locations" },
         { label: "Role", value: role, set: setRole, options: (data?.filters.roles ?? []).map(value => ({ value, label: value })), all: "All roles" },
@@ -159,7 +282,32 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
     ].map(card => <div key={card.label} className="rounded-xl border bg-background p-4 shadow-sm sm:p-5"><div className="flex items-center justify-between gap-2"><p className="text-xs font-medium text-muted-foreground">{card.label}</p><span className={cn("rounded-lg p-2", card.color)}><card.icon className="size-4" /></span></div><p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{data ? card.value : "—"}</p><p className="mt-1 text-[11px] text-muted-foreground">{card.hint}</p></div>)}</section>
 
     <Tabs value={tab} onValueChange={value => { setTab(value); setSelected(new Map()); }} className="gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><TabsList className="w-full sm:w-fit"><TabsTrigger value="daily" className="gap-1.5 px-2 text-xs sm:gap-2 sm:px-4 sm:text-sm"><FileClock className="size-3.5" />Attendance records</TabsTrigger><TabsTrigger value="employees" className="gap-1.5 px-2 text-xs sm:gap-2 sm:px-4 sm:text-sm"><Users className="size-3.5" />Employee summary</TabsTrigger></TabsList><p className="text-[11px] text-muted-foreground">Overview cards reflect your date, employee and location filters.</p></div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TabsList className="w-full sm:w-fit">
+          <TabsTrigger value="daily" className="gap-1.5 px-2 text-xs sm:gap-2 sm:px-4 sm:text-sm"><FileClock className="size-3.5" />Attendance records</TabsTrigger>
+          <TabsTrigger value="employees" className="gap-1.5 px-2 text-xs sm:gap-2 sm:px-4 sm:text-sm"><Users className="size-3.5" />Employee summary</TabsTrigger>
+        </TabsList>
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+          <Input
+            aria-label="Search employee by name"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search employee by name…"
+            className="h-9 pl-8.5 pr-8 text-xs bg-background rounded-lg border shadow-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              aria-label="Clear employee search"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
       <div role="group" aria-label="Attendance status" className="flex gap-1 overflow-x-auto rounded-xl border bg-background p-1.5">{([{ value: "all", label: "All records", count: scopedTotal }, ...Object.entries(logStatuses).map(([value, label]) => ({ value: value as LogStatus, label, count: counts[value as LogStatus] }))] as { value: "all" | LogStatus; label: string; count: number }[]).map(item => <button key={item.value} type="button" aria-pressed={status === item.value} onClick={() => setStatus(item.value)} className={cn("flex min-h-9 shrink-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", status === item.value ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}><span>{item.label}</span><span className={cn("rounded px-1.5 py-0.5 text-[10px] tabular-nums", status === item.value ? "bg-primary-foreground/15" : "bg-muted")}>{item.count}</span></button>)}</div>
 
       <TabsContent value="daily" className="overflow-hidden rounded-xl border bg-background shadow-sm">
@@ -194,23 +342,121 @@ function eventView(event: AttendanceLogEvent, timeZone: string) {
 }
 
 function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClose }: { vendorId?: number; row: AttendanceLogRow | null; timeZone: string; onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<"log" | "calendar">("log");
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => row?.date ? row.date.slice(0, 7) : "");
+
+  useEffect(() => {
+    if (row?.date) {
+      setSelectedMonth(row.date.slice(0, 7));
+      setActiveTab("log");
+    }
+  }, [row]);
+
   const detail = useAttendanceLogDetail(vendorId, row?.attendance_id ?? null);
+  const userWorkspace = useHrmsAttendance(vendorId, row?.employee.id, selectedMonth || undefined);
+
   const record = detail.data && detail.data.attendance_id === row?.attendance_id ? detail.data : row;
   const timeZone = record?.time_zone || fallbackTimeZone;
   const events = detail.data && detail.data.attendance_id === row?.attendance_id ? detail.data.events : [];
-  return <Dialog open={!!row} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>Attendance log</DialogTitle><DialogDescription>{record ? `${dateLabel(record.date, true)} · ${timeZone}` : ""}</DialogDescription></DialogHeader>{record && <>
+
+  // Monthly calendar calculation for this specific employee
+  const calendar = useMemo(() => {
+    if (!selectedMonth) return [];
+    const [year, monthNumber] = selectedMonth.split("-").map(Number);
+    const start = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7;
+    const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    return Array.from({ length: Math.ceil((start + days) / 7) * 7 }, (_, index) => {
+      const day = index - start + 1;
+      return day > 0 && day <= days ? `${selectedMonth}-${String(day).padStart(2, "0")}` : null;
+    });
+  }, [selectedMonth]);
+
+  const monthEntries = userWorkspace.data?.entries ?? [];
+  const todayStr = attendanceDate(new Date(), timeZone);
+
+  return <Dialog open={!!row} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle className="flex items-center justify-between pr-6"><span>Employee Attendance</span><div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5"><Button variant={activeTab === "log" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("log")}><FileClock className="mr-1.5 size-3.5" />Daily Log</Button><Button variant={activeTab === "calendar" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("calendar")}><Calendar className="mr-1.5 size-3.5" />Monthly Calendar</Button></div></DialogTitle><DialogDescription>{record ? `${dateLabel(record.date, true)} · ${timeZone}` : ""}</DialogDescription></DialogHeader>{record && <>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4"><div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-full border bg-background text-sm font-semibold">{initials(record.employee.name)}</span><div><p className="text-base font-semibold">{record.employee.name}</p><p className="mt-1 text-xs text-muted-foreground">{employeeLine(record.employee)}</p></div></div><StatusBadge status={record.status} /></div>
-    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><MapPin className="size-3.5" />{[record.employee.location, record.employee.unit && titleCase(record.employee.unit)].filter(Boolean).join(" · ")}</span>{record.work_location && <span className="flex items-center gap-1.5"><Building2 className="size-3.5" />Worked from {titleCase(record.work_location)}</span>}</div>
-    <dl className="grid grid-cols-2 gap-3 rounded-xl border p-4 sm:grid-cols-4">{[{ label: "Check in", value: logTime(record.check_in, timeZone) }, { label: "Check out", value: logTime(record.check_out, timeZone) }, { label: "Break time", value: record.attendance_id ? logDuration(record.break_minutes) : "—" }, { label: "Net work time", value: record.work_minutes === null ? "—" : logDuration(record.work_minutes) }].map(item => <div key={item.label}><dt className="text-[11px] text-muted-foreground">{item.label}</dt><dd className="mt-1.5 text-sm font-semibold tabular-nums">{item.value}</dd></div>)}</dl>
-    {record.status === "MISSING_PUNCH" && <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">A check-in exists without a check-out. Net work time is not calculated until the record is corrected.</p>}
-    <div><h3 className="mb-4 text-sm font-semibold">Punch & audit timeline</h3>{!record.attendance_id ? <div className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">No attendance events recorded for this day.</div>
-      : detail.isPending ? <p role="status" className="py-6 text-center text-sm text-muted-foreground">Loading timeline…</p>
-      : detail.isError ? <p role="alert" className="py-6 text-center text-sm text-destructive">{(detail.error as any)?.response?.data?.message || "Could not load the timeline."}</p>
-      : <ol>{events.map((event, index) => {
-        const view = eventView(event, timeZone);
-        const Icon = view.kind === "in" ? LogIn : view.kind === "out" ? LogOut : view.kind === "break" ? Coffee : PencilLine;
-        return <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">{index < events.length - 1 && <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%-28px)] w-px bg-border" />}<span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full border bg-background", view.kind === "correction" && "border-blue-500/30 text-blue-600 dark:text-blue-300")}><Icon className="size-3.5" /></span><div className="flex flex-1 justify-between gap-3 pt-1"><div><p className="text-xs font-medium">{view.label}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{view.note}</p></div><span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{logTime(event.time, timeZone)}</span></div></li>;
-      })}</ol>}</div>
+
+    {activeTab === "log" ? (
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><MapPin className="size-3.5" />{[record.employee.location, record.employee.unit && titleCase(record.employee.unit)].filter(Boolean).join(" · ")}</span>{record.work_location && <span className="flex items-center gap-1.5"><Building2 className="size-3.5" />Worked from {titleCase(record.work_location)}</span>}</div>
+        <dl className="grid grid-cols-2 gap-3 rounded-xl border p-4 sm:grid-cols-4">{[{ label: "Check in", value: logTime(record.check_in, timeZone) }, { label: "Check out", value: logTime(record.check_out, timeZone) }, { label: "Break time", value: record.attendance_id ? logDuration(record.break_minutes) : "—" }, { label: "Net work time", value: record.work_minutes === null ? "—" : logDuration(record.work_minutes) }].map(item => <div key={item.label}><dt className="text-[11px] text-muted-foreground">{item.label}</dt><dd className="mt-1.5 text-sm font-semibold tabular-nums">{item.value}</dd></div>)}</dl>
+        {record.status === "MISSING_PUNCH" && <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">A check-in exists without a check-out. Net work time is not calculated until the record is corrected.</p>}
+        <div><h3 className="mb-4 text-sm font-semibold">Punch & audit timeline</h3>{!record.attendance_id ? <div className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">No attendance events recorded for this day.</div>
+          : detail.isPending ? <p role="status" className="py-6 text-center text-sm text-muted-foreground">Loading timeline…</p>
+          : detail.isError ? <p role="alert" className="py-6 text-center text-sm text-destructive">{(detail.error as any)?.response?.data?.message || "Could not load the timeline."}</p>
+          : <ol>{events.map((event, index) => {
+            const view = eventView(event, timeZone);
+            const Icon = view.kind === "in" ? LogIn : view.kind === "out" ? LogOut : view.kind === "break" ? Coffee : PencilLine;
+            return <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">{index < events.length - 1 && <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%-28px)] w-px bg-border" />}<span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full border bg-background", view.kind === "correction" && "border-blue-500/30 text-blue-600 dark:text-blue-300")}><Icon className="size-3.5" /></span><div className="flex flex-1 justify-between gap-3 pt-1"><div><p className="text-xs font-medium">{view.label}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{view.note}</p></div><span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{logTime(event.time, timeZone)}</span></div></li>;
+          })}</ol>}</div>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-xl border bg-muted/10 p-3">
+          <div>
+            <h4 className="text-sm font-semibold">Attendance Calendar</h4>
+            <p className="text-xs text-muted-foreground">View all check-in/outs for {record.employee.name}</p>
+          </div>
+          <MonthPicker
+            value={selectedMonth}
+            onChange={setSelectedMonth}
+            maxMonth={todayStr.slice(0, 7)}
+            isLoading={userWorkspace.isFetching}
+          />
+        </div>
+
+        {userWorkspace.isPending ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">Loading calendar data…</p>
+        ) : (
+          <div className="rounded-xl border p-3 sm:p-4">
+            <div className="mb-2 grid grid-cols-7 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => <span key={day} className="py-1.5">{day}</span>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {calendar.map((date, index) => {
+                if (!date) return <div key={`blank-${index}`} className="min-h-16 rounded-md bg-muted/10" />;
+                const dayNumber = Number(date.slice(-2));
+                const entry = monthEntries.find(item => item.date === date);
+                const isToday = date === todayStr;
+                const isSelected = date === record.date;
+                const hasAttendance = !!entry;
+
+                return (
+                  <div
+                    key={date}
+                    className={cn(
+                      "flex min-h-16 flex-col justify-between rounded-lg border p-1.5 text-left transition-colors sm:min-h-20 sm:p-2",
+                      isToday && "border-primary bg-primary/5",
+                      isSelected && "ring-2 ring-primary/40",
+                      hasAttendance ? "border-emerald-500/25 bg-emerald-500/5 dark:bg-emerald-500/10" : "bg-background"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-xs font-semibold", isToday ? "text-primary font-bold" : "text-muted-foreground")}>{dayNumber}</span>
+                      {hasAttendance && <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />}
+                    </div>
+                    {hasAttendance ? (
+                      <div className="space-y-0.5 text-[10px] tabular-nums">
+                        <p className="text-emerald-700 dark:text-emerald-300 font-medium truncate">{logTime(entry.checkIn, timeZone)}</p>
+                        {entry.checkOut ? (
+                          <p className="text-muted-foreground truncate">{logTime(entry.checkOut, timeZone)}</p>
+                        ) : (
+                          <p className="text-amber-600 dark:text-amber-400 truncate">No check out</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground/60">{date <= todayStr ? "No record" : ""}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
     <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4"><span className="text-[11px] text-muted-foreground">Read-only view · corrections go through the approval inbox</span><Button variant="outline" size="sm" onClick={onClose}>Close log</Button></div>
   </>}</DialogContent></Dialog>;
 }
