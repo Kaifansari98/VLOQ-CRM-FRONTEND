@@ -123,7 +123,11 @@ const DetailedMachineCell = React.memo(function DetailedMachineCell({
   const allDone = machine.all_scanned;
   const isStarted = machine.scanned > 0;
   const pct =
-    machine.total > 0 ? Math.round((machine.scanned / machine.total) * 100) : 0;
+    machine.total > 0
+      ? machine.pending > 0
+        ? Math.min(99, Math.round((machine.scanned / machine.total) * 100))
+        : Math.min(100, Math.round((machine.scanned / machine.total) * 100))
+      : 0;
 
   const content = (
     <div
@@ -226,7 +230,11 @@ const CompactMachineCell = React.memo(function CompactMachineCell({
   const allDone = machine.all_scanned;
   const isStarted = machine.scanned > 0;
   const pct =
-    machine.total > 0 ? Math.round((machine.scanned / machine.total) * 100) : 0;
+    machine.total > 0
+      ? machine.pending > 0
+        ? Math.min(99, Math.round((machine.scanned / machine.total) * 100))
+        : Math.min(100, Math.round((machine.scanned / machine.total) * 100))
+      : 0;
 
   const cardNode = (
     <div
@@ -868,6 +876,19 @@ export default function TraceTraceDashboard() {
 
   const allMachines = useMemo(() => {
     const machineMap = new Map<number, MachineMeta>();
+
+    // 1. Include vendor's active workstations for current fabrication
+    activeMachines
+      .filter((m) => !m.fabrication || m.fabrication === fabrication)
+      .forEach((m) => {
+        machineMap.set(m.id, {
+          id: m.id,
+          name: m.machine_name,
+          seq: m.sequence_no ?? 999,
+        });
+      });
+
+    // 2. Merge with any machines assigned on projects
     allProjects.forEach((p) =>
       p.machines.forEach((m) => {
         if (!machineMap.has(m.machine_id)) {
@@ -880,7 +901,7 @@ export default function TraceTraceDashboard() {
       }),
     );
     return Array.from(machineMap.values()).sort((a, b) => a.seq - b.seq);
-  }, [allProjects]);
+  }, [activeMachines, allProjects, fabrication]);
 
   const visibleMachines = useMemo(() => {
     return allMachines.filter((m) => !hiddenMachineIds.has(m.id));
@@ -930,7 +951,9 @@ export default function TraceTraceDashboard() {
   );
   const activeProgressPct =
     activeTotalPanels > 0
-      ? Math.round((activePanelsScanned / activeTotalPanels) * 100)
+      ? activePanelsScanned < activeTotalPanels
+        ? Math.min(99, Math.round((activePanelsScanned / activeTotalPanels) * 100))
+        : Math.min(100, Math.round((activePanelsScanned / activeTotalPanels) * 100))
       : 0;
 
   const totalPendingPanels = useMemo(
