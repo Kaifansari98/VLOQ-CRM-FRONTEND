@@ -75,10 +75,10 @@ export default function EmployeesAttendance() {
   } : emptyData;
   const today = now ? attendanceDate(now, timeZone) : "";
   const selectedMonth = month || today.slice(0, 7);
+  const activeEntry = data.entries.find(entry => !entry.checkOut);
   const todayEntry = data.entries.find(entry => entry.date === today);
-  const activeEntry = todayEntry && !todayEntry.checkOut ? todayEntry : undefined;
-  const currentEntry = todayEntry;
-  const onBreak = !!currentEntry?.breaks.some(pause => !pause.end);
+  const currentEntry = activeEntry || todayEntry;
+  const onBreak = !!activeEntry?.breaks.some(pause => !pause.end);
   const clock = (stamp?: string, zone = currentEntry?.timeZone || timeZone) => stamp ? new Intl.DateTimeFormat("en-IN", { timeZone: zone, hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date(stamp)) : "—";
   const dateLabel = (date: string, long = false) => new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: long ? "long" : "short", ...(long ? { year: "numeric" as const } : { weekday: "short" as const }) }).format(new Date(`${date}T12:00:00Z`));
   const isTransitioningMonth = workspaceQuery.isFetching && !!workspace?.entries.length && !workspace.entries.some(e => e.date.startsWith(selectedMonth));
@@ -149,17 +149,11 @@ export default function EmployeesAttendance() {
     } catch (error: any) { toastManager.add({ title: error?.response?.data?.message || "Could not cancel correction.", type: "error" }); }
   };
 
-  const activity = useMemo(() => {
-    if (!currentEntry) return [];
-    const events: { label: string; time: string; icon: any }[] = [];
-    if (currentEntry.checkIn) events.push({ label: "Checked in", time: currentEntry.checkIn, icon: LogIn });
-    for (const pause of currentEntry.breaks) {
-      if (pause.start) events.push({ label: "Break started", time: pause.start, icon: Coffee });
-      if (pause.end) events.push({ label: "Returned from break", time: pause.end, icon: Timer });
-    }
-    if (currentEntry.checkOut) events.push({ label: "Checked out (latest)", time: currentEntry.checkOut, icon: LogOut });
-    return events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-  }, [currentEntry]);
+  const activity = currentEntry ? [
+    { label: "Checked in", time: currentEntry.checkIn, icon: LogIn },
+    ...currentEntry.breaks.flatMap(pause => [{ label: "Break started", time: pause.start, icon: Coffee }, ...(pause.end ? [{ label: "Returned from break", time: pause.end, icon: Timer }] : [])]),
+    ...(currentEntry.checkOut ? [{ label: "Checked out", time: currentEntry.checkOut, icon: LogOut }] : []),
+  ] : [];
 
   return <>
     <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
@@ -184,32 +178,19 @@ export default function EmployeesAttendance() {
               {currentEntry ? <Status entry={currentEntry} /> : <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">{workspaceQuery.isPending ? "Loading…" : "Not checked in"}</span>}
             </div>
             <div className="relative mt-7 flex flex-wrap items-end justify-between gap-5">
-              <div><p className="text-xs font-medium text-muted-foreground">Net working time</p><p role="timer" aria-label="Net working time" className="mt-2 font-mono text-5xl font-medium tracking-tight tabular-nums sm:text-6xl">{ready && now && currentEntry ? formatDuration(workMilliseconds(currentEntry, now), true) : "--:--:--"}</p><p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3.5" /><span className="tabular-nums">{now ? new Intl.DateTimeFormat("en-IN", { timeZone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }).format(now) : "—"}</span><span className="mx-1">·</span>{timeZone}</p></div>
+              <div><p className="text-xs font-medium text-muted-foreground">Net working time</p><p role="timer" aria-label="Net working time" className="mt-2 font-mono text-5xl font-medium tracking-tight tabular-nums sm:text-6xl">{ready && now ? formatDuration(currentEntry ? workMilliseconds(currentEntry, now) : 0, true) : "--:--:--"}</p><p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3.5" />{now ? new Intl.DateTimeFormat("en-IN", { timeZone, hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(now) : "—"}<span className="mx-1">·</span>{timeZone}</p></div>
               <div className="flex items-center gap-2 rounded-xl border bg-muted/20 px-3 py-2"><span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold">{user?.user_name?.trim().split(/\s+/).slice(0, 2).map(name => name[0]).join("") || "—"}</span><div><p className="max-w-40 truncate text-xs font-semibold">{user?.user_name || "Your account"}</p><p className="mt-0.5 max-w-40 truncate text-[11px] text-muted-foreground">{user?.vendor?.vendor_name || "Employee workspace"}</p></div></div>
             </div>
             <div className="relative mt-6 grid grid-cols-3 divide-x rounded-xl border bg-muted/10 py-3">
-              {[{ label: "Check in", value: clock(currentEntry?.checkIn) }, { label: "Check out (last)", value: clock(currentEntry?.checkOut) }, { label: "Breaks taken", value: String(currentEntry?.breaks.length || 0).padStart(2, "0") }].map(item => <div key={item.label} className="px-3 text-center"><p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{item.label}</p><p className="mt-1.5 text-sm font-semibold tabular-nums">{item.value}</p></div>)}
+              {[{ label: "Check in", value: clock(currentEntry?.checkIn) }, { label: "Check out", value: clock(currentEntry?.checkOut) }, { label: "Breaks taken", value: String(currentEntry?.breaks.length || 0).padStart(2, "0") }].map(item => <div key={item.label} className="px-3 text-center"><p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{item.label}</p><p className="mt-1.5 text-sm font-semibold tabular-nums">{item.value}</p></div>)}
             </div>
             <div className="relative mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="attendance-location" className="text-xs text-muted-foreground">Work location</Label><Select value={currentEntry?.location || location} onValueChange={setLocation} disabled={!ready || !!currentEntry}><SelectTrigger id="attendance-location" className="w-full"><span className="flex items-center gap-2"><MapPin className="size-3.5 text-muted-foreground" /><SelectValue /></span></SelectTrigger><SelectContent>{[...(currentEntry?.location === "Unspecified" ? ["Unspecified"] : []), "Office", "Factory", "Site", "Remote"].map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
               <div className="flex gap-2">
-                {!currentEntry ? (
-                  <Button className="h-10 flex-1 gap-2 bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:min-w-36" disabled={!ready} onClick={() => punch("in")}>
-                    <LogIn className="size-4" />Check in
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="outline" className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => punch(onBreak ? "resume" : "break")}>
-                      <Coffee className="size-4" />{onBreak ? "End break" : "Take a break"}
-                    </Button>
-                    <Button className="h-10 flex-1 gap-2 bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 sm:min-w-32" disabled={!ready} onClick={() => setCheckoutOpen(true)}>
-                      <LogOut className="size-4" />{currentEntry.checkOut ? "Check out again" : "Check out"}
-                    </Button>
-                  </>
-                )}
+                {!activeEntry ? <Button className="h-10 flex-1 gap-2 bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:min-w-36" disabled={!ready || !!todayEntry} onClick={() => punch("in")}><LogIn className="size-4" />{todayEntry ? "Day completed" : "Check in"}</Button> : <><Button variant="outline" className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => punch(onBreak ? "resume" : "break")}><Coffee className="size-4" />{onBreak ? "End break" : "Take a break"}</Button><Button className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => setCheckoutOpen(true)}><LogOut className="size-4" />Check out</Button></>}
               </div>
             </div>
-            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5" />Breaks are excluded from net working time. Check in is once per day; last check out counts as final check out.</p>
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5" />Breaks are excluded from net working time. One check-in per day.</p>
           </section>
 
           <section className="flex flex-col rounded-2xl border bg-background p-5 shadow-sm sm:p-6" aria-label="Attendance activity">
@@ -249,7 +230,7 @@ export default function EmployeesAttendance() {
       </div>
     </main>
 
-    <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Wrap up your workday?</DialogTitle><DialogDescription>Your check-out time will be recorded by the server.{onBreak ? " Your active break will also end." : ""}</DialogDescription></DialogHeader><div className="rounded-xl border bg-muted/20 p-5 text-center"><p className="text-xs text-muted-foreground">Net working time</p><p className="mt-2 font-mono text-3xl font-semibold">{currentEntry && now ? formatDuration(workMilliseconds(currentEntry, now)) : "—"}</p></div><DialogFooter><Button variant="outline" onClick={() => setCheckoutOpen(false)}>Keep working</Button><Button onClick={() => punch("out")} disabled={!ready}><LogOut className="mr-2 size-4" />Confirm check out</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Wrap up your workday?</DialogTitle><DialogDescription>Your check-out time will be recorded by the server.{onBreak ? " Your active break will also end." : ""}</DialogDescription></DialogHeader><div className="rounded-xl border bg-muted/20 p-5 text-center"><p className="text-xs text-muted-foreground">Net working time</p><p className="mt-2 font-mono text-3xl font-semibold">{activeEntry && now ? formatDuration(workMilliseconds(activeEntry, now)) : "—"}</p></div><DialogFooter><Button variant="outline" onClick={() => setCheckoutOpen(false)}>Keep working</Button><Button onClick={() => punch("out")} disabled={!ready}><LogOut className="mr-2 size-4" />Confirm check out</Button></DialogFooter></DialogContent></Dialog>
 
     <Dialog open={correctionOpen} onOpenChange={setCorrectionOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Request an attendance correction</DialogTitle><DialogDescription>Describe the missing or incorrect punch. Times use the vendor timezone; attendance changes only after approval.</DialogDescription></DialogHeader><form onSubmit={requestCorrection} className="space-y-4"><div className="space-y-2"><Label htmlFor="correction-date">Attendance date</Label><CustomeDatePicker value={correctionDate} onChange={val => setCorrectionDate(val || "")} className="h-10 w-full" placeholder="Select attendance date" dateFormat="dd MMM yyyy" restriction="pastOnly" /></div><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="requested-check-in">Actual check-in (optional)</Label><DateTimePicker id="requested-check-in" value={requestedIn} onChange={setRequestedIn} baseDate={correctionDate} placeholder="Select check-in time" /></div><div className="space-y-2"><Label htmlFor="requested-check-out">Actual check-out (optional)</Label><DateTimePicker id="requested-check-out" value={requestedOut} onChange={setRequestedOut} baseDate={correctionDate} placeholder="Select check-out time" /></div></div><p className="text-xs text-muted-foreground">Times in {timeZone}.</p><div className="space-y-2"><Label htmlFor="correction-reason">What needs correcting?</Label><Textarea id="correction-reason" required minLength={10} maxLength={1000} rows={4} value={reason} onChange={event => setReason(event.target.value)} placeholder="For example: I forgot to check out yesterday. My actual departure time was 6:30 PM." /><p className="text-[11px] text-muted-foreground">Include the actual time and reason. Minimum 10 characters.</p></div><DialogFooter><Button type="button" variant="outline" onClick={() => setCorrectionOpen(false)}>Cancel</Button><Button type="submit" disabled={!ready || !correctionDate || correctionDate > today || reason.trim().length < 10}>{actionMutation.isPending ? "Submitting…" : "Submit request"}</Button></DialogFooter></form></DialogContent></Dialog>
 

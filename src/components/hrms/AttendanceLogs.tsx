@@ -234,7 +234,7 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
                       />
                     </div>
                   </div>
-                  <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                  <div className="max-h-56 overflow-y-auto space-y-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {filteredMonths.map(m => {
                       const isSelected = period === `month_${m.key}`;
                       return (
@@ -359,22 +359,23 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
   const timeZone = record?.time_zone || fallbackTimeZone;
   const events = detail.data && detail.data.attendance_id === row?.attendance_id ? detail.data.events : [];
 
-  // Monthly calendar calculation for this specific employee
-  const calendar = useMemo(() => {
-    if (!selectedMonth) return [];
+  // Monthly calendar calculation for this specific employee (Sunday to Saturday)
+  const calendarData = useMemo(() => {
+    if (!selectedMonth) return { days: [], offset: 0 };
     const [year, monthNumber] = selectedMonth.split("-").map(Number);
-    const start = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7;
-    const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
-    return Array.from({ length: Math.ceil((start + days) / 7) * 7 }, (_, index) => {
-      const day = index - start + 1;
-      return day > 0 && day <= days ? `${selectedMonth}-${String(day).padStart(2, "0")}` : null;
+    const startDayOfWeek = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay(); // 0 is Sunday
+    const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const days = Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      return `${selectedMonth}-${String(day).padStart(2, "0")}`;
     });
+    return { days, offset: startDayOfWeek };
   }, [selectedMonth]);
 
   const monthEntries = userWorkspace.data?.entries ?? [];
   const todayStr = attendanceDate(new Date(), timeZone);
 
-  return <Dialog open={!!row} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle className="flex items-center justify-between pr-6"><span>Employee Attendance</span><div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5"><Button variant={activeTab === "log" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("log")}><FileClock className="mr-1.5 size-3.5" />Daily Log</Button><Button variant={activeTab === "calendar" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("calendar")}><Calendar className="mr-1.5 size-3.5" />Monthly Calendar</Button></div></DialogTitle><DialogDescription>{record ? `${dateLabel(record.date, true)} · ${timeZone}` : ""}</DialogDescription></DialogHeader>{record && <>
+  return <Dialog open={!!row} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl lg:max-w-5xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"><DialogHeader><DialogTitle className="flex items-center justify-between pr-6"><span>Employee Attendance</span><div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5"><Button variant={activeTab === "log" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("log")}><FileClock className="mr-1.5 size-3.5" />Daily Log</Button><Button variant={activeTab === "calendar" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("calendar")}><Calendar className="mr-1.5 size-3.5" />Monthly Calendar</Button></div></DialogTitle><DialogDescription>{record ? `${dateLabel(record.date, true)} · ${timeZone}` : ""}</DialogDescription></DialogHeader>{record && <>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4"><div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-full border bg-background text-sm font-semibold">{initials(record.employee.name)}</span><div><p className="text-base font-semibold">{record.employee.name}</p><p className="mt-1 text-xs text-muted-foreground">{employeeLine(record.employee)}</p></div></div><StatusBadge status={record.status} /></div>
 
     {activeTab === "log" ? (
@@ -409,45 +410,74 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
         {userWorkspace.isPending ? (
           <p className="py-12 text-center text-sm text-muted-foreground">Loading calendar data…</p>
         ) : (
-          <div className="rounded-xl border p-3 sm:p-4">
+          <div className="rounded-2xl border bg-background p-3 shadow-xs sm:p-4">
             <div className="mb-2 grid grid-cols-7 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => <span key={day} className="py-1.5">{day}</span>)}
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => <span key={day} className="py-1">{day}</span>)}
             </div>
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-              {calendar.map((date, index) => {
-                if (!date) return <div key={`blank-${index}`} className="min-h-16 rounded-md bg-muted/10" />;
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {Array.from({ length: calendarData.offset }, (_, index) => (
+                <div key={`blank-${index}`} className="min-h-20 rounded-xl bg-muted/10 sm:min-h-24" />
+              ))}
+              {calendarData.days.map(date => {
                 const dayNumber = Number(date.slice(-2));
                 const entry = monthEntries.find(item => item.date === date);
                 const isToday = date === todayStr;
+                const isFuture = date > todayStr;
                 const isSelected = date === record.date;
-                const hasAttendance = !!entry;
+                const isPresent = !!entry;
+                const isAbsent = !isFuture && !isPresent;
 
                 return (
                   <div
                     key={date}
                     className={cn(
-                      "flex min-h-16 flex-col justify-between rounded-lg border p-1.5 text-left transition-colors sm:min-h-20 sm:p-2",
-                      isToday && "border-primary bg-primary/5",
-                      isSelected && "ring-2 ring-primary/40",
-                      hasAttendance ? "border-emerald-500/25 bg-emerald-500/5 dark:bg-emerald-500/10" : "bg-background"
+                      "flex min-h-24 flex-col justify-between rounded-xl border p-2 text-left transition-colors sm:min-h-28 sm:p-2.5",
+                      isToday && "border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30",
+                      isSelected && !isToday && "ring-2 ring-primary/40",
+                      isFuture ? "border-dashed border-border/60 bg-muted/5" : "border-border/70"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={cn("text-xs font-semibold", isToday ? "text-primary font-bold" : "text-muted-foreground")}>{dayNumber}</span>
-                      {hasAttendance && <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />}
+                      <span className={cn(
+                        "flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums sm:size-6.5",
+                        isToday ? "bg-amber-500 text-black font-bold" : "text-foreground"
+                      )}>
+                        {dayNumber}
+                      </span>
+                      {isToday && <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300">Live</span>}
+                      {isFuture && <span className="text-[9px] text-muted-foreground">Forecast</span>}
                     </div>
-                    {hasAttendance ? (
-                      <div className="space-y-0.5 text-[10px] tabular-nums">
-                        <p className="text-emerald-700 dark:text-emerald-300 font-medium truncate">{logTime(entry.checkIn, timeZone)}</p>
-                        {entry.checkOut ? (
-                          <p className="text-muted-foreground truncate">{logTime(entry.checkOut, timeZone)}</p>
+
+                    <div className="mt-2 space-y-1">
+                      {/* Present Tag */}
+                      <div className={cn(
+                        "flex items-center justify-between rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                        isPresent ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-muted/40 text-muted-foreground/60"
+                      )}>
+                        <span>Present</span>
+                        <span className="font-semibold">{isPresent ? 1 : 0}</span>
+                      </div>
+
+                      {/* Absent Tag */}
+                      <div className={cn(
+                        "flex items-center justify-between rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                        isAbsent ? "bg-rose-500/15 text-rose-800 dark:text-rose-200" : "bg-muted/40 text-muted-foreground/60"
+                      )}>
+                        <span>Absent</span>
+                        <span className="font-semibold">{isAbsent ? 1 : 0}</span>
+                      </div>
+
+                      {/* In - Out Breakdown */}
+                      <div className="pt-0.5 text-[9px] text-muted-foreground font-mono leading-tight">
+                        {isPresent ? (
+                          <p className="truncate text-foreground/80 font-medium">
+                            {logTime(entry.checkIn, timeZone)}{entry.checkOut ? ` - ${logTime(entry.checkOut, timeZone)}` : " (Active)"}
+                          </p>
                         ) : (
-                          <p className="text-amber-600 dark:text-amber-400 truncate">No check out</p>
+                          <p className="truncate text-muted-foreground/60">{isFuture ? "Scheduled" : "No record"}</p>
                         )}
                       </div>
-                    ) : (
-                      <p className="text-[10px] text-muted-foreground/60">{date <= todayStr ? "No record" : ""}</p>
-                    )}
+                    </div>
                   </div>
                 );
               })}
