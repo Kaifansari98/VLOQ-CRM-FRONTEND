@@ -854,11 +854,21 @@ export const getSalesExecutiveStageLeads = async (
   return res.data.data as SalesExecutiveStageLeads;
 };
 
+export interface LeadStageInstance {
+  id: number;
+  quantity_index: number;
+  title?: string | null;
+  is_tech_check_completed: boolean | null;
+  is_order_login_completed: boolean | null;
+  productStructure?: { type: string } | null;
+}
+
 export interface LeadStageItem {
   id: number;
   lead_code: string;
   account_id: number;
   name: string;
+  productStructureInstances?: LeadStageInstance[];
 }
 
 export interface StageData {

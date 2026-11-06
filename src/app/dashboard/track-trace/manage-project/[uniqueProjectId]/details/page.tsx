@@ -424,15 +424,16 @@ function BoxCard({
     return (
       <div
         onClick={onClick}
-        className="group flex w-full min-w-0 flex-wrap items-center gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40"
+        className="group flex w-full min-w-0 flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40 cursor-pointer"
       >
-        <div className="flex min-w-[180px] flex-1 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
+        {/* Top/Left Section: Icon, Box info, Badges */}
+        <div className="flex min-w-0 flex-1 items-start sm:items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold mt-0.5 sm:mt-0">
             <Box size={16} />
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-bold text-foreground">
                 Box {boxDisplayNumber}
               </p>
@@ -469,83 +470,108 @@ function BoxCard({
               </p>
             )}
           </div>
+
+          {/* Mobile-only print button in header row */}
+          <div className="flex sm:hidden shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all",
+                "hover:border-primary/40 hover:bg-muted text-foreground",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
+              title="Print box label"
+            >
+              {downloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Printer size={14} />
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 md:justify-center">
-          <span className="text-xs font-semibold text-foreground">
-            {itemCount} item{itemCount === 1 ? "" : "s"}
-          </span>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 md:justify-center">
-          <span className="text-xs font-semibold text-foreground tabular-nums">
-            {formatWeight(boxWeight)}
-          </span>
-        </div>
-
-        <div className="flex min-w-[140px] flex-1 flex-wrap items-center gap-1.5 text-xs md:justify-end">
-          {receivedQty > 0 && (
-            <span className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-              receivedQty < itemCount
-                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-            )}>
-              {receivedQty}/{itemCount} at site
+        {/* Bottom/Right Section: Stats, Movement Badges, Print & Chevron */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 border-t sm:border-t-0 pt-2 sm:pt-0">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <span>
+              {itemCount} item{itemCount === 1 ? "" : "s"}
             </span>
-          )}
+            <span className="text-muted-foreground">·</span>
+            <span className="tabular-nums">{formatWeight(boxWeight)}</span>
+          </div>
 
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-              factoryOut
-                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                : "bg-muted text-muted-foreground",
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            {receivedQty > 0 && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                  receivedQty < itemCount
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                )}
+              >
+                {receivedQty}/{itemCount} at site
+              </span>
             )}
-          >
-            <TruckIcon size={11} />
-            Factory
-          </span>
 
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-              siteIn
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            <MapPin size={11} />
-            Site
-          </span>
-        </div>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                factoryOut
+                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              <TruckIcon size={11} />
+              Factory
+            </span>
 
-        <div className="flex shrink-0 items-center justify-end gap-2">
-          <button
-            type="button"
-            disabled={downloading}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload();
-            }}
-            className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all",
-              "hover:border-primary/40 hover:bg-muted text-foreground",
-              "disabled:cursor-not-allowed disabled:opacity-60",
-            )}
-            title="Print box label"
-          >
-            {downloading ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Printer size={14} />
-            )}
-          </button>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                siteIn
+                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              <MapPin size={11} />
+              Site
+            </span>
+          </div>
 
-          <ChevronRight
-            size={16}
-            className="text-muted-foreground transition-colors group-hover:text-foreground"
-          />
+          <div className="hidden sm:flex shrink-0 items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all",
+                "hover:border-primary/40 hover:bg-muted text-foreground",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
+              title="Print box label"
+            >
+              {downloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Printer size={14} />
+              )}
+            </button>
+
+            <ChevronRight
+              size={16}
+              className="text-muted-foreground transition-colors group-hover:text-foreground"
+            />
+          </div>
         </div>
       </div>
     );
@@ -675,49 +701,51 @@ function BoxCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         {receivedQty > 0 && (
           <div className={cn(
-            "flex items-center gap-1.5 rounded-lg border px-3 py-2",
+            "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2",
             receivedQty < itemCount
               ? "border-amber-500/30 bg-amber-500/10"
               : "border-emerald-500/20 bg-emerald-500/10"
           )}>
-            <MapPin size={14} className={receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
+            <MapPin size={13} className={receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
             <div className="flex flex-col">
-              <span className={cn("text-[10px] font-bold uppercase leading-none", receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+              <span className={cn("text-[9px] sm:text-[10px] font-bold uppercase leading-none", receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
                 At Site
               </span>
-              <span className={cn("text-xs font-semibold mt-1", receivedQty < itemCount ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300")}>
+              <span className={cn("text-[11px] sm:text-xs font-semibold mt-0.5", receivedQty < itemCount ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300")}>
                 {receivedQty} / {itemCount} items
               </span>
             </div>
           </div>
         )}
 
-        <DispatchStep
-          label="Factory Out"
-          done={factoryOut}
-          by={box.factory_out_by}
-          at={box.factory_out_at}
-          Icon={TruckIcon}
-          timeZone={timeZone}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <DispatchStep
+            label="Factory Out"
+            done={factoryOut}
+            by={box.factory_out_by}
+            at={box.factory_out_at}
+            Icon={TruckIcon}
+            timeZone={timeZone}
+          />
 
-        <div className="h-px w-6 shrink-0 bg-border" />
+          <div className="hidden min-[420px]:block h-px w-4 sm:w-6 shrink-0 bg-border" />
 
-        <DispatchStep
-          label="Site In"
-          done={siteIn}
-          by={box.site_in_by}
-          at={box.site_in_at}
-          Icon={MapPin}
-          timeZone={timeZone}
-        />
+          <DispatchStep
+            label="Site In"
+            done={siteIn}
+            by={box.site_in_by}
+            at={box.site_in_at}
+            Icon={MapPin}
+            timeZone={timeZone}
+          />
+        </div>
 
         <ChevronRight
           size={16}
-          className="ml-auto text-muted-foreground transition-colors group-hover:text-indigo-500"
+          className="ml-auto text-muted-foreground transition-colors group-hover:text-indigo-500 shrink-0"
         />
       </div>
     </div>
@@ -990,7 +1018,7 @@ function BoxesSection({
 
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border bg-card">
-      <div className="border-b bg-muted/30 p-4">
+      <div className="border-b bg-muted/30 p-3.5 sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div
             onClick={() => setCollapsed((value) => !value)}
@@ -1000,8 +1028,8 @@ function BoxesSection({
               <Box size={18} />
             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-bold text-foreground">
                   Boxes ({filteredBoxes.length}/
                   {boxesPagination?.total ?? boxes.length})
@@ -1023,7 +1051,7 @@ function BoxesSection({
               variant="outline"
               size="sm"
               onClick={() => setCollapsed((value) => !value)}
-              className="h-8 text-xs gap-1.5 rounded-lg"
+              className="h-8 text-xs gap-1.5 rounded-lg flex-1 sm:flex-none justify-center"
             >
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               {collapsed ? "Expand" : "Collapse"}
@@ -1068,7 +1096,7 @@ function BoxesSection({
               variant="outline"
               disabled={downloadingDispatch}
               onClick={onDownloadDispatch}
-              className="h-8 text-xs gap-1.5 rounded-lg"
+              className="h-8 text-xs gap-1.5 rounded-lg w-full sm:w-auto justify-center"
             >
               {downloadingDispatch ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -1203,7 +1231,7 @@ function BoxesSection({
             </div>
 
             {/* Controls Row 2: Sort By, Reset */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
               <div className="w-full sm:w-64 space-y-1">
                 <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground block">
                   Sort By
@@ -1234,7 +1262,7 @@ function BoxesSection({
                   variant="ghost"
                   size="sm"
                   onClick={resetBoxFilters}
-                  className="h-9 gap-2 rounded-lg text-muted-foreground hover:text-foreground"
+                  className="h-9 gap-2 rounded-lg text-muted-foreground hover:text-foreground w-full sm:w-auto justify-center"
                 >
                   <X size={14} />
                   Reset
@@ -1300,7 +1328,7 @@ function BoxesSection({
               className={cn(
                 viewMode === "compact"
                   ? "space-y-2"
-                  : "grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4",
+                  : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4",
               )}
             >
               {paginatedBoxes.map((box) => (
@@ -1320,8 +1348,8 @@ function BoxesSection({
 
           {/* Boxes Pagination UI */}
           {activePagination.total > 0 && (
-            <div className="mt-4 flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto border-t bg-muted/10 p-3 sm:flex-row sm:gap-8 rounded-b-xl">
-              <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
+            <div className="mt-4 flex w-full flex-col-reverse sm:flex-row items-center justify-between gap-3 sm:gap-6 border-t bg-muted/10 p-3 rounded-b-xl max-w-full overflow-hidden">
+              <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                 Showing{" "}
                 <span className="font-semibold text-foreground">
                   {activePagination.from}
@@ -1337,10 +1365,10 @@ function BoxesSection({
                 {" boxes"}
               </div>
 
-              <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-                <div className="flex items-center space-x-2">
-                  <p className="whitespace-nowrap text-sm font-medium">
-                    Rows per page
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                <div className="flex items-center space-x-1.5">
+                  <p className="whitespace-nowrap text-xs sm:text-sm font-medium">
+                    Rows
                   </p>
                   <Select
                     value={`${pageSize}`}
@@ -1362,11 +1390,11 @@ function BoxesSection({
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-center text-sm font-medium">
+                <div className="text-xs sm:text-sm font-medium whitespace-nowrap">
                   Page {activePagination.page} of {activePagination.total_pages}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
                   <Button
                     aria-label="Go to first page"
                     variant="outline"
@@ -1705,22 +1733,35 @@ function BoxItemsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] w-full max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl border">
-        <DialogHeader className="flex flex-row items-center justify-between gap-4 border-b bg-muted/30 px-6 py-4 pr-14">
-          <DialogTitle className="flex items-center gap-3 text-lg font-bold">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
+      <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] max-h-[92vh] sm:max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl border">
+        <DialogHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b bg-muted/30 p-3.5 sm:px-6 sm:py-4 pr-12 sm:pr-14">
+          <DialogTitle className="flex items-start sm:items-center gap-3 text-base sm:text-lg font-bold min-w-0 flex-1">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold mt-0.5 sm:mt-0">
               <Box size={18} />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-foreground">Box {boxName}</span>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-foreground truncate">Box {boxName}</span>
                 {data && (
                   <Badge
                     variant="outline"
-                    className="text-xs font-semibold"
+                    className="text-xs font-semibold shrink-0"
                   >
                     {data.items.length}{" "}
                     {data.items.length === 1 ? "Item" : "Items"}
+                  </Badge>
+                )}
+                {data && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "sm:hidden capitalize text-xs font-semibold shrink-0",
+                      isPacked
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                    )}
+                  >
+                    {boxStatus}
                   </Badge>
                 )}
               </div>
@@ -1761,7 +1802,7 @@ function BoxItemsDialog({
             </div>
           </DialogTitle>
           {data && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
               <Badge
                 variant="outline"
                 className={cn(
@@ -1923,7 +1964,7 @@ function BoxItemsDialog({
             </div>
           ) : (
             <div className="w-full overflow-x-auto border-0 bg-background">
-              <Table className="w-full">
+              <Table className="w-full min-w-[850px]">
                 <TableHeader className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs">
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="text-xs font-bold uppercase text-foreground py-3.5 whitespace-nowrap px-4">
@@ -2077,20 +2118,20 @@ function BoxItemsDialog({
                   <TableRow className="hover:bg-muted/40 border-0">
                     <TableCell
                       colSpan={3}
-                      className="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-foreground"
+                      className="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-foreground whitespace-nowrap"
                     >
                       Total Box Summary ({data.items.length}{" "}
                       {data.items.length === 1 ? "Item" : "Items"})
                     </TableCell>
-                    <TableCell className="py-3.5 px-4 text-sm font-bold text-center text-foreground tabular-nums">
+                    <TableCell className="py-3.5 px-4 text-sm font-bold text-center text-foreground tabular-nums whitespace-nowrap">
                       {totalQty}
                     </TableCell>
-                    <TableCell className="py-3.5 px-4 text-sm font-bold text-foreground tabular-nums">
+                    <TableCell className="py-3.5 px-4 text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
                       {formatWeight(totalWeight)}
                     </TableCell>
                     <TableCell
                       colSpan={7}
-                      className="py-3.5 px-4 text-xs text-muted-foreground text-right pr-6"
+                      className="py-3.5 px-4 text-xs text-muted-foreground text-right pr-6 whitespace-nowrap"
                     >
                       Total Weight:{" "}
                       <Badge variant="outline" className="font-semibold text-xs ml-1.5">
@@ -2112,7 +2153,7 @@ function BoxItemsDialog({
           if (!nextOpen && !updatingStatus) setPendingStatus(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Pack this box?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -2142,7 +2183,7 @@ function BoxItemsDialog({
         open={unpackModalOpen}
         onOpenChange={(val) => !unpacking && setUnpackModalOpen(val)}
       >
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
           <DialogHeader className="border-b bg-amber-500/5 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -2270,7 +2311,7 @@ function BoxItemsDialog({
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
           <DialogHeader className="border-b bg-destructive/5 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
@@ -2357,7 +2398,7 @@ function BoxItemsDialog({
         open={revertModalOpen}
         onOpenChange={(val) => !reverting && setRevertModalOpen(val)}
       >
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
           <DialogHeader className="border-b bg-destructive/5 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
@@ -2802,18 +2843,18 @@ function CutListSection({
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
       {/* Header */}
-      <div className="border-b bg-muted/30 p-4">
+      <div className="border-b bg-muted/30 p-3.5 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div
             onClick={() => setCollapsed((value) => !value)}
-            className="flex items-center gap-3 cursor-pointer"
+            className="flex items-center gap-3 cursor-pointer min-w-0 flex-1"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
               <Layers size={18} />
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-bold text-sm text-foreground">
                   Cut List ({summary?.filtered_qty ?? 0}/
                   {summary?.total_project_qty ?? 0} items)
@@ -2823,19 +2864,19 @@ function CutListSection({
                   {formatWeight(summary?.filtered_weight ?? 0)}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground truncate">
                 Itemized cut list details and machine status tracking.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <Button
               type="button"
               size="sm"
               variant="outline"
               onClick={() => setCollapsed((value) => !value)}
-              className="h-8 gap-1.5 text-xs rounded-lg"
+              className="h-8 gap-1.5 text-xs rounded-lg flex-1 sm:flex-none justify-center"
             >
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               {collapsed ? "Expand" : "Collapse"}
@@ -2847,7 +2888,7 @@ function CutListSection({
                 size="sm"
                 variant="outline"
                 onClick={resetFilters}
-                className="h-8 gap-1.5 text-xs rounded-lg"
+                className="h-8 gap-1.5 text-xs rounded-lg flex-1 sm:flex-none justify-center"
               >
                 <X size={13} />
                 Reset Filters
@@ -3180,8 +3221,8 @@ function CutListSection({
 
           {/* Table */}
           {!loading && !error && (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto w-full max-w-full">
+              <Table className="w-full min-w-[900px]">
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="w-8 text-xs font-black uppercase">
@@ -3457,8 +3498,8 @@ function CutListSection({
 
           {/* Pagination */}
           {!loading && !error && pagination && pagination.total > 0 && (
-            <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto border-t bg-muted/10 p-3 sm:flex-row sm:gap-8 rounded-b-xl">
-              <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
+            <div className="flex w-full flex-col-reverse sm:flex-row items-center justify-between gap-3 sm:gap-6 border-t bg-muted/10 p-3 rounded-b-xl max-w-full overflow-hidden">
+              <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                 Showing{" "}
                 <span className="font-semibold text-foreground">
                   {pagination.from}
@@ -3474,10 +3515,10 @@ function CutListSection({
                 {" matching items"}
               </div>
 
-              <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-                <div className="flex items-center space-x-2">
-                  <p className="whitespace-nowrap text-sm font-medium">
-                    Rows per page
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                <div className="flex items-center space-x-1.5">
+                  <p className="whitespace-nowrap text-xs sm:text-sm font-medium">
+                    Rows
                   </p>
                   <Select
                     value={`${pageSize}`}
@@ -3499,11 +3540,11 @@ function CutListSection({
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-center text-sm font-medium">
+                <div className="text-xs sm:text-sm font-medium whitespace-nowrap">
                   Page {pagination.page} of {pagination.total_pages}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
                   <Button
                     aria-label="Go to first page"
                     variant="outline"
@@ -3798,40 +3839,40 @@ export default function ProjectDetailPage() {
   return (
     <>
       {/* ── Header ── */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-3 sm:px-4 border-b">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <SidebarTrigger className="-ml-1 shrink-0" />
           <Separator
             orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
+            className="mr-1 sm:mr-2 data-[orientation=vertical]:h-4 shrink-0"
           />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
+          <Breadcrumb className="min-w-0">
+            <BreadcrumbList className="flex-nowrap">
+              <BreadcrumbItem className="hidden md:block shrink-0">
                 <BreadcrumbLink href="/dashboard/track-trace">
                   Track & Trace
                 </BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>
+              <BreadcrumbSeparator className="hidden md:block shrink-0" />
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="truncate max-w-[140px] xs:max-w-[220px] sm:max-w-[340px] md:max-w-md">
                   {data?.project.project_name ?? "Project Detail"}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 sm:gap-6 p-3.5 sm:p-5 md:p-6 max-w-full overflow-x-hidden">
         {loading && (
           <div className="space-y-4">
             <Skeleton className="h-24 w-full rounded-xl" />
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 rounded-xl" />
               ))}
@@ -3840,7 +3881,7 @@ export default function ProjectDetailPage() {
         )}
 
         {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 sm:px-5 py-3 sm:py-4 text-sm text-destructive">
             ⚠ Failed to load project detail. Please refresh.
           </div>
         )}
@@ -3848,17 +3889,17 @@ export default function ProjectDetailPage() {
         {!loading && !error && data && (
           <>
             {/* ── Integrated Project Header & Packing Overview Card ── */}
-            <div className="rounded-2xl border bg-card p-5 space-y-5">
+            <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4 sm:space-y-5">
               {/* Top Row: Project Icon, Name & Lead on Left, Status Badges on Right */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b -mx-5 px-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 sm:gap-4 pb-4 border-b -mx-4 px-4 sm:-mx-5 sm:px-5">
                 {/* Left Column: Icon + Project Name + Connected Lead */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-foreground text-background font-bold">
-                    <FolderKanban size={20} />
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-foreground text-background font-bold">
+                    <FolderKanban size={18} className="sm:size-5" />
                   </div>
 
-                  <div className="space-y-0.5 min-w-0">
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground truncate">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <h1 className="text-lg sm:text-2xl font-black tracking-tight text-foreground truncate" title={data.project.project_name}>
                       {data.project.project_name}
                     </h1>
 
@@ -3868,7 +3909,7 @@ export default function ProjectDetailPage() {
                           size={13}
                           className="text-muted-foreground shrink-0"
                         />
-                        <span>{data.project.lead.lead_name}</span>
+                        <span className="truncate">{data.project.lead.lead_name}</span>
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
@@ -3879,7 +3920,7 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Right Column: Status Badges & Due Date */}
-                <div className="flex flex-wrap items-center gap-2 shrink-0 sm:justify-end">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 sm:justify-end">
                   {data.project.details?.estimated_completion_date && (
                     <span className="inline-flex items-center gap-1.5 rounded-lg border bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground">
                       <Calendar
@@ -3906,7 +3947,7 @@ export default function ProjectDetailPage() {
                   <Badge
                     variant="secondary"
                     className={cn(
-                      "h-7 px-3 text-xs font-semibold rounded-lg border inline-flex items-center gap-1.5",
+                      "h-7 px-2.5 sm:px-3 text-xs font-semibold rounded-lg border inline-flex items-center gap-1.5",
                       data.project.track_trace_status === "Completed"
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                         : "bg-primary/10 text-primary border-primary/20",
@@ -3927,10 +3968,10 @@ export default function ProjectDetailPage() {
 
               {/* Bottom Row: Metric Stat Cards */}
               <div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5">
                   {/* Product Types */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Product Types
                       </p>
@@ -3938,7 +3979,7 @@ export default function ProjectDetailPage() {
                         <Layers size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.product_types}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3947,8 +3988,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Total Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Total Qty
                       </p>
@@ -3956,7 +3997,7 @@ export default function ProjectDetailPage() {
                         <Package size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3965,8 +4006,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Packed Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Packed Qty
                       </p>
@@ -3974,7 +4015,7 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_packed_qty}
                     </p>
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
@@ -3983,8 +4024,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Pending Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Qty
                       </p>
@@ -3992,7 +4033,7 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_pending_qty}
                     </p>
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate">
@@ -4001,8 +4042,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Packing Progress */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Packing Progress
                       </p>
@@ -4010,7 +4051,7 @@ export default function ProjectDetailPage() {
                         <TrendingUp size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.packing_progress_pct}%
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4023,8 +4064,8 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Packing method + product status ── */}
-            <Tabs value={activeSection} onValueChange={setActiveSection} className="gap-4">
-              <TabsList className="sticky top-0 z-10 grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl border border-border/80 bg-muted/80 p-1.5 shadow-xs backdrop-blur-md sm:grid-cols-4">
+            <Tabs value={activeSection} onValueChange={setActiveSection} className="min-w-0 gap-4">
+              <TabsList className="sticky top-0 z-10 grid h-auto w-full grid-cols-2 gap-1 sm:gap-1.5 rounded-xl border border-border/80 bg-muted/80 p-1 sm:p-1.5 shadow-xs backdrop-blur-md sm:grid-cols-4">
                 {[
                   { id: "overview", label: "Overview", icon: SlidersHorizontal },
                   { id: "boxes", label: "Boxes", icon: Package, count: data?.boxes?.length },
@@ -4039,7 +4080,7 @@ export default function ProjectDetailPage() {
                       key={tab.id}
                       value={tab.id}
                       className={cn(
-                        "relative h-9 gap-2 rounded-lg text-xs sm:text-sm font-semibold select-none cursor-pointer transition-colors duration-200 z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                        "relative min-h-[36px] sm:min-h-[38px] h-auto py-1 sm:py-1.5 px-2 gap-1.5 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold select-none cursor-pointer transition-colors duration-200 z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none justify-center",
                         isActive
                           ? "text-primary-foreground font-bold"
                           : "text-muted-foreground hover:text-foreground hover:bg-background/40",
@@ -4052,12 +4093,12 @@ export default function ProjectDetailPage() {
                           className="absolute inset-0 rounded-lg bg-primary shadow-sm -z-10 pointer-events-none"
                         />
                       )}
-                      <Icon className="size-4 shrink-0" />
-                      <span>{tab.label}</span>
+                      <Icon className="size-3.5 sm:size-4 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
                       {typeof tab.count === "number" && tab.count > 0 && (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums transition-colors",
+                            "rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums transition-colors shrink-0",
                             isActive
                               ? "bg-primary-foreground/20 text-primary-foreground"
                               : "bg-muted-foreground/20 text-muted-foreground",
@@ -4080,7 +4121,7 @@ export default function ProjectDetailPage() {
                 >
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
               {/* Left Side: Packing Method */}
-              <div className="xl:col-span-4 rounded-2xl border bg-card p-5 space-y-4 flex flex-col justify-between h-full">
+              <div className="xl:col-span-4 rounded-2xl border bg-card p-4 sm:p-5 space-y-4 flex flex-col justify-between h-full">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                     <SlidersHorizontal size={18} />
@@ -4095,9 +4136,9 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                   {/* Scanned Packed */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Scanned Packed
@@ -4108,7 +4149,7 @@ export default function ProjectDetailPage() {
                     </div>
 
                     <div className="flex items-baseline justify-between gap-1">
-                      <p className="text-xl font-bold text-foreground tabular-nums">
+                      <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                         {data.stats.scanned_packed_qty}
                       </p>
                       <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -4118,7 +4159,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Manual Packed */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Manual Packed
@@ -4129,7 +4170,7 @@ export default function ProjectDetailPage() {
                     </div>
 
                     <div className="flex items-baseline justify-between gap-1">
-                      <p className="text-xl font-bold text-foreground tabular-nums">
+                      <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                         {data.stats.manual_packed_qty}
                       </p>
                       <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
@@ -4140,8 +4181,8 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* Right Side: Product Packing Status (All 5 in 1 Row) */}
-              <div className="xl:col-span-8 rounded-2xl border bg-card p-5 space-y-4 flex flex-col justify-between h-full">
+              {/* Right Side: Product Packing Status (Responsive Grid) */}
+              <div className="xl:col-span-8 rounded-2xl border bg-card p-4 sm:p-5 space-y-4 flex flex-col justify-between h-full">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                     <PackageCheck size={18} />
@@ -4151,15 +4192,14 @@ export default function ProjectDetailPage() {
                       Product Packing Status
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Unique products grouped by their current packing
-                      completion.
+                      Unique products grouped by their current packing completion.
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
                   {/* Fully Packed */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Fully Packed
@@ -4168,13 +4208,13 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.fully_packed_products}
                     </p>
                   </div>
 
                   {/* Partial */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Partial
@@ -4183,13 +4223,13 @@ export default function ProjectDetailPage() {
                         <Clock size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.partially_packed_products}
                     </p>
                   </div>
 
                   {/* Not Started */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Not Started
@@ -4198,13 +4238,13 @@ export default function ProjectDetailPage() {
                         <Layers size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.not_started_products}
                     </p>
                   </div>
 
                   {/* Machine Completion */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Machine Comp.
@@ -4213,13 +4253,13 @@ export default function ProjectDetailPage() {
                         <TrendingUp size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.machine_completion_pct}%
                     </p>
                   </div>
 
                   {/* Pending at Packaging */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0 col-span-2 sm:col-span-1">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Pkg.
@@ -4228,7 +4268,7 @@ export default function ProjectDetailPage() {
                         <Box size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.pending_at_packaging}
                     </p>
                   </div>
@@ -4237,7 +4277,7 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Box / weight statistics ── */}
-            <div className="rounded-2xl border bg-card p-5 space-y-4">
+            <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                   <Box size={18} />
@@ -4252,10 +4292,10 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {/* Total Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Total Boxes
                     </p>
@@ -4263,14 +4303,14 @@ export default function ProjectDetailPage() {
                       <Box size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.total_boxes}
                   </p>
                 </div>
 
                 {/* Boxes With Items */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Boxes With Items
                     </p>
@@ -4278,14 +4318,14 @@ export default function ProjectDetailPage() {
                       <CheckCircle2 size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.boxes_with_items}
                   </p>
                 </div>
 
                 {/* Empty Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Empty Boxes
                     </p>
@@ -4293,14 +4333,14 @@ export default function ProjectDetailPage() {
                       <Clock size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.empty_boxes}
                   </p>
                 </div>
 
                 {/* Packed Weight */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Packed Weight
                     </p>
@@ -4308,7 +4348,7 @@ export default function ProjectDetailPage() {
                       <Package size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {formatWeight(data.stats.total_weight)}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4317,8 +4357,8 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Avg Qty / Box */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0 col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Avg Qty / Box
                     </p>
@@ -4326,7 +4366,7 @@ export default function ProjectDetailPage() {
                       <Layers size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.average_qty_per_box}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4379,7 +4419,7 @@ export default function ProjectDetailPage() {
                 >
 
             {/* ── Dispatch / site progress ── */}
-            <div className="rounded-2xl border bg-card p-5 space-y-4">
+            <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
@@ -4395,12 +4435,12 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                   <Button
                     asChild
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs gap-1.5 rounded-lg border-primary/30 hover:bg-primary/5 hover:text-primary"
+                    className="h-7 text-xs gap-1.5 rounded-lg border-primary/30 hover:bg-primary/5 hover:text-primary w-full sm:w-auto justify-center"
                   >
                     <Link
                       href={`/dashboard/track-trace/machines/20/dispatch?projectId=${data.project.id}`}
@@ -4423,10 +4463,10 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {/* Packed Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Packed Boxes
                     </p>
@@ -4434,14 +4474,14 @@ export default function ProjectDetailPage() {
                       <CheckCircle2 size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.packed_boxes}
                   </p>
                 </div>
 
                 {/* Unpacked Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Unpacked Boxes
                     </p>
@@ -4449,14 +4489,14 @@ export default function ProjectDetailPage() {
                       <Clock size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.unpacked_boxes}
                   </p>
                 </div>
 
                 {/* Factory Out */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Factory Out
                     </p>
@@ -4464,14 +4504,14 @@ export default function ProjectDetailPage() {
                       <TruckIcon size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.factory_out_boxes}
                   </p>
                 </div>
 
                 {/* Site Received */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Site Received
                     </p>
@@ -4479,14 +4519,14 @@ export default function ProjectDetailPage() {
                       <MapPin size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.site_received_boxes}
                   </p>
                 </div>
 
                 {/* Dispatch Progress */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0 col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Dispatch Progress
                     </p>
@@ -4494,7 +4534,7 @@ export default function ProjectDetailPage() {
                       <TrendingUp size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.dispatch_progress_pct}%
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4546,7 +4586,7 @@ export default function ProjectDetailPage() {
 
             {/* ── Site item receipt / verification ── */}
             {receivedStats && (
-              <div className="rounded-2xl border bg-card p-5 space-y-4">
+              <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
@@ -4585,10 +4625,10 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Top 6 Stat Cards in 1 Row */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-6">
                   {/* Packed Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Packed Qty
                       </p>
@@ -4596,7 +4636,7 @@ export default function ProjectDetailPage() {
                         <Package size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_packed_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4605,8 +4645,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* At Site Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         At Site Qty
                       </p>
@@ -4614,7 +4654,7 @@ export default function ProjectDetailPage() {
                         <MapPin size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.site_in_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4623,8 +4663,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Received Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Received Qty
                       </p>
@@ -4632,7 +4672,7 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.total_received_qty}
                     </p>
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
@@ -4641,8 +4681,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Pending Receipt */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Receipt
                       </p>
@@ -4650,7 +4690,7 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.total_pending_receipt_qty}
                     </p>
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate">
@@ -4659,8 +4699,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Pending Verification */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Verif.
                       </p>
@@ -4668,7 +4708,7 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.site_in_pending_verification_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4677,8 +4717,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Site Verification */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Site Verif.
                       </p>
@@ -4686,7 +4726,7 @@ export default function ProjectDetailPage() {
                         <TrendingUp size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.site_item_verification_pct}%
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4805,9 +4845,9 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Bottom Row: Box Receipt Status */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Fully Received Boxes
                       </p>
@@ -4815,13 +4855,13 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.fully_received_boxes}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Partial Receipt Boxes
                       </p>
@@ -4829,13 +4869,13 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.partially_received_boxes}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Not Received Boxes
                       </p>
@@ -4843,7 +4883,7 @@ export default function ProjectDetailPage() {
                         <Layers size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.not_received_boxes}
                     </p>
                   </div>
@@ -4864,32 +4904,32 @@ export default function ProjectDetailPage() {
 
             {/* ── Machine progress ── */}
             {data.machines.length > 0 && (
-              <div className="rounded-2xl border bg-card p-5 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+              <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                       <Cpu size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h2 className="text-sm font-bold text-foreground">
                         Machine Progress
                       </h2>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground truncate">
                         Individual machine packaging and scan completion rates.
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[11px] font-semibold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Badge variant="outline" className="text-[11px] font-semibold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 self-start sm:self-auto">
                     Overall {data.stats.machine_completion_pct}%
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {data.machines.map((m) => (
                     <Link
                       key={m.machine_id}
                       href={`/dashboard/track-trace/manage-project/${uniqueProjectId}/machines/${m.machine_id}`}
-                      className="group flex-1 min-w-[220px] rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 hover:shadow-xs space-y-2 cursor-pointer block"
+                      className="group rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 hover:shadow-xs space-y-2 cursor-pointer block min-w-0"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs font-semibold capitalize text-foreground group-hover:text-primary transition-colors truncate" title={m.machine_name}>
@@ -4946,7 +4986,7 @@ export default function ProjectDetailPage() {
           if (!downloadingDispatch) setDispatchLocationDialogOpen(open);
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Select dispatch locations</DialogTitle>
             <DialogDescription>
@@ -4955,7 +4995,7 @@ export default function ProjectDetailPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center justify-between gap-3 border-y py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-y py-3">
             <p className="text-sm font-medium">
               {selectedDispatchLocations.length} of{" "}
               {data?.filterOptions?.locations?.length ?? 0} selected
@@ -5016,7 +5056,7 @@ export default function ProjectDetailPage() {
             })}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"

@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface FranchiseListItem {
+  shift_minutes?: number;
+  Department?: string;
   id: number;
   vendor_id: number;
   franchise_name: string;
@@ -25,6 +27,7 @@ export interface FranchisesResponse {
 }
 
 export interface CreateFranchisePayload {
+  shift_minutes?: number;
   vendor_id: number;
   franchise_name: string;
   franchise_code?: string | null;

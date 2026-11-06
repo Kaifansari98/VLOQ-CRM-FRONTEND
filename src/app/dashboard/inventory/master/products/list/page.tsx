@@ -5,6 +5,7 @@ import {
   downloadProductBulkTemplate, uploadProductBulkSheet, BulkUploadProductResult,
   Product, ProductListResponse, ProductFilters, SyncResult,
 } from "@/api/inventory/inventory";
+import { fetchProductMasters } from "@/api/inventory/product-master";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -34,6 +35,7 @@ import {
   History, TrendingUp, Download, Upload,
   ArrowUp, ArrowDown, Clock, Loader2, Pencil,
   Eye,
+  FileSpreadsheet, AlertCircle, Sparkles,
 } from "lucide-react";
 import {
   Select,
@@ -1422,6 +1424,7 @@ export default function ProductMasterPage() {
       const result = await uploadProductBulkSheet(Number(vendorId), Number(userId), file);
       setBulkUploadResult(result);
       fetchProducts();
+      getProductFilters(Number(vendorId)).then(setFiltersData).catch(console.error);
     } catch (e: any) {
       console.error("Bulk upload failed", e);
     } finally {
@@ -1793,6 +1796,7 @@ export default function ProductMasterPage() {
         <ProductBulkUploadModal
           uploading={bulkUploading}
           result={bulkUploadResult}
+          vendorId={Number(vendorId)}
           onDownloadTemplate={handleDownloadProductTemplate}
           onUpload={handleUploadProductBulk}
           onClose={() => setShowBulkUpload(false)}
@@ -1807,12 +1811,14 @@ export default function ProductMasterPage() {
 function ProductBulkUploadModal({
   uploading,
   result,
+  vendorId,
   onDownloadTemplate,
   onUpload,
   onClose,
 }: {
   uploading: boolean;
   result: BulkUploadProductResult | null;
+  vendorId: number;
   onDownloadTemplate: () => void;
   onUpload: (file: File) => void;
   onClose: () => void;
@@ -1820,11 +1826,138 @@ function ProductBulkUploadModal({
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const [fileError, setFileError] = useState("");
+  const [previewTab, setPreviewTab] = useState<"all" | "ready" | "issues">("all");
+  const [preview, setPreview] = useState<{
+    headers: string[];
+    rows: { rowNumber: number; values: string[]; issues: string[] }[];
+    missingHeaders: string[];
+    duplicateCheckFailed: boolean;
+  } | null>(null);
 
-  const handleFile = (file: File | undefined) => {
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!file.name.endsWith(".xlsx")) return;
-    onUpload(file);
+    setFileError("");
+    setPreview(null);
+    setSelectedFile(null);
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setFileError("Choose an .xlsx Excel file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError("The file is larger than the 10 MB limit.");
+      return;
+    }
+    setSelectedFile(file);
+    setReadingFile(true);
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.worksheets[0];
+      if (!sheet) throw new Error("No worksheet was found in this Excel file.");
+      const headers: string[] = [];
+      sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
+        headers[col - 1] = String(cell.value ?? "").trim();
+      });
+      const normalizedHeaders = headers.map((header) => header.toLowerCase().replace(/\*/g, "").trim());
+      const missingHeaders = ["product name", "category", "primary unit"].filter((name) => !normalizedHeaders.includes(name));
+      const rows: { rowNumber: number; values: string[]; issues: string[] }[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const values = headers.map((_, index) => {
+          const value = row.getCell(index + 1).value;
+          if (value === null || value === undefined) return "";
+          if (typeof value === "object" && "text" in value) return String(value.text ?? "").trim();
+          return String(value).trim();
+        });
+        if (!values.some((value) => value.trim())) return;
+        const at = (name: string) => values[normalizedHeaders.indexOf(name)]?.trim() ?? "";
+        const issues: string[] = [];
+        if (!at("product name")) issues.push("Product Name is required");
+        if (!at("category")) issues.push("Category is required");
+        if (!at("primary unit")) issues.push("Primary Unit is required");
+        rows.push({ rowNumber, values, issues });
+      });
+
+      const codeIndex = normalizedHeaders.indexOf("item code");
+      const nameIndex = normalizedHeaders.indexOf("product name");
+      const categoryIndex = normalizedHeaders.indexOf("category");
+      const brandIndex = normalizedHeaders.indexOf("brand");
+      const codeRows = new Map<string, number[]>();
+      const productRows = new Map<string, number[]>();
+      rows.forEach((row) => {
+        const code = row.values[codeIndex]?.trim().toLowerCase();
+        if (code) codeRows.set(code, [...(codeRows.get(code) ?? []), row.rowNumber]);
+        const productName = row.values[nameIndex]?.trim().toLowerCase();
+        const categoryName = row.values[categoryIndex]?.trim().toLowerCase();
+        const brandName = brandIndex >= 0 ? (row.values[brandIndex]?.trim().toLowerCase() || "nobrand") : "nobrand";
+        if (productName && categoryName) {
+          const key = `${categoryName}:${brandName}:${productName}`;
+          productRows.set(key, [...(productRows.get(key) ?? []), row.rowNumber]);
+        }
+      });
+      codeRows.forEach((rowNumbers) => {
+        if (rowNumbers.length > 1) rowNumbers.forEach((rowNumber) => {
+          rows.find((row) => row.rowNumber === rowNumber)?.issues.push("Item Code is duplicated in this Excel file");
+        });
+      });
+      productRows.forEach((rowNumbers) => {
+        if (rowNumbers.length > 1) rowNumbers.forEach((rowNumber) => {
+          rows.find((row) => row.rowNumber === rowNumber)?.issues.push("Product Name is duplicated in this Excel file for this category and brand");
+        });
+      });
+
+      let duplicateCheckFailed = false;
+      try {
+        const existingCodes = new Set<string>();
+        const existingProducts = new Set<string>();
+        const masters = await fetchProductMasters(vendorId);
+        const categoryPrefixes = new Map(
+          masters.categories.map((category) => [category.category_name.trim().toLowerCase(), category.prefix?.trim().toUpperCase().replace(/[-_]+$/, "") || ""])
+        );
+        for (const active of ["Yes", "No"]) {
+          let page = 1;
+          let totalPages = 1;
+          do {
+            const response = await getProducts(vendorId, { page, pageSize: 1000, active });
+            response.products.forEach((product) => {
+              [product.item_code, product.article_code].forEach((code) => {
+                if (code?.trim()) existingCodes.add(code.trim().toLowerCase());
+              });
+              if (product.product_name?.trim() && product.category?.category_name?.trim()) {
+                const bName = product.brand?.brand_name?.trim().toLowerCase() || "nobrand";
+                existingProducts.add(`${product.category.category_name.trim().toLowerCase()}:${bName}:${product.product_name.trim().toLowerCase()}`);
+              }
+            });
+            totalPages = response.total_pages || 1;
+            page += 1;
+          } while (page <= totalPages);
+        }
+        rows.forEach((row) => {
+          const code = row.values[codeIndex]?.trim().toLowerCase();
+          if (code && existingCodes.has(code)) row.issues.push("Item Code already exists in Product Master");
+          const categoryName = row.values[categoryIndex]?.trim().toLowerCase();
+          const productName = row.values[nameIndex]?.trim().toLowerCase();
+          const brandName = brandIndex >= 0 ? (row.values[brandIndex]?.trim().toLowerCase() || "nobrand") : "nobrand";
+          if (categoryName && productName && existingProducts.has(`${categoryName}:${brandName}:${productName}`)) {
+            const bDisplay = brandIndex >= 0 && row.values[brandIndex]?.trim() ? ` for brand "${row.values[brandIndex].trim()}"` : "";
+            row.issues.push(`Product with this name already exists in this category${bDisplay}`);
+          }
+        });
+      } catch (error) {
+        console.error("Could not check existing product item codes", error);
+        duplicateCheckFailed = true;
+      }
+      setPreview({ headers, rows, missingHeaders, duplicateCheckFailed });
+    } catch (error) {
+      setSelectedFile(null);
+      setFileError(error instanceof Error ? error.message : "Could not read this Excel file.");
+    } finally {
+      setReadingFile(false);
+    }
   };
 
   const handleDownloadErrorFile = () => {
@@ -1847,7 +1980,8 @@ function ProductBulkUploadModal({
   };
 
   return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
+    <>
+    <Dialog open={!preview || !!result} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg p-0 overflow-hidden">
         <div className="px-5 py-4 border-b bg-muted/20">
           <DialogTitle className="text-base font-bold flex items-center gap-2 text-foreground">
@@ -1909,14 +2043,14 @@ function ProductBulkUploadModal({
                 uploading ? "pointer-events-none opacity-60 border-muted" : ""
               )}
             >
-              {uploading ? (
+              {uploading || readingFile ? (
                 <Loader2 size={28} className="animate-spin text-foreground" />
               ) : (
                 <Upload size={28} className="text-muted-foreground/40" />
               )}
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  {uploading ? "Processing Bulk Products..." : "2. Drop .xlsx here or click to browse"}
+                  {uploading ? "Uploading Products..." : readingFile ? "Checking Excel rows…" : "2. Drop .xlsx here or click to browse"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Only .xlsx files · Max 10 MB</p>
               </div>
@@ -1928,12 +2062,14 @@ function ProductBulkUploadModal({
               className="hidden"
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
+            {fileError && <p className="text-xs text-red-700" role="alert">{fileError}</p>}
 
             <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 space-y-1.5">
               <p className="text-xs font-bold text-foreground mb-1">Important Upload Guidelines</p>
               {[
-                "Mandatory fields: Product Name, Category, Item Code (Must be unique), Primary Unit.",
-                "Non-mandatory fields can be left blank, but if filled, values must match system Master tables.",
+                "Mandatory fields: Product Name, Category, Primary Unit.",
+                "Item Code is optional: if left blank, system auto-generates a unique sequential item code based on 4-letter Category prefix (e.g. ACCE-001, FURN-001).",
+                "If master elements (Brand, Category, Sub Category, Core Product, Grade, Finish, Type, Item Group, Unit, HSN) are not already in master tables, they will be automatically created for your vendor without duplication.",
                 "If Barcode is left empty, system auto-generates a unique barcode.",
                 "If errors occur in any rows, valid rows will be saved and an Error Report will be provided.",
               ].map((t, i) => (
@@ -1985,7 +2121,7 @@ function ProductBulkUploadModal({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Review the downloaded error file to fix misspelled master names or missing compulsory values, then re-upload.
+                  Review the downloaded error file to fix missing compulsory values or duplicate item codes, then re-upload.
                 </p>
                 {result.errors?.length > 0 && (
                   <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1 border-t pt-2">
@@ -2021,6 +2157,211 @@ function ProductBulkUploadModal({
         )}
       </DialogContent>
     </Dialog>
+    {preview && !result && (() => {
+      const readyRows = preview.rows.filter((row) => row.issues.length === 0 && preview.missingHeaders.length === 0);
+      const issueRows = preview.rows.filter((row) => row.issues.length > 0);
+      const displayedRows = previewTab === "ready" ? readyRows : previewTab === "issues" ? issueRows : preview.rows;
+
+      return (
+        <Dialog open onOpenChange={(open) => { if (!open && !uploading) setPreview(null); }}>
+          <DialogContent className="w-[min(96vw,88rem)] min-w-0 max-w-none sm:max-w-[min(96vw,88rem)] max-h-[90vh] p-0 overflow-hidden">
+            <div className="px-5 py-4 border-b bg-muted/20">
+              <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                <FileSpreadsheet className="size-5 text-emerald-700" /> Excel Upload Preview
+              </DialogTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Review fields, verify auto-generated codes, and inspect any errors before confirming upload.
+              </p>
+            </div>
+            <div className="min-w-0 space-y-3.5 p-5">
+              {/* Summary Cards */}
+              <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">File Name</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-foreground">{selectedFile?.name}</p>
+                </div>
+                <div className="min-w-0 rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">Total Rows</p>
+                  <p className="mt-0.5 text-xs font-bold text-foreground">{preview.rows.length}</p>
+                </div>
+                <div className="min-w-0 rounded-md border bg-emerald-50/70 border-emerald-200 px-3 py-2">
+                  <p className="text-[11px] text-emerald-800 font-medium">Ready to Upload</p>
+                  <p className="mt-0.5 text-xs font-bold text-emerald-700">{readyRows.length}</p>
+                </div>
+                <div className={cn("min-w-0 rounded-md border px-3 py-2", issueRows.length || preview.missingHeaders.length ? "border-amber-300 bg-amber-50/70" : "bg-muted/20")}>
+                  <p className="text-[11px] text-muted-foreground">Needs Attention</p>
+                  <p className={cn("mt-0.5 text-xs font-bold", issueRows.length ? "text-amber-800" : "text-foreground")}>
+                    {issueRows.length + (preview.missingHeaders.length ? 1 : 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Master Auto-creation Note Banner */}
+              <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50/60 px-3 py-2 text-xs text-blue-900">
+                <Sparkles className="size-4 shrink-0 text-blue-600" />
+                <span>
+                  <strong>Master Auto-Creation:</strong> Missing master records (Brand, Category, Sub Category, Core Product, Grade, Finish, Type, Item Group, Unit, HSN) will be auto-created on upload. Empty Item Codes will be auto-generated with sequential category prefixes (e.g. ACCE-001).
+                </span>
+              </div>
+
+              {preview.missingHeaders.length > 0 && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <AlertCircle className="size-4 shrink-0" />
+                  Required columns missing: {preview.missingHeaders.join(", ")}
+                </div>
+              )}
+
+              {/* Filter Tabs */}
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant={previewTab === "all" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-2.5 font-medium"
+                    onClick={() => setPreviewTab("all")}
+                  >
+                    All Rows ({preview.rows.length})
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={previewTab === "ready" ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-7 text-xs px-2.5 font-medium",
+                      previewTab !== "ready" && "text-emerald-700 hover:text-emerald-800 border-emerald-200"
+                    )}
+                    onClick={() => setPreviewTab("ready")}
+                  >
+                    Ready ({readyRows.length})
+                  </Button>
+                  {issueRows.length > 0 && (
+                    <Button
+                      type="button"
+                      variant={previewTab === "issues" ? "destructive" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "h-7 text-xs px-2.5 font-medium",
+                        previewTab !== "issues" && "text-destructive hover:text-destructive border-destructive/30"
+                      )}
+                      onClick={() => setPreviewTab("issues")}
+                    >
+                      Issues ({issueRows.length})
+                    </Button>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Showing {displayedRows.length} of {preview.rows.length} rows
+                </span>
+              </div>
+
+              {/* Preview Table */}
+              <div className="min-w-0 max-w-full max-h-[48vh] overflow-auto rounded-md border bg-background">
+                <table className="w-full min-w-max text-[11px]">
+                  <thead className="sticky top-0 z-10 bg-muted text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="border-r px-2.5 py-2 w-14 text-center">Row</th>
+                      {preview.headers.map((header, index) => (
+                        <th key={`${header}-${index}`} className="min-w-[120px] whitespace-nowrap border-r px-2.5 py-2">
+                          {header || `Column ${index + 1}`}
+                        </th>
+                      ))}
+                      <th className="min-w-[200px] px-2.5 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {displayedRows.map((row) => (
+                      <tr key={row.rowNumber} className={row.issues.length ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/30"}>
+                        <td className="border-r px-2.5 py-2 font-mono text-center text-muted-foreground">{row.rowNumber}</td>
+                        {preview.headers.map((header, index) => {
+                          const isCode = header?.toLowerCase().replace(/\*/g, "").trim() === "item code";
+                          const val = row.values[index];
+                          const isDuplicate = isCode && row.issues.some((issue) => issue.toLowerCase().includes("item code"));
+
+                          if (isCode && !val) {
+                            return (
+                              <td key={`${header}-${index}`} className="border-r px-2.5 py-2">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 font-medium border border-blue-200">
+                                  Auto-generate
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td
+                              key={`${header}-${index}`}
+                              className={cn("max-w-[240px] truncate border-r px-2.5 py-2", isDuplicate && "bg-amber-100 font-semibold text-amber-800")}
+                              title={val}
+                            >
+                              {val || <span className="text-muted-foreground/40">—</span>}
+                              {isDuplicate && <span className="ml-1 text-[10px] text-amber-800 font-bold">(duplicate)</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="px-2.5 py-2">
+                          {row.issues.length ? (
+                            <span className="text-destructive font-medium flex items-start gap-1">
+                              <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+                              <span>{row.issues.join("; ")}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                              <CheckCircle2 className="size-3.5" /> Ready
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {displayedRows.length === 0 && (
+                      <tr>
+                        <td colSpan={preview.headers.length + 2} className="px-4 py-8 text-center text-muted-foreground">
+                          No rows to show in this view.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 border-t pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => {
+                    setPreview(null);
+                    setSelectedFile(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                  }}
+                >
+                  Choose another file
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={onClose} disabled={uploading}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={uploading || !selectedFile || readyRows.length === 0 || preview.missingHeaders.length > 0}
+                    onClick={() => selectedFile && onUpload(selectedFile)}
+                    className="bg-foreground text-background hover:bg-foreground/90 font-medium"
+                  >
+                    {uploading ? (
+                      <><Loader2 className="mr-2 size-4 animate-spin" />Uploading…</>
+                    ) : (
+                      <><Upload className="mr-2 size-4" />Upload {preview.rows.length} rows</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+    })()}
+    </>
   );
 }
 

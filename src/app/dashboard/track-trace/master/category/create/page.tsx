@@ -1010,7 +1010,7 @@ function CategoryFormContent() {
           )}
 
           {/* Row 2: Packing & Scan Validation Options */}
-          {isScanPackEnabled && (!activeCategory || !activeCategory.parent_id) && (
+          {(!activeCategory || !activeCategory.parent_id) && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label
                 className={cn(
@@ -1025,8 +1025,9 @@ function CategoryFormContent() {
                   onCheckedChange={(checked) => {
                     const val = !!checked;
                     setIncludeInPacking(val);
-                    if (!val && scanPackValidate) {
-                      setScanPackValidate(false);
+                    if (!val) {
+                      if (scanPackValidate) setScanPackValidate(false);
+                      if (useInAssembledPacking) setUseInAssembledPacking(false);
                     }
                   }}
                   className="mt-0.5"
@@ -1036,7 +1037,7 @@ function CategoryFormContent() {
                     <span className="text-sm font-semibold text-foreground">
                       Include in Packing
                     </span>
-                    {scanPackValidate && (
+                    {(scanPackValidate || useInAssembledPacking) && (
                       <span className="text-[10px] font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded border">
                         Required
                       </span>
@@ -1063,6 +1064,8 @@ function CategoryFormContent() {
                     setScanPackValidate(val);
                     if (val) {
                       setIncludeInPacking(true);
+                    } else {
+                      if (useInAssembledPacking) setUseInAssembledPacking(false);
                     }
                   }}
                   className="mt-0.5"
@@ -1087,7 +1090,14 @@ function CategoryFormContent() {
               >
                 <Checkbox
                   checked={useInAssembledPacking}
-                  onCheckedChange={(checked) => setUseInAssembledPacking(!!checked)}
+                  onCheckedChange={(checked) => {
+                    const val = !!checked;
+                    setUseInAssembledPacking(val);
+                    if (val) {
+                      setIncludeInPacking(true);
+                      setScanPackValidate(true);
+                    }
+                  }}
                   className="mt-0.5"
                 />
                 <div className="flex flex-col gap-0.5">

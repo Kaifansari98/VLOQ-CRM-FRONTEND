@@ -33,7 +33,6 @@ import {
   Clock,
   CalendarOff,
   CalendarOffIcon,
-  UserPlus,
   MessageSquare,
   PencilLine,
   History,
@@ -371,10 +370,6 @@ export default function ReadyToDispatchLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <UserPlus size={20} />
-                  Assign Task
-                </DropdownMenuItem>
                 {/* Lead block handling added for DropdownMenu action */}
                 {shouldDisableBlockedActions ? (
                   <CustomeTooltip

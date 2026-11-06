@@ -34,6 +34,7 @@ import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
 
 const EMPTY_FORM = {
+  shift_hours: "8",
   franchise_name: "",
   franchise_code: "",
   contact_person: "",
@@ -98,9 +99,12 @@ export default function VendorDetailPage() {
       return;
     }
 
+    const shiftMinutes = Number(form.shift_hours) * 60;
+    if (!form.shift_hours || !Number.isInteger(shiftMinutes) || shiftMinutes < 15 || shiftMinutes > 1440 || shiftMinutes % 15 !== 0) { toastManager.add({ title: "Enter a shift of 0.25–24 hours in 15-minute increments", type: "error" }); return; }
     try {
       await createFranchiseMutation.mutateAsync({
         vendor_id: vendorIdNum,
+        shift_minutes: shiftMinutes,
         franchise_name: form.franchise_name.trim(),
         franchise_code: form.franchise_code.trim(),
         contact_person: form.contact_person.trim(),
@@ -175,7 +179,7 @@ export default function VendorDetailPage() {
           if (!open) resetForm();
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[88vh] overflow-y-auto">
           <DialogHeader className="border-b pb-4">
             <DialogTitle className="text-base">Create Franchise</DialogTitle>
             <DialogDescription className="text-xs">
@@ -184,7 +188,8 @@ export default function VendorDetailPage() {
           </DialogHeader>
 
           <form className="space-y-4 mt-2" onSubmit={handleSubmit}>
-            <p className="text-xs text-muted-foreground">All six fields below are required. Choosing an address from the map is optional.</p>
+            <p className="text-xs text-muted-foreground">The basic details are required. Daily shift defaults to 8 hours; choosing an address from the map is optional.</p>
+            <div className="grid gap-2"><Label htmlFor="shift_hours">Daily shift (hours)</Label><Input id="shift_hours" type="number" min="0.25" max="24" step="0.25" value={form.shift_hours} onChange={handleFieldChange("shift_hours")} required /><p className="text-xs text-muted-foreground">Default 8 hours. Half-day attendance starts at 50% of the shift.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="franchise_name">Franchise Name <span className="text-xs text-muted-foreground">(Required)</span></Label>

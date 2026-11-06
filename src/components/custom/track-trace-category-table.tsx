@@ -646,9 +646,7 @@ export default function TrackTraceCategoryTable({
       },
     ];
 
-    return isScanPackEnabled
-      ? cols
-      : cols.filter((col) => col.id !== "packing_options");
+    return cols;
   }, [
     page,
     limit,

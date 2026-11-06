@@ -78,7 +78,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
 
   } = useEditBooking();
 
-  const { data: siteSupervisors, isLoading } = useSiteSupervisors(vendorId!);
+  const { data: siteSupervisors, isLoading } = useSiteSupervisors(vendorId!, undefined, leadId);
   const vendorUser = siteSupervisors?.data?.site_supervisors || [];
   const queryClient = useQueryClient();
 

@@ -882,21 +882,6 @@ export default function EmployeeMasterForm({
       {/* Top Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              router.push(
-                "/dashboard/masters-management/hrms-masters/employee-master" +
-                  (vendorIdOverride ? `?vendor_id=${vendorIdOverride}` : ""),
-              )
-            }
-            className="gap-1.5"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Employee Master
-          </Button>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               {mode === "edit" ? "Edit Employee" : "Create Employee"}

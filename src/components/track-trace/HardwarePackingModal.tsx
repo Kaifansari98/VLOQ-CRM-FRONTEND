@@ -352,6 +352,9 @@ export function HardwarePackingModal({
             cut_list_id: item.id,
             qty: qtyToPack,
             user_id: userId,
+            ...(isMultiLocation && selectedLocation
+              ? { location_name: selectedLocation }
+              : {}),
           });
           successCount++;
         }
