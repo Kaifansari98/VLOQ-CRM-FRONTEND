@@ -75,9 +75,11 @@ export default function EmployeesAttendance() {
   } : emptyData;
   const today = now ? attendanceDate(now, timeZone) : "";
   const selectedMonth = month || today.slice(0, 7);
-  const activeEntry = data.entries.find(entry => !entry.checkOut);
-  const todayEntry = data.entries.find(entry => entry.date === today);
-  const currentEntry = activeEntry || todayEntry;
+  const todayEntries = data.entries
+    .filter(entry => entry.date === today)
+    .sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime());
+  const activeEntry = todayEntries.find(entry => !entry.checkOut) || data.entries.find(entry => !entry.checkOut);
+  const currentEntry = activeEntry || (todayEntries.length > 0 ? todayEntries[todayEntries.length - 1] : undefined);
   const onBreak = !!activeEntry?.breaks.some(pause => !pause.end);
   const clock = (stamp?: string, zone = currentEntry?.timeZone || timeZone) => stamp ? new Intl.DateTimeFormat("en-IN", { timeZone: zone, hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date(stamp)) : "—";
   const dateLabel = (date: string, long = false) => new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: long ? "long" : "short", ...(long ? { year: "numeric" as const } : { weekday: "short" as const }) }).format(new Date(`${date}T12:00:00Z`));
@@ -85,6 +87,11 @@ export default function EmployeesAttendance() {
   const activeDataMonth = isTransitioningMonth
     ? (workspace?.entries[0]?.date ? workspace.entries[0].date.slice(0, 7) : selectedMonth)
     : selectedMonth;
+
+  const todayNetWorkMs = todayEntries.reduce((total, entry) => total + (now ? workMilliseconds(entry, now) : 0), 0);
+  const earliestCheckIn = todayEntries[0]?.checkIn;
+  const latestCheckOut = activeEntry ? undefined : todayEntries.filter(e => e.checkOut).slice(-1)[0]?.checkOut;
+  const totalBreaksToday = todayEntries.reduce((sum, entry) => sum + (entry.breaks?.length || 0), 0);
 
   const monthEntries = data.entries.filter(entry => entry.date.startsWith(activeDataMonth)).sort((a, b) => b.date.localeCompare(a.date));
   const completedEntries = monthEntries.filter(entry => entry.checkOut);
@@ -149,11 +156,22 @@ export default function EmployeesAttendance() {
     } catch (error: any) { toastManager.add({ title: error?.response?.data?.message || "Could not cancel correction.", type: "error" }); }
   };
 
-  const activity = currentEntry ? [
-    { label: "Checked in", time: currentEntry.checkIn, icon: LogIn },
-    ...currentEntry.breaks.flatMap(pause => [{ label: "Break started", time: pause.start, icon: Coffee }, ...(pause.end ? [{ label: "Returned from break", time: pause.end, icon: Timer }] : [])]),
-    ...(currentEntry.checkOut ? [{ label: "Checked out", time: currentEntry.checkOut, icon: LogOut }] : []),
-  ] : [];
+  const activity = (() => {
+    const events: Array<{ label: string; time: string; icon: any }> = [];
+    for (const entry of todayEntries) {
+      if (entry.checkIn) {
+        events.push({ label: "Checked In", time: entry.checkIn, icon: LogIn });
+      }
+      for (const pause of entry.breaks || []) {
+        if (pause.start) events.push({ label: "Break started", time: pause.start, icon: Coffee });
+        if (pause.end) events.push({ label: "Returned from break", time: pause.end, icon: Timer });
+      }
+      if (entry.checkOut) {
+        events.push({ label: "Checked Out", time: entry.checkOut, icon: LogOut });
+      }
+    }
+    return events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+  })();
 
   return <>
     <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
@@ -175,22 +193,22 @@ export default function EmployeesAttendance() {
             <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-emerald-500/5 blur-3xl" />
             <div className="relative flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3"><div className="flex size-11 items-center justify-center rounded-xl border bg-muted/30 text-foreground"><CalendarCheck2 className="size-5" /></div><div><h2 className="text-sm font-semibold">{activeEntry && activeEntry.date !== today ? "Open attendance session" : "Today’s attendance"}</h2><p className="mt-1 text-xs text-muted-foreground">{today ? dateLabel(currentEntry?.date || today, true) : "Loading your workday…"}</p></div></div>
-              {currentEntry ? <Status entry={currentEntry} /> : <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">{workspaceQuery.isPending ? "Loading…" : "Not checked in"}</span>}
+              {activeEntry ? <Status entry={activeEntry} /> : todayEntries.length ? <span className="rounded-full bg-blue-500/10 px-3 py-1 text-[11px] font-medium text-blue-700 dark:text-blue-300">Completed</span> : <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">{workspaceQuery.isPending ? "Loading…" : "Not checked in"}</span>}
             </div>
             <div className="relative mt-7 flex flex-wrap items-end justify-between gap-5">
-              <div><p className="text-xs font-medium text-muted-foreground">Net working time</p><p role="timer" aria-label="Net working time" className="mt-2 font-mono text-5xl font-medium tracking-tight tabular-nums sm:text-6xl">{ready && now ? formatDuration(currentEntry ? workMilliseconds(currentEntry, now) : 0, true) : "--:--:--"}</p><p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3.5" />{now ? new Intl.DateTimeFormat("en-IN", { timeZone, hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(now) : "—"}<span className="mx-1">·</span>{timeZone}</p></div>
+              <div><p className="text-xs font-medium text-muted-foreground">Net working time</p><p role="timer" aria-label="Net working time" className="mt-2 font-mono text-5xl font-medium tracking-tight tabular-nums sm:text-6xl">{ready && now ? formatDuration(todayNetWorkMs, true) : "--:--:--"}</p><p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3.5" />{now ? new Intl.DateTimeFormat("en-IN", { timeZone, hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(now) : "—"}<span className="mx-1">·</span>{timeZone}</p></div>
               <div className="flex items-center gap-2 rounded-xl border bg-muted/20 px-3 py-2"><span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold">{user?.user_name?.trim().split(/\s+/).slice(0, 2).map(name => name[0]).join("") || "—"}</span><div><p className="max-w-40 truncate text-xs font-semibold">{user?.user_name || "Your account"}</p><p className="mt-0.5 max-w-40 truncate text-[11px] text-muted-foreground">{user?.vendor?.vendor_name || "Employee workspace"}</p></div></div>
             </div>
             <div className="relative mt-6 grid grid-cols-3 divide-x rounded-xl border bg-muted/10 py-3">
-              {[{ label: "Check in", value: clock(currentEntry?.checkIn) }, { label: "Check out", value: clock(currentEntry?.checkOut) }, { label: "Breaks taken", value: String(currentEntry?.breaks.length || 0).padStart(2, "0") }].map(item => <div key={item.label} className="px-3 text-center"><p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{item.label}</p><p className="mt-1.5 text-sm font-semibold tabular-nums">{item.value}</p></div>)}
+              {[{ label: "Check in", value: clock(earliestCheckIn) }, { label: "Check out", value: clock(latestCheckOut) }, { label: "Breaks taken", value: String(totalBreaksToday).padStart(2, "0") }].map(item => <div key={item.label} className="px-3 text-center"><p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{item.label}</p><p className="mt-1.5 text-sm font-semibold tabular-nums">{item.value}</p></div>)}
             </div>
             <div className="relative mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="attendance-location" className="text-xs text-muted-foreground">Work location</Label><Select value={currentEntry?.location || location} onValueChange={setLocation} disabled={!ready || !!currentEntry}><SelectTrigger id="attendance-location" className="w-full"><span className="flex items-center gap-2"><MapPin className="size-3.5 text-muted-foreground" /><SelectValue /></span></SelectTrigger><SelectContent>{[...(currentEntry?.location === "Unspecified" ? ["Unspecified"] : []), "Office", "Factory", "Site", "Remote"].map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
+              <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="attendance-location" className="text-xs text-muted-foreground">Work location</Label><Select value={activeEntry?.location || location} onValueChange={setLocation} disabled={!ready || !!activeEntry}><SelectTrigger id="attendance-location" className="w-full"><span className="flex items-center gap-2"><MapPin className="size-3.5 text-muted-foreground" /><SelectValue /></span></SelectTrigger><SelectContent>{[...(activeEntry?.location === "Unspecified" ? ["Unspecified"] : []), "Office", "Factory", "Site", "Remote"].map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
               <div className="flex gap-2">
-                {!activeEntry ? <Button className="h-10 flex-1 gap-2 bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:min-w-36" disabled={!ready || !!todayEntry} onClick={() => punch("in")}><LogIn className="size-4" />{todayEntry ? "Day completed" : "Check in"}</Button> : <><Button variant="outline" className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => punch(onBreak ? "resume" : "break")}><Coffee className="size-4" />{onBreak ? "End break" : "Take a break"}</Button><Button className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => setCheckoutOpen(true)}><LogOut className="size-4" />Check out</Button></>}
+                {!activeEntry ? <Button className="h-10 flex-1 gap-2 bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:min-w-36" disabled={!ready} onClick={() => punch("in")}><LogIn className="size-4" />{todayEntries.length > 0 ? "Check in" : "Check in"}</Button> : <><Button variant="outline" className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => punch(onBreak ? "resume" : "break")}><Coffee className="size-4" />{onBreak ? "End break" : "Take a break"}</Button><Button className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => setCheckoutOpen(true)}><LogOut className="size-4" />Check out</Button></>}
               </div>
             </div>
-            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5" />Breaks are excluded from net working time. One check-in per day.</p>
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5" />Breaks are excluded from net working time. Check in and out multiple times as needed.</p>
           </section>
 
           <section className="flex flex-col rounded-2xl border bg-background p-5 shadow-sm sm:p-6" aria-label="Attendance activity">
