@@ -11,6 +11,7 @@ import {
 import {
   acceptedTypes,
   allFields,
+  fmContentFields,
   type FMAnswers,
   type FMAnswerGroup,
   type FMField,
@@ -39,6 +40,10 @@ export function useFMRequirements(
   const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
   const pending = React.useRef(new Set<string>());
   const [error, setError] = React.useState("");
+  const [validationTarget, setValidationTarget] = React.useState<{
+    productTypeId: number;
+    fieldKey?: string;
+  } | null>(null);
   const forms: FMQuestionnaire[] = !enabled
     ? []
     : savedResponse
@@ -51,7 +56,9 @@ export function useFMRequirements(
             fields: savedResponse.field_snapshot,
           },
         ]
-      : (query.data?.forms ?? []).filter((form) => form.fields.length > 0);
+      : (query.data?.forms ?? []).filter(
+          (form) => fmContentFields(form.fields).length > 0,
+        );
   const identity = `${vendorId}:${leadId}`;
   React.useEffect(() => {
     setEdits({});
@@ -59,6 +66,7 @@ export function useFMRequirements(
     setUploading({});
     pending.current.clear();
     setError("");
+    setValidationTarget(null);
   }, [identity, enabled]);
   const uploads = {
     ...Object.fromEntries(
@@ -90,6 +98,7 @@ export function useFMRequirements(
       },
     }));
     setError("");
+    setValidationTarget(null);
   };
   const prepare = (draft = false): FMAnswerGroup[] | null => {
     if (query.isFetching || query.isError || !forms.length) {
@@ -103,11 +112,21 @@ export function useFMRequirements(
       return null;
     }
     try {
-      return forms.map((form) => ({
-        product_type_id: form.product_type_id,
-        revision: form.revision,
-        answers: validateAnswers(form.fields, getAnswers(form), draft),
-      }));
+      return forms.map((form) => {
+        try {
+          return {
+            product_type_id: form.product_type_id,
+            revision: form.revision,
+            answers: validateAnswers(form.fields, getAnswers(form), draft),
+          };
+        } catch (error) {
+          setValidationTarget({
+            productTypeId: form.product_type_id,
+            fieldKey: (error as { fieldKey?: string }).fieldKey,
+          });
+          throw error;
+        }
+      });
     } catch (err) {
       setError((err as Error).message);
       return null;
@@ -181,6 +200,7 @@ export function useFMRequirements(
   };
   return {
     query,
+    validationTarget,
     forms,
     uploads,
     error,
@@ -195,6 +215,7 @@ export function useFMRequirements(
         Object.fromEntries(forms.map((form) => [form.product_type_id, {}])),
       );
       setError("");
+      setValidationTarget(null);
     },
     saveDraft: () => {
       const groups = prepare(true);

@@ -14,6 +14,7 @@ import {
 import BaseModal from "@/components/utils/baseModal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
+import { fmContentFields } from "@/lib/fm-requirements";
 import { useFMRequirements } from "@/hooks/useFMRequirements";
 import FMRequirementsForm from "@/components/fm-requirements/FMRequirementsForm";
 import { useForm } from "react-hook-form";
@@ -251,7 +252,7 @@ const FinalMeasurementModal = ({
     leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
   const fmRequirements = useFMRequirements(vendorId, leadId, open && !handlesLargeScaleProjects);
   const hasFMRequirements = !handlesLargeScaleProjects && fmRequirements.forms.length > 0;
-  const useFMPrimaryUploads = hasFMRequirements && ["site_photos", "measurement_document"].every(purpose => fmRequirements.forms.some(form => form.fields.some(field => field.purpose === purpose)));
+  const useFMPrimaryUploads = hasFMRequirements && ["site_photos", "measurement_document"].every(purpose => fmRequirements.forms.some(form => fmContentFields(form.fields).some(field => field.purpose === purpose)));
   const {
     data: structureInstancesData,
     isLoading: isStructureInstancesLoading,

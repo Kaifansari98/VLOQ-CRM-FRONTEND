@@ -1,12 +1,6 @@
 "use client";
 import { useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  ClipboardList,
-  Minus,
-  Pencil,
-} from "lucide-react";
+import { Check, ChevronDown, ClipboardList, Minus, Pencil } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import EditFMRequirementsModal from "./EditFMRequirementsModal";
 import { useQuery } from "@tanstack/react-query";
@@ -115,7 +109,7 @@ function Answers({
       {fields.map((field) => {
         const value = answers[field.key];
         if (field.purpose) return null;
-        if (field.type === "group") {
+        if (field.type === "group" || field.type === "tab") {
           if (!hasAnswers(field.fields ?? [], answers)) return null;
           return (
             <section

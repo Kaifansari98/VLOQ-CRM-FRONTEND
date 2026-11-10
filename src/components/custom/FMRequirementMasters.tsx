@@ -4,10 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useProductTypes } from "@/hooks/useTypesMaster";
-import {
-  getFMMaster,
-  saveFMMaster,
-} from "@/api/fm-requirements";
+import { getFMMaster, saveFMMaster } from "@/api/fm-requirements";
 import {
   allFields,
   type FMField,
@@ -15,6 +12,12 @@ import {
   type FMQuestionnaire,
   validateFields,
 } from "@/lib/fm-requirements";
+import FMRequirementTabsEditor from "./FMRequirementTabsEditor";
+import {
+  fmTabs,
+  moveFMTabField,
+  type FMFieldDropTarget,
+} from "@/lib/fm-requirement-tabs";
 import { Button } from "@/components/ui/button";
 import {
   Sortable,
@@ -35,6 +38,7 @@ import { toastManager } from "@/components/ui/toast";
 import { getErrorMessage } from "@/lib/utils";
 
 const typeLabels: Record<FMFieldType, string> = {
+  tab: "Tab section",
   text: "Text Box",
   yes_no: "Yes / No",
   choice: "Choice with follow-up fields",
@@ -67,284 +71,326 @@ function FieldEditor({
   onChange,
   depth = 0,
   disabled = false,
+  managedSorting = false,
+  tabChoices = [],
+  tabKey,
+  onMoveTab,
+  insertion,
 }: {
   fields: FMField[];
   onChange: (fields: FMField[]) => void;
   depth?: number;
   disabled?: boolean;
+  managedSorting?: boolean;
+  tabChoices?: { key: string; label: string }[];
+  tabKey?: string;
+  onMoveTab?: (fieldKey: string, targetKey: string) => void;
+  insertion?: FMFieldDropTarget | null;
 }) {
   const update = (index: number, field: FMField) =>
     onChange(fields.map((current, i) => (i === index ? field : current)));
-  return (
-    <div className="space-y-3">
-      <Sortable
-        value={fields}
-        onValueChange={(next) => {
-          if (!disabled) onChange(next);
-        }}
-        getItemValue={(field) => field.key}
-        strategy="vertical"
-        className="space-y-3"
+  const items = fields.map((field, index) => (
+    <SortableItem
+      key={field.key}
+      value={field.key}
+      disabled={disabled}
+      dragOnCard
+      className="relative"
+    >
+      {insertion?.fieldKey === field.key && (
+        <div
+          aria-hidden="true"
+          data-fm-insertion={insertion.after ? "after" : "before"}
+          className={`pointer-events-none absolute inset-x-0 z-20 h-1 rounded-full bg-primary ${insertion.after ? "-bottom-2" : "-top-2"}`}
+        />
+      )}
+      <SortableItemHandle
+        render={<button type="button" disabled={disabled} />}
+        aria-label={`Drag to reorder ${field.label || "field"}`}
+        className="absolute left-2 top-3 z-10 flex size-5 touch-none items-center justify-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
       >
-        {fields.map((field, index) => (
-          <SortableItem
-            key={field.key}
-            value={field.key}
-            disabled={disabled}
-            className="relative"
-          >
-            <SortableItemHandle
-              render={<button type="button" disabled={disabled} />}
-              aria-label={`Drag to reorder ${field.label || "field"}`}
-              className="absolute left-2 top-3 z-10 flex size-5 touch-none items-center justify-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-            >
-              <GripVertical className="h-4 w-4" />
-            </SortableItemHandle>
-            <details className="rounded-lg border bg-background">
-              <summary className="cursor-pointer py-3 pl-10 pr-4 text-sm font-medium">
-                {field.label || "Untitled field"}
-                <span className="ml-3 text-xs font-normal text-muted-foreground">
-                  {typeLabels[field.type]}
-                  {field.required ? " · Required" : ""}
-                </span>
-              </summary>
-              <div className="space-y-4 border-t p-4">
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="min-w-[180px] flex-1 space-y-1">
-                    <Label htmlFor={`label-${field.key}`}>Field title</Label>
-                    <Input
-                      id={`label-${field.key}`}
-                      value={field.label}
-                      maxLength={200}
-                      disabled={disabled}
-                      onChange={(event) =>
-                        update(index, { ...field, label: event.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="w-[220px] space-y-1">
-                    <Label>Field type</Label>
-                    <Select
-                      value={field.type}
-                      disabled={disabled || !!field.purpose}
-                      onValueChange={(type) => {
-                        if (
-                          (field.fields?.length ||
-                            field.options?.some((o) => o.fields.length)) &&
-                          !window.confirm(
-                            "Changing this type removes its follow-up fields. Continue?",
-                          )
-                        )
-                          return;
-                        update(index, {
-                          ...newField(type as FMFieldType),
-                          key: field.key,
-                          label: field.label,
-                          required: field.required,
-                        });
-                      }}
-                    >
-                      <SelectTrigger aria-label={`${field.label} field type`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(typeLabels).map(([value, label]) => (
-                          <SelectItem
-                            key={value}
-                            value={value}
-                            disabled={
-                              depth >= 5 &&
-                              (value === "group" || value === "choice")
-                            }
-                          >
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {field.type !== "group" && (
-                    <Label className="flex min-h-9 items-center gap-2">
-                      <Switch
-                        checked={field.required}
-                        disabled={disabled || !!field.purpose}
-                        onCheckedChange={(required) =>
-                          update(index, { ...field, required })
+        <GripVertical className="h-4 w-4" />
+      </SortableItemHandle>
+      <details className="rounded-lg border bg-background">
+        <summary className="cursor-grab py-3 pl-10 pr-4 text-sm font-medium active:cursor-grabbing">
+          {field.label || "Untitled field"}
+          <span className="ml-3 text-xs font-normal text-muted-foreground">
+            {typeLabels[field.type]}
+            {field.required ? " · Required" : ""}
+          </span>
+        </summary>
+        <div className="space-y-4 border-t p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[180px] flex-1 space-y-1">
+              <Label htmlFor={`label-${field.key}`}>Field title</Label>
+              <Input
+                id={`label-${field.key}`}
+                value={field.label}
+                maxLength={200}
+                disabled={disabled}
+                onChange={(event) =>
+                  update(index, { ...field, label: event.target.value })
+                }
+              />
+            </div>
+            <div className="w-[220px] space-y-1">
+              <Label>Field type</Label>
+              <Select
+                value={field.type}
+                disabled={disabled || !!field.purpose}
+                onValueChange={(type) => {
+                  if (
+                    (field.fields?.length ||
+                      field.options?.some((o) => o.fields.length)) &&
+                    !window.confirm(
+                      "Changing this type removes its follow-up fields. Continue?",
+                    )
+                  )
+                    return;
+                  update(index, {
+                    ...newField(type as FMFieldType),
+                    key: field.key,
+                    label: field.label,
+                    required: field.required,
+                  });
+                }}
+              >
+                <SelectTrigger aria-label={`${field.label} field type`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(typeLabels)
+                    .filter(([value]) => value !== "tab")
+                    .map(([value, label]) => (
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        disabled={
+                          depth >= 5 &&
+                          (value === "group" || value === "choice")
+                        }
+                      >
+                        {label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {field.type !== "group" && (
+              <Label className="flex min-h-9 items-center gap-2">
+                <Switch
+                  checked={field.required}
+                  disabled={disabled || !!field.purpose}
+                  onCheckedChange={(required) =>
+                    update(index, { ...field, required })
+                  }
+                />
+                Required
+              </Label>
+            )}
+            {onMoveTab && tabKey && tabChoices.length > 1 && (
+              <div className="w-[200px] space-y-1">
+                <Label>Tab section</Label>
+                <Select
+                  value={tabKey}
+                  disabled={disabled}
+                  onValueChange={(target) => onMoveTab(field.key, target)}
+                >
+                  <SelectTrigger aria-label={`Move ${field.label} to section`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tabChoices.map((tab) => (
+                      <SelectItem key={tab.key} value={tab.key}>
+                        {tab.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label={`Remove ${field.label}`}
+                disabled={disabled || !!field.purpose}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Remove ${field.label} and its follow-up fields?`,
+                    )
+                  )
+                    onChange(fields.filter((_, i) => i !== index));
+                }}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          </div>
+          {field.purpose && (
+            <p className="text-xs text-muted-foreground">
+              Standard FM upload: the type and required setting are retained for
+              the existing stage workflow.
+            </p>
+          )}
+          {field.type === "upload" && (
+            <div className="max-w-xs space-y-1">
+              <Label>Accepted files</Label>
+              <Select
+                value={field.upload_kind}
+                disabled={disabled || !!field.purpose}
+                onValueChange={(kind) =>
+                  update(index, {
+                    ...field,
+                    upload_kind: kind as FMField["upload_kind"],
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="photo">Photos</SelectItem>
+                  <SelectItem value="media">Photos / Videos</SelectItem>
+                  <SelectItem value="document">
+                    Photos / Videos / Documents
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Up to 20 files, 25 MB each.
+              </p>
+            </div>
+          )}
+          {field.type === "observations" && (
+            <p className="text-sm text-muted-foreground">
+              The supervisor can add multiple entries, each with a Title and
+              Remark.
+            </p>
+          )}
+          {field.type === "group" && (
+            <div className="border-l-2 pl-4">
+              <FieldEditor
+                fields={field.fields ?? []}
+                depth={depth + 1}
+                disabled={disabled}
+                onChange={(children) =>
+                  update(index, { ...field, fields: children })
+                }
+              />
+            </div>
+          )}
+          {field.type === "choice" && (
+            <div className="space-y-4">
+              {field.options?.map((option, optionIndex) => (
+                <div
+                  key={option.key}
+                  className="space-y-3 rounded-lg border bg-muted/20 p-3"
+                >
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor={`${field.key}-${option.key}`}>
+                        Option
+                      </Label>
+                      <Input
+                        id={`${field.key}-${option.key}`}
+                        value={option.label}
+                        disabled={disabled}
+                        maxLength={200}
+                        onChange={(event) =>
+                          update(index, {
+                            ...field,
+                            options: field.options!.map((o, i) =>
+                              i === optionIndex
+                                ? { ...o, label: event.target.value }
+                                : o,
+                            ),
+                          })
                         }
                       />
-                      Required
-                    </Label>
-                  )}
-                  <div className="flex gap-1">
+                    </div>
                     <Button
                       type="button"
-                      size="icon"
                       variant="outline"
-                      aria-label={`Remove ${field.label}`}
-                      disabled={disabled || !!field.purpose}
+                      size="icon"
+                      aria-label={`Remove ${option.label} option`}
+                      disabled={disabled || field.options!.length <= 2}
                       onClick={() => {
                         if (
-                          window.confirm(
-                            `Remove ${field.label} and its follow-up fields?`,
-                          )
+                          window.confirm("Remove this option and its fields?")
                         )
-                          onChange(fields.filter((_, i) => i !== index));
+                          update(index, {
+                            ...field,
+                            options: field.options!.filter(
+                              (_, i) => i !== optionIndex,
+                            ),
+                          });
                       }}
                     >
                       <Trash2 size={14} />
                     </Button>
                   </div>
-                </div>
-                {field.purpose && (
                   <p className="text-xs text-muted-foreground">
-                    Standard FM upload: the type and required setting are
-                    retained for the existing stage workflow.
+                    Show these fields when “{option.label}” is selected:
                   </p>
-                )}
-                {field.type === "upload" && (
-                  <div className="max-w-xs space-y-1">
-                    <Label>Accepted files</Label>
-                    <Select
-                      value={field.upload_kind}
-                      disabled={disabled || !!field.purpose}
-                      onValueChange={(kind) =>
-                        update(index, {
-                          ...field,
-                          upload_kind: kind as FMField["upload_kind"],
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="photo">Photos</SelectItem>
-                        <SelectItem value="media">Photos / Videos</SelectItem>
-                        <SelectItem value="document">
-                          Photos / Videos / Documents
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Up to 20 files, 25 MB each.
-                    </p>
-                  </div>
-                )}
-                {field.type === "observations" && (
-                  <p className="text-sm text-muted-foreground">
-                    The supervisor can add multiple entries, each with a Title
-                    and Remark.
-                  </p>
-                )}
-                {field.type === "group" && (
-                  <div className="border-l-2 pl-4">
-                    <FieldEditor
-                      fields={field.fields ?? []}
-                      depth={depth + 1}
-                      disabled={disabled}
-                      onChange={(children) =>
-                        update(index, { ...field, fields: children })
-                      }
-                    />
-                  </div>
-                )}
-                {field.type === "choice" && (
-                  <div className="space-y-4">
-                    {field.options?.map((option, optionIndex) => (
-                      <div
-                        key={option.key}
-                        className="space-y-3 rounded-lg border bg-muted/20 p-3"
-                      >
-                        <div className="flex items-end gap-2">
-                          <div className="flex-1 space-y-1">
-                            <Label htmlFor={`${field.key}-${option.key}`}>
-                              Option
-                            </Label>
-                            <Input
-                              id={`${field.key}-${option.key}`}
-                              value={option.label}
-                              disabled={disabled}
-                              maxLength={200}
-                              onChange={(event) =>
-                                update(index, {
-                                  ...field,
-                                  options: field.options!.map((o, i) =>
-                                    i === optionIndex
-                                      ? { ...o, label: event.target.value }
-                                      : o,
-                                  ),
-                                })
-                              }
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label={`Remove ${option.label} option`}
-                            disabled={disabled || field.options!.length <= 2}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  "Remove this option and its fields?",
-                                )
-                              )
-                                update(index, {
-                                  ...field,
-                                  options: field.options!.filter(
-                                    (_, i) => i !== optionIndex,
-                                  ),
-                                });
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Show these fields when “{option.label}” is selected:
-                        </p>
-                        <FieldEditor
-                          fields={option.fields}
-                          depth={depth + 1}
-                          disabled={disabled}
-                          onChange={(children) =>
-                            update(index, {
-                              ...field,
-                              options: field.options!.map((o, i) =>
-                                i === optionIndex
-                                  ? { ...o, fields: children }
-                                  : o,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={disabled || (field.options?.length ?? 0) >= 30}
-                      onClick={() =>
-                        update(index, {
-                          ...field,
-                          options: [
-                            ...(field.options ?? []),
-                            { key: key(), label: "New option", fields: [] },
-                          ],
-                        })
-                      }
-                    >
-                      <Plus size={14} />
-                      Add option
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </details>
-          </SortableItem>
-        ))}
-      </Sortable>
+                  <FieldEditor
+                    fields={option.fields}
+                    depth={depth + 1}
+                    disabled={disabled}
+                    onChange={(children) =>
+                      update(index, {
+                        ...field,
+                        options: field.options!.map((o, i) =>
+                          i === optionIndex ? { ...o, fields: children } : o,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled || (field.options?.length ?? 0) >= 30}
+                onClick={() =>
+                  update(index, {
+                    ...field,
+                    options: [
+                      ...(field.options ?? []),
+                      { key: key(), label: "New option", fields: [] },
+                    ],
+                  })
+                }
+              >
+                <Plus size={14} />
+                Add option
+              </Button>
+            </div>
+          )}
+        </div>
+      </details>
+    </SortableItem>
+  ));
+  return (
+    <div className="space-y-3">
+      {managedSorting ? (
+        items
+      ) : (
+        <Sortable
+          value={fields}
+          onValueChange={(next) => {
+            if (!disabled) onChange(next);
+          }}
+          getItemValue={(field) => field.key}
+          strategy="vertical"
+          className="space-y-3"
+        >
+          {items}
+        </Sortable>
+      )}
       <Button
         type="button"
         variant="outline"
@@ -353,7 +399,7 @@ function FieldEditor({
         onClick={() => onChange([...fields, newField()])}
       >
         <Plus size={14} />
-        Add {depth ? "follow-up field" : "field / section"}
+        Add {depth ? "follow-up field" : "field"}
       </Button>
     </div>
   );
@@ -429,8 +475,9 @@ function MasterEditor({
             {query.data?.origin === "empty"
               ? "Not configured"
               : "Vendor checklist"}{" "}
-            · {allFields(fields).length} fields. Drag the handle to reorder.
-            Expand a field to configure it and its follow-up questions.
+            · {allFields(fields).filter((field) => field.type !== "tab").length}{" "}
+            fields. Drag a card to reorder. Expand a field to configure it and
+            its follow-up questions.
           </p>
         </div>
         <div className="flex gap-2">
@@ -469,7 +516,7 @@ function MasterEditor({
           </button>
         </p>
       )}
-      <FieldEditor
+      <FMRequirementTabsEditor
         fields={fields}
         disabled={busy}
         onChange={(next) => {
@@ -480,6 +527,29 @@ function MasterEditor({
           onDirty(true);
           setError("");
         }}
+        renderFields={(items, change, tabKey, insertion) => (
+          <FieldEditor
+            fields={items}
+            disabled={busy}
+            onChange={change}
+            managedSorting={!!tabKey}
+            insertion={insertion}
+            tabKey={tabKey}
+            tabChoices={fmTabs(fields)}
+            onMoveTab={
+              tabKey
+                ? (fieldKey, targetKey) => {
+                    setDraft({
+                      fields: moveFMTabField(fields, fieldKey, targetKey),
+                      revision: draft?.revision ?? query.data!.revision,
+                    });
+                    onDirty(true);
+                    setError("");
+                  }
+                : undefined
+            }
+          />
+        )}
       />
       {draft && (
         <p className="text-xs text-muted-foreground">

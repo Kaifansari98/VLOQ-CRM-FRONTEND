@@ -39,7 +39,29 @@ const selects = Object.fromEntries(
     (name) => [name, component(name)],
   ),
 );
+const Picker = component("AssignToPicker"),
+  TextInput = component("TextAreaInput"),
+  Upload = component("FileUploadField");
 const mocks = {
+  react: {
+    ...require("react"),
+    useState: (value) => [
+      typeof value === "function" ? value() : value,
+      () => {},
+    ],
+    useRef: () => ({ current: null }),
+    useEffect: () => {},
+  },
+  "@/components/assign-to-picker": Picker,
+  "@/components/origin-text-area": TextInput,
+  "@/components/custom/file-upload": { FileUploadField: Upload },
+  "@/components/ui/tabs": Object.fromEntries(
+    ["Tabs", "TabsList", "TabsTrigger", "TabsContent"].map((name) => [
+      name,
+      component(name),
+    ]),
+  ),
+  "@/lib/utils": { cn: (...items) => items.filter(Boolean).join(" ") },
   "@/lib/fm-requirements": contract,
   "@/components/ui/button": { Button },
   "@/components/ui/input": { Input },
@@ -48,6 +70,8 @@ const mocks = {
   "@/components/ui/select": selects,
   "lucide-react": Object.fromEntries(
     [
+      "CheckCircle2",
+      "ExternalLink",
       "ChevronDown",
       "ClipboardList",
       "FileText",
@@ -113,7 +137,18 @@ function fixture() {
   function nodes(node) {
     if (Array.isArray(node)) return node.flatMap(nodes);
     if (!node || typeof node !== "object") return [];
-    if (typeof node.type === "function" && node.type.name === "Fields")
+    if (
+      typeof node.type === "function" &&
+      [
+        "Fields",
+        "ProductChecklist",
+        "FieldLabel",
+        "YesNoField",
+        "UploadField",
+        "ObservationsField",
+        "ProgressBadge",
+      ].includes(node.type.name)
+    )
       return nodes(node.type(node.props));
     return [node, ...nodes(node.props?.children)];
   }
@@ -127,23 +162,31 @@ function fixture() {
 }
 test("selecting an option shows only its follow-up fields and supports branch changes", () => {
   const f = fixture();
-  assert.equal(f.render().filter((node) => node.type === Textarea).length, 0);
+  assert.equal(f.render().filter((node) => node.type === TextInput).length, 0);
   f.render()
-    .find((node) => node.type === selects.Select)
-    .props.onValueChange("yes");
-  assert.ok(f.render().some((node) => node.props?.id === "fm-2-elevation"));
+    .find((node) => node.type === Picker)
+    .props.onChange(0);
+  assert.ok(
+    f
+      .render()
+      .some((node) => node.props?.placeholder === "Enter elevation side"),
+  );
   assert.equal(
-    f.render().some((node) => node.props?.id === "fm-2-remark"),
+    f.render().some((node) => node.props?.placeholder === "Enter remarks"),
     false,
   );
   f.render()
-    .find((node) => node.type === selects.Select)
-    .props.onValueChange("no");
+    .find((node) => node.type === Picker)
+    .props.onChange(1);
   assert.equal(
-    f.render().some((node) => node.props?.id === "fm-2-elevation"),
+    f
+      .render()
+      .some((node) => node.props?.placeholder === "Enter elevation side"),
     false,
   );
-  assert.ok(f.render().some((node) => node.props?.id === "fm-2-remark"));
+  assert.ok(
+    f.render().some((node) => node.props?.placeholder === "Enter remarks"),
+  );
 });
 test("supervisors can add, edit and remove multiple title-and-remark observations", () => {
   const f = fixture();
@@ -154,7 +197,11 @@ test("supervisors can add, edit and remove multiple title-and-remark observation
         (node) =>
           node.type === Button &&
           Array.isArray(node.props.children) &&
-          node.props.children.includes("Add observation"),
+          node.props.children.some(
+            (child) =>
+              typeof child === "string" &&
+              /^Add (another )?observation$/.test(child),
+          ),
       )
       .props.onClick();
   add();
@@ -164,8 +211,12 @@ test("supervisors can add, edit and remove multiple title-and-remark observation
     .find((node) => node.props?.id === "fm-2-observations-0-title")
     .props.onChange({ target: { value: "Plumbing" } });
   f.render()
-    .find((node) => node.props?.id === "fm-2-observations-0-remark")
-    .props.onChange({ target: { value: "Move inlet" } });
+    .find(
+      (node) =>
+        node.type === TextInput &&
+        node.props?.placeholder === "Describe what needs attention…",
+    )
+    .props.onChange("Move inlet");
   assert.deepEqual(f.getAnswers().observations[0], {
     title: "Plumbing",
     remark: "Move inlet",
@@ -177,13 +228,13 @@ test("supervisors can add, edit and remove multiple title-and-remark observation
 });
 test("upload control accepts video for media fields and respects pending state", () => {
   const f = fixture();
-  let input = f.render().find((node) => node.props?.type === "file");
+  let input = f.render().find((node) => node.type === Upload);
   assert.ok(input.props.accept.includes("video/mp4"));
   const video = { name: "site.mp4", type: "video/mp4" };
-  input.props.onChange({ target: { files: [video], value: "site.mp4" } });
+  input.props.onChange([video]);
   assert.deepEqual(f.uploaded, [{ field: "site", files: [video] }]);
   f.model.uploading["2:site"] = true;
-  input = f.render().find((node) => node.props?.type === "file");
+  input = f.render().find((node) => node.type === Upload);
   assert.equal(input.props.disabled, true);
 });
 test("FM submission uses the scoped JSON endpoint while large-scale uploads keep multipart", async () => {
@@ -261,7 +312,15 @@ function summaryFixture() {
         fn({ auth: { user: { user_type: { user_type: role } } } }),
     },
     "./EditFMRequirementsModal": Editor,
+    "@/components/utils/ImageCard": {
+      ImageComponent: component("ImageComponent"),
+    },
+    "@/components/utils/documentCard": component("DocumentCard"),
+    "@/lib/format": { formatDate: () => "DATE" },
     "lucide-react": {
+      Check: component("Check"),
+      Minus: component("Minus"),
+      ChevronDown: component("ChevronDown"),
       ClipboardList: component("ClipboardList"),
       Pencil: component("Pencil"),
     },

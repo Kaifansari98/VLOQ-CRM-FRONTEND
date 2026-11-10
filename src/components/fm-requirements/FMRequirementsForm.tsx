@@ -20,8 +20,10 @@ import {
   type FMValue,
   acceptedTypes,
   visibleFields,
+  allFields,
 } from "@/lib/fm-requirements";
 import type { FMRequirementsModel } from "@/hooks/useFMRequirements";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -41,7 +43,7 @@ const isFilled = (value: FMValue | undefined) =>
 // Required fields currently shown for the selected answers (hidden branches are skipped).
 function requiredProgress(fields: FMField[], answers: FMAnswers) {
   const required = visibleFields(fields, answers).filter(
-    (field) => field.required && field.type !== "group",
+    (field) => field.required && field.type !== "group" && field.type !== "tab",
   );
   return {
     done: required.filter((field) => isFilled(answers[field.key])).length,
@@ -137,7 +139,8 @@ function UploadField({
       {busy && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 size={13} className="animate-spin" />
-          Uploading {pending.length || ""} file{pending.length === 1 ? "" : "s"}…
+          Uploading {pending.length || ""} file{pending.length === 1 ? "" : "s"}
+          …
         </p>
       )}
       {ids.length > 0 && (
@@ -181,7 +184,11 @@ function UploadField({
                     aria-label={`Open ${file.original_name}`}
                     asChild
                   >
-                    <a href={file.url} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <ExternalLink size={14} />
                     </a>
                   </Button>
@@ -241,7 +248,10 @@ function ObservationsField({
   return (
     <div className="space-y-3">
       {rows.map((row, index) => (
-        <div key={index} className="space-y-3 rounded-lg border bg-background p-3">
+        <div
+          key={index}
+          className="space-y-3 rounded-lg border bg-background p-3"
+        >
           <div className="flex items-center gap-2">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold tabular-nums text-muted-foreground">
               {index + 1}
@@ -323,7 +333,7 @@ function Fields({
       {fields.map((field) => {
         const value = answers[field.key];
         const id = `fm-${form.product_type_id}-${field.key}`;
-        if (field.type === "group") {
+        if (field.type === "group" || field.type === "tab") {
           const progress = requiredProgress(field.fields ?? [], answers);
           return (
             <section
@@ -374,7 +384,11 @@ function Fields({
               )}
             >
               <FieldLabel field={field} />
-              <div className={cn(selected?.fields.length && "md:max-w-[calc(50%-10px)]")}>
+              <div
+                className={cn(
+                  selected?.fields.length && "md:max-w-[calc(50%-10px)]",
+                )}
+              >
                 {field.type === "yes_no" ? (
                   <YesNoField
                     value={value}
@@ -495,6 +509,175 @@ function ProgressBadge({ done, total }: { done: number; total: number }) {
   );
 }
 
+function ProductChecklist({
+  form,
+  model,
+  disabled,
+}: {
+  form: FMQuestionnaire;
+  model: FMRequirementsModel;
+  disabled: boolean;
+}) {
+  const sections = form.fields.filter(
+    (field) => field.type === "tab" && field.fields?.length,
+  );
+  const [selected, setSelected] = React.useState(sections[0]?.key ?? "");
+  const active =
+    sections.find((section) => section.key === selected)?.key ??
+    sections[0]?.key;
+  const detailsRef = React.useRef<HTMLDetailsElement>(null);
+  const target = model.validationTarget;
+  React.useEffect(() => {
+    if (!target || target.productTypeId !== form.product_type_id) return;
+    const section = form.fields.find(
+      (field) =>
+        field.type === "tab" &&
+        allFields(field.fields ?? []).some(
+          (child) => child.key === target.fieldKey,
+        ),
+    );
+    if (section) setSelected(section.key);
+    if (detailsRef.current) detailsRef.current.open = true;
+    const frame = requestAnimationFrame(() => {
+      const panel = detailsRef.current?.querySelector<HTMLElement>(
+        '[role="tabpanel"][data-state="active"]',
+      );
+      const field = target.fieldKey
+        ? document.getElementById(
+            `fm-${form.product_type_id}-${target.fieldKey}`,
+          )
+        : null;
+      (field ?? panel)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+      (field ?? panel)?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [target, form.fields, form.product_type_id]);
+  const answers = model.getAnswers(form);
+  const progress = requiredProgress(form.fields, answers);
+  return (
+    <details
+      open
+      ref={detailsRef}
+      className="group/product rounded-xl border bg-background shadow-sm"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+          {form.product_type}
+        </span>
+        <ProgressBadge {...progress} />
+        <ChevronDown
+          size={17}
+          className="shrink-0 text-muted-foreground transition-transform group-open/product:rotate-180"
+        />
+      </summary>
+      {sections.length ? (
+        <Tabs
+          value={active}
+          onValueChange={setSelected}
+          className="gap-0 border-t"
+        >
+          <div className="sticky top-0 z-10 overflow-x-auto border-b bg-background px-3 py-2.5">
+            <TabsList
+              aria-label={`${form.product_type} checklist sections`}
+              className="h-auto min-w-max justify-start gap-1 bg-muted/40 p-1"
+            >
+              {sections.map((section) => {
+                const counts = requiredProgress(section.fields ?? [], answers);
+                return (
+                  <TabsTrigger
+                    key={section.key}
+                    value={section.key}
+                    className="flex-none gap-2 px-3 py-2 text-xs"
+                  >
+                    <span>{section.label}</span>
+                    {counts.total > 0 && (
+                      <span
+                        className={cn(
+                          "rounded px-1 text-[10px] tabular-nums text-muted-foreground",
+                          counts.done === counts.total && "text-emerald-600",
+                        )}
+                      >
+                        {counts.done}/{counts.total}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+          {sections.map((section) => (
+            <TabsContent
+              key={section.key}
+              value={section.key}
+              className="p-4 outline-none sm:p-5"
+            >
+              <Fields
+                fields={section.fields ?? []}
+                form={form}
+                model={model}
+                disabled={disabled}
+              />
+            </TabsContent>
+          ))}
+          <div className="flex items-center justify-between gap-3 rounded-b-xl border-t bg-muted/10 px-4 py-3 text-xs sm:px-5">
+            <span className="text-muted-foreground">
+              Section{" "}
+              {sections.findIndex((section) => section.key === active) + 1} of{" "}
+              {sections.length}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={sections[0]?.key === active}
+                onClick={() =>
+                  setSelected(
+                    sections[
+                      sections.findIndex((section) => section.key === active) -
+                        1
+                    ].key,
+                  )
+                }
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={sections.at(-1)?.key === active}
+                onClick={() =>
+                  setSelected(
+                    sections[
+                      sections.findIndex((section) => section.key === active) +
+                        1
+                    ].key,
+                  )
+                }
+              >
+                Next section
+              </Button>
+            </div>
+          </div>
+        </Tabs>
+      ) : (
+        <div className="border-t p-4 sm:p-5">
+          <Fields
+            fields={form.fields}
+            form={form}
+            model={model}
+            disabled={disabled}
+          />
+        </div>
+      )}
+    </details>
+  );
+}
+
 export default function FMRequirementsForm({
   model,
   disabled = false,
@@ -586,38 +769,14 @@ export default function FMRequirementsForm({
           No checklist has been configured for this lead’s products.
         </p>
       ) : (
-        model.forms.map((form) => {
-          const progress = requiredProgress(
-            form.fields,
-            model.getAnswers(form),
-          );
-          return (
-            <details
-              open
-              key={form.product_type_id}
-              className="group/product overflow-hidden rounded-xl border bg-background shadow-sm"
-            >
-              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                  {form.product_type}
-                </span>
-                <ProgressBadge {...progress} />
-                <ChevronDown
-                  size={17}
-                  className="shrink-0 text-muted-foreground transition-transform group-open/product:rotate-180"
-                />
-              </summary>
-              <div className="border-t p-4 sm:p-5">
-                <Fields
-                  fields={form.fields}
-                  form={form}
-                  model={model}
-                  disabled={disabled || model.isSavingDraft}
-                />
-              </div>
-            </details>
-          );
-        })
+        model.forms.map((form) => (
+          <ProductChecklist
+            key={form.product_type_id}
+            form={form}
+            model={model}
+            disabled={disabled || model.isSavingDraft}
+          />
+        ))
       )}
       {model.error && (
         <p
