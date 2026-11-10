@@ -561,11 +561,21 @@ function ProductChecklist({
     <details
       open
       ref={detailsRef}
-      className="group/product rounded-xl border bg-background shadow-sm"
+      className="group/product overflow-clip rounded-xl border border-border/80 bg-background shadow-sm"
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-          {form.product_type}
+      <summary className="flex cursor-pointer list-none items-center gap-3 bg-muted/15 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/5 text-primary">
+          <ClipboardList size={16} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">
+            {form.product_type}
+          </span>
+          {sections.length > 0 && (
+            <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+              {sections.length} {sections.length === 1 ? "section" : "sections"}
+            </span>
+          )}
         </span>
         <ProgressBadge {...progress} />
         <ChevronDown
@@ -579,10 +589,10 @@ function ProductChecklist({
           onValueChange={setSelected}
           className="gap-0 border-t"
         >
-          <div className="sticky top-0 z-10 overflow-x-auto border-b bg-background px-3 py-2.5">
+          <div className="sticky top-0 z-10 overflow-x-auto border-b bg-background px-3 py-2.5 sm:px-4">
             <TabsList
               aria-label={`${form.product_type} checklist sections`}
-              className="h-auto min-w-max justify-start gap-1 bg-muted/40 p-1"
+              className="h-auto min-w-max justify-start gap-1 bg-transparent p-0"
             >
               {sections.map((section) => {
                 const counts = requiredProgress(section.fields ?? [], answers);
@@ -590,7 +600,7 @@ function ProductChecklist({
                   <TabsTrigger
                     key={section.key}
                     value={section.key}
-                    className="flex-none gap-2 px-3 py-2 text-xs"
+                    className="flex-none gap-2 rounded-lg border border-transparent px-3 py-2 text-xs text-muted-foreground shadow-none hover:bg-muted/40 data-[state=active]:border-primary/15 data-[state=active]:bg-primary/5 data-[state=active]:text-primary data-[state=active]:shadow-none"
                   >
                     <span>{section.label}</span>
                     {counts.total > 0 && (
@@ -612,7 +622,7 @@ function ProductChecklist({
             <TabsContent
               key={section.key}
               value={section.key}
-              className="p-4 outline-none sm:p-5"
+              className="m-0 p-4 outline-none sm:p-5"
             >
               <Fields
                 fields={section.fields ?? []}
@@ -696,7 +706,7 @@ export default function FMRequirementsForm({
     <section id="fm-requirements" className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-primary/5 text-primary">
             <ClipboardList size={17} />
           </span>
           <div>
@@ -727,7 +737,7 @@ export default function FMRequirementsForm({
               type="button"
               size="sm"
               variant="outline"
-              className="bg-background"
+              className="border-primary/15 bg-background text-primary hover:bg-primary/5"
               disabled={busy || !model.forms.length}
               onClick={model.saveDraft}
             >

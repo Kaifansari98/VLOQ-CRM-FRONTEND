@@ -834,25 +834,28 @@ const FinalMeasurementModal = ({
       <BaseModal
         open={open}
         onOpenChange={handleModalChange}
-        title={`Final Measurement for ${data?.name || "Customer"}`}
-        size="xxl"
+        title="Final Measurement"
+        size="xl"
+        className="rounded-2xl sm:max-w-[68rem] md:max-w-[68rem] lg:max-w-[68rem]"
         icon={
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-background text-muted-foreground">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-primary">
             <ClipboardCheck className="h-5 w-5" />
           </span>
         }
-        description="Complete the site checklist, add measurements and attach supporting files."
+        description={data?.name || "Record site details, measurements and supporting files."}
         footer={
-          <div className="flex w-full flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex w-full items-center justify-between gap-3">
+            <p role="status" className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+              <ClipboardCheck className="size-3.5 shrink-0" />
               {fmRequirements.isUploading
                 ? "Uploading attachments…"
                 : "Review the site details before submitting."}
             </p>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                className="shrink-0 text-muted-foreground"
                 disabled={
                   finalMeasurementMutation.isPending ||
                   fmRequirements.isUploading ||
@@ -869,6 +872,7 @@ const FinalMeasurementModal = ({
               <Button
                 type="submit"
                 form={formId}
+                className="h-auto min-h-10 min-w-0 flex-1 whitespace-normal px-4 py-2 text-sm leading-5 sm:flex-none sm:whitespace-nowrap"
                 disabled={
                   finalMeasurementMutation.isPending ||
                   (!handlesLargeScaleProjects &&
@@ -888,7 +892,7 @@ const FinalMeasurementModal = ({
                     ? "Move to Client Document"
                     : "Submit measurement"}
                 {!finalMeasurementMutation.isPending && (
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="hidden h-4 w-4 shrink-0 sm:block" />
                 )}
               </Button>
             </div>
@@ -899,7 +903,7 @@ const FinalMeasurementModal = ({
           <form
             id={formId}
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6 bg-muted/20 p-4 sm:p-6"
+            className="space-y-5 bg-muted/15 p-4 sm:p-6"
           >
             {!handlesLargeScaleProjects && (hasFMRequirements || fmRequirements.query.isLoading || fmRequirements.query.isError) && <FMRequirementsForm model={fmRequirements} disabled={finalMeasurementMutation.isPending} />}
             {/* Top Boxes: Product Structure Instances */}
@@ -1295,12 +1299,12 @@ const FinalMeasurementModal = ({
               control={form.control}
               name="criticalDiscussion"
               render={({ field }) => (
-                <FormItem className="space-y-4 rounded-xl border bg-background p-4 shadow-sm sm:p-5">
+                <FormItem className="space-y-3 rounded-xl border border-border/80 bg-background p-4 sm:p-5">
                   <div className="flex items-start gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/20">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50">
                       <MessageSquareText className="h-4 w-4 text-muted-foreground" />
                     </span>
-                    <div className="space-y-1">
+                    <div className="flex-1 space-y-1">
                       <FormLabel className="text-sm font-semibold">
                         Critical Discussion Notes
                       </FormLabel>
@@ -1308,11 +1312,12 @@ const FinalMeasurementModal = ({
                         Capture key decisions or instructions for the team.
                       </p>
                     </div>
+                    <span className="rounded-md bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground">Optional</span>
                   </div>
                   <FormControl>
                     <TextAreaInput
                       placeholder="Add discussion notes, decisions or site instructions…"
-                      className="min-h-[96px] resize-y bg-muted/10 shadow-none"
+                      className="min-h-[88px] resize-y bg-muted/10 shadow-none focus-visible:bg-background"
                       disabled={finalMeasurementMutation.isPending}
                       {...field}
                     />
