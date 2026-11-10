@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, Calendar, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, Clock3, Coffee, CreditCard, Download, FileClock, LogIn, LogOut, MapPin, Monitor, PencilLine, RefreshCw, Search, ShieldCheck, Smartphone, Users, X } from "lucide-react";
+import { AlertTriangle, Building2, Calendar, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock3, Coffee, CreditCard, Download, FileClock, LogIn, LogOut, MapPin, Monitor, PencilLine, RefreshCw, Search, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +77,7 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
   const [unit, setUnit] = useState("all");
   const [status, setStatus] = useState<"all" | LogStatus>("all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<Map<string, AttendanceLogRow>>(new Map());
   const [detail, setDetail] = useState<AttendanceLogRow | null>(null);
   const [tab, setTab] = useState("daily");
@@ -86,7 +87,7 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
   useEffect(() => { setPage(1); setSelected(new Map()); }, [start, end, query, location, role, unit, status]);
 
   const invalidRange = !!start && !!end && start > end;
-  const filters = { from: start, to: end, search: query, location, role, unit, status, page, page_size: PAGE_SIZE };
+  const filters = { from: start, to: end, search: query, location, role, unit, status, page, page_size: pageSize };
   const logs = useAttendanceLogs(vendorId, filters, !!start && !!end && !invalidRange);
   const data = logs.data;
   const timeZone = data?.vendor_time_zone || profileTimeZone;
@@ -317,7 +318,82 @@ function AttendanceLogsWorkspace({ vendorId, vendorName, timeZone: profileTimeZo
           return <tr key={row.id} className={cn("transition-colors hover:bg-muted/20", selected.has(row.id) && "bg-primary/5")}><td className="px-4 py-4"><Checkbox aria-label={`Select ${row.employee.name} on ${row.date}`} checked={selected.has(row.id)} onCheckedChange={value => toggleRows([row], value === true)} /></td><td className="px-3 py-4"><div className="flex items-center gap-2.5"><span className="flex size-9 shrink-0 items-center justify-center rounded-full border bg-muted/50 text-[11px] font-semibold text-muted-foreground">{initials(row.employee.name)}</span><div><p className="whitespace-nowrap font-semibold">{row.employee.name}</p><p className="mt-1 text-[10px] text-muted-foreground">{employeeLine(row.employee)}</p></div></div></td><td className="px-3 py-4"><p className="whitespace-nowrap font-medium">{dateLabel(row.date)}</p><p className="mt-1 text-[10px] text-muted-foreground">{row.date === data?.range.today ? "Today" : new Intl.DateTimeFormat("en", { timeZone: "UTC", weekday: "short" }).format(new Date(`${row.date}T12:00:00Z`))}</p></td><td className="px-3 py-4"><p className="whitespace-nowrap">{row.employee.location}</p><p className="mt-1 text-[10px] tracking-wide text-muted-foreground">{[row.employee.unit, row.work_location && titleCase(row.work_location)].filter(Boolean).join(" · ") || "—"}</p></td><td className="px-3 py-4"><p className="whitespace-nowrap tabular-nums">{logTime(row.check_in, row.time_zone)} <span className="mx-0.5 text-muted-foreground">/</span> {logTime(row.check_out, row.time_zone)}</p>{row.source && <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground"><Source className="size-3" />{titleCase(row.source)}</p>}</td><td className="px-3 py-4 tabular-nums text-muted-foreground">{row.attendance_id ? `${row.break_minutes}m` : "—"}</td><td className="px-3 py-4"><p className="whitespace-nowrap font-medium tabular-nums">{row.work_minutes === null ? "—" : logDuration(row.work_minutes)}</p>{row.corrected && <span className="mt-1 flex items-center gap-1 text-[10px] text-blue-700 dark:text-blue-300"><PencilLine className="size-2.5" />Corrected</span>}</td><td className="px-3 py-4"><StatusBadge status={row.status} /></td><td className="px-3 py-4"><Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" aria-label={`View attendance for ${row.employee.name} on ${row.date}`} onClick={() => setDetail(row)}>View<ChevronRight className="size-3.5" /></Button></td></tr>;
         })}</tbody></table></div>
         {logs.isPending && !invalidRange ? <p role="status" className="px-4 py-14 text-center text-sm text-muted-foreground">Loading attendance records…</p> : !total && <EmptyState invalidRange={invalidRange} onClear={reset} />}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-[11px] text-muted-foreground"><span>{total ? `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, total)} of ${total} records` : "0 records"}</span><div className="flex items-center gap-2"><Button variant="outline" size="icon" className="size-7" aria-label="Previous log page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="size-3.5" /></Button><span>Page {currentPage} of {pageCount}</span><Button variant="outline" size="icon" className="size-7" aria-label="Next log page" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}><ChevronRight className="size-3.5" /></Button></div></div>
+        <div className="flex flex-col-reverse items-center justify-between gap-4 border-t p-3 sm:flex-row sm:gap-8">
+          <div className="text-xs text-muted-foreground">
+            {total ? `Showing ${(currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, total)} of ${total} record(s)` : "0 records"}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-8">
+            <div className="flex items-center space-x-2">
+              <p className="whitespace-nowrap text-xs font-medium">Rows per page</p>
+              <Select
+                value={`${pageSize}`}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[4.5rem] text-xs">
+                  <SelectValue placeholder={pageSize} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[10, 20, 30, 50, 100].map((size) => (
+                    <SelectItem key={size} value={`${size}`} className="text-xs">
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-center text-xs font-medium">
+              Page {currentPage} of {pageCount}
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <Button
+                aria-label="Go to first page"
+                variant="outline"
+                size="icon"
+                className="size-8"
+                onClick={() => setPage(1)}
+                disabled={currentPage <= 1}
+              >
+                <ChevronsLeft className="size-4" />
+              </Button>
+              <Button
+                aria-label="Go to previous page"
+                variant="outline"
+                size="icon"
+                className="size-8"
+                onClick={() => setPage(Math.max(currentPage - 1, 1))}
+                disabled={currentPage <= 1}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                aria-label="Go to next page"
+                variant="outline"
+                size="icon"
+                className="size-8"
+                onClick={() => setPage(Math.min(currentPage + 1, pageCount))}
+                disabled={currentPage >= pageCount}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+              <Button
+                aria-label="Go to last page"
+                variant="outline"
+                size="icon"
+                className="size-8"
+                onClick={() => setPage(pageCount)}
+                disabled={currentPage >= pageCount}
+              >
+                <ChevronsRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </TabsContent>
 
       <TabsContent value="employees" className="overflow-hidden rounded-xl border bg-background shadow-sm"><div className="border-b px-4 py-4"><h2 className="text-sm font-semibold">Employee summary</h2><p className="mt-1 text-[11px] text-muted-foreground">Totals for the selected records. Average workday includes completed days only.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs"><thead className="border-b bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground"><tr>{["Employee", "Role", "Days recorded", "Completed", "Missing punches", "Total work", "Avg. completed day", ""].map((label, index) => <th key={index} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead><tbody className="divide-y">{(data?.summary ?? []).map(item => <tr key={item.employee.id} className="hover:bg-muted/20"><td className="px-4 py-4"><p className="font-semibold">{item.employee.name}</p><p className="mt-1 text-[10px] text-muted-foreground">{[item.employee.designation, item.employee.location].filter(Boolean).join(" · ")}</p></td><td className="px-4 py-4 text-muted-foreground">{item.employee.role}</td><td className="px-4 py-4 tabular-nums">{item.recorded}</td><td className="px-4 py-4 tabular-nums">{item.completed}</td><td className="px-4 py-4 tabular-nums">{item.missing}</td><td className="px-4 py-4 font-medium tabular-nums">{logDuration(item.work_minutes)}</td><td className="px-4 py-4 tabular-nums">{item.average_minutes === null ? "—" : logDuration(item.average_minutes)}</td><td className="px-4 py-4"><Button variant="ghost" size="sm" onClick={() => setDetail(item.latest)}>Latest log</Button></td></tr>)}</tbody></table></div>{!data?.summary.length && !logs.isPending && <EmptyState invalidRange={invalidRange} onClear={reset} />}</TabsContent>
@@ -375,6 +451,21 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
   const monthEntries = userWorkspace.data?.entries ?? [];
   const todayStr = attendanceDate(new Date(), timeZone);
 
+  const { totalPresent, totalAbsent } = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    for (const d of calendarData.days) {
+      if (d > todayStr) continue; // Future dates don't count towards past present/absent
+      const isPresent = monthEntries.some(item => item.date === d);
+      if (isPresent) {
+        present++;
+      } else {
+        absent++;
+      }
+    }
+    return { totalPresent: present, totalAbsent: absent };
+  }, [calendarData.days, monthEntries, todayStr]);
+
   return <Dialog open={!!row} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl lg:max-w-5xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"><DialogHeader><DialogTitle className="flex items-center justify-between pr-6"><span>Employee Attendance</span><div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5"><Button variant={activeTab === "log" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("log")}><FileClock className="mr-1.5 size-3.5" />Daily Log</Button><Button variant={activeTab === "calendar" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("calendar")}><Calendar className="mr-1.5 size-3.5" />Monthly Calendar</Button></div></DialogTitle><DialogDescription>{record ? `${dateLabel(record.date, true)} · ${timeZone}` : ""}</DialogDescription></DialogHeader>{record && <>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4"><div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-full border bg-background text-sm font-semibold">{initials(record.employee.name)}</span><div><p className="text-base font-semibold">{record.employee.name}</p><p className="mt-1 text-xs text-muted-foreground">{employeeLine(record.employee)}</p></div></div><StatusBadge status={record.status} /></div>
 
@@ -394,17 +485,30 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
       </div>
     ) : (
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl border bg-muted/10 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/10 p-3">
           <div>
             <h4 className="text-sm font-semibold">Attendance Calendar</h4>
             <p className="text-xs text-muted-foreground">View all check-in/outs for {record.employee.name}</p>
           </div>
-          <MonthPicker
-            value={selectedMonth}
-            onChange={setSelectedMonth}
-            maxMonth={todayStr.slice(0, 7)}
-            isLoading={userWorkspace.isFetching}
-          />
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1 text-xs shadow-2xs">
+              <span className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Present: {totalPresent}
+              </span>
+              <span className="text-muted-foreground/40">|</span>
+              <span className="flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400">
+                <span className="size-1.5 rounded-full bg-rose-500" />
+                Absent: {totalAbsent}
+              </span>
+            </div>
+            <MonthPicker
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              maxMonth={todayStr.slice(0, 7)}
+              isLoading={userWorkspace.isFetching}
+            />
+          </div>
         </div>
 
         {userWorkspace.isPending ? (
@@ -420,58 +524,105 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
               ))}
               {calendarData.days.map(date => {
                 const dayNumber = Number(date.slice(-2));
-                const entry = monthEntries.find(item => item.date === date);
+                const dayEntries = monthEntries.filter(item => item.date === date);
                 const isToday = date === todayStr;
                 const isFuture = date > todayStr;
                 const isSelected = date === record.date;
-                const isPresent = !!entry;
+                const isPresent = dayEntries.length > 0;
                 const isAbsent = !isFuture && !isPresent;
+
+                // Calculate total worked ms across all sessions on this day
+                // If a past session was left open without checkout, cap its duration to the end of that day (23:59:59)
+                // so it doesn't leak into subsequent days (e.g. 45+ hours).
+                const dayEndTs = new Date(`${date}T23:59:59.999Z`).getTime();
+                const totalWorkMs = isPresent
+                  ? dayEntries.reduce((acc, entry) => {
+                      const start = Date.parse(entry.checkIn);
+                      const rawEnd = entry.checkOut ? Date.parse(entry.checkOut) : (isToday ? Date.now() : dayEndTs);
+                      const end = Math.max(start, Math.min(rawEnd, dayEndTs));
+                      const breakMs = (entry.breaks || []).reduce((bAcc, pause) => {
+                        const bStart = Math.max(start, Date.parse(pause.start));
+                        const bEnd = Math.min(end, pause.end ? Date.parse(pause.end) : end);
+                        return bAcc + Math.max(0, bEnd - bStart);
+                      }, 0);
+                      return acc + Math.max(0, end - start - breakMs);
+                    }, 0)
+                  : 0;
+
+                // Format total work time (e.g., 3h 25m)
+                const totalSec = Math.floor(totalWorkMs / 1000);
+                const hrs = Math.floor(totalSec / 3600);
+                const mins = Math.floor((totalSec % 3600) / 60);
+                const durationLabel = `${hrs}h ${mins}m`;
+
+                // First check in and last check out for time range display
+                const sortedEntries = [...dayEntries].sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime());
+                const firstIn = sortedEntries[0]?.checkIn;
+                const lastEntry = sortedEntries[sortedEntries.length - 1];
+                const lastOut = lastEntry?.checkOut;
 
                 return (
                   <div
                     key={date}
                     className={cn(
-                      "flex min-h-24 flex-col justify-between rounded-xl border p-2 text-left transition-colors sm:min-h-28 sm:p-2.5",
-                      isToday && "border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30",
-                      isSelected && !isToday && "ring-2 ring-primary/40",
-                      isFuture ? "border-dashed border-border/60 bg-muted/5" : "border-border/70"
+                      "group relative flex min-h-[96px] flex-col justify-start gap-2 rounded-xl border p-2 text-left transition-all sm:min-h-[102px] sm:p-2.5",
+                      isToday
+                        ? "border-amber-400 bg-amber-500/5 ring-1 ring-amber-400/40 shadow-xs"
+                        : isSelected
+                        ? "border-primary/50 bg-primary/[0.03] ring-1 ring-primary/30"
+                        : isFuture
+                        ? "border-dashed border-border/50 bg-muted/10 opacity-70"
+                        : "border-border/70 bg-card hover:border-border hover:shadow-xs"
                     )}
                   >
+                    {/* Top Row: Date Number and Status Badge */}
                     <div className="flex items-center justify-between">
                       <span className={cn(
-                        "flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums sm:size-6.5",
-                        isToday ? "bg-amber-500 text-black font-bold" : "text-foreground"
+                        "flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                        isToday ? "bg-amber-500 font-bold text-black" : "text-foreground"
                       )}>
                         {dayNumber}
                       </span>
-                      {isToday && <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300">Live</span>}
-                      {isFuture && <span className="text-[9px] text-muted-foreground">Forecast</span>}
+                      {isToday && (
+                        <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300">
+                          Today
+                        </span>
+                      )}
+                      {isFuture && (
+                        <span className="text-[9px] font-medium text-muted-foreground/70">
+                          Scheduled
+                        </span>
+                      )}
                     </div>
 
-                    <div className="mt-2 space-y-1">
-                      {/* Present Tag */}
-                      <div className={cn(
-                        "flex items-center justify-between rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
-                        isPresent ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-muted/40 text-muted-foreground/60"
-                      )}>
-                        <span>Present</span>
-                        <span className="font-semibold">{isPresent ? 1 : 0}</span>
-                      </div>
+                    {/* Middle Section: Status & Hours */}
+                    <div className="space-y-1">
+                      {isPresent && (
+                        <div className="flex items-center justify-between rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-emerald-800 dark:text-emerald-200">
+                          <span>Present</span>
+                          <span className="font-semibold">{durationLabel}</span>
+                        </div>
+                      )}
 
-                      {/* Absent Tag */}
-                      <div className={cn(
-                        "flex items-center justify-between rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
-                        isAbsent ? "bg-rose-500/15 text-rose-800 dark:text-rose-200" : "bg-muted/40 text-muted-foreground/60"
-                      )}>
-                        <span>Absent</span>
-                        <span className="font-semibold">{isAbsent ? 1 : 0}</span>
-                      </div>
+                      {isAbsent && (
+                        <div className="flex items-center justify-between rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-rose-800 dark:text-rose-200">
+                          <span>Absent</span>
+                          <span className="font-semibold">0h 0m</span>
+                        </div>
+                      )}
 
-                      {/* In - Out Breakdown */}
+                      {isFuture && (
+                        <div className="flex items-center justify-between rounded-md bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground/60">
+                          <span>Scheduled</span>
+                          <span className="font-semibold">0h 0m</span>
+                        </div>
+                      )}
+
+                      {/* In - Out Breakdown / Time range */}
                       <div className="pt-0.5 text-[9px] text-muted-foreground font-mono leading-tight">
                         {isPresent ? (
-                          <p className="truncate text-foreground/80 font-medium">
-                            {logTime(entry.checkIn, timeZone)}{entry.checkOut ? ` - ${logTime(entry.checkOut, timeZone)}` : " (Active)"}
+                          <p className="truncate text-foreground/80 font-medium" title={`${logTime(firstIn, timeZone)} - ${lastOut ? logTime(lastOut, timeZone) : "Active"}`}>
+                            {logTime(firstIn, timeZone)}{lastOut ? ` - ${logTime(lastOut, timeZone)}` : " (Active)"}
                           </p>
                         ) : (
                           <p className="truncate text-muted-foreground/60">{isFuture ? "Scheduled" : "No record"}</p>
