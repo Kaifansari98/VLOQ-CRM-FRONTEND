@@ -13,11 +13,7 @@ import {
   validateFields,
 } from "@/lib/fm-requirements";
 import FMRequirementTabsEditor from "./FMRequirementTabsEditor";
-import {
-  fmTabs,
-  moveFMTabField,
-  type FMFieldDropTarget,
-} from "@/lib/fm-requirement-tabs";
+import { fmTabs, moveFMTabField } from "@/lib/fm-requirement-tabs";
 import { Button } from "@/components/ui/button";
 import {
   Sortable,
@@ -75,7 +71,6 @@ function FieldEditor({
   tabChoices = [],
   tabKey,
   onMoveTab,
-  insertion,
 }: {
   fields: FMField[];
   onChange: (fields: FMField[]) => void;
@@ -85,7 +80,6 @@ function FieldEditor({
   tabChoices?: { key: string; label: string }[];
   tabKey?: string;
   onMoveTab?: (fieldKey: string, targetKey: string) => void;
-  insertion?: FMFieldDropTarget | null;
 }) {
   const update = (index: number, field: FMField) =>
     onChange(fields.map((current, i) => (i === index ? field : current)));
@@ -97,13 +91,6 @@ function FieldEditor({
       dragOnCard
       className="relative"
     >
-      {insertion?.fieldKey === field.key && (
-        <div
-          aria-hidden="true"
-          data-fm-insertion={insertion.after ? "after" : "before"}
-          className={`pointer-events-none absolute inset-x-0 z-20 h-1 rounded-full bg-primary ${insertion.after ? "-bottom-2" : "-top-2"}`}
-        />
-      )}
       <SortableItemHandle
         render={<button type="button" disabled={disabled} />}
         aria-label={`Drag to reorder ${field.label || "field"}`}
@@ -527,13 +514,12 @@ function MasterEditor({
           onDirty(true);
           setError("");
         }}
-        renderFields={(items, change, tabKey, insertion) => (
+        renderFields={(items, change, tabKey) => (
           <FieldEditor
             fields={items}
             disabled={busy}
             onChange={change}
             managedSorting={!!tabKey}
-            insertion={insertion}
             tabKey={tabKey}
             tabChoices={fmTabs(fields)}
             onMoveTab={

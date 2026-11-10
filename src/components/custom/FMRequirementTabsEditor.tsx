@@ -1,5 +1,12 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { getEventCoordinates } from "@dnd-kit/utilities";
 import {
@@ -12,6 +19,7 @@ import {
   closestCenter,
   pointerWithin,
   useDroppable,
+  useDndMonitor,
   useSensor,
   useSensors,
   type CollisionDetection,
@@ -41,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 const dropPrefix = "tab-drop:";
 let counter = 0;
-const measuring = { droppable: { strategy: MeasuringStrategy.Always } };
+const measuring = { droppable: { strategy: MeasuringStrategy.WhileDragging } };
 // Keep the compact preview just under the pointer regardless of where on a
 // wide/expanded card the drag started. The source card keeps its own geometry.
 const alignPreviewToCursor: Modifier = ({
@@ -58,6 +66,86 @@ const alignPreviewToCursor: Modifier = ({
   };
 };
 const previewModifiers = [alignPreviewToCursor];
+type InsertionEvent = Pick<DragMoveEvent, "active" | "over">;
+
+// Keep pointer-frequency updates outside the questionnaire editor tree. Only
+// this small marker renders, at most once per animation frame, while dragging.
+function InsertionIndicator({
+  getInsertion,
+}: {
+  getInsertion: (event: InsertionEvent) => FMFieldDropTarget | null;
+}) {
+  const [marker, setMarker] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    after: boolean;
+  } | null>(null);
+  const frame = useRef<number | null>(null);
+  const pending = useRef<DragMoveEvent | null>(null);
+  const clear = () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    pending.current = null;
+    setMarker(null);
+  };
+  const schedule = (event: DragMoveEvent) => {
+    pending.current = event;
+    if (frame.current !== null) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      const latest = pending.current;
+      pending.current = null;
+      const insertion = latest && getInsertion(latest);
+      const rect = latest?.over?.rect;
+      const next =
+        insertion && rect
+          ? {
+              x: rect.left,
+              y:
+                insertion.after || !insertion.fieldKey ? rect.bottom : rect.top,
+              width: rect.width,
+              after: insertion.after,
+            }
+          : null;
+      setMarker((previous) =>
+        previous?.x === next?.x &&
+        previous?.y === next?.y &&
+        previous?.width === next?.width &&
+        previous?.after === next?.after
+          ? previous
+          : next,
+      );
+    });
+  };
+  useDndMonitor({
+    onDragMove: schedule,
+    onDragOver: schedule,
+    onDragEnd: clear,
+    onDragCancel: clear,
+  });
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
+  return (
+    marker &&
+    createPortal(
+      <div
+        aria-hidden="true"
+        data-fm-insertion={marker.after ? "after" : "before"}
+        className="pointer-events-none fixed left-0 top-0 z-50 h-1 rounded-full bg-primary"
+        style={{
+          width: marker.width,
+          transform: `translate3d(${marker.x}px, ${marker.y - 2}px, 0)`,
+        }}
+      />,
+      document.body,
+    )
+  );
+}
 function TabDropZone({
   tabKey,
   children,
@@ -92,10 +180,41 @@ export default function FMRequirementTabsEditor({
     fields: FMField[],
     onChange: (fields: FMField[]) => void,
     tabKey?: string,
-    insertion?: FMFieldDropTarget | null,
   ) => ReactNode;
 }) {
-  const tabs = fmTabs(fields);
+  const tabs = useMemo(() => fmTabs(fields), [fields]);
+  const sectionKeys = useMemo(
+    () => new Set(tabs.map((tab) => tab.key)),
+    [tabs],
+  );
+  const fieldSections = useMemo(
+    () =>
+      new Map(
+        tabs.flatMap((tab) =>
+          (tab.fields ?? []).map((field) => [field.key, tab] as const),
+        ),
+      ),
+    [tabs],
+  );
+  const editors = useMemo(
+    () =>
+      new Map(
+        tabs.map((tab) => [
+          tab.key,
+          renderFields(
+            tab.fields ?? [],
+            (next) =>
+              onChange(
+                fields.map((field) =>
+                  field.key === tab.key ? { ...field, fields: next } : field,
+                ),
+              ),
+            tab.key,
+          ),
+        ]),
+      ),
+    [tabs, fields, onChange, renderFields],
+  );
   let sectionNumber = tabs.length + 1;
   while (
     tabs.some(
@@ -105,7 +224,6 @@ export default function FMRequirementTabsEditor({
     sectionNumber++;
   const nextSectionLabel = `Section ${sectionNumber}`;
   const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [insertion, setInsertion] = useState<FMFieldDropTarget | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -120,62 +238,52 @@ export default function FMRequirementTabsEditor({
     tabs
       .flatMap((tab) => tab.fields ?? [])
       .find((field) => field.key === activeKey);
-  const collision: CollisionDetection = (args) => {
-    const sectionDrag = tabs.some((tab) => tab.key === String(args.active.id));
-    const filtered = {
-      ...args,
-      droppableContainers: args.droppableContainers.filter((container) =>
-        sectionDrag
-          ? tabs.some((tab) => tab.key === String(container.id))
-          : String(container.id).startsWith(dropPrefix) ||
-            tabs.some((tab) =>
-              tab.fields?.some((field) => field.key === String(container.id)),
-            ),
-      ),
-    };
-    const pointers = pointerWithin(filtered);
-    const rows = pointers.filter(
-      (hit) => !String(hit.id).startsWith(dropPrefix),
-    );
-    return rows.length
-      ? rows
-      : pointers.length
-        ? pointers
-        : closestCenter(filtered);
-  };
-  const getInsertion = ({
-    active,
-    over,
-  }: Pick<DragMoveEvent, "active" | "over">): FMFieldDropTarget | null => {
-    if (!over || tabs.some((tab) => tab.key === String(active.id))) return null;
-    const overKey = String(over.id);
-    const target = overKey.startsWith(dropPrefix)
-      ? tabs.find((tab) => tab.key === overKey.slice(dropPrefix.length))
-      : tabs.find((tab) => tab.fields?.some((field) => field.key === overKey));
-    if (!target || active.id === over.id) return null;
-    const translated = active.rect.current.translated;
-    return {
-      tabKey: target.key,
-      fieldKey: overKey.startsWith(dropPrefix) ? undefined : overKey,
-      after:
-        !!translated &&
-        translated.top + translated.height / 2 >
-          over.rect.top + over.rect.height / 2,
-    };
-  };
-  const indicateInsertion = (event: DragMoveEvent) => {
-    const next = getInsertion(event);
-    setInsertion((previous) =>
-      previous?.tabKey === next?.tabKey &&
-      previous?.fieldKey === next?.fieldKey &&
-      previous?.after === next?.after
-        ? previous
-        : next,
-    );
-  };
+  const collision: CollisionDetection = useCallback(
+    (args) => {
+      const sectionDrag = sectionKeys.has(String(args.active.id));
+      const filtered = {
+        ...args,
+        droppableContainers: args.droppableContainers.filter((container) =>
+          sectionDrag
+            ? sectionKeys.has(String(container.id))
+            : String(container.id).startsWith(dropPrefix) ||
+              fieldSections.has(String(container.id)),
+        ),
+      };
+      const pointers = pointerWithin(filtered);
+      const rows = pointers.filter(
+        (hit) => !String(hit.id).startsWith(dropPrefix),
+      );
+      return rows.length
+        ? rows
+        : pointers.length
+          ? pointers
+          : closestCenter(filtered);
+    },
+    [sectionKeys, fieldSections],
+  );
+  const getInsertion = useCallback(
+    ({ active, over }: InsertionEvent): FMFieldDropTarget | null => {
+      if (!over || sectionKeys.has(String(active.id))) return null;
+      const overKey = String(over.id);
+      const target = overKey.startsWith(dropPrefix)
+        ? tabs.find((tab) => tab.key === overKey.slice(dropPrefix.length))
+        : fieldSections.get(overKey);
+      if (!target || active.id === over.id) return null;
+      const translated = active.rect.current.translated;
+      return {
+        tabKey: target.key,
+        fieldKey: overKey.startsWith(dropPrefix) ? undefined : overKey,
+        after:
+          !!translated &&
+          translated.top + translated.height / 2 >
+            over.rect.top + over.rect.height / 2,
+      };
+    },
+    [tabs, sectionKeys, fieldSections],
+  );
   const finish = ({ active, over }: DragEndEvent) => {
     setActiveKey(null);
-    setInsertion(null);
     if (disabled || !over || active.id === over.id) return;
     const key = String(active.id);
     const overKey = String(over.id);
@@ -226,14 +334,12 @@ export default function FMRequirementTabsEditor({
           collisionDetection={collision}
           measuring={measuring}
           onDragStart={({ active }) => setActiveKey(String(active.id))}
-          onDragMove={indicateInsertion}
-          onDragOver={indicateInsertion}
           onDragEnd={finish}
           onDragCancel={() => {
             setActiveKey(null);
-            setInsertion(null);
           }}
         >
+          <InsertionIndicator getInsertion={getInsertion} />
           <SortableContext
             items={tabs.map((tab) => tab.key)}
             strategy={rectSortingStrategy}
@@ -308,26 +414,8 @@ export default function FMRequirementTabsEditor({
                       items={(tab.fields ?? []).map((field) => field.key)}
                       strategy={verticalListSortingStrategy}
                     >
-                      {renderFields(
-                        tab.fields ?? [],
-                        (next) =>
-                          onChange(
-                            fields.map((field) =>
-                              field.key === tab.key
-                                ? { ...field, fields: next }
-                                : field,
-                            ),
-                          ),
-                        tab.key,
-                        insertion?.tabKey === tab.key ? insertion : null,
-                      )}
+                      {editors.get(tab.key)}
                     </SortableContext>
-                    {insertion?.tabKey === tab.key && !insertion.fieldKey && (
-                      <div
-                        aria-hidden="true"
-                        className="h-1 rounded-full bg-primary"
-                      />
-                    )}
                   </TabDropZone>
                 </SortableItem>
               ))}
@@ -335,7 +423,11 @@ export default function FMRequirementTabsEditor({
           </SortableContext>
           {typeof document !== "undefined" &&
             createPortal(
-              <DragOverlay modifiers={previewModifiers} dropAnimation={null}>
+              <DragOverlay
+                modifiers={previewModifiers}
+                dropAnimation={null}
+                style={{ willChange: "transform" }}
+              >
                 {active ? (
                   <div
                     data-fm-drag-preview
