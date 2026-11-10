@@ -1,6 +1,7 @@
 "use client";
 
 import React, { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ interface BaseModalProps {
   size?: "sm" | "md" | "lg" | "xl" | "xxl" | "smd";
   icon?: ReactNode; // icon is optional
   modal?: boolean;
+  className?: string;
 }
 
 const sizeClasses = {
@@ -40,11 +42,16 @@ const BaseModal: React.FC<BaseModalProps> = ({
   size = "lg",
   icon,
   modal = true,
+  className,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <DialogContent
-        className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col`}
+        className={cn(
+          sizeClasses[size],
+          "max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col",
+          className,
+        )}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
@@ -67,9 +74,7 @@ const BaseModal: React.FC<BaseModalProps> = ({
           </DialogHeader>
         )}
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-0 m-0">
-          {children}
-        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto p-0 m-0">{children}</div>
 
         {footer && (
           <div className="flex items-center justify-end gap-2 px-6 py-4 border-t bg-background shrink-0">

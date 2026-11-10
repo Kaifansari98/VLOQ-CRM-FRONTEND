@@ -314,6 +314,7 @@ function Sortable<T>({
 export interface SortableItemProps extends useRender.ComponentProps<"div"> {
   value: string
   disabled?: boolean
+  dragOnCard?: boolean
 }
 
 function SortableItem({
@@ -321,6 +322,7 @@ function SortableItem({
   className,
   render,
   disabled,
+  dragOnCard = false,
   ...props
 }: SortableItemProps) {
   const isOverlay = useContext(IsOverlayContext)
@@ -343,6 +345,31 @@ function SortableItem({
     transform: CSS.Transform.toString(transform),
   } as CSSProperties
 
+  const canStartCardDrag = (event: React.SyntheticEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement
+    const control = target.closest(
+      'input, textarea, select, button, a, [role="button"], [role="combobox"], [contenteditable="true"], label'
+    )
+    return (
+      target.closest('[data-slot="sortable-item"]') === event.currentTarget &&
+      (!control || control === event.currentTarget)
+    )
+  }
+  const cardListeners =
+    dragOnCard && !disabled
+      ? {
+          onMouseDown: (event: React.MouseEvent<HTMLElement>) => {
+            if (canStartCardDrag(event)) listeners?.onMouseDown?.(event)
+          },
+          onTouchStart: (event: React.TouchEvent<HTMLElement>) => {
+            if (canStartCardDrag(event)) listeners?.onTouchStart?.(event)
+          },
+          onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+            if (event.target === event.currentTarget) listeners?.onKeyDown?.(event)
+          },
+        }
+      : {}
+
   const defaultProps = isOverlay
     ? {
         "data-slot": "sortable-item",
@@ -359,7 +386,9 @@ function SortableItem({
         ref: setNodeRef,
         style,
         ...attributes,
+        ...cardListeners,
         className: cn(
+          dragOnCard && "cursor-grab active:cursor-grabbing",
           isSortableDragging && "opacity-50 z-50",
           disabled && "opacity-50",
           className

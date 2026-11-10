@@ -22,6 +22,8 @@ import { Ban, Images, FileText, Plus, Upload } from "lucide-react";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { canEditFMValues } from "@/lib/fm-requirements";
+import FMRequirementsSummary from "@/components/fm-requirements/FMRequirementsSummary";
 import Loader from "@/components/utils/loader";
 import SectionHeader from "@/utils/sectionHeader";
 import BaseModal from "@/components/utils/baseModal";
@@ -131,23 +133,26 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(null);
 
   // 🧩 --- Permissions ---
-  const canDelete =
-    effectiveUserType === "admin" || effectiveUserType === "super-admin";
-  const canUpload =
-    effectiveUserType === "admin" || effectiveUserType === "super-admin";
+  const canEditFM = canEditFMValues(userType);
+  const canDelete = handlesLargeScaleProjects
+    ? effectiveUserType === "admin" || effectiveUserType === "super-admin"
+    : canEditFM;
+  const canUpload = handlesLargeScaleProjects
+    ? effectiveUserType === "admin" || effectiveUserType === "super-admin"
+    : canEditFM;
   const canViewCurrentSitePhotos =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.current_site_photos.view",
         )
       : true;
-  const canDeleteCurrentSitePhotos =
+  const canDeleteCurrentSitePhotos = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.current_site_photos.delete",
         )
       : canDelete;
-  const canUploadCurrentSitePhotos =
+  const canUploadCurrentSitePhotos = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.current_site_photos.upload",
@@ -159,13 +164,13 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           "project.final_measurement.measurement_documents.view",
         )
       : true;
-  const canDeleteMeasurementDocuments =
+  const canDeleteMeasurementDocuments = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.measurement_documents.delete",
         )
       : canDelete;
-  const canUploadMeasurementDocuments =
+  const canUploadMeasurementDocuments = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.measurement_documents.upload",
@@ -858,6 +863,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     bg-[#fff] dark:bg-[#0a0a0a]
   "
     >
+      {!handlesLargeScaleProjects && <FMRequirementsSummary vendorId={vendorId} leadId={leadId} />}
       {/* -------- Current Site Photos -------- */}
       {canViewCurrentSitePhotos && (
         <div
