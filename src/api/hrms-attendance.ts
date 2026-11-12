@@ -39,10 +39,30 @@ export function useAttendanceAction(vendorId?: number, userId?: number) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input:
-      | { kind: "punch"; action: "IN" | "OUT" | "BREAK_START" | "BREAK_END"; work_location: string }
+      | {
+          kind: "punch";
+          action: "IN" | "OUT" | "BREAK_START" | "BREAK_END";
+          work_location: string;
+          latitude?: number;
+          longitude?: number;
+          accuracy?: number;
+          address?: string;
+        }
       | { kind: "request"; attendance_date: string; reason: string; requested_check_in?: string; requested_check_out?: string }
       | { kind: "decision"; id: number; status: "APPROVED" | "REJECTED" | "CANCELLED"; review_note?: string; requested_check_in?: string; requested_check_out?: string }) => {
-      if (input.kind === "punch") return (await apiClient.post("/attendance/punch", { action: input.action, work_location: input.work_location, source: "MANUAL" })).data;
+      if (input.kind === "punch") {
+        return (
+          await apiClient.post("/attendance/punch", {
+            action: input.action,
+            work_location: input.work_location,
+            source: "MANUAL",
+            latitude: input.latitude,
+            longitude: input.longitude,
+            accuracy: input.accuracy,
+            address: input.address,
+          })
+        ).data;
+      }
       if (input.kind === "request") { const { kind: _kind, ...body } = input; return (await apiClient.post("/attendance/corrections", body)).data; }
       const { kind: _kind, id, ...body } = input;
       return (await apiClient.patch(`/attendance/corrections/${id}`, body)).data;

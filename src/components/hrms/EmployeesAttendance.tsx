@@ -120,14 +120,72 @@ export default function EmployeesAttendance() {
     });
   }, [selectedMonth]);
 
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const getCoordinates = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        return reject(new Error("Geolocation is not supported by your browser or device."));
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            reject(new Error("Location permission denied. Please allow location access to mark attendance."));
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            reject(new Error("GPS location unavailable. Please check your device location settings."));
+          } else if (err.code === err.TIMEOUT) {
+            reject(new Error("GPS location request timed out. Please try again."));
+          } else {
+            reject(new Error(err.message || "Failed to retrieve location."));
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    });
+  };
+
   const punch = async (action: "in" | "out" | "break" | "resume") => {
     if (!ready) return;
     try {
       const actions = { in: "IN", out: "OUT", break: "BREAK_START", resume: "BREAK_END" } as const;
-      await actionMutation.mutateAsync({ kind: "punch", action: actions[action], work_location: location.toUpperCase() });
-      toastManager.add({ title: ({ in: "Checked in successfully", out: "Checked out successfully", break: "Break started", resume: "Break ended" })[action], type: "success" });
+      let gps: { latitude: number; longitude: number; accuracy: number } | undefined;
+
+      if (action === "in" || action === "out") {
+        setIsGettingLocation(true);
+        try {
+          gps = await getCoordinates();
+        } finally {
+          setIsGettingLocation(false);
+        }
+      }
+
+      await actionMutation.mutateAsync({
+        kind: "punch",
+        action: actions[action],
+        work_location: location.toUpperCase(),
+        latitude: gps?.latitude,
+        longitude: gps?.longitude,
+        accuracy: gps?.accuracy,
+      });
+
+      toastManager.add({
+        title: ({ in: "Checked in successfully", out: "Checked out successfully", break: "Break started", resume: "Break ended" })[action],
+        type: "success",
+      });
       if (action === "out") setCheckoutOpen(false);
-    } catch (error: any) { toastManager.add({ title: error?.response?.data?.message || "Could not record attendance. Please retry.", type: "error" }); }
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.response?.data?.message || error?.message || "Could not record attendance. Please retry.",
+        type: "error",
+      });
+    }
   };
 
   const moveMonth = (offset: number) => {
@@ -224,7 +282,31 @@ export default function EmployeesAttendance() {
             <div className="relative mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="attendance-location" className="text-xs text-muted-foreground">Work location</Label><Select value={activeEntry?.location || location} onValueChange={setLocation} disabled={!ready || !!activeEntry}><SelectTrigger id="attendance-location" className="w-full"><span className="flex items-center gap-2"><MapPin className="size-3.5 text-muted-foreground" /><SelectValue /></span></SelectTrigger><SelectContent>{[...(activeEntry?.location === "Unspecified" ? ["Unspecified"] : []), "Office", "Factory", "Site", "Remote"].map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
               <div className="flex gap-2">
-                {!activeEntry ? <Button className="h-10 flex-1 gap-2 bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:min-w-36" disabled={!ready} onClick={() => punch("in")}><LogIn className="size-4" />{todayEntries.length > 0 ? "Check in" : "Check in"}</Button> : <><Button variant="outline" className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => punch(onBreak ? "resume" : "break")}><Coffee className="size-4" />{onBreak ? "End break" : "Take a break"}</Button><Button className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => setCheckoutOpen(true)}><LogOut className="size-4" />Check out</Button></>}
+                {!activeEntry ? (
+                  <Button
+                    className="h-10 flex-1 gap-2 bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:min-w-36"
+                    disabled={!ready || isGettingLocation}
+                    onClick={() => punch("in")}
+                  >
+                    <LogIn className="size-4" />
+                    {isGettingLocation ? "Verifying GPS…" : "Check in"}
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outline" className="h-10 flex-1 gap-2" disabled={!ready} onClick={() => punch(onBreak ? "resume" : "break")}>
+                      <Coffee className="size-4" />
+                      {onBreak ? "End break" : "Take a break"}
+                    </Button>
+                    <Button
+                      className="h-10 flex-1 gap-2"
+                      disabled={!ready || isGettingLocation}
+                      onClick={() => setCheckoutOpen(true)}
+                    >
+                      <LogOut className="size-4" />
+                      Check out
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5" />Breaks are excluded from net working time. Check in and out multiple times as needed.</p>

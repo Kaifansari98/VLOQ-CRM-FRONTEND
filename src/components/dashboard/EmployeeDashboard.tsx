@@ -76,6 +76,36 @@ export default function EmployeeDashboard() {
   const [currentDateStr, setCurrentDateStr] = useState("");
   // Freeze Punch OUT button after punch out action until page/dashboard is refreshed
   const [isPunchOutFrozen, setIsPunchOutFrozen] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const getCoordinates = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        return reject(new Error("Geolocation is not supported by your browser or device."));
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            reject(new Error("Location permission denied. Please allow location access to mark attendance."));
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            reject(new Error("GPS location unavailable. Please check your device location settings."));
+          } else if (err.code === err.TIMEOUT) {
+            reject(new Error("GPS location request timed out. Please try again."));
+          } else {
+            reject(new Error(err.message || "Failed to retrieve location."));
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    });
+  };
 
   // Helper to format timestamps without date in 12-hour format (e.g., 03:35:48 pm)
   const formatTimeOnly = (timeStr?: string | null): string => {
@@ -170,11 +200,29 @@ export default function EmployeeDashboard() {
       return;
     }
 
+    let gps: { latitude: number; longitude: number; accuracy: number } | undefined;
+    setIsGettingLocation(true);
+    try {
+      gps = await getCoordinates();
+    } catch (locErr: any) {
+      setIsGettingLocation(false);
+      toastManager.add({
+        title: locErr?.message || "Location verification failed. Please enable location permissions.",
+        type: "error",
+      });
+      return;
+    } finally {
+      setIsGettingLocation(false);
+    }
+
     try {
       const response = await markMutation.mutateAsync({
         user_id: userId,
         action,
         source: "MANUAL",
+        latitude: gps?.latitude,
+        longitude: gps?.longitude,
+        accuracy: gps?.accuracy,
       });
 
       if (action === "OUT") {
@@ -311,14 +359,19 @@ export default function EmployeeDashboard() {
                 size="default"
                 variant={hasMarkedIn ? "outline" : "default"}
                 onClick={() => handlePunch("IN")}
-                disabled={hasMarkedIn || markMutation.isPending || isLoadingToday}
+                disabled={hasMarkedIn || markMutation.isPending || isLoadingToday || isGettingLocation}
                 className={`h-10 px-5 min-w-[180px] text-sm font-medium transition-all ${
                   !hasMarkedIn
                     ? "bg-[#000000] text-[#FFFFFF] hover:bg-neutral-800 hover:text-[#FFFFFF] dark:bg-[#000000] dark:text-[#FFFFFF] dark:hover:bg-neutral-800 dark:hover:text-[#FFFFFF] focus-visible:ring-2 focus-visible:ring-black dark:focus-visible:ring-white shadow-sm"
                     : "opacity-60 cursor-not-allowed bg-muted text-muted-foreground border border-border"
                 }`}
               >
-                {markMutation.isPending && markMutation.variables?.action === "IN" ? (
+                {isGettingLocation ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#FFFFFF]" />
+                    Verifying GPS...
+                  </>
+                ) : markMutation.isPending && markMutation.variables?.action === "IN" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#FFFFFF]" />
                     Marking Check-In...
@@ -338,7 +391,7 @@ export default function EmployeeDashboard() {
                 size="default"
                 variant={hasMarkedIn && !isPunchOutFrozen ? "default" : "outline"}
                 onClick={() => handlePunch("OUT")}
-                disabled={!hasMarkedIn || !!attendance?.check_out || isPunchOutFrozen || markMutation.isPending || isLoadingToday}
+                disabled={!hasMarkedIn || !!attendance?.check_out || isPunchOutFrozen || markMutation.isPending || isLoadingToday || isGettingLocation}
                 className={`h-10 px-5 min-w-[180px] text-sm font-medium transition-all ${
                   !hasMarkedIn
                     ? "opacity-40 cursor-not-allowed bg-muted/40 text-muted-foreground border border-border"
@@ -347,7 +400,12 @@ export default function EmployeeDashboard() {
                     : "bg-[#000000] text-[#FFFFFF] hover:bg-neutral-800 hover:text-[#FFFFFF] dark:bg-[#000000] dark:text-[#FFFFFF] dark:hover:bg-neutral-800 dark:hover:text-[#FFFFFF] focus-visible:ring-2 focus-visible:ring-black dark:focus-visible:ring-white shadow-sm border-transparent"
                 }`}
               >
-                {markMutation.isPending && markMutation.variables?.action === "OUT" ? (
+                {isGettingLocation ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#FFFFFF]" />
+                    Verifying GPS...
+                  </>
+                ) : markMutation.isPending && markMutation.variables?.action === "OUT" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#FFFFFF]" />
                     Marking Check-Out...

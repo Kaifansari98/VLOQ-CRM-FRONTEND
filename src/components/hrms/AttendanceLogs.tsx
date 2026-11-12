@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, Calendar, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock3, Coffee, CreditCard, Download, FileClock, LogIn, LogOut, MapPin, Monitor, PencilLine, RefreshCw, Search, ShieldCheck, Smartphone, Users, X } from "lucide-react";
+import { AlertTriangle, Building2, Calendar, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock3, Coffee, CreditCard, Download, FileClock, LogIn, LogOut, Map as MapIcon, MapPin, Monitor, Navigation, PencilLine, RefreshCw, Search, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { attendanceDate, formatDuration, workMilliseconds } from "@/lib/hrms/attendance";
 import { attendanceLogCsv, logDuration, logStatuses, logTime, shiftLogDate, titleCase, type AttendanceLogEvent, type AttendanceLogRow, type LogStatus } from "@/lib/hrms/attendance-logs";
 import { exportAttendanceLogs, useAttendanceLogDetail, useAttendanceLogs, useHrmsAttendance } from "@/api/hrms-attendance";
+import { ViewAttendanceMapModal } from "./ViewAttendanceMapModal";
 
 const PAGE_SIZE = 20;
 const colors: Record<LogStatus, string> = {
@@ -419,6 +420,7 @@ function eventView(event: AttendanceLogEvent, timeZone: string) {
 
 function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClose }: { vendorId?: number; row: AttendanceLogRow | null; timeZone: string; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<"log" | "calendar">("log");
+  const [showMapModal, setShowMapModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => row?.date ? row.date.slice(0, 7) : "");
 
   useEffect(() => {
@@ -467,7 +469,29 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
   }, [calendarData.days, monthEntries, todayStr]);
 
   return <Dialog open={!!row} onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl lg:max-w-5xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"><DialogHeader><DialogTitle className="flex items-center justify-between pr-6"><span>Employee Attendance</span><div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5"><Button variant={activeTab === "log" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("log")}><FileClock className="mr-1.5 size-3.5" />Daily Log</Button><Button variant={activeTab === "calendar" ? "secondary" : "ghost"} size="sm" className="h-7 px-2.5 text-xs font-medium" onClick={() => setActiveTab("calendar")}><Calendar className="mr-1.5 size-3.5" />Monthly Calendar</Button></div></DialogTitle><DialogDescription>{record ? `${dateLabel(record.date, true)} · ${timeZone}` : ""}</DialogDescription></DialogHeader>{record && <>
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4"><div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-full border bg-background text-sm font-semibold">{initials(record.employee.name)}</span><div><p className="text-base font-semibold">{record.employee.name}</p><p className="mt-1 text-xs text-muted-foreground">{employeeLine(record.employee)}</p></div></div><StatusBadge status={record.status} /></div>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4">
+      <div className="flex items-center gap-3">
+        <span className="flex size-12 items-center justify-center rounded-full border bg-background text-sm font-semibold">{initials(record.employee.name)}</span>
+        <div>
+          <p className="text-base font-semibold">{record.employee.name}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{employeeLine(record.employee)}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {((record as any)?.latitude || (events as any[]).some(e => e.latitude)) && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+            onClick={() => setShowMapModal(true)}
+          >
+            <MapIcon className="size-3.5" />
+            View on Map
+          </Button>
+        )}
+        <StatusBadge status={record.status} />
+      </div>
+    </div>
 
     {activeTab === "log" ? (
       <div className="space-y-4">
@@ -639,7 +663,31 @@ function AttendanceLogDialog({ vendorId, row, timeZone: fallbackTimeZone, onClos
     )}
 
     <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4"><span className="text-[11px] text-muted-foreground">Read-only view · corrections go through the approval inbox</span><Button variant="outline" size="sm" onClick={onClose}>Close log</Button></div>
-  </>}</DialogContent></Dialog>;
+  </>}
+  
+  <ViewAttendanceMapModal
+    open={showMapModal}
+    onClose={() => setShowMapModal(false)}
+    employeeName={record?.employee.name || "Employee"}
+    date={record ? dateLabel(record.date, true) : ""}
+    checkIn={{
+      time: record ? logTime(record.check_in, timeZone) : undefined,
+      lat: (record as any)?.latitude,
+      lng: (record as any)?.longitude,
+      address: (record as any)?.location_address,
+    }}
+    checkOut={{
+      time: record?.check_out ? logTime(record.check_out, timeZone) : undefined,
+      lat: (events as any[]).find(e => e.action === "OUT")?.latitude || (record as any)?.latitude,
+      lng: (events as any[]).find(e => e.action === "OUT")?.longitude || (record as any)?.longitude,
+      address: (events as any[]).find(e => e.action === "OUT")?.location_address,
+    }}
+    assignedLocation={{
+      name: (record as any)?.location_name,
+      address: (record as any)?.location_address,
+    }}
+  />
+  </DialogContent></Dialog>;
 }
 
 function EmptyState({ invalidRange, onClear }: { invalidRange: boolean; onClear: () => void }) {
