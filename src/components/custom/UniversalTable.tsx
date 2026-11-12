@@ -512,6 +512,7 @@ export function UniversalTable({
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
+  const assignedFranchiseId = useAppSelector((s) => s.auth.user?.franchise_id);
   const reduxModuledForB2b = useAppSelector(
     (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
   );
@@ -560,6 +561,7 @@ export function UniversalTable({
   const normalizedType = String(type || "")
     .trim()
     .toLowerCase();
+  const isAdminOverallLeads = normalizedUserType === "admin" && normalizedType === "all";
   const isHeadSiteSupervisor = normalizedUserType === "head-site-supervisor";
   const isUnderInstallation = normalizedType === "type 15";
   const shouldIncludeFranchise =
@@ -770,6 +772,7 @@ export function UniversalTable({
   };
 
   const showFranchiseFilter = useMemo(() => {
+    if (isAdminOverallLeads) return false;
     if (ignoreFranchiseScope) return false;
     if (isHOUser) return true;
     const cleanRole = (userType || "")
@@ -785,7 +788,7 @@ export function UniversalTable({
       "site-supervisor",
     ];
     return allowedRoles.includes(cleanRole);
-  }, [ignoreFranchiseScope, isHOUser, userType]);
+  }, [ignoreFranchiseScope, isHOUser, userType, isAdminOverallLeads]);
 
   const servicingDateRange = useMemo(() => {
     if (!showServicingColumn || !pendingServicesOnly || !servicingMonthFilter) {
@@ -838,7 +841,7 @@ export function UniversalTable({
 
     return {
       userId: userId!,
-      franchise_id:
+      franchise_id: isAdminOverallLeads ? assignedFranchiseId ?? undefined :
         !ignoreFranchiseScope && shouldIncludeFranchise
           ? franchiseId!
           : callerSelectedFranchiseId,
@@ -878,7 +881,7 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises:
+      franchises: isAdminOverallLeads ? (assignedFranchiseId ? [assignedFranchiseId] : undefined) :
         !ignoreFranchiseScope && myFranchisesFilter.length > 0
           ? myFranchisesFilter
           : undefined,
@@ -887,6 +890,8 @@ export function UniversalTable({
     userId,
     userType,
     isCaller,
+    isAdminOverallLeads,
+    assignedFranchiseId,
     shouldIncludeFranchise,
     ignoreFranchiseScope,
     type,
@@ -918,14 +923,14 @@ export function UniversalTable({
         ? [userId]
         : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
-    const overallUserId = isAdmin || allVendorLeads ? undefined : userId;
+    const overallUserId = isAdminOverallLeads ? userId : isAdmin || allVendorLeads ? undefined : userId;
 
     const callerSelectedFranchiseId =
       isCaller && overallFranchisesFilter.length > 0 ? overallFranchisesFilter[0] : undefined;
 
     return {
       userId: overallUserId,
-      franchise_id:
+      franchise_id: isAdminOverallLeads ? assignedFranchiseId ?? undefined :
         !ignoreFranchiseScope && shouldIncludeFranchise
           ? franchiseId!
           : callerSelectedFranchiseId,
@@ -970,7 +975,7 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises:
+      franchises: isAdminOverallLeads ? (assignedFranchiseId ? [assignedFranchiseId] : undefined) :
         !ignoreFranchiseScope && overallFranchisesFilter.length > 0
           ? overallFranchisesFilter
           : undefined,
@@ -979,6 +984,8 @@ export function UniversalTable({
     userId,
     userType,
     isAdmin,
+    isAdminOverallLeads,
+    assignedFranchiseId,
     isCaller,
     allVendorLeads,
     shouldIncludeFranchise,
@@ -1744,6 +1751,7 @@ export function UniversalTable({
       rowSelection,
     },
     meta: {
+      adminOverallFranchiseScope: isAdminOverallLeads,
       showFranchiseFilter,
       franchisesFilter: activeFranchisesFilter,
       setFranchisesFilter: setActiveFranchisesFilter,

@@ -1074,10 +1074,12 @@ export const getVendorSalesExecutiveUsers = async (
     assigneeUserType?: string;
     requiredPrivilegeCode?: string;
     taskType?: string;
+    strictFranchise?: boolean;
   },
 ) => {
   const params: Record<string, string | number> = {};
   if (franchiseId) params.franchise_id = franchiseId;
+  if (options?.strictFranchise) params.strict_franchise = "true";
   if (options?.assigneeUserType) {
     params.assignee_user_type = options.assigneeUserType;
   }
