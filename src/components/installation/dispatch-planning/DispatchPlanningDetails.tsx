@@ -53,6 +53,7 @@ import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequired
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -172,6 +173,7 @@ export default function DispatchPlanningDetails({
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "dispatch_planning");
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [existingPaymentDoc, setExistingPaymentDoc] = useState<{
@@ -498,6 +500,8 @@ export default function DispatchPlanningDetails({
   const hasPendingDispatchPlanningApproval = dispatchPlanningLockIns.some(
     (lockIn) => !lockIn.is_approved,
   );
+  const pendingApproval = dispatchPlanningLockIns.find(lockIn => !lockIn.is_approved);
+  const approvalTask = pendingApproval?.pending_tasks?.[0] ?? pendingApproval?.latest_task;
   const isDispatchPlanningInfoLocked = isAccountLocInEnabled
     ? dispatchPlanningLockInsLoading || hasPendingDispatchPlanningApproval
     : false;
@@ -535,6 +539,26 @@ export default function DispatchPlanningDetails({
   return (
     <div className="space-y-4 pb-6">
       <ClientRequiredDeliveryDateBanner leadId={leadId} />
+
+      {isAccountLocInEnabled && pendingApproval && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              {approvalTask?.status === "completed" ? "Task completed · Approval pending" : "Dispatch Planning approval pending"}
+            </p>
+            <p className="text-xs text-muted-foreground">Super Admin approval is required before dispatch details can be entered.</p>
+          </div>
+          {userType?.toLowerCase() === "super-admin" && approvalTask && (
+            <Button type="button" variant="outline" size="sm" disabled={shouldDisableBlockedActions} onClick={() => setApprovalOpen(true)}>
+              <CheckCircle2 className="size-4" />
+              Review approval
+            </Button>
+          )}
+        </div>
+      )}
+      {userType?.toLowerCase() === "super-admin" && approvalTask && (
+        <DispatchPlanningApprovalModal open={approvalOpen} onOpenChange={setApprovalOpen} data={{ leadId, taskId: approvalTask.id }} />
+      )}
 
       {/* ── Dispatch Planning Information ────────────────────────────────────── */}
       <div className="border h-full rounded-lg overflow-y-auto bg-background">

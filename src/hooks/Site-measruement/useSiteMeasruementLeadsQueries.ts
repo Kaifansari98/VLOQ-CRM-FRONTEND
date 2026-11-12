@@ -13,7 +13,7 @@ import {
   checkIsmUploadedAPI,
 } from "@/api/measurment-leads";
 import { getBookingDoneIsmDetails, uploadBookingDoneIsm } from "@/api/leads";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 
 export const useInitialSiteMeasurement = (
@@ -33,6 +33,7 @@ export const useInitialSiteMeasurement = (
 
 
 export const useCompletedUpdateTask = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       leadId,
@@ -43,6 +44,13 @@ export const useCompletedUpdateTask = () => {
       taskId: number;
       payload: CompletedPayload;
     }) => CompletedUpdateTheTaskIsmAndFollowUp(leadId, taskId, payload),
+    onSuccess: (_data, { leadId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["leadSuperAdminApprovalLockIns"],
+        predicate: query => query.queryKey[2] === leadId,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["activeLeadTasks"], predicate: query => query.queryKey[2] === leadId });
+    },
   });
 };
 

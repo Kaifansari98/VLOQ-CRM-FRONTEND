@@ -20,6 +20,7 @@ import {
   MapPinned,
   Building2,
   Megaphone,
+  MessageSquareWarning,
   Magnet,
   TriangleAlert,
   CalendarCheck,
@@ -66,6 +67,11 @@ const data = {
       title: "Broadcast",
       url: "/dashboard/broadcast",
       icon: Megaphone,
+    },
+    {
+      title: "Client Complaints",
+      url: "/dashboard/client-complaints",
+      icon: MessageSquareWarning,
     },
     {
       title: "CRM Reports",
@@ -517,6 +523,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
   const isMiscellaneousEnabled = user?.vendor?.is_miscellaneous_enabled === true;
   const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
+  const isClientComplaintsEnabled =
+    user?.vendor?.is_client_complaints_enabled === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const isOnlineLeadFeatureEnabled =
@@ -1062,10 +1070,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }
       }
 
-      const finalNavItems =
-        isBroadcastEnabled && !isMasterAdmin
-          ? navItemsWithRoleAdditions
-          : navItemsWithRoleAdditions.filter((item) => item.title !== "Broadcast");
+      const finalNavItems = navItemsWithRoleAdditions.filter(
+        (item) =>
+          (item.title !== "Broadcast" || (isBroadcastEnabled && !isMasterAdmin)) &&
+          (item.title !== "Client Complaints" ||
+            (isClientComplaintsEnabled &&
+              (userType === "super-admin" ||
+                userType === "head-site-supervisor" ||
+                userType === "site-supervisor"))),
+      );
 
     const finalTrackTraceItems =
       isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)
@@ -1163,6 +1176,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isCustomUserTypeOnlyVendor,
     isCrmEnabled,
     isBroadcastEnabled,
+    isClientComplaintsEnabled,
     isInventoryEnabled,
     materialIssueProjectsCount,
     isMaterialIssueProjectsLoading,
