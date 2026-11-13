@@ -46,6 +46,10 @@ import {
   CreateClientComplaintInput,
 } from "@/types/client-complaints";
 import { COMPONENT_LABELS, STATUS_META } from "./complaint-meta";
+import { useAppSelector } from "@/redux/store";
+import { useVendorBrandStyle } from "@/hooks/use-vendor-theme-color";
+import { ComplaintLeadPicker } from "./ComplaintLeadPicker";
+import AssignToPicker from "@/components/assign-to-picker";
 
 interface CreateComplaintModalProps {
   open: boolean;
@@ -71,6 +75,15 @@ const emptyExternal = {
   city: "",
   product_type: "",
   installation_date: "",
+};
+
+const emptyLeadForm = {
+  instance_id: "",
+  usable_handover_date: "",
+  final_handover_date: "",
+  site_address: "",
+  site_supervisor_id: "",
+  head_site_supervisor_id: "",
 };
 
 const emptyDetails = {
@@ -211,6 +224,11 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
   meta,
   onCreated,
 }) => {
+  const isSuperAdmin = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type?.toLowerCase() === "super-admin",
+  );
+  const brandStyle = useVendorBrandStyle();
+  const leadRequestRef = useRef<AbortController | null>(null);
   const createMutation = useCreateComplaint(vendorId);
   const isSubmitting = createMutation.isPending;
 
@@ -219,12 +237,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
   const [lead, setLead] = useState<ComplaintLeadLookup | null>(null);
   const [leadLoading, setLeadLoading] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
-  const [leadForm, setLeadForm] = useState({
-    instance_id: "",
-    usable_handover_date: "",
-    final_handover_date: "",
-    site_address: "",
-  });
+  const [leadForm, setLeadForm] = useState(emptyLeadForm);
   const [external, setExternal] = useState(emptyExternal);
   const [linkedClient, setLinkedClient] = useState<ComplaintPossibleDuplicates["external_clients"][number] | null>(null);
   const [duplicates, setDuplicates] = useState<ComplaintPossibleDuplicates | null>(null);
@@ -237,6 +250,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
   // Release previews and reset everything whenever the modal closes.
   useEffect(() => {
     if (open) return;
+    leadRequestRef.current?.abort();
+    setLeadLoading(false);
     setPhotos((prev) => {
       prev.forEach((p) => URL.revokeObjectURL(p.url));
       return [];
@@ -249,7 +264,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     setLeadCode("");
     setLead(null);
     setLeadError(null);
-    setLeadForm({ instance_id: "", usable_handover_date: "", final_handover_date: "", site_address: "" });
+    setLeadForm(emptyLeadForm);
     setExternal(emptyExternal);
     setLinkedClient(null);
     setDuplicates(null);
@@ -257,6 +272,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     setErrors({});
     setSubmitError(null);
   }, [open]);
+
+  useEffect(() => () => leadRequestRef.current?.abort(), []);
 
   // Spec 3.2: warn HO about possible matches; never block or merge.
   useEffect(() => {
@@ -303,25 +320,46 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       setLeadError("Enter a lead code.");
       return;
     }
+    leadRequestRef.current?.abort();
+    const request = new AbortController();
+    leadRequestRef.current = request;
     setLeadLoading(true);
     setLeadError(null);
     setLead(null);
     try {
-      const result = await lookupComplaintLead(vendorId, trimmed);
+      const result = await lookupComplaintLead(vendorId, trimmed, request.signal);
+      if (request.signal.aborted) return;
       setLead(result);
       setLeadCode(result.lead_code);
+      // Prefill the lead's current SS when it is one of the franchise candidates.
+      const defaultSs = result.site_supervisors.find((s) => s.id === result.default_site_supervisor_id);
       setLeadForm({
+        ...emptyLeadForm,
         instance_id: result.products.length === 1 ? String(result.products[0].instance_id) : "",
-        usable_handover_date: "",
-        final_handover_date: "",
-        site_address: "",
+        site_supervisor_id: defaultSs ? String(defaultSs.id) : "",
       });
-      clearError("lead_code", "instance_id", "usable_handover_date", "final_handover_date", "lead_site_address");
+      clearError(
+        "lead_code",
+        "instance_id",
+        "usable_handover_date",
+        "final_handover_date",
+        "lead_site_address",
+        "site_supervisor_id",
+        "head_site_supervisor_id",
+      );
     } catch (error) {
-      setLeadError(apiMessage(error, "Unable to verify this lead code."));
+      if (!request.signal.aborted) setLeadError(apiMessage(error, "Unable to verify this lead code."));
     } finally {
-      setLeadLoading(false);
+      if (leadRequestRef.current === request) setLeadLoading(false);
     }
+  };
+
+  const clearSelectedLead = () => {
+    leadRequestRef.current?.abort();
+    setLeadLoading(false);
+    setLead(null);
+    setLeadCode("");
+    setLeadError(null);
   };
 
   const switchToLead = (code: string) => {
@@ -363,7 +401,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
   const validate = (): Errors => {
     const next: Errors = {};
     if (mode === "CRM_LEAD") {
-      if (!lead) next.lead_code = "Fetch and verify the lead code first.";
+      if (!lead) next.lead_code = isSuperAdmin ? "Select a CRM lead first." : "Fetch and verify the lead code first.";
       else {
         if (lead.products.length > 0 && !leadForm.instance_id) next.instance_id = "Select the affected product.";
         if (!lead.usable_handover_date && !leadForm.usable_handover_date)
@@ -371,6 +409,10 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
         if (!lead.final_handover_date && !leadForm.final_handover_date)
           next.final_handover_date = "Final handover date is required.";
         if (!lead.site_address && !leadForm.site_address.trim()) next.lead_site_address = "Site address is required.";
+        if (lead.site_supervisors.length > 1 && !leadForm.site_supervisor_id)
+          next.site_supervisor_id = "Select the site supervisor.";
+        if (lead.head_site_supervisors.length > 1 && !leadForm.head_site_supervisor_id)
+          next.head_site_supervisor_id = "Select the head site supervisor.";
       }
     } else {
       if (!external.client_name.trim()) next.client_name = "Client name is required.";
@@ -419,6 +461,10 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             usable_handover_date: lead!.usable_handover_date ? undefined : leadForm.usable_handover_date,
             final_handover_date: lead!.final_handover_date ? undefined : leadForm.final_handover_date,
             site_address: lead!.site_address ? undefined : leadForm.site_address.trim(),
+            site_supervisor_id: leadForm.site_supervisor_id ? Number(leadForm.site_supervisor_id) : undefined,
+            head_site_supervisor_id: leadForm.head_site_supervisor_id
+              ? Number(leadForm.head_site_supervisor_id)
+              : undefined,
           }
         : {
             ...common,
@@ -490,10 +536,10 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
         <form
           id="create-complaint-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 items-start"
+          className="flex-1 overflow-y-auto px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 items-stretch"
         >
           {/* Client */}
-          <div className="space-y-5">
+          <div className={isSuperAdmin && mode === "CRM_LEAD" && !lead ? "flex min-h-0 flex-col gap-5" : "space-y-5"}>
             <div className="grid grid-cols-2 gap-1 rounded-xl border bg-muted/40 p-1">
               {(
                 [
@@ -522,44 +568,56 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             </div>
 
             {mode === "CRM_LEAD" ? (
-              <section className="space-y-4">
-                <SectionTitle>Client Details</SectionTitle>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Lead Code</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Link2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        value={leadCode}
-                        onChange={(e) => {
-                          setLeadCode(e.target.value);
-                          if (lead) setLead(null);
-                          setLeadError(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void fetchLead();
-                          }
-                        }}
-                        placeholder="e.g. SHHO-136"
-                        className="pl-9 h-9 text-xs rounded-xl"
-                        aria-invalid={!!errors.lead_code || !!leadError}
-                      />
+              <section className={isSuperAdmin && !lead ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4"}>
+                {isSuperAdmin ? (
+                  <ComplaintLeadPicker
+                    vendorId={vendorId}
+                    selectedLead={lead}
+                    selecting={leadLoading}
+                    onSelect={(code) => void fetchLead(code)}
+                    onClear={clearSelectedLead}
+                    error={leadError ?? errors.lead_code}
+                  />
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Lead Code</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Link2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={leadCode}
+                          onChange={(e) => {
+                            leadRequestRef.current?.abort();
+                            setLeadLoading(false);
+                            setLeadCode(e.target.value);
+                            if (lead) setLead(null);
+                            setLeadError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void fetchLead();
+                            }
+                          }}
+                          placeholder="e.g. SHHO-136"
+                          className="pl-9 h-9 text-xs rounded-xl"
+                          aria-invalid={!!errors.lead_code || !!leadError}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void fetchLead()}
+                        disabled={leadLoading}
+                        className="h-9 text-xs rounded-xl gap-1.5"
+                      >
+                        {leadLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                        Fetch
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void fetchLead()}
-                      disabled={leadLoading}
-                      className="h-9 text-xs rounded-xl gap-1.5"
-                    >
-                      {leadLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                      Fetch
-                    </Button>
+                    <FieldError message={leadError ?? errors.lead_code} />
                   </div>
-                  <FieldError message={leadError ?? errors.lead_code} />
-                </div>
+                )}
 
                 {lead && (
                   <>
@@ -571,7 +629,15 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                         <ReadOnlyField label="Client Name" value={lead.client_name} />
                         <ReadOnlyField label="Mobile Number" value={lead.mobile} />
                         <ReadOnlyField label="Email" value={lead.email} />
-                        <ReadOnlyField label="Site Supervisor" value={lead.site_supervisor?.name ?? "Not assigned"} />
+                        {lead.site_supervisors.length <= 1 && (
+                          <ReadOnlyField label="Site Supervisor" value={lead.site_supervisors[0]?.name ?? "Not assigned"} />
+                        )}
+                        {lead.head_site_supervisors.length <= 1 && (
+                          <ReadOnlyField
+                            label="Head Site Supervisor"
+                            value={lead.head_site_supervisors[0]?.name ?? "Not assigned"}
+                          />
+                        )}
                         {lead.site_address && (
                           <div className="col-span-2">
                             <ReadOnlyField label="Site Address" value={lead.site_address} />
@@ -675,13 +741,49 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                         )}
                       </div>
                     )}
+
+                    {(lead.site_supervisors.length > 1 || lead.head_site_supervisors.length > 1) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {(
+                          [
+                            ["site_supervisor_id", "Site Supervisor", lead.site_supervisors],
+                            ["head_site_supervisor_id", "Head Site Supervisor", lead.head_site_supervisors],
+                          ] as const
+                        ).map(
+                          ([key, label, options]) =>
+                            options.length > 1 && (
+                              <div key={key} className="space-y-1.5">
+                                <Label className="text-xs">{label}</Label>
+                                <Select
+                                  value={leadForm[key]}
+                                  onValueChange={(v) => {
+                                    setLeadForm((p) => ({ ...p, [key]: v }));
+                                    clearError(key);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full h-9 text-xs rounded-xl" aria-invalid={!!errors[key]}>
+                                    <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {options.map((u) => (
+                                      <SelectItem key={u.id} value={String(u.id)}>
+                                        {u.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FieldError message={errors[key]} />
+                              </div>
+                            ),
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </section>
             ) : (
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <SectionTitle>Client Details</SectionTitle>
                   {linkedClient && (
                     <button
                       type="button"
@@ -856,7 +958,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
 
           {/* Complaint */}
           <section className="space-y-4">
-            <SectionTitle>Complaint Details</SectionTitle>
             <div className="space-y-1.5">
               <Label className="text-xs">Affected Component</Label>
               <div className="grid grid-cols-4 gap-2">
@@ -882,26 +983,21 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
               </div>
               <FieldError message={errors.component} />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" role="group" aria-label="Complaint category">
               <Label className="text-xs">Complaint Category</Label>
-              <Select
-                value={details.category_id}
-                onValueChange={(v) => {
-                  setDetails((p) => ({ ...p, category_id: v }));
+              <AssignToPicker
+                data={(meta?.categories ?? []).map(category => ({ id: category.id, label: category.name }))}
+                value={details.category_id ? Number(details.category_id) : undefined}
+                onChange={(id) => {
+                  setDetails((p) => ({ ...p, category_id: id ? String(id) : "" }));
                   clearError("category_id");
                 }}
-              >
-                <SelectTrigger className="w-full h-9 text-xs rounded-xl" aria-invalid={!!errors.category_id}>
-                  <SelectValue placeholder={meta ? "Select a category" : "Loading categories…"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {meta?.categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Search complaint categories…"
+                emptyLabel={meta ? "Select a category" : "Loading categories…"}
+                disabled={!meta}
+                className={`h-9 rounded-xl text-xs ${errors.category_id ? "border-destructive" : ""}`}
+                textClassName="text-xs"
+              />
               <FieldError message={errors.category_id} />
             </div>
             <div className="space-y-1.5">
@@ -978,7 +1074,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
           <Button
             type="submit"
             form="create-complaint-form"
-            className="h-9 text-xs font-semibold rounded-xl gap-2"
+            style={brandStyle}
+            className="h-9 text-xs font-semibold rounded-xl gap-2 bg-[var(--brand-bg,var(--color-zinc-900))] text-[var(--brand-text,var(--color-white))] hover:bg-[var(--brand-bg,var(--color-zinc-900))] hover:opacity-90 dark:bg-[var(--brand-bg,var(--color-zinc-800))] dark:hover:bg-[var(--brand-bg,var(--color-zinc-800))]"
             disabled={isSubmitting}
           >
             {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

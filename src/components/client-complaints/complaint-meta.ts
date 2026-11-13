@@ -34,7 +34,8 @@ const STATUS_DEFS: Record<ComplaintStatus, [label: string, tone: Tone]> = {
   AWAITING_CLIENT_APPROVAL: ["Awaiting Client Approval", "violet"],
   AWAITING_PAYMENT: ["Awaiting Payment", "amber"],
   PROCUREMENT_PENDING: ["Procurement Pending", "orange"],
-  MATERIAL_RECEIVED: ["Material Received", "orange"],
+  // Covers both "material received" and "no material needed" (spec 15).
+  MATERIAL_RECEIVED: ["Ready for Repair", "indigo"],
   REPAIR_SCHEDULED: ["Repair Scheduled", "indigo"],
   WORK_IN_PROGRESS: ["Work in Progress", "indigo"],
   AWAITING_CLIENT_CONFIRMATION: ["Awaiting Client Confirmation", "cyan"],
@@ -63,8 +64,8 @@ export const STATUS_GROUPS: { key: string; label: string; statuses: ComplaintSta
   { key: "inspection", label: "Inspection Completed", statuses: ["INSPECTION_SUBMITTED"], tone: "indigo" },
   { key: "quotation", label: "Quotation Pending", statuses: ["QUOTATION_PREPARATION", "DEPARTMENT_HEAD_APPROVAL", "QUOTATION_SHARED", "AWAITING_CLIENT_APPROVAL"], tone: "violet" },
   { key: "payment", label: "Payment Pending", statuses: ["AWAITING_CLIENT_ACCEPTANCE", "PAYMENT_PENDING", "AWAITING_PAYMENT"], tone: "amber" },
-  { key: "material", label: "Material Pending", statuses: ["PROCUREMENT_PENDING", "MATERIAL_RECEIVED"], tone: "orange" },
-  { key: "work", label: "Work in Progress", statuses: ["REPAIR_SCHEDULED", "WORK_IN_PROGRESS"], tone: "indigo" },
+  { key: "material", label: "Material Pending", statuses: ["PROCUREMENT_PENDING"], tone: "orange" },
+  { key: "work", label: "Work in Progress", statuses: ["MATERIAL_RECEIVED", "REPAIR_SCHEDULED", "WORK_IN_PROGRESS"], tone: "indigo" },
   { key: "closed", label: "Closed", statuses: ["CLOSED"], tone: "emerald" },
   { key: "reopened", label: "Reopened", statuses: ["REOPENED"], tone: "orange" },
 ];

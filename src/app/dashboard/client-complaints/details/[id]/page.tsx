@@ -59,27 +59,6 @@ export default function ComplaintDetailsPage() {
         </div>
       </header>
       <main className="min-w-0 flex-1 space-y-5 p-4 sm:p-6">
-        <div className="flex justify-between gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard/client-complaints">
-              <ArrowLeft className="size-4" />
-              All complaints
-            </Link>
-          </Button>
-          {data && !error && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isFetching}
-              onClick={() => refetch()}
-            >
-              <RefreshCw
-                className={isFetching ? "size-4 animate-spin" : "size-4"}
-              />
-              Refresh
-            </Button>
-          )}
-        </div>
         {unavailable ? (
           <div role="alert" className="rounded-2xl border p-10 text-center">
             <h1 className="text-lg font-semibold">Complaint unavailable</h1>

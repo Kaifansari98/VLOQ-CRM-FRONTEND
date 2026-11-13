@@ -68,7 +68,9 @@ export interface ComplaintLeadLookup {
   usable_handover_date: string | null;
   final_handover_date: string | null;
   products: { instance_id: number; title: string; product_type: string }[];
-  site_supervisor: { id: number; name: string } | null;
+  site_supervisors: { id: number; name: string }[];
+  head_site_supervisors: { id: number; name: string }[];
+  default_site_supervisor_id: number | null;
   existing_complaints: {
     complaint_code: string;
     status: ComplaintStatus;
@@ -110,6 +112,8 @@ export type CreateClientComplaintInput = ComplaintDetailsInput &
         usable_handover_date?: string;
         final_handover_date?: string;
         site_address?: string;
+        site_supervisor_id?: number;
+        head_site_supervisor_id?: number;
       }
     | {
         client_mode: "EXTERNAL";

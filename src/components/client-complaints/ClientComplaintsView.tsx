@@ -26,7 +26,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Eye,
   Inbox,
   Loader2,
   MessageSquareWarning,
@@ -35,6 +34,9 @@ import {
   Search,
 } from "lucide-react";
 import { useComplaints } from "@/api/client-complaints";
+import { useVendorBrandStyle } from "@/hooks/use-vendor-theme-color";
+import { BRAND_BUTTON } from "./complaint-action-ui";
+import { ComplaintSettingsButton } from "./ComplaintSettingsDialog";
 import { ClientComplaintRow, ComplaintStatus } from "@/types/client-complaints";
 import {
   ALL_STATUSES,
@@ -48,6 +50,8 @@ import {
 interface ClientComplaintsViewProps {
   vendorId?: number;
   canRegister: boolean;
+  // Present only for viewers allowed to change the vendor's visiting charge.
+  visitFee?: number;
   onCreateOpen: () => void;
   onViewItem: (item: ClientComplaintRow) => void;
 }
@@ -72,9 +76,20 @@ const StatusBadge = ({ status }: { status: ComplaintStatus }) => {
 export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
   vendorId,
   canRegister,
+  visitFee,
   onCreateOpen,
   onViewItem,
 }) => {
+  const brandStyle = useVendorBrandStyle();
+  // Phones and tablets open a complaint on a single tap; desktop uses double-click.
+  const [singleTapOpen, setSingleTapOpen] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setSingleTapOpen(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   // Either a dashboard group key or "status:<STATUS>" for a single status.
@@ -128,14 +143,20 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
             Register, track and resolve after-sales complaints from clients
           </p>
         </div>
-        {canRegister && (
-          <Button
-            onClick={onCreateOpen}
-            className="w-fit gap-2 text-xs font-semibold h-10 px-4 shadow-sm rounded-xl"
-          >
-            <Plus className="w-4 h-4" /> Register Complaint
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {vendorId && visitFee !== undefined && (
+            <ComplaintSettingsButton vendorId={vendorId} visitFee={visitFee} />
+          )}
+          {canRegister && (
+            <Button
+              onClick={onCreateOpen}
+              style={brandStyle}
+              className={`w-fit gap-2 text-xs font-semibold h-10 px-4 shadow-sm rounded-xl ${BRAND_BUTTON}`}
+            >
+              <Plus className="w-4 h-4" /> Register Complaint
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Dashboard counters — clicking one filters the list */}
@@ -224,8 +245,7 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
               <TableHead className="text-xs font-semibold tracking-wider uppercase">Priority</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase">Status</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase">Assigned</TableHead>
-              <TableHead className="text-xs font-semibold tracking-wider uppercase">Registered</TableHead>
-              <TableHead className="text-right text-xs font-semibold tracking-wider uppercase pr-6">Actions</TableHead>
+              <TableHead className="text-xs font-semibold tracking-wider uppercase pr-6">Registered</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -233,14 +253,20 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
             {isLoading ? (
               Array.from({ length: 5 }, (_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={8} className="py-4 px-6">
+                  <TableCell colSpan={7} className="py-4 px-6">
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : rows.length > 0 ? (
               rows.map((item) => (
-                <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                <TableRow
+                  key={item.id}
+                  onClick={singleTapOpen ? () => onViewItem(item) : undefined}
+                  onDoubleClick={singleTapOpen ? undefined : () => onViewItem(item)}
+                  className="cursor-pointer select-none hover:bg-muted/30 transition-colors"
+                  title={singleTapOpen ? undefined : "Double-click to view details"}
+                >
                   {/* Complaint */}
                   <TableCell className="py-3.5 pl-6">
                     <div className="flex items-start gap-3">
@@ -249,7 +275,11 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
                       </div>
                       <div className="min-w-0">
                         <div
-                          onClick={() => onViewItem(item)}
+                          onClick={(e) => {
+                            // The row also opens on tap; avoid navigating twice.
+                            e.stopPropagation();
+                            onViewItem(item);
+                          }}
                           className="font-bold text-xs text-foreground hover:text-primary cursor-pointer transition-colors font-mono"
                         >
                           {item.complaint_code}
@@ -329,28 +359,15 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
                   </TableCell>
 
                   {/* Registered */}
-                  <TableCell className="text-xs whitespace-nowrap">
+                  <TableCell className="text-xs whitespace-nowrap pr-6">
                     <div className="font-medium text-foreground">{formatDate(item.created_at)}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">{formatTime(item.created_at)}</div>
-                  </TableCell>
-
-                  {/* Actions */}
-                  <TableCell className="text-right pr-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      onClick={() => onViewItem(item)}
-                      title="View Details"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="h-40 text-center">
+                <TableCell colSpan={7} className="h-40 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="w-6 h-6" />
                     <span className="text-xs">

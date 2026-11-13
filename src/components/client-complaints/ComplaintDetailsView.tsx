@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useVendorBrandStyle } from "@/hooks/use-vendor-theme-color";
 import {
   AlertCircle,
   CalendarDays,
@@ -41,6 +42,7 @@ import {
 } from "./complaint-details-format";
 import { ComplaintEvidence } from "./ComplaintEvidence";
 import { ComplaintActivityLog } from "./ComplaintActivityLog";
+import { ComplaintActionsPanel } from "./ComplaintActionsPanel";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: House },
@@ -176,6 +178,8 @@ export function ComplaintDetailsView({
   complaint: ComplaintDetails;
   vendorId: number;
 }) {
+  // Active tab follows the vendor's sidebar theme, falling back to system zinc.
+  const activeTabStyle = useVendorBrandStyle();
   const [tab, setTab] = useState("overview");
   const [cycle, setCycle] = useState("all");
   const [desktop, setDesktop] = useState(false);
@@ -230,71 +234,90 @@ export function ComplaintDetailsView({
 
   return (
     <div className="min-w-0 space-y-6">
-      <div className="rounded-2xl border bg-card p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Complaint
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
-                  status.className,
-                )}
-              >
-                <span className={cn("size-1.5 rounded-full", status.dot)} />
-                {status.label}
-              </span>
-              {c.priority && (
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-xs font-medium",
-                    PRIORITY_META[c.priority].className,
-                  )}
-                >
-                  {PRIORITY_META[c.priority].label} priority
-                </span>
-              )}
-            </div>
-            <h1 className="mt-3 break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 rounded-xl border bg-card px-4 py-3 sm:px-5">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h1 className="break-words text-lg font-semibold tracking-tight">
               {c.complaint_code}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {c.client_name} <span className="mx-1.5">/</span>{" "}
-              {c.product_type || "Product not recorded"}
-            </p>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                status.className,
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", status.dot)} />
+              {status.label}
+            </span>
+            {c.priority && (
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                  PRIORITY_META[c.priority].className,
+                )}
+              >
+                {PRIORITY_META[c.priority].label} priority
+              </span>
+            )}
           </div>
-          <div className="text-xs leading-relaxed text-muted-foreground sm:text-right">
-            <p>Registered {date(c.created_at)}</p>
-            <p className="mt-1">
-              {c.cycles.length} {c.cycles.length === 1 ? "cycle" : "cycles"} ·{" "}
-              {text(c.registration_channel)}
-            </p>
-          </div>
-        </div>
-        <div className="mt-5 grid gap-4 border-t pt-4 sm:grid-cols-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Users className="size-4 text-muted-foreground" />
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+          <span className="text-muted-foreground">
+            {c.client_name} <span className="mx-1">/</span>
+            {c.product_type || "Product not recorded"}
+          </span>
+          <span className="hidden h-3 w-px bg-border sm:block" />
+          <span className="flex items-center gap-1.5">
+            <Users className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground">SS</span>
-            <span className="font-medium">
-              {c.assignedSS?.user_name || "Unassigned"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <UserRound className="size-4 text-muted-foreground" />
+            <span className="font-medium">{c.assignedSS?.user_name || "Unassigned"}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <UserRound className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground">HSS</span>
-            <span className="font-medium">
-              {c.assignedHSS?.user_name || "Unassigned"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Wrench className="size-4 text-muted-foreground" />
+            <span className="font-medium">{c.assignedHSS?.user_name || "Unassigned"}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Wrench className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground">Component</span>
             <span className="font-medium">{COMPONENT_LABELS[c.component]}</span>
+          </span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <p className="text-xs text-muted-foreground">
+            Registered {date(c.created_at)} · {c.cycles.length}{" "}
+            {c.cycles.length === 1 ? "cycle" : "cycles"} · {text(c.registration_channel)}
+          </p>
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="complaint-cycle"
+              className="text-xs text-muted-foreground"
+            >
+              Show
+            </label>
+            <Select value={cycle} onValueChange={setCycle}>
+              <SelectTrigger
+                id="complaint-cycle"
+                size="sm"
+                className="w-40 text-xs"
+                aria-label="Complaint cycle"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All cycles</SelectItem>
+                {c.cycles.map((row) => (
+                  <SelectItem key={row.id} value={String(row.id)}>
+                    Cycle {row.cycle_number}
+                    {row.id === c.current_cycle_id ? " (current)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
+      <ComplaintActionsPanel complaint={c} vendorId={vendorId} />
       {c.possible_duplicate && (
         <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/20">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -308,40 +331,6 @@ export function ComplaintDetailsView({
           </div>
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Complaint record <span className="mx-1.5">·</span>{" "}
-          <span className="text-foreground">
-            {selectedCycle ? cycleLabel(selectedCycle.id) : "All cycles"}
-          </span>
-        </p>
-        <div className="flex items-center gap-2">
-          <label
-            htmlFor="complaint-cycle"
-            className="text-xs text-muted-foreground"
-          >
-            Show
-          </label>
-          <Select value={cycle} onValueChange={setCycle}>
-            <SelectTrigger
-              id="complaint-cycle"
-              className="w-44"
-              aria-label="Complaint cycle"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All cycles</SelectItem>
-              {c.cycles.map((row) => (
-                <SelectItem key={row.id} value={String(row.id)}>
-                  Cycle {row.cycle_number}
-                  {row.id === c.current_cycle_id ? " (current)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
       {selectedCycle?.reopened_reason && (
         <div className="rounded-xl border bg-muted/20 p-4 text-sm">
           <span className="font-medium">Reason for reopening: </span>
@@ -358,17 +347,18 @@ export function ComplaintDetailsView({
           <TabsList
             aria-label="Complaint detail sections"
             className="h-auto w-max justify-start gap-1 rounded-xl border bg-muted/20 p-2 lg:w-full lg:flex-col lg:items-stretch"
+            style={activeTabStyle}
           >
             {TABS.map((item) => (
               <TabsTrigger
                 key={item.id}
                 value={item.id}
-                className="h-auto flex-none justify-start gap-2.5 px-3 py-2.5 text-xs data-[state=active]:border-border data-[state=active]:shadow-sm"
+                className="h-auto flex-none justify-start gap-2.5 px-3 py-2.5 text-xs data-[state=active]:border-transparent data-[state=active]:shadow-sm data-[state=active]:bg-[var(--brand-bg,var(--color-zinc-900))] data-[state=active]:text-[var(--brand-text,var(--color-white))] dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-[var(--brand-bg,var(--color-zinc-800))] dark:data-[state=active]:text-[var(--brand-text,var(--color-white))]"
               >
-                <item.icon className="size-4 text-muted-foreground" />
+                <item.icon className="size-4 text-muted-foreground in-data-[state=active]:text-current" />
                 <span>{item.label}</span>
                 {count[item.id] > 0 && (
-                  <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground in-data-[state=active]:bg-white/15 in-data-[state=active]:text-current">
                     {count[item.id]}
                   </span>
                 )}

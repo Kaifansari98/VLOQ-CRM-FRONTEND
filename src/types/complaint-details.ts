@@ -200,6 +200,109 @@ export interface ComplaintClosure extends CycleRecord {
   closure_remarks: string | null;
   closedBy: ComplaintPerson | null;
 }
+export type ComplaintVerificationAction =
+  | "START_REVIEW"
+  | "INFORMATION_RECEIVED"
+  | "RESUME"
+  | "DECIDE"
+  | "SET_PRIORITY"
+  | "REASSIGN";
+
+export type ComplaintVerificationOutcome =
+  | "APPROVED_FOR_VISIT"
+  | "MORE_INFORMATION_REQUIRED"
+  | "REMOTE_RESOLUTION"
+  | "REJECTED"
+  | "ON_HOLD";
+
+export type ComplaintVisitAction =
+  | "ACCEPT_CHARGE"
+  | "DECLINE_CHARGE"
+  | "WAIVE_CHARGE"
+  | "RECORD_PAYMENT"
+  | "APPROVE_FREE"
+  | "DECLINE_FREE"
+  | "SCHEDULE"
+  | "CONFIRM"
+  | "RESCHEDULE"
+  | "COMPLETE"
+  | "CLIENT_NOT_AVAILABLE"
+  | "SITE_NOT_ACCESSIBLE"
+  | "CANCEL";
+
+export interface ComplaintVisitPermissions {
+  // Vendor's current fee for a new visit; open visits carry their own `fee`.
+  visit_fee: number;
+  can_create_visit: boolean;
+  repeatable_visits: { id: number; visit_number: number }[];
+  // Keyed by visit id; only visits that are still open appear here.
+  visit_actions: Record<
+    string,
+    {
+      actions: ComplaintVisitAction[];
+      fee: number;
+      outstanding: number;
+      payment_pending_verification: boolean;
+    }
+  >;
+  verifiable_payment_ids: number[];
+}
+
+export interface ComplaintInspectionPermissions {
+  can_set_warranty: boolean;
+  // Completed visit whose inspection report is still due.
+  report_visit: { id: number; visit_number: number; completed_at: string | null } | null;
+  // HO decides how a submitted inspection proceeds.
+  after_inspection: { material_required: boolean } | null;
+}
+
+export interface ComplaintQuotationPermissions {
+  latest_id: number | null;
+  can_edit: boolean;
+  edit_from_id: number | null;
+  can_review: boolean;
+  can_share: boolean;
+  can_record_client_response: boolean;
+  repair_charge: {
+    charge_id: number;
+    amount: number;
+    outstanding: number;
+    payment_pending_verification: boolean;
+    can_record: boolean;
+    can_waive: boolean;
+  } | null;
+}
+
+export type ComplaintExecutionAction =
+  | "MATERIAL_ORDERED"
+  | "MATERIAL_RECEIVED"
+  | "MATERIAL_READY"
+  | "SCHEDULE_REPAIR"
+  | "RESCHEDULE_REPAIR"
+  | "START_WORK"
+  | "COMPLETE_WORK";
+
+export interface ComplaintExecutionPermissions {
+  id: number;
+  status: string;
+  material_required: boolean;
+  scheduled_for: string | null;
+  actions: ComplaintExecutionAction[];
+}
+
+export interface ComplaintClosurePermissions {
+  can_record_client_confirmation: boolean;
+  can_close_without_response: boolean;
+  ho_closure: { financial_issues: string[] } | null;
+  can_cancel: boolean;
+}
+
+export interface ComplaintAssigneeOption {
+  id: number;
+  name: string;
+  in_franchise: boolean;
+}
+
 export interface ComplaintDetails {
   id: number;
   complaint_code: string;
@@ -228,6 +331,7 @@ export interface ComplaintDetails {
   status: ComplaintStatus;
   status_changed_at: string;
   current_cycle_id: number | null;
+  version: number;
   created_at: string;
   updated_at: string;
   category: { id: number; name: string };
@@ -237,7 +341,15 @@ export interface ComplaintDetails {
   assignedHSS: ComplaintPerson | null;
   raisedBy: ComplaintPerson | null;
   cycles: ComplaintCycle[];
-  permissions: { can_view_financial: boolean };
+  permissions: {
+    can_view_financial: boolean;
+    actions: ComplaintVerificationAction[];
+    visits: ComplaintVisitPermissions;
+    inspection: ComplaintInspectionPermissions;
+    quotation: ComplaintQuotationPermissions | null;
+    execution: ComplaintExecutionPermissions | null;
+    closure: ComplaintClosurePermissions;
+  };
   attachments: ComplaintAttachment[];
   assignments: (CycleRecord & {
     role: string;
