@@ -39,6 +39,7 @@ import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { usePersistedColumnVisibility } from "@/hooks/usePersistedColumnVisibility";
 import {
   Select,
   SelectContent,
@@ -149,8 +150,10 @@ export default function PendingLeadsTable({
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({}); 
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    `pending_leads_${tab}`,
+    {}
+  ); 
   const [rowSelection, setRowSelection] = React.useState({});
 
   const [rowAction, setRowAction] = React.useState<{

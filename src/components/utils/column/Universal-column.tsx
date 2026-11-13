@@ -364,8 +364,8 @@ export function getUniversalTableColumns(
             accessorKey: "status",
             filterFn: tableMultiValueFilter,
 
-            header: ({ column }) => (
-              <DataTableColumnHeader column={column} title="Stage" />
+            header: ({ column, table }) => (
+              <DataTableColumnHeader column={column} table={table} title="Stage" />
             ),
 
             cell: ({ row }) => {

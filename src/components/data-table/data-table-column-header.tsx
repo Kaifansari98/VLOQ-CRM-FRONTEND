@@ -67,15 +67,16 @@ export function DataTableColumnHeader<TData, TValue>({
   const isSourceColumn = column.id === "source";
   const isSiteMapColumn = column.id === "site_map_link";
   const isSalesExecutiveColumn = column.id === "sales_executive";
-  const isStageColumn = false;
-  const isTastTypeColumn = column.id === "taskType";
-  const isPriorityColumn = column.id === "priority";
   const adminTaskStatusFilter = meta.adminTaskStatusFilter as
     | { onClear?: () => void }
     | undefined;
   const adminTaskSalesExecutiveFilter = meta.adminTaskSalesExecutiveFilter as
     | { onClear?: () => void }
     | undefined;
+  const isStageColumn =
+    column.id === "status" && (title === "Stage" || Boolean(adminTaskStatusFilter));
+  const isTastTypeColumn = column.id === "taskType";
+  const isPriorityColumn = column.id === "priority";
   const filterValue = column.getFilterValue();
   const hasActiveFilter = Array.isArray(filterValue)
     ? filterValue.length > 0
@@ -101,7 +102,7 @@ export function DataTableColumnHeader<TData, TValue>({
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
