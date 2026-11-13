@@ -286,7 +286,10 @@ export default function GeoFencingManagement() {
                 Define authorized office and project site perimeters for GPS-verified employee attendance.
               </p>
             </div>
-            <Button onClick={handleOpenCreate} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button
+              onClick={handleOpenCreate}
+              className="gap-2 bg-white text-black hover:bg-neutral-100 border border-border shadow-xs dark:bg-white dark:text-black dark:hover:bg-neutral-100"
+            >
               <Plus className="size-4" />
               Add Location
             </Button>
@@ -361,7 +364,11 @@ export default function GeoFencingManagement() {
                 <p className="mt-1 text-xs text-muted-foreground max-w-sm">
                   Add an office or site location to start verifying employee attendance via GPS coordinates.
                 </p>
-                <Button size="sm" onClick={handleOpenCreate} className="mt-4 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                <Button
+                  size="sm"
+                  onClick={handleOpenCreate}
+                  className="mt-4 gap-1.5 bg-white text-black hover:bg-neutral-100 border border-border shadow-xs dark:bg-white dark:text-black dark:hover:bg-neutral-100 text-xs"
+                >
                   <Plus className="size-3.5" />
                   Add First Location
                 </Button>
