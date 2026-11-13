@@ -1,4 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
+import { useAppSelector } from "@/redux/store";
+import type { ComplaintDetails, ComplaintActivityParams, ComplaintActivityResponse } from "@/types/complaint-details";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ClientComplaintRow,
@@ -99,5 +101,78 @@ export function useCreateComplaint(vendorId?: number) {
   return useMutation({
     mutationFn: (input: CreateClientComplaintInput) => createComplaint(vendorId!, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-complaints", vendorId] }),
+  });
+}
+
+export async function getComplaintDetail(
+  vendorId: number,
+  complaintId: number,
+  signal?: AbortSignal,
+) {
+  const { data } = await apiClient.get<{ data: ComplaintDetails }>(
+    `${path(vendorId)}/complaints/${complaintId}`,
+    { signal },
+  );
+  return data.data;
+}
+
+export function useComplaintDetail(
+  vendorId: number | undefined,
+  complaintId: number,
+) {
+  const viewerId = useAppSelector((state) => state.auth.user?.id);
+  const viewerRole = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  return useQuery({
+    queryKey: [
+      "client-complaint-detail",
+      vendorId,
+      complaintId,
+      viewerId,
+      viewerRole,
+    ],
+    queryFn: ({ signal }) => getComplaintDetail(vendorId!, complaintId, signal),
+    enabled: !!vendorId && Number.isSafeInteger(complaintId) && complaintId > 0,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export async function getComplaintActivity(
+  vendorId: number,
+  complaintId: number,
+  params: ComplaintActivityParams,
+  signal?: AbortSignal,
+) {
+  const { data } = await apiClient.get<{ data: ComplaintActivityResponse }>(
+    `${path(vendorId)}/complaints/${complaintId}/activity`,
+    { params, signal },
+  );
+  return data.data;
+}
+
+export function useComplaintActivity(
+  vendorId: number,
+  complaintId: number,
+  params: ComplaintActivityParams,
+) {
+  const viewerId = useAppSelector((state) => state.auth.user?.id);
+  const viewerRole = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  return useQuery({
+    queryKey: [
+      "client-complaint-activity",
+      vendorId,
+      complaintId,
+      viewerId,
+      viewerRole,
+      params,
+    ],
+    queryFn: ({ signal }) =>
+      getComplaintActivity(vendorId, complaintId, params, signal),
+    staleTime: 30_000,
+    retry: false,
   });
 }

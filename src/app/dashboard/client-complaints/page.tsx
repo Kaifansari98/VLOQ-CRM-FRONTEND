@@ -51,7 +51,7 @@ export default function ClientComplaintsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage className="font-semibold">Client Complaints</BreadcrumbPage>
+                <BreadcrumbPage className="font-semibold">Complaints</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -69,12 +69,7 @@ export default function ClientComplaintsPage() {
             vendorId={vendorId}
             canRegister={meta?.can_register === true}
             onCreateOpen={() => setIsCreateOpen(true)}
-            onViewItem={(item) =>
-              toastManager.add({
-                title: `${item.complaint_code} details view is coming soon`,
-                type: "info",
-              })
-            }
+            onViewItem={(item) => router.push(`/dashboard/client-complaints/details/${item.id}`)}
           />
         </FadeInProvider>
       </main>

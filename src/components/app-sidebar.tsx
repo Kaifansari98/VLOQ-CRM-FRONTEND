@@ -69,7 +69,7 @@ const data = {
       icon: Megaphone,
     },
     {
-      title: "Client Complaints",
+      title: "Complaints",
       url: "/dashboard/client-complaints",
       icon: MessageSquareWarning,
     },
@@ -1073,7 +1073,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       const finalNavItems = navItemsWithRoleAdditions.filter(
         (item) =>
           (item.title !== "Broadcast" || (isBroadcastEnabled && !isMasterAdmin)) &&
-          (item.title !== "Client Complaints" ||
+          (item.title !== "Complaints" ||
             (isClientComplaintsEnabled &&
               (userType === "super-admin" ||
                 userType === "head-site-supervisor" ||
