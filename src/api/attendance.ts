@@ -80,6 +80,10 @@ export interface MarkAttendancePayload {
   user_id: number;
   action: "IN" | "OUT";
   source?: "MANUAL" | "PHONE" | "CARD";
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+  address?: string;
 }
 
 export interface MarkAttendanceResponse {
@@ -179,6 +183,10 @@ export const markAttendanceApi = async (
     user_id: payload.user_id,
     action: payload.action,
     source: payload.source || "MANUAL",
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    accuracy: payload.accuracy,
+    address: payload.address,
   });
   return response.data;
 };

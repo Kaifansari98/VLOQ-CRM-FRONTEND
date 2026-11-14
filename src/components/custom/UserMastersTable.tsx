@@ -63,6 +63,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
 import MultipleSelector from "@/components/ui/multiselect";
+import { useStates } from "@/api/vendors";
+import { INDIAN_STATES, parseAddress, formatAddress } from "@/lib/addressUtils";
 import AssignToPicker from "@/components/assign-to-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -298,19 +300,17 @@ function getUserMasterColumns(
     },
   ];
 
-  if (isEmployeeMaster && isHrmsMasterEnabled) {
-    baseColumns.push({
-      accessorKey: "employee_code",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Employee Code" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium">{row.getValue("employee_code") || "—"}</span>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    });
-  }
+  baseColumns.push({
+    accessorKey: "employee_code",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Employee Code" />
+    ),
+    cell: ({ row }) => (
+      <span className="font-medium">{row.getValue("employee_code") || "—"}</span>
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  });
 
   baseColumns.push(
     {
@@ -577,12 +577,14 @@ interface UserMastersTableProps {
   vendorIdOverride?: number;
   userTypeFilter?: string;
   entityName?: string;
+  isEmployeeMaster?: boolean;
 }
 
 export default function UserMastersTable({
   vendorIdOverride,
   userTypeFilter,
   entityName = "User",
+  isEmployeeMaster: isEmployeeMasterProp,
 }: UserMastersTableProps) {
   const router = useRouter();
 
@@ -596,7 +598,9 @@ export default function UserMastersTable({
   const vendorId =
     vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
 
-  const isEmployeeMaster = userTypeFilter?.trim().toLowerCase() === "employee";
+  const isEmployeeMaster = Boolean(
+    isEmployeeMasterProp ?? (userTypeFilter?.trim().toLowerCase() === "employee")
+  );
 
   const loggedInUserType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
@@ -634,6 +638,17 @@ export default function UserMastersTable({
   const [aadharFileName, setAadharFileName] = React.useState("");
   const [panFileName, setPanFileName] = React.useState("");
   const [sameAddress, setSameAddress] = React.useState(false);
+
+  const statesQuery = useStates();
+  const stateOptions = React.useMemo(() => {
+    const apiStates = statesQuery.data?.data?.map((s) => s.name) || [];
+    if (apiStates.length > 0) {
+      return Array.from(new Set([...apiStates, ...INDIAN_STATES])).sort((a, b) =>
+        a.localeCompare(b),
+      );
+    }
+    return INDIAN_STATES;
+  }, [statesQuery.data?.data]);
   const [aadharSignedUrl, setAadharSignedUrl] = React.useState("");
   const [panSignedUrl, setPanSignedUrl] = React.useState("");
   const [editingUserCreatedAt, setEditingUserCreatedAt] = React.useState<string | undefined>(undefined);
@@ -652,8 +667,8 @@ export default function UserMastersTable({
     isHrmsEmployeeFlow ? "User" : entityName;
 
   const queryUserType =
-    isEmployeeMaster && isHrmsMasterEnabled
-      ? "employee,hrms-admin,hrms admin"
+    isEmployeeMaster
+      ? undefined
       : userTypeFilter;
 
   const { data, isLoading, isError, error } = useUsersForMaster(
@@ -663,9 +678,7 @@ export default function UserMastersTable({
       search: globalFilter,
       franchise_id: franchiseFilter,
       user_type: queryUserType,
-      exclude_user_type: !userTypeFilter
-        ? "employee,hrms-admin,hrms admin"
-        : undefined,
+      exclude_user_type: undefined,
     },
     vendorId,
   );
@@ -724,24 +737,8 @@ export default function UserMastersTable({
           if (itemUserType === "master-admin") {
             return false;
           }
-          if (isEmployeeMaster && isHrmsMasterEnabled) {
-            return (
-              itemUserType === "employee" ||
-              itemUserType === "hrms-admin" ||
-              itemUserType === "hrms admin"
-            );
-          }
-          if (userTypeFilter) {
-            return (
-              itemUserType === userTypeFilter.trim().toLowerCase()
-            );
-          }
-          if (
-            itemUserType === "employee" ||
-            itemUserType === "hrms-admin" ||
-            itemUserType === "hrms admin"
-          ) {
-            return false;
+          if (userTypeFilter && !isEmployeeMaster) {
+            return itemUserType === userTypeFilter.trim().toLowerCase();
           }
           return true;
         })
@@ -935,17 +932,8 @@ export default function UserMastersTable({
         .filter((ut) => {
           const typeName = ut.user_type?.trim().toLowerCase();
           if (typeName === "master-admin") return false;
-          if (userTypeFilter) {
-            return (
-              typeName === userTypeFilter.trim().toLowerCase()
-            );
-          }
-          if (
-            typeName === "employee" ||
-            typeName === "hrms-admin" ||
-            typeName === "hrms admin"
-          ) {
-            return false;
+          if (userTypeFilter && !isEmployeeMaster) {
+            return typeName === userTypeFilter.trim().toLowerCase();
           }
           return true;
         })
@@ -953,22 +941,16 @@ export default function UserMastersTable({
           id: ut.id,
           label: formatUserTypeLabel(ut.user_type),
         })),
-    [userTypesData?.data, userTypeFilter],
+    [userTypesData?.data, userTypeFilter, isEmployeeMaster],
   );
   const hrmsUserTypeOptions = React.useMemo(() => {
     const all = userTypesData?.data ?? [];
-    const emp = all.find(
-      (ut) => ut.user_type?.trim().toLowerCase() === "employee",
-    );
-    const hrmsAdmin = all.find((ut) => {
-      const t = ut.user_type?.trim().toLowerCase().replace(/[ _]+/g, "-");
-      return t === "hrms-admin";
-    });
-
-    const list: { id: number; label: string }[] = [];
-    if (emp) list.push({ id: emp.id, label: "Employee" });
-    if (hrmsAdmin) list.push({ id: hrmsAdmin.id, label: "HRMS Admin" });
-    return list;
+    return all
+      .filter((ut) => ut.user_type?.trim().toLowerCase() !== "master-admin")
+      .map((ut) => ({
+        id: ut.id,
+        label: formatUserTypeLabel(ut.user_type),
+      }));
   }, [userTypesData?.data]);
 
   const handleUploadAadhar = async (file: File) => {
@@ -1210,6 +1192,7 @@ export default function UserMastersTable({
         franchise_id: form.franchise_ids[0],
         franchise_ids: form.franchise_ids,
         user_name: form.user_name.trim(),
+        employee_code: form.employee_code?.trim() || undefined,
         designation: form.designation.trim() || undefined,
         user_contact: contactNumber,
         user_email: form.user_email.trim(),
@@ -1597,19 +1580,24 @@ export default function UserMastersTable({
             ) : (
               /* ================== STEP 1 (Basic & Login Info) ================== */
               <div className="grid grid-cols-2 gap-4">
+                {/* Employee Code */}
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="employee-code">Employee Code</Label>
+                  <Input
+                    id="employee-code"
+                    value={
+                      form.employee_code ||
+                      (modalMode === "create"
+                        ? "Auto-generated (e.g. EMP-XXX)"
+                        : "Auto-assigned on save")
+                    }
+                    disabled
+                    className="bg-muted font-mono text-muted-foreground"
+                  />
+                </div>
+
                 {isEmployeeMaster ? (
                   <>
-                    {modalMode === "edit" && form.employee_code ? (
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="employee-code">Employee Code</Label>
-                        <Input
-                          id="employee-code"
-                          value={form.employee_code}
-                          disabled
-                          className="bg-muted font-mono"
-                        />
-                      </div>
-                    ) : null}
                     {/* Row 1: User Name | Contact No. */}
                     <div className="space-y-2">
                       <Label htmlFor="user-name">User Name</Label>

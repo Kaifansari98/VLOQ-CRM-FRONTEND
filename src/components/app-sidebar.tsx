@@ -28,6 +28,7 @@ import {
   CalendarDays,
   NotebookTabs,
   Package,
+  Flag,
 } from "lucide-react";
 
 import { MetaIcon } from "@/components/icons/meta-icon";
@@ -440,6 +441,16 @@ const data = {
       title: "Leaves Management",
       url: "/dashboard/hrms/leaves-management",
       icon: CalendarDays,
+    },
+    {
+      title: "Attendance Geo-Fencing",
+      url: "/dashboard/hrms/geo-fencing",
+      icon: MapPinned,
+    },
+    {
+      title: "Employee Complaints",
+      url: "/dashboard/hrms/complaints",
+      icon: Flag,
     },
     {
       title: "My Leaves",
@@ -1159,7 +1170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       inventoryItems: finalInventoryItems,
       hrmsItems: isHrmsMasterEnabled
         ? isSuperAdmin
-          ? data.hrmsManagementNav.filter(item => !["Attendance Logs", "Leaves Management"].includes(item.title) || userType === "super-admin")
+          ? data.hrmsManagementNav.filter(item => !["Attendance Logs", "Leaves Management", "Attendance Geo-Fencing", "Employee Complaints"].includes(item.title) || userType === "super-admin")
           : data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
         : [],
       mastersItems: finalMastersItems,

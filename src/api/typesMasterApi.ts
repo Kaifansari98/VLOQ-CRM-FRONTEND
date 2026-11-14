@@ -98,7 +98,10 @@ export interface UserMasterEntry {
   id: number;
   vendor_id: number;
   franchise_id?: number | null;
+  employee_type?: string | null;
   employee_code?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
   department?: string | null;
   aadhar_no?: string | null;
   pan_no?: string | null;
@@ -109,6 +112,8 @@ export interface UserMasterEntry {
   bank_account_holder_name?: string | null;
   bank_account_number?: string | null;
   bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
   joining_date?: string | null;
   exit_date?: string | null;
   salary_rate_type?: string | null;
@@ -119,6 +124,7 @@ export interface UserMasterEntry {
   designation?: string | null;
   user_contact: string;
   user_email: string;
+  personal_email?: string | null;
   user_timezone: string;
   status: string;
   created_at: string;
@@ -1355,7 +1361,10 @@ export interface UserDetailData {
   user_timezone?: string;
   status: string;
   created_at: string;
+  employee_type?: string | null;
   employee_code?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
   department?: string | null;
   aadhar_no?: string | null;
   pan_no?: string | null;
@@ -1366,6 +1375,8 @@ export interface UserDetailData {
   bank_account_holder_name?: string | null;
   bank_account_number?: string | null;
   bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
   joining_date?: string | null;
   exit_date?: string | null;
   salary_rate_type?: string | null;
@@ -1697,11 +1708,15 @@ export interface UserTypeMasterResponse {
 }
 
 export interface CreateUserMasterPayload {
+  personal_email?: string | null;
   confirm_additional_supervisor?: boolean;
   franchise_ids?: number[];
   vendor_id: number;
   franchise_id: number;
+  employee_type?: string | null;
   employee_code?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
   department?: string | null;
   aadhar_no?: string | null;
   pan_no?: string | null;
@@ -1712,6 +1727,8 @@ export interface CreateUserMasterPayload {
   bank_account_holder_name?: string | null;
   bank_account_number?: string | null;
   bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
   joining_date?: string | null;
   exit_date?: string | null;
   salary_rate_type?: string | null;
@@ -1772,6 +1789,9 @@ export const createUser = async (payload: CreateUserMasterPayload) => {
 }
 
 export interface UpdateUserMasterPayload {
+  employee_type?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
   confirm_additional_supervisor?: boolean;
   franchise_ids?: number[];
   employee_code?: string | null;
@@ -1785,6 +1805,8 @@ export interface UpdateUserMasterPayload {
   bank_account_holder_name?: string | null;
   bank_account_number?: string | null;
   bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
   joining_date?: string | null;
   exit_date?: string | null;
   salary_rate_type?: string | null;
@@ -1795,6 +1817,7 @@ export interface UpdateUserMasterPayload {
   designation?: string | null;
   user_contact?: string;
   user_email?: string;
+  personal_email?: string | null;
   user_timezone?: string;
   password?: string;
   user_type_id?: number;

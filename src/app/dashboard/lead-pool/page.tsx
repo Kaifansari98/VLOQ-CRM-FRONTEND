@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { usePersistedColumnVisibility } from "@/hooks/usePersistedColumnVisibility";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useReactTable,
@@ -333,7 +334,10 @@ export default function LeadPoolPage() {
   const [sourceFilter, setSourceFilter] = useState("");
 
   const [sorting, setSorting] = useState<any>([]);
-  const [columnVisibility, setColumnVisibility] = useState<any>({});
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    "lead_pool",
+    {}
+  );
   const [rowSelection, setRowSelection] = useState<any>({});
   const [pagination, setPagination] = useState({
     pageIndex: 0,

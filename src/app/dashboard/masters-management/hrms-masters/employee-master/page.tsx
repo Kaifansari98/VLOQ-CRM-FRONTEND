@@ -63,7 +63,7 @@ export default function HrmsEmployeeMasterPage() {
 
         <UserMastersTable
           vendorIdOverride={vendorIdOverride}
-          userTypeFilter="employee"
+          isEmployeeMaster={true}
           entityName="Employee"
         />
       </div>

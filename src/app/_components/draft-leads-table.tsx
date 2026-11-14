@@ -40,6 +40,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { toastManager } from "@/components/ui/toast";
 
+import { usePersistedColumnVisibility } from "@/hooks/usePersistedColumnVisibility";
+
 export default function DraftLeadsTable({
   stageTitle = "Draft Leads",
   stageDescription = "Leads that are saved as draft and not yet submitted.",
@@ -163,7 +165,10 @@ export default function DraftLeadsTable({
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    isOnlineLeadFeatureEnabled ? "online_leads" : "draft_leads",
+    {}
+  );
   const [rowSelection, setRowSelection] = React.useState({});
 
   const basePostPayload: DraftLeadTableDataPostPayload = React.useMemo(() => {

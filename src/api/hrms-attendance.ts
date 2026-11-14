@@ -23,7 +23,7 @@ export function useHrmsAttendance(vendorId?: number, userId?: number, month?: st
   return useQuery({
     queryKey: ["hrms-attendance-workspace", vendorId, userId, month], enabled: !!vendorId && !!userId,
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: { entries: ServerEntry[]; current: ServerEntry | null; corrections: ServerCorrection[]; vendor_time_zone: string; server_time: string; can_review: boolean } }>("/attendance/workspace", { params: { month } });
+      const { data } = await apiClient.get<{ data: { entries: ServerEntry[]; current: ServerEntry | null; corrections: ServerCorrection[]; vendor_time_zone: string; server_time: string; can_review: boolean } }>("/attendance/workspace", { params: { month, user_id: userId } });
       const result = data.data;
       return { ...result, queryMonth: month, entries: result.entries.map(mapEntry), current: result.current ? mapEntry(result.current) : null, corrections: result.corrections.map(mapCorrection) };
     },
@@ -39,10 +39,30 @@ export function useAttendanceAction(vendorId?: number, userId?: number) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input:
-      | { kind: "punch"; action: "IN" | "OUT" | "BREAK_START" | "BREAK_END"; work_location: string }
+      | {
+          kind: "punch";
+          action: "IN" | "OUT" | "BREAK_START" | "BREAK_END";
+          work_location: string;
+          latitude?: number;
+          longitude?: number;
+          accuracy?: number;
+          address?: string;
+        }
       | { kind: "request"; attendance_date: string; reason: string; requested_check_in?: string; requested_check_out?: string }
       | { kind: "decision"; id: number; status: "APPROVED" | "REJECTED" | "CANCELLED"; review_note?: string; requested_check_in?: string; requested_check_out?: string }) => {
-      if (input.kind === "punch") return (await apiClient.post("/attendance/punch", { action: input.action, work_location: input.work_location, source: "MANUAL" })).data;
+      if (input.kind === "punch") {
+        return (
+          await apiClient.post("/attendance/punch", {
+            action: input.action,
+            work_location: input.work_location,
+            source: "MANUAL",
+            latitude: input.latitude,
+            longitude: input.longitude,
+            accuracy: input.accuracy,
+            address: input.address,
+          })
+        ).data;
+      }
       if (input.kind === "request") { const { kind: _kind, ...body } = input; return (await apiClient.post("/attendance/corrections", body)).data; }
       const { kind: _kind, id, ...body } = input;
       return (await apiClient.patch(`/attendance/corrections/${id}`, body)).data;

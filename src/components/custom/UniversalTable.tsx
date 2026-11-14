@@ -20,6 +20,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableMonthFilter } from "@/components/data-table/data-table-month-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { usePersistedColumnVisibility } from "@/hooks/usePersistedColumnVisibility";
 import {
   Select,
   SelectContent,
@@ -725,14 +726,22 @@ export function UniversalTable({
   >(undefined);
 
   const [rowSelection, setRowSelection] = useState({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    architechName: false,
-    source: false,
-    createdAt: false,
-    altContact: false,
-    email: false,
-    designerRemark: false,
-  });
+  const universalStorageKey = useMemo(() => {
+    const rawKey = title || type || "leads";
+    return `universal_${rawKey.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+  }, [title, type]);
+
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    universalStorageKey,
+    {
+      architechName: false,
+      source: false,
+      createdAt: false,
+      altContact: false,
+      email: false,
+      designerRemark: false,
+    }
+  );
 
   // ✅ DETERMINE ACTIVE STATE BASED ON VIEW TYPE
   const activePagination =
