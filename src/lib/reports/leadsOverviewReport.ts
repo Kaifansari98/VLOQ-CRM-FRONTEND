@@ -24,6 +24,8 @@ interface LeadsOverviewRow {
   status_type?: string | null;
   site_type: string;
   source: string;
+  mrp_value?: number | null;
+  booking_value?: number | null;
   furniture_type: string;
   furniture_structure: string;
   instance: string;
@@ -47,6 +49,14 @@ function sanitizeStageText(value: string | null | undefined): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
+}
+
+function formatAmount(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "-";
+  return `₹${Number(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 async function fetchReportData(
@@ -88,6 +98,8 @@ function buildLeadsOverviewSheet(
     { key: "currentStage", width: 20 },
     { key: "siteType", width: 16 },
     { key: "source", width: 18 },
+    { key: "mrpValue", width: 18 },
+    { key: "bookingValue", width: 18 },
     { key: "furnitureType", width: 22 },
     { key: "furnitureStructure", width: 24 },
     { key: "instance", width: 20 },
@@ -110,6 +122,8 @@ function buildLeadsOverviewSheet(
     "Current Stage",
     "Site Type",
     "Source",
+    "MRP Value",
+    "Booking Value",
     "Furniture Type",
     "Furniture Structure",
     "Instances",
@@ -169,6 +183,8 @@ function buildLeadsOverviewSheet(
       sanitizeStageText(entry.current_stage ?? entry.status_type),
       entry.site_type,
       entry.source,
+      formatAmount(entry.mrp_value),
+      formatAmount(entry.booking_value),
       entry.furniture_type,
       entry.furniture_structure,
       entry.instance,
@@ -183,9 +199,10 @@ function buildLeadsOverviewSheet(
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = [1, 7, 11].includes(colNum);
+      const isCenter = [1, 7, 13].includes(colNum);
+      const isRight = [10, 11].includes(colNum);
       cell.alignment = {
-        horizontal: isCenter ? "center" : "left",
+        horizontal: isRight ? "right" : isCenter ? "center" : "left",
         vertical: "middle",
       };
       cell.font = { size: 10 };
