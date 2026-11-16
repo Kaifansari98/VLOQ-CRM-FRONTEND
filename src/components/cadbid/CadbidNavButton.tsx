@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { useCadbidStatus } from "@/hooks/useCadbid";
+import { useCadbidStatus, useIsCadbidAccountHost } from "@/hooks/useCadbid";
 import { CadbidConnectionModal } from "./CadbidConnectionModal";
 
 interface CadbidNavButtonProps {
@@ -13,15 +13,8 @@ interface CadbidNavButtonProps {
   showText?: boolean;
 }
 
-// The Cadbid key button is shown only on the staging site for now.
-const CADBID_BUTTON_HOST = "staging.furnixcrm.com";
-
 export const CadbidNavButton: React.FC<CadbidNavButtonProps> = (props) => {
-  // Read after mount so the server and client render the same markup.
-  const [onStaging, setOnStaging] = useState(false);
-  useEffect(() => {
-    setOnStaging(window.location.hostname.includes(CADBID_BUTTON_HOST));
-  }, []);
+  const onStaging = useIsCadbidAccountHost();
   // Rendered separately so the Cadbid status request only runs when shown.
   return onStaging ? <CadbidKeyButton {...props} /> : null;
 };
