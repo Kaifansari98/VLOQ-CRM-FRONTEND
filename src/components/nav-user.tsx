@@ -41,7 +41,12 @@ import {
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { CadbidConnectionModal } from "@/components/cadbid/CadbidConnectionModal";
-import { isCadbidEnabled, useCadbidStatus, useLaunchStudio } from "@/hooks/useCadbid";
+import {
+  isCadbidEnabled,
+  useCadbidStatus,
+  useIsCadbidAccountHost,
+  useLaunchStudio,
+} from "@/hooks/useCadbid";
 
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
@@ -80,6 +85,8 @@ export function NavUser({
 
   const { data: cadbidStatus } = useCadbidStatus();
   const { launchStudio, isLaunching: isLaunchingStudio } = useLaunchStudio();
+  const showCadbidAccount = useIsCadbidAccountHost();
+  const showStudio = !!(cadbidStatus?.connected && cadbidStatus?.studioAccess);
 
   const handleLogout = async () => {
     let tokenKey: string | undefined;
@@ -198,11 +205,11 @@ export function NavUser({
 
               <DropdownMenuSeparator />
 
-              {isCadbidEnabled && (
+              {isCadbidEnabled && (showStudio || showCadbidAccount) && (
               <>
               <DropdownMenuGroup>
                 {/* CADX Studio SSO Launcher */}
-                {cadbidStatus?.connected && cadbidStatus?.studioAccess && (
+                {showStudio && (
                   <DropdownMenuItem
                     onClick={() => {
                       setMenuOpen(false);
@@ -221,6 +228,7 @@ export function NavUser({
                 )}
 
                 {/* Cadbid Connection Settings */}
+                {showCadbidAccount && (
                 <DropdownMenuItem
                   onClick={() => {
                     setMenuOpen(false);
@@ -248,6 +256,7 @@ export function NavUser({
                     </Badge>
                   )}
                 </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />

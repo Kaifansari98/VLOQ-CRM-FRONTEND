@@ -39,7 +39,8 @@ interface Props {
 =========================== */
 
 export default function SalesExecutiveFilter({ column, table }: Props) {
-  const meta = (table?.options?.meta ?? (column as any).table?.options?.meta) as any;
+  const meta = (table?.options?.meta ??
+    (column as any).table?.options?.meta) as any;
   const adminTaskSalesExecutiveFilter = meta?.adminTaskSalesExecutiveFilter as
     | {
         value: (string | number)[];
@@ -51,11 +52,26 @@ export default function SalesExecutiveFilter({ column, table }: Props) {
     (state) => state.auth.user?.vendor_id,
   ) as number;
   const franchiseId = useAppSelector(
-    (state) => state.auth.franchise_id,
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
   ) as number | undefined;
+  const assignedFranchiseId = useAppSelector(
+    (state) => state.auth.user?.franchise_id,
+  );
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const restrictToAssignedFranchise =
+    meta?.adminOverallFranchiseScope === true &&
+    userType?.trim().toLowerCase() === "admin";
 
-  const { data: vendorUsers, isLoading } =
-    useVendorSalesExecutiveUsers(vendorId, franchiseId);
+  const { data: vendorUsers, isLoading } = useVendorSalesExecutiveUsers(
+    vendorId,
+    restrictToAssignedFranchise
+      ? (assignedFranchiseId ?? undefined)
+      : franchiseId,
+    restrictToAssignedFranchise ? { strictFranchise: true } : undefined,
+    !restrictToAssignedFranchise || !!assignedFranchiseId,
+  );
 
   const salesOptions: FilterOption[] = useMemo(() => {
     if (!vendorUsers?.data?.sales_executives?.length) return [];
@@ -90,7 +106,9 @@ export default function SalesExecutiveFilter({ column, table }: Props) {
         onChange={handleChange}
         placeholder={isLoading ? "Loading..." : "Search executive..."}
         emptyLabel="Select executive"
-        disabled={isLoading}
+        disabled={
+          isLoading || (restrictToAssignedFranchise && !assignedFranchiseId)
+        }
         multiple
       />
     </div>

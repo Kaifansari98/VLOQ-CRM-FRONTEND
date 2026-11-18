@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -24,6 +24,19 @@ export const CADBID_STATUS_QUERY_KEY = ["cadbid-status"] as const;
 // CADX Studio and the Cadbid account link are hidden in production for now.
 export const isCadbidEnabled =
   (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "").toUpperCase() !== "PRODUCTION";
+
+// The Cadbid account link (header key icon, user-menu entry) is shown only on
+// the staging site for now.
+const CADBID_ACCOUNT_HOST = "staging.furnixcrm.com";
+
+export const useIsCadbidAccountHost = () => {
+  // Read after mount so the server and client render the same markup.
+  const [onHost, setOnHost] = useState(false);
+  useEffect(() => {
+    setOnHost(window.location.hostname.includes(CADBID_ACCOUNT_HOST));
+  }, []);
+  return onHost;
+};
 
 export const useCadbidStatus = () => {
   return useQuery<CadbidStatusData>({

@@ -5,7 +5,7 @@ import { KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { useCadbidStatus } from "@/hooks/useCadbid";
+import { useCadbidStatus, useIsCadbidAccountHost } from "@/hooks/useCadbid";
 import { CadbidConnectionModal } from "./CadbidConnectionModal";
 
 interface CadbidNavButtonProps {
@@ -13,7 +13,13 @@ interface CadbidNavButtonProps {
   showText?: boolean;
 }
 
-export const CadbidNavButton: React.FC<CadbidNavButtonProps> = ({
+export const CadbidNavButton: React.FC<CadbidNavButtonProps> = (props) => {
+  const onStaging = useIsCadbidAccountHost();
+  // Rendered separately so the Cadbid status request only runs when shown.
+  return onStaging ? <CadbidKeyButton {...props} /> : null;
+};
+
+const CadbidKeyButton: React.FC<CadbidNavButtonProps> = ({
   className = "",
   showText = false,
 }) => {
