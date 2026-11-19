@@ -416,7 +416,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       else if (!/^\S+@\S+\.\S+$/.test(external.client_email.trim()))
         next.client_email = "Enter a valid email.";
       if (!external.site_address.trim()) next.site_address = "Site address is required.";
-      if (!external.city.trim()) next.city = "City is required.";
+      if (!external.city.trim()) next.city = "Select the store city.";
       if (!external.product_type) next.product_type = "Select the product type.";
     }
     if (!details.category_id) next.category_id = "Select a complaint category.";
@@ -829,21 +829,23 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">City</Label>
-                    <Input
-                      list="complaint-city-options"
-                      value={external.city}
-                      onChange={(e) => setExternalField("city", e.target.value)}
-                      disabled={!!linkedClient}
-                      placeholder="Select or type the city"
-                      className="h-9 text-xs rounded-xl"
-                      aria-invalid={!!errors.city}
-                    />
-                    <datalist id="complaint-city-options">
-                      {meta?.cities.map((city) => (
-                        <option key={city} value={city} />
-                      ))}
-                    </datalist>
+                    <Label className="text-xs">Store City</Label>
+                    {linkedClient ? (
+                      <Input value={external.city} disabled className="h-9 text-xs rounded-xl" />
+                    ) : (
+                      <Select value={external.city} onValueChange={(v) => setExternalField("city", v)}>
+                        <SelectTrigger className="w-full h-9 text-xs rounded-xl" aria-invalid={!!errors.city}>
+                          <SelectValue placeholder="Select store city" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {meta?.cities.map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FieldError message={errors.city} />
                   </div>
                   <div className="space-y-1.5">

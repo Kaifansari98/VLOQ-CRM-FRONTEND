@@ -24,8 +24,10 @@ const path = (vendorId: number) => `/client-complaints/vendor/${vendorId}`;
 
 export interface ComplaintMeta {
   categories: { id: number; name: string }[];
-  // Suggestions for the City field.
+  // The vendor's store cities (Store City dropdown).
   cities: string[];
+  // Miscellaneous types for the factory request raised from an inspection.
+  misc_types: { id: number; name: string }[];
   product_types: { id: number; type: string }[];
   components: ComplaintComponent[];
   can_register: boolean;
@@ -390,6 +392,8 @@ export interface ComplaintInspectionInput {
   additional_visit_required: boolean;
   further_approval_required: boolean;
   pending_work: string;
+  // Required when material is needed on a CRM-lead complaint.
+  misc_type_id?: number;
 }
 
 export async function runComplaintWorkflow(vendorId: number, complaintId: number, request: ComplaintWorkflowRequest) {

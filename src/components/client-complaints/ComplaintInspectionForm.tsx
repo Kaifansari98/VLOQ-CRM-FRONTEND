@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/select";
 import CustomeDatePicker from "@/components/date-picker";
 import { cn } from "@/lib/utils";
-import type { ComplaintInspectionInput } from "@/api/client-complaints";
+import {
+  useComplaintMeta,
+  type ComplaintInspectionInput,
+} from "@/api/client-complaints";
 import type { ComplaintDetails } from "@/types/complaint-details";
 import { Field } from "./complaint-action-ui";
 import {
@@ -96,7 +99,11 @@ export function ComplaintInspectionForm({
     additional_visit_required: false,
     further_approval_required: false,
     material_required: false,
+    misc_type_id: "",
   });
+  const { data: meta } = useComplaintMeta(vendorId);
+  // Material on a CRM-lead complaint is requested from the factory as a Miscl.
+  const factoryRequest = form.material_required && !!c.lead;
   const [repairActions, setRepairActions] = useState<string[]>([]);
   const [materials, setMaterials] = useState<Material[]>([
     { ...emptyMaterial },
@@ -129,6 +136,8 @@ export function ComplaintInspectionForm({
     if (!repairActions.length) next.repair_actions = "Select at least one.";
     if (!form.expected_completion_date)
       next.expected_completion_date = "Pick the expected completion date.";
+    if (factoryRequest && !form.misc_type_id)
+      next.misc_type_id = "Select the miscellaneous type.";
     if (form.material_required) {
       materials.forEach((m, i) => {
         if (!m.material_name.trim() || !(Number(m.quantity) > 0))
@@ -153,6 +162,7 @@ export function ComplaintInspectionForm({
       responsibility_remarks: optional(form.responsibility_remarks),
       repair_actions: repairActions,
       material_required: form.material_required,
+      misc_type_id: factoryRequest ? Number(form.misc_type_id) : undefined,
       materials: form.material_required
         ? materials.map((m) => ({
             material_name: m.material_name.trim(),
@@ -311,6 +321,32 @@ export function ComplaintInspectionForm({
         />
         Material required
       </label>
+      {factoryRequest && (
+        <Field
+          label="Miscellaneous type (factory request)"
+          error={errors.misc_type_id}
+        >
+          <Select
+            value={form.misc_type_id}
+            onValueChange={(v) => set("misc_type_id", v)}
+          >
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {meta?.misc_types.map((t) => (
+                <SelectItem key={t.id} value={String(t.id)}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            A Miscellaneous request goes to the factory with the material below.
+            Once the factory marks it ready, the resolution can start.
+          </p>
+        </Field>
+      )}
       {form.material_required && (
         <div className="space-y-2 rounded-lg border p-3">
           {materials.map((m, i) => {

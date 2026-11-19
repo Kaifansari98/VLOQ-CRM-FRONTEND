@@ -306,6 +306,8 @@ export interface ComplaintExecutionPermissions {
   status: string;
   material_required: boolean;
   scheduled_for: string | null;
+  // Factory Miscl request the complaint waits on until it is marked ready.
+  factory_request_id: number | null;
   actions: ComplaintExecutionAction[];
 }
 

@@ -71,7 +71,7 @@ const EXECUTION_LABELS: Record<ComplaintExecutionAction, string> = {
   MATERIAL_ORDERED: "Material Ordered",
   MATERIAL_RECEIVED: "Material Received",
   MATERIAL_READY: "Material Ready",
-  SCHEDULE_REPAIR: "Schedule Repair",
+  SCHEDULE_REPAIR: "Start Resolution",
   RESCHEDULE_REPAIR: "Reschedule",
   START_WORK: "Start Work",
   COMPLETE_WORK: "Work Completed",
@@ -251,9 +251,19 @@ export function ComplaintStageActions({
         </Row>
       )}
 
+      {execution &&
+        execution.factory_request_id &&
+        execution.actions.length === 0 && (
+          <Row
+            label="Material"
+            detail={`waiting for the factory to mark Miscellaneous request #${execution.factory_request_id} ready`}
+          >
+            {null}
+          </Row>
+        )}
       {execution && execution.actions.length > 0 && (
         <Row
-          label="Repair"
+          label="Resolution"
           detail={`${text(execution.status)}${execution.scheduled_for ? ` · ${date(execution.scheduled_for)}` : ""}`}
         >
           {[...execution.actions]
@@ -413,8 +423,8 @@ const TITLES: Record<SimpleMode, [string, string]> = {
   MATERIAL_RECEIVED: ["Material Received", "Record when the material arrived."],
   MATERIAL_READY: ["Material Ready", "Material is ready for the repair."],
   SCHEDULE_REPAIR: [
-    "Schedule Repair",
-    "Creates the repair task for the site supervisor.",
+    "Start Resolution",
+    "Records the resolution visit date; the completion report follows when the work is done.",
   ],
   RESCHEDULE_REPAIR: [
     "Reschedule Repair",
