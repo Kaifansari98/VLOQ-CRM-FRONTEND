@@ -8,18 +8,16 @@ import {
   CheckCircle2,
   ClipboardList,
   CreditCard,
-  FileCheck2,
   FileText,
   History,
   House,
   Images,
-  Layers,
   LockKeyhole,
-  MessageSquare,
   Package,
   UserRound,
   Users,
   Wrench,
+  Star,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -45,18 +43,13 @@ import { ComplaintActivityLog } from "./ComplaintActivityLog";
 import { ComplaintActionsPanel } from "./ComplaintActionsPanel";
 
 const TABS = [
-  { id: "overview", label: "Overview", icon: House },
-  { id: "client", label: "Client Details", icon: UserRound },
-  { id: "complaint", label: "Complaint Details", icon: ClipboardList },
-  { id: "handover", label: "Handover Details", icon: FileCheck2 },
-  { id: "visits", label: "Visit History", icon: CalendarDays },
-  { id: "inspections", label: "Inspection Reports", icon: FileText },
-  { id: "quotations", label: "Quotations", icon: Layers },
-  { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "procurement", label: "Material / Procurement", icon: Package },
-  { id: "resolution", label: "Resolution", icon: CheckCircle2 },
-  { id: "communications", label: "Communication History", icon: MessageSquare },
-  { id: "activity", label: "Activity Log", icon: History },
+  { id: "overview", label: "Complaint Details", icon: House },
+  { id: "visits", label: "Visit & Inspection", icon: CalendarDays },
+  { id: "quotations", label: "Quote & Payments", icon: CreditCard },
+  { id: "procurement", label: "Material Procurement", icon: Package },
+  { id: "resolution", label: "Resolution", icon: Wrench },
+  { id: "closure", label: "Feedback & Closure", icon: CheckCircle2 },
+  { id: "activity", label: "History & Activity Log", icon: History },
 ] as const;
 
 function Section({
@@ -219,17 +212,23 @@ export function ComplaintDetailsView({
   const status = STATUS_META[c.status];
   const cycleTag = (id: number) => <Tag>{cycleLabel(id)}</Tag>;
   const stageEvidence = (
-    key: "visit_id" | "inspection_report_id" | "execution_id",
+    key: "visit_id" | "inspection_report_id" | "execution_id" | "quotation_id",
     id: number,
   ) => attachments.filter((file) => file[key] === id);
   const financial = c.permissions.can_view_financial;
+  const resolutionDecisions = decisions.filter((row) =>
+    ["INSPECTION_SKIP", "QUOTATION_SKIP"].includes(row.decision_type),
+  );
+  const feedbackDecisions = decisions.filter((row) =>
+    ["CLIENT_RESOLUTION_CONFIRMATION", "REOPEN_REVIEW"].includes(
+      row.decision_type,
+    ),
+  );
   const count: Record<string, number> = {
     visits: visits.length,
-    inspections: inspections.length,
     quotations: quotations.length,
     payments: payments.length,
     procurement: materials.length,
-    communications: communications.length,
   };
 
   return (
@@ -261,32 +260,41 @@ export function ComplaintDetailsView({
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-          <span className="text-muted-foreground">
-            {c.client_name} <span className="mx-1">/</span>
-            {c.product_type || "Product not recorded"}
-          </span>
-          <span className="hidden h-3 w-px bg-border sm:block" />
-          <span className="flex items-center gap-1.5">
-            <Users className="size-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">SS</span>
-            <span className="font-medium">{c.assignedSS?.user_name || "Unassigned"}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <UserRound className="size-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">HSS</span>
-            <span className="font-medium">{c.assignedHSS?.user_name || "Unassigned"}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Wrench className="size-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Component</span>
-            <span className="font-medium">{COMPONENT_LABELS[c.component]}</span>
-          </span>
+            <span className="text-muted-foreground">
+              {c.client_name} <span className="mx-1">/</span>
+              {c.product_type || "Product not recorded"}
+            </span>
+            <span className="hidden h-3 w-px bg-border sm:block" />
+            <span className="flex items-center gap-1.5">
+              <Users className="size-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">SS</span>
+              <span className="font-medium">
+                {c.assignedSS?.user_name || "Unassigned"}
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <UserRound className="size-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">HSS</span>
+              <span className="font-medium">
+                {c.assignedHSS?.user_name || "Unassigned"}
+              </span>
+            </span>
+            {c.component && (
+              <span className="flex items-center gap-1.5">
+                <Wrench className="size-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">Component</span>
+                <span className="font-medium">
+                  {COMPONENT_LABELS[c.component]}
+                </span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
           <p className="text-xs text-muted-foreground">
             Registered {date(c.created_at)} · {c.cycles.length}{" "}
-            {c.cycles.length === 1 ? "cycle" : "cycles"} · {text(c.registration_channel)}
+            {c.cycles.length === 1 ? "cycle" : "cycles"} ·{" "}
+            {text(c.registration_channel)}
           </p>
           <div className="flex items-center gap-2">
             <label
@@ -368,28 +376,6 @@ export function ComplaintDetailsView({
         </div>
         <div className="min-w-0 [&_[data-slot=tabs-content]]:space-y-5">
           <TabsContent value="overview">
-            <Section
-              title="At a glance"
-              description="Current status and saved complaint information."
-            >
-              <Info
-                items={[
-                  ["Category", c.category.name],
-                  ["Warranty", text(c.warranty_status)],
-                  ["Source", text(c.registration_channel)],
-                  ["Client type", text(c.client_type)],
-                  [
-                    "Raised by",
-                    c.raisedBy?.user_name ||
-                      (c.registration_channel === "STAFF" ? null : "Client"),
-                  ],
-                  ["Status updated", date(c.status_changed_at, true)],
-                ]}
-              />
-              <div className="border-t pt-4">
-                <Note title="Reported issue">{c.description}</Note>
-              </div>
-            </Section>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 ["Visits", visits.length, CalendarDays],
@@ -408,6 +394,95 @@ export function ComplaintDetailsView({
                 );
               })}
             </div>
+            <Section
+              title="Complaint details"
+              description="Saved complaint information and current status."
+            >
+              <Info
+                items={[
+                  ["Product type", c.product_type],
+                  // Older complaints recorded the affected component; new ones don't.
+                  ...(c.component
+                    ? [
+                        ["Component", COMPONENT_LABELS[c.component]] as [
+                          string,
+                          ReactNode,
+                        ],
+                      ]
+                    : []),
+                  ["Category", c.category.name],
+                  [
+                    "Priority",
+                    c.priority
+                      ? PRIORITY_META[c.priority].label
+                      : "Not assigned",
+                  ],
+                  ["Warranty", text(c.warranty_status)],
+                  ["Source", text(c.registration_channel)],
+                  ["Preferred visit date", date(c.preferred_visit_date)],
+                  [
+                    "Raised by",
+                    c.raisedBy?.user_name ||
+                      (c.registration_channel === "STAFF" ? null : "Client"),
+                  ],
+                  ["Status updated", date(c.status_changed_at, true)],
+                ]}
+              />
+              <div className="border-t pt-4">
+                <Note title="Issue description">{c.description}</Note>
+              </div>
+              <Note title="Additional remarks">{c.additional_remarks}</Note>
+            </Section>
+            <Section
+              title="Photos & videos"
+              description="Registration evidence and additional information."
+            >
+              <ComplaintEvidence
+                files={attachments.filter((file) =>
+                  ["REGISTRATION", "ADDITIONAL_INFORMATION", "OTHER"].includes(
+                    file.category,
+                  ),
+                )}
+              />
+            </Section>
+            <Section
+              title="Client details"
+              description="Client information saved when this complaint was registered."
+            >
+              <Info
+                items={[
+                  ["Client name", c.client_name],
+                  ["Mobile number", c.client_mobile],
+                  ["Alternate mobile", c.client_alternate_mobile],
+                  ["Email", c.client_email],
+                  ["Client type", text(c.client_type)],
+                  ["Lead code", c.lead?.lead_code],
+                  [
+                    "External client code",
+                    c.externalClient?.external_client_code,
+                  ],
+                  ["City", c.city],
+                ]}
+              />
+              <div className="border-t pt-4">
+                <Note title="Site address">{c.site_address}</Note>
+              </div>
+              <Note title="Exceptional-client reason">
+                {c.exceptional_reason}
+              </Note>
+            </Section>
+            <Section
+              title="Usable & final handover details"
+              description="Dates recorded against this complaint."
+            >
+              <Info
+                items={[
+                  ["Installation date", date(c.installation_date)],
+                  ["Usable handover date", date(c.usable_handover_date)],
+                  ["Final handover date", date(c.final_handover_date)],
+                ]}
+              />
+            </Section>
             <Section
               title="Complaint cycles"
               description="Reopened complaints keep the same complaint ID and previous records."
@@ -467,89 +542,11 @@ export function ComplaintDetailsView({
               </Section>
             )}
           </TabsContent>
-          <TabsContent value="client">
-            <Section
-              title="Client details"
-              description="Client information saved when this complaint was registered."
-            >
-              <Info
-                items={[
-                  ["Client name", c.client_name],
-                  ["Mobile number", c.client_mobile],
-                  ["Alternate mobile", c.client_alternate_mobile],
-                  ["Email", c.client_email],
-                  ["Client type", text(c.client_type)],
-                  ["Lead code", c.lead?.lead_code],
-                  [
-                    "External client code",
-                    c.externalClient?.external_client_code,
-                  ],
-                  ["City", c.city],
-                ]}
-              />
-              <div className="border-t pt-4">
-                <Note title="Site address">{c.site_address}</Note>
-              </div>
-              <Note title="Exceptional-client reason">
-                {c.exceptional_reason}
-              </Note>
-            </Section>
-          </TabsContent>
-          <TabsContent value="complaint">
-            <Section title="Complaint details">
-              <Info
-                items={[
-                  ["Product type", c.product_type],
-                  ["Component", COMPONENT_LABELS[c.component]],
-                  ["Category", c.category.name],
-                  [
-                    "Priority",
-                    c.priority
-                      ? PRIORITY_META[c.priority].label
-                      : "Not assigned",
-                  ],
-                  ["Preferred visit date", date(c.preferred_visit_date)],
-                  ["Registration channel", text(c.registration_channel)],
-                ]}
-              />
-              <div className="border-t pt-4">
-                <Note title="Issue description">{c.description}</Note>
-              </div>
-              <Note title="Additional remarks">{c.additional_remarks}</Note>
-            </Section>
-            <Section
-              title="Photos & videos"
-              description="Registration evidence and additional information."
-            >
-              <ComplaintEvidence
-                files={attachments.filter((file) =>
-                  ["REGISTRATION", "ADDITIONAL_INFORMATION", "OTHER"].includes(
-                    file.category,
-                  ),
-                )}
-              />
-            </Section>
-          </TabsContent>
-          <TabsContent value="handover">
-            <Section
-              title="Usable & final handover details"
-              description="Dates recorded against this complaint."
-            >
-              <Info
-                items={[
-                  ["Installation date", date(c.installation_date)],
-                  ["Usable handover date", date(c.usable_handover_date)],
-                  ["Final handover date", date(c.final_handover_date)],
-                  ["Warranty status", text(c.warranty_status)],
-                ]}
-              />
-            </Section>
-          </TabsContent>
           <TabsContent value="visits">
             {!visits.length ? (
               <Empty
                 title="No visits recorded"
-                description="Scheduled visits, assigned teams and repeat-visit information will appear here once saved."
+                description="Scheduled visits, their inspection reports and evidence will appear here once saved."
               />
             ) : (
               visits.map((visit) => (
@@ -561,6 +558,7 @@ export function ComplaintDetailsView({
                     <Tag>{text(visit.status)}</Tag>
                     {cycleTag(visit.cycle_id)}
                     <Tag>{text(visit.charge_mode)}</Tag>
+                    {visit.pay_at_visit && <Tag>Cash at visit</Tag>}
                   </div>
                   <Info
                     items={[
@@ -590,103 +588,105 @@ export function ComplaintDetailsView({
                   </Note>
                   <Note title="Remarks">{visit.remarks}</Note>
                   <ComplaintEvidence
-                    files={stageEvidence("visit_id", visit.id)}
+                    files={stageEvidence("visit_id", visit.id).filter(
+                      (file) => !file.inspection_report_id,
+                    )}
                   />
-                </Section>
-              ))
-            )}
-          </TabsContent>
-          <TabsContent value="inspections">
-            {!inspections.length ? (
-              <Empty
-                title="No inspection reports"
-                description="Submitted inspection findings, material requirements and evidence will appear here."
-              />
-            ) : (
-              inspections.map((report) => (
-                <Section
-                  key={report.id}
-                  title={`Inspection report #${report.id}`}
-                >
-                  <div className="flex flex-wrap gap-2">
-                    {cycleTag(report.cycle_id)}
-                    <Tag>Visit record #{report.visit_id}</Tag>
-                  </div>
-                  <Info
-                    items={[
-                      ["Actual visit date", date(report.actual_visit_date)],
-                      ["Submitted by", report.submittedBy.user_name],
-                      ["Submitted", date(report.submitted_at, true)],
-                      ["Client available", report.client_available],
-                      ["Affected product", report.affected_product],
-                      ["Affected unit", report.affected_unit_number],
-                      ["Responsibility", text(report.responsibility)],
-                      ["Material required", report.material_required],
-                      ["Estimated work days", report.estimated_work_days],
-                      [
-                        "Expected completion",
-                        date(report.expected_completion_date),
-                      ],
-                      [
-                        "Additional visit required",
-                        report.additional_visit_required,
-                      ],
-                      [
-                        "Further approval required",
-                        report.further_approval_required,
-                      ],
-                    ]}
-                  />
-                  <Note title="Issue observed">{report.issue_observed}</Note>
-                  <Note title="Root cause">{report.root_cause}</Note>
-                  <Note title="Responsibility remarks">
-                    {report.responsibility_remarks}
-                  </Note>
-                  <Note title="Repair actions">
-                    {report.repair_actions.map(text).join(", ")}
-                  </Note>
-                  <Note title="Remarks">{report.remarks}</Note>
-                  {!!report.materials.length && (
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-semibold">
-                        Material requirements
-                      </h3>
-                      {report.materials.map((material) => (
-                        <div
-                          key={material.id}
-                          className="rounded-xl border p-4"
-                        >
-                          <p className="mb-3 text-sm font-medium">
-                            {material.material_name}
-                          </p>
-                          <Info
-                            items={[
-                              [
-                                "Quantity",
-                                `${material.quantity}${material.unit ? ` ${material.unit}` : ""}`,
-                              ],
-                              ["Specification", material.specification],
-                              ["Finish / colour", material.finish_colour],
-                              ...(financial
-                                ? [
+                  {inspections
+                    .filter((report) => report.visit_id === visit.id)
+                    .map((report) => (
+                      <div key={report.id} className="space-y-4 border-t pt-4">
+                        <h3 className="text-sm font-semibold">
+                          Inspection report
+                        </h3>
+                        <Info
+                          items={[
+                            [
+                              "Actual visit date",
+                              date(report.actual_visit_date),
+                            ],
+                            ["Submitted by", report.submittedBy.user_name],
+                            ["Submitted", date(report.submitted_at, true)],
+                            ["Client available", report.client_available],
+                            ["Affected product", report.affected_product],
+                            ["Affected unit", report.affected_unit_number],
+                            ["Responsibility", text(report.responsibility)],
+                            ["Material required", report.material_required],
+                            ["Estimated work days", report.estimated_work_days],
+                            [
+                              "Expected completion",
+                              date(report.expected_completion_date),
+                            ],
+                            [
+                              "Additional visit required",
+                              report.additional_visit_required,
+                            ],
+                            [
+                              "Further approval required",
+                              report.further_approval_required,
+                            ],
+                          ]}
+                        />
+                        <Note title="Issue observed">
+                          {report.issue_observed}
+                        </Note>
+                        <Note title="Root cause">{report.root_cause}</Note>
+                        <Note title="Pending work">{report.pending_work}</Note>
+                        <Note title="Responsibility remarks">
+                          {report.responsibility_remarks}
+                        </Note>
+                        <Note title="Repair actions">
+                          {report.repair_actions.map(text).join(", ")}
+                        </Note>
+                        <Note title="Remarks">{report.remarks}</Note>
+                        {!!report.materials.length && (
+                          <div className="space-y-3">
+                            <h3 className="text-sm font-semibold">
+                              Material requirements
+                            </h3>
+                            {report.materials.map((material) => (
+                              <div
+                                key={material.id}
+                                className="rounded-xl border p-4"
+                              >
+                                <p className="mb-3 text-sm font-medium">
+                                  {material.material_name}
+                                </p>
+                                <Info
+                                  items={[
                                     [
-                                      "Estimated cost",
-                                      money(material.estimated_cost),
-                                    ] as [string, ReactNode],
-                                  ]
-                                : []),
-                            ]}
-                          />
-                          <div className="mt-3">
-                            <Note title="Remarks">{material.remarks}</Note>
+                                      "Quantity",
+                                      `${material.quantity}${material.unit ? ` ${material.unit}` : ""}`,
+                                    ],
+                                    ["Specification", material.specification],
+                                    ["Finish / colour", material.finish_colour],
+                                    ...(financial
+                                      ? [
+                                          [
+                                            "Estimated cost",
+                                            money(material.estimated_cost),
+                                          ] as [string, ReactNode],
+                                        ]
+                                      : []),
+                                  ]}
+                                />
+                                <div className="mt-3">
+                                  <Note title="Remarks">
+                                    {material.remarks}
+                                  </Note>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <ComplaintEvidence
-                    files={stageEvidence("inspection_report_id", report.id)}
-                  />
+                        )}
+                        <ComplaintEvidence
+                          files={stageEvidence(
+                            "inspection_report_id",
+                            report.id,
+                          )}
+                        />
+                      </div>
+                    ))}
                 </Section>
               ))
             )}
@@ -697,7 +697,7 @@ export function ComplaintDetailsView({
             ) : !quotations.length ? (
               <Empty
                 title="No quotations recorded"
-                description="Quotation versions, warranty coverage and saved approval decisions will appear here."
+                description="Uploaded quotations, their revisions and the client's answers will appear here."
               />
             ) : (
               quotations.map((quote) => (
@@ -708,6 +708,9 @@ export function ComplaintDetailsView({
                   <div className="flex flex-wrap gap-2">
                     <Tag>{text(quote.status)}</Tag>
                     {cycleTag(quote.cycle_id)}
+                    {quote.payment_at_resolution && (
+                      <Tag>Pays at resolution</Tag>
+                    )}
                   </div>
                   <Info
                     items={[
@@ -716,74 +719,87 @@ export function ComplaintDetailsView({
                       ["Shared", date(quote.shared_at, true)],
                     ]}
                   />
-                  <div className="overflow-x-auto rounded-xl border">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-muted/40 text-muted-foreground">
-                        <tr>
-                          {[
-                            "Item",
-                            "Quantity",
-                            "Rate",
-                            "Total",
-                            "Warranty covered",
-                            "Client payable",
-                          ].map((label) => (
-                            <th
-                              key={label}
-                              className="whitespace-nowrap p-3 font-medium"
-                            >
-                              {label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {quote.items.map((item) => (
-                          <tr key={item.id} className="border-t">
-                            <td className="min-w-48 p-3">
-                              <p className="font-medium">{item.description}</p>
-                              <p className="mt-1 text-muted-foreground">
-                                {text(item.category)}
-                              </p>
-                              {item.chargeable_reason && (
-                                <p className="mt-1 text-muted-foreground">
-                                  {item.chargeable_reason}
-                                </p>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              {item.quantity} {item.unit}
-                            </td>
-                            {[
-                              item.unit_rate,
-                              item.line_total,
-                              item.warranty_covered_amount,
-                              item.client_payable_amount,
-                            ].map((amount, i) => (
-                              <td key={i} className="whitespace-nowrap p-3">
-                                {money(amount, quote.currency)}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <Info
-                    items={[
-                      ["Subtotal", money(quote.subtotal, quote.currency)],
-                      ["Tax", money(quote.tax_amount, quote.currency)],
-                      ["Total", money(quote.total_amount, quote.currency)],
-                      [
-                        "Warranty covered",
-                        money(quote.warranty_covered_amount, quote.currency),
-                      ],
-                      [
-                        "Client payable",
-                        money(quote.client_payable_amount, quote.currency),
-                      ],
-                    ]}
+                  <ComplaintEvidence
+                    files={stageEvidence("quotation_id", quote.id)}
                   />
+                  {/* Line items only exist on quotations from before uploads. */}
+                  {quote.items.length > 0 && (
+                    <>
+                      <div className="overflow-x-auto rounded-xl border">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-muted/40 text-muted-foreground">
+                            <tr>
+                              {[
+                                "Item",
+                                "Quantity",
+                                "Rate",
+                                "Total",
+                                "Warranty covered",
+                                "Client payable",
+                              ].map((label) => (
+                                <th
+                                  key={label}
+                                  className="whitespace-nowrap p-3 font-medium"
+                                >
+                                  {label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {quote.items.map((item) => (
+                              <tr key={item.id} className="border-t">
+                                <td className="min-w-48 p-3">
+                                  <p className="font-medium">
+                                    {item.description}
+                                  </p>
+                                  <p className="mt-1 text-muted-foreground">
+                                    {text(item.category)}
+                                  </p>
+                                  {item.chargeable_reason && (
+                                    <p className="mt-1 text-muted-foreground">
+                                      {item.chargeable_reason}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="p-3">
+                                  {item.quantity} {item.unit}
+                                </td>
+                                {[
+                                  item.unit_rate,
+                                  item.line_total,
+                                  item.warranty_covered_amount,
+                                  item.client_payable_amount,
+                                ].map((amount, i) => (
+                                  <td key={i} className="whitespace-nowrap p-3">
+                                    {money(amount, quote.currency)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Info
+                        items={[
+                          ["Subtotal", money(quote.subtotal, quote.currency)],
+                          ["Tax", money(quote.tax_amount, quote.currency)],
+                          ["Total", money(quote.total_amount, quote.currency)],
+                          [
+                            "Warranty covered",
+                            money(
+                              quote.warranty_covered_amount,
+                              quote.currency,
+                            ),
+                          ],
+                          [
+                            "Client payable",
+                            money(quote.client_payable_amount, quote.currency),
+                          ],
+                        ]}
+                      />
+                    </>
+                  )}
                   <Decisions
                     rows={decisions.filter(
                       (row) => row.quotation_id === quote.id,
@@ -793,20 +809,20 @@ export function ComplaintDetailsView({
               ))
             )}
             {financial &&
-              attachments.some((file) => file.category === "QUOTATION") && (
+              attachments.some(
+                (file) => file.category === "QUOTATION" && !file.quotation_id,
+              ) && (
                 <Section title="Quotation documents">
                   <ComplaintEvidence
                     files={attachments.filter(
-                      (file) => file.category === "QUOTATION",
+                      (file) =>
+                        file.category === "QUOTATION" && !file.quotation_id,
                     )}
                   />
                 </Section>
               )}
-          </TabsContent>
-          <TabsContent value="payments">
-            {!financial ? (
-              <Restricted />
-            ) : (
+            {/* Payments sit with the quotation they settle. */}
+            {!financial ? null : (
               <>
                 {!charges.length && !payments.length ? (
                   <Empty
@@ -1010,21 +1026,12 @@ export function ComplaintDetailsView({
             )}
           </TabsContent>
           <TabsContent value="resolution">
-            {!closures.length &&
-            !executions.some(
+            {!executions.some(
               (row) => row.completed_at || row.completion_remarks,
-            ) &&
-            !decisions.some((row) =>
-              [
-                "CLIENT_RESOLUTION_CONFIRMATION",
-                "REOPEN_REVIEW",
-                "INSPECTION_SKIP",
-                "QUOTATION_SKIP",
-              ].includes(row.decision_type),
-            ) ? (
+            ) && !resolutionDecisions.length ? (
               <Empty
                 title="No resolution recorded"
-                description="Completion reports, client responses and final HO closure records will appear here."
+                description="Completion reports and how the repair went ahead will appear here."
               />
             ) : (
               <>
@@ -1066,25 +1073,25 @@ export function ComplaintDetailsView({
                       />
                     </Section>
                   ))}
-                {!!decisions.filter((row) =>
-                  [
-                    "CLIENT_RESOLUTION_CONFIRMATION",
-                    "REOPEN_REVIEW",
-                    "INSPECTION_SKIP",
-                    "QUOTATION_SKIP",
-                  ].includes(row.decision_type),
-                ).length && (
-                  <Section title="Client responses & resolution decisions">
-                    <Decisions
-                      rows={decisions.filter((row) =>
-                        [
-                          "CLIENT_RESOLUTION_CONFIRMATION",
-                          "REOPEN_REVIEW",
-                          "INSPECTION_SKIP",
-                          "QUOTATION_SKIP",
-                        ].includes(row.decision_type),
-                      )}
-                    />
+                {!!resolutionDecisions.length && (
+                  <Section title="Resolution decisions">
+                    <Decisions rows={resolutionDecisions} />
+                  </Section>
+                )}
+              </>
+            )}
+          </TabsContent>
+          <TabsContent value="closure">
+            {!closures.length && !feedbackDecisions.length ? (
+              <Empty
+                title="No feedback or closure yet"
+                description="The client's confirmation, rating and HO's final closure will appear here."
+              />
+            ) : (
+              <>
+                {!!feedbackDecisions.length && (
+                  <Section title="Client feedback">
+                    <Decisions rows={feedbackDecisions} />
                   </Section>
                 )}
                 {closures.map((closure) => (
@@ -1098,6 +1105,24 @@ export function ComplaintDetailsView({
                         [
                           "Client confirmation",
                           text(closure.client_confirmation_status),
+                        ],
+                        [
+                          "Client rating",
+                          closure.client_rating ? (
+                            <span className="inline-flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <Star
+                                  key={n}
+                                  className={cn(
+                                    "size-3.5",
+                                    n <= closure.client_rating!
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "text-muted-foreground",
+                                  )}
+                                />
+                              ))}
+                            </span>
+                          ) : null,
                         ],
                         [
                           "Completion verified",
@@ -1133,13 +1158,8 @@ export function ComplaintDetailsView({
               </Section>
             )}
           </TabsContent>
-          <TabsContent value="communications">
-            {!communications.length ? (
-              <Empty
-                title="No communication records"
-                description="Saved notification delivery records will appear here. No messages have been recorded for this selection."
-              />
-            ) : (
+          <TabsContent value="activity">
+            {!communications.length ? null : (
               <Section
                 title="Communication history"
                 description="Recorded notifications and delivery status."
@@ -1183,8 +1203,6 @@ export function ComplaintDetailsView({
                 </div>
               </Section>
             )}
-          </TabsContent>
-          <TabsContent value="activity">
             <Section title="History">
               <ComplaintActivityLog
                 key={`${c.id}-${cycle}`}

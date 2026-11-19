@@ -40,12 +40,11 @@ import {
   useCreateComplaint,
 } from "@/api/client-complaints";
 import {
-  ComplaintComponent,
   ComplaintLeadLookup,
   ComplaintPossibleDuplicates,
   CreateClientComplaintInput,
 } from "@/types/client-complaints";
-import { COMPONENT_LABELS, STATUS_META } from "./complaint-meta";
+import { STATUS_META } from "./complaint-meta";
 import { useAppSelector } from "@/redux/store";
 import { useVendorBrandStyle } from "@/hooks/use-vendor-theme-color";
 import { ComplaintLeadPicker } from "./ComplaintLeadPicker";
@@ -79,15 +78,12 @@ const emptyExternal = {
 
 const emptyLeadForm = {
   instance_id: "",
-  usable_handover_date: "",
-  final_handover_date: "",
   site_address: "",
   site_supervisor_id: "",
   head_site_supervisor_id: "",
 };
 
 const emptyDetails = {
-  component: "" as ComplaintComponent | "",
   category_id: "",
   description: "",
   additional_remarks: "",
@@ -341,8 +337,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       clearError(
         "lead_code",
         "instance_id",
-        "usable_handover_date",
-        "final_handover_date",
         "lead_site_address",
         "site_supervisor_id",
         "head_site_supervisor_id",
@@ -404,10 +398,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       if (!lead) next.lead_code = isSuperAdmin ? "Select a CRM lead first." : "Fetch and verify the lead code first.";
       else {
         if (lead.products.length > 0 && !leadForm.instance_id) next.instance_id = "Select the affected product.";
-        if (!lead.usable_handover_date && !leadForm.usable_handover_date)
-          next.usable_handover_date = "Usable handover date is required.";
-        if (!lead.final_handover_date && !leadForm.final_handover_date)
-          next.final_handover_date = "Final handover date is required.";
         if (!lead.site_address && !leadForm.site_address.trim()) next.lead_site_address = "Site address is required.";
         if (lead.site_supervisors.length > 1 && !leadForm.site_supervisor_id)
           next.site_supervisor_id = "Select the site supervisor.";
@@ -422,13 +412,13 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
         const altDigits = digitCount(external.client_alternate_mobile);
         if (altDigits < 10 || altDigits > 15) next.client_alternate_mobile = "Enter a valid mobile number.";
       }
-      if (external.client_email.trim() && !/^\S+@\S+\.\S+$/.test(external.client_email.trim()))
+      if (!external.client_email.trim()) next.client_email = "Email is required.";
+      else if (!/^\S+@\S+\.\S+$/.test(external.client_email.trim()))
         next.client_email = "Enter a valid email.";
       if (!external.site_address.trim()) next.site_address = "Site address is required.";
       if (!external.city.trim()) next.city = "City is required.";
       if (!external.product_type) next.product_type = "Select the product type.";
     }
-    if (!details.component) next.component = "Select the affected component.";
     if (!details.category_id) next.category_id = "Select a complaint category.";
     if (!details.description.trim()) next.description = "Describe the issue.";
     if (photos.length === 0) next.photos = "Add at least one photo of the issue.";
@@ -443,7 +433,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     if (Object.keys(nextErrors).length > 0) return;
 
     const common = {
-      component: details.component as ComplaintComponent,
       category_id: Number(details.category_id),
       description: details.description.trim(),
       additional_remarks: details.additional_remarks.trim() || undefined,
@@ -458,8 +447,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             client_mode: "CRM_LEAD",
             lead_code: lead!.lead_code,
             instance_id: leadForm.instance_id ? Number(leadForm.instance_id) : undefined,
-            usable_handover_date: lead!.usable_handover_date ? undefined : leadForm.usable_handover_date,
-            final_handover_date: lead!.final_handover_date ? undefined : leadForm.final_handover_date,
             site_address: lead!.site_address ? undefined : leadForm.site_address.trim(),
             site_supervisor_id: leadForm.site_supervisor_id ? Number(leadForm.site_supervisor_id) : undefined,
             head_site_supervisor_id: leadForm.head_site_supervisor_id
@@ -473,7 +460,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             client_name: external.client_name.trim(),
             client_mobile: external.client_mobile.trim(),
             client_alternate_mobile: external.client_alternate_mobile.trim() || undefined,
-            client_email: external.client_email.trim() || undefined,
+            client_email: external.client_email.trim(),
             site_address: external.site_address.trim(),
             city: external.city.trim(),
             product_type: external.product_type,
@@ -643,12 +630,15 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                             <ReadOnlyField label="Site Address" value={lead.site_address} />
                           </div>
                         )}
-                        {lead.usable_handover_date && (
-                          <ReadOnlyField label="Usable Handover" value={formatDate(lead.usable_handover_date)} />
-                        )}
-                        {lead.final_handover_date && (
-                          <ReadOnlyField label="Final Handover" value={formatDate(lead.final_handover_date)} />
-                        )}
+                        {/* Taken from the lead's installation stage. */}
+                        <ReadOnlyField
+                          label="Usable Handover"
+                          value={lead.usable_handover_date ? formatDate(lead.usable_handover_date) : "Not done yet"}
+                        />
+                        <ReadOnlyField
+                          label="Final Handover"
+                          value={lead.final_handover_date ? formatDate(lead.final_handover_date) : "Not done yet"}
+                        />
                       </div>
                     </div>
 
@@ -706,39 +696,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                           </SelectContent>
                         </Select>
                         <FieldError message={errors.instance_id} />
-                      </div>
-                    )}
-
-                    {(!lead.usable_handover_date || !lead.final_handover_date) && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {!lead.usable_handover_date && (
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Usable Handover Date</Label>
-                            <CustomeDatePicker
-                              value={leadForm.usable_handover_date}
-                              onChange={(v) => {
-                                setLeadForm((p) => ({ ...p, usable_handover_date: v ?? "" }));
-                                clearError("usable_handover_date");
-                              }}
-                              restriction="pastOnly"
-                            />
-                            <FieldError message={errors.usable_handover_date} />
-                          </div>
-                        )}
-                        {!lead.final_handover_date && (
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Final Handover Date</Label>
-                            <CustomeDatePicker
-                              value={leadForm.final_handover_date}
-                              onChange={(v) => {
-                                setLeadForm((p) => ({ ...p, final_handover_date: v ?? "" }));
-                                clearError("final_handover_date");
-                              }}
-                              restriction="pastOnly"
-                            />
-                            <FieldError message={errors.final_handover_date} />
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -845,7 +802,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">
-                    Email Address <span className="text-muted-foreground font-normal">(optional)</span>
+                    Email Address
                   </Label>
                   <Input
                     type="email"
@@ -874,12 +831,19 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                   <div className="space-y-1.5">
                     <Label className="text-xs">City</Label>
                     <Input
+                      list="complaint-city-options"
                       value={external.city}
                       onChange={(e) => setExternalField("city", e.target.value)}
                       disabled={!!linkedClient}
+                      placeholder="Select or type the city"
                       className="h-9 text-xs rounded-xl"
                       aria-invalid={!!errors.city}
                     />
+                    <datalist id="complaint-city-options">
+                      {meta?.cities.map((city) => (
+                        <option key={city} value={city} />
+                      ))}
+                    </datalist>
                     <FieldError message={errors.city} />
                   </div>
                   <div className="space-y-1.5">
@@ -958,31 +922,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
 
           {/* Complaint */}
           <section className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Affected Component</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {(meta?.components ?? (Object.keys(COMPONENT_LABELS) as ComplaintComponent[])).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setDetails((p) => ({ ...p, component: c }));
-                      clearError("component");
-                    }}
-                    className={`h-9 rounded-xl border text-xs font-semibold transition-colors ${
-                      details.component === c
-                        ? "border-primary bg-primary/10 text-primary"
-                        : errors.component
-                          ? "border-destructive/50 text-muted-foreground"
-                          : "text-muted-foreground hover:bg-muted/40"
-                    }`}
-                  >
-                    {COMPONENT_LABELS[c]}
-                  </button>
-                ))}
-              </div>
-              <FieldError message={errors.component} />
-            </div>
             <div className="space-y-1.5" role="group" aria-label="Complaint category">
               <Label className="text-xs">Complaint Category</Label>
               <AssignToPicker

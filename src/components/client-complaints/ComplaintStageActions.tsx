@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,15 +26,18 @@ import {
 } from "./complaint-details-format";
 import { BRAND_BUTTON, Field, rupees } from "./complaint-action-ui";
 import {
+  checkPayment,
+  DOC_ACCEPT,
+  emptyPayment,
   FilesField,
   localNow,
+  PaymentInputs,
   PHOTO_ACCEPT,
   RecordPaymentDialog,
   todayLocal,
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
 import { ComplaintInspectionForm } from "./ComplaintInspectionForm";
-import { ComplaintQuotationEditor } from "./ComplaintQuotationEditor";
 
 // Inspection → quotation → repair → closure steps (spec 12–16), plus the
 // warranty decision and cancellation. The server decides which steps apply.
@@ -44,16 +48,25 @@ type SimpleMode =
   | "PROCEED_WITHOUT_QUOTATION"
   | "RESOLVE_WITHOUT_REPAIR"
   | "START_QUOTATION"
+  | "UPLOAD_QUOTATION"
   | "REVIEW_QUOTATION"
   | "SHARE_QUOTATION"
   | "CLIENT_RESPONSE"
   | "WAIVE_REPAIR"
+  | "WAIVE_RESOLUTION"
   | ComplaintExecutionAction
   | "CLIENT_CONFIRMATION"
   | "NO_RESPONSE"
   | "APPROVE_CLOSURE";
 
-type Mode = "INSPECTION" | "QUOTATION_EDITOR" | "REPAIR_PAYMENT" | SimpleMode;
+type Mode = "INSPECTION" | "REPAIR_PAYMENT" | "RESOLUTION_PAYMENT" | SimpleMode;
+
+const QUOTATION_ACCEPT = `${PHOTO_ACCEPT},${DOC_ACCEPT}`;
+const PAYMENT_OPTIONS: [string, string][] = [
+  ["PAID_NOW", "Paid now"],
+  ["AT_RESOLUTION", "Pays at resolution"],
+  ["NONE", "Nothing to pay (warranty / free)"],
+];
 
 const EXECUTION_LABELS: Record<ComplaintExecutionAction, string> = {
   MATERIAL_ORDERED: "Material Ordered",
@@ -78,11 +91,12 @@ export function hasStageWork(c: ComplaintDetails) {
     inspection?.after_inspection ||
     inspection?.can_set_warranty ||
     (quotation &&
-      (quotation.can_edit ||
+      (quotation.can_upload ||
         quotation.can_review ||
         quotation.can_share ||
         quotation.can_record_client_response ||
-        quotation.repair_charge)) ||
+        quotation.repair_charge ||
+        quotation.resolution_payment)) ||
     execution?.actions.length ||
     closure?.can_record_client_confirmation ||
     closure?.ho_closure ||
@@ -152,10 +166,18 @@ export function ComplaintStageActions({
     <>
       {inspection?.report_visit && (
         <Row
-          label={`Visit ${inspection.report_visit.visit_number} completed`}
-          detail="the site inspection report is due"
+          label={`Visit ${inspection.report_visit.visit_number} inspection`}
+          detail={
+            inspection.report_visit.blocked_reason ??
+            "submitting the inspection report completes the visit"
+          }
         >
-          {btn("INSPECTION", "Submit Inspection", true)}
+          {btn(
+            "INSPECTION",
+            "Complete Inspection",
+            true,
+            !!inspection.report_visit.blocked_reason,
+          )}
         </Row>
       )}
       {inspection?.after_inspection && (
@@ -164,27 +186,24 @@ export function ComplaintStageActions({
           detail="choose how the complaint proceeds"
         >
           {btn("RESOLVE_WITHOUT_REPAIR", "Resolve Without Repair")}
-          {btn("PROCEED_WITHOUT_QUOTATION", "Repair Without Quotation")}
-          {btn("START_QUOTATION", "Prepare Quotation", true)}
+          {btn("PROCEED_WITHOUT_QUOTATION", "Free Repair (No Charge)")}
+          {inspection.after_inspection.can_prepare_quotation &&
+            btn("START_QUOTATION", "Prepare Quotation", true)}
         </Row>
       )}
 
-      {quotation?.can_edit && (
+      {quotation?.can_upload && (
         <Row
           label="Quotation"
           detail={
             latestQuotation
               ? `Q${latestQuotation.quotation_number} rev ${latestQuotation.revision} · ${text(latestQuotation.status)}`
-              : "not prepared yet"
+              : "upload the quotation file; the client sees it straight away"
           }
         >
           {btn(
-            "QUOTATION_EDITOR",
-            latestQuotation?.status === "DRAFT"
-              ? "Edit Draft"
-              : latestQuotation
-                ? "Revise Quotation"
-                : "Prepare Quotation",
+            "UPLOAD_QUOTATION",
+            latestQuotation ? "Upload Revised Quotation" : "Upload Quotation",
             true,
           )}
         </Row>
@@ -204,8 +223,8 @@ export function ComplaintStageActions({
       )}
       {quotation?.can_record_client_response && latestQuotation && (
         <Row
-          label="Quotation shared"
-          detail={`client payable ${rupees(latestQuotation.client_payable_amount)} · waiting for the client`}
+          label={`Quotation Q${latestQuotation.quotation_number} rev ${latestQuotation.revision} shared`}
+          detail="waiting for the client's answer and payment"
         >
           {btn("CLIENT_RESPONSE", "Record Client Response", true)}
         </Row>
@@ -223,6 +242,13 @@ export function ComplaintStageActions({
             btn("WAIVE_REPAIR", "Waive Charge")}
           {quotation.repair_charge.can_record &&
             btn("REPAIR_PAYMENT", "Record Payment", true)}
+        </Row>
+      )}
+      {quotation?.resolution_payment && (
+        <Row label="Repair payment" detail="the client pays at resolution">
+          {quotation.resolution_payment.can_waive &&
+            btn("WAIVE_RESOLUTION", "Waive Payment")}
+          {btn("RESOLUTION_PAYMENT", "Record Payment", true)}
         </Row>
       )}
 
@@ -279,7 +305,21 @@ export function ComplaintStageActions({
       )}
 
       {mode === "INSPECTION" && <ComplaintInspectionForm {...common} />}
-      {mode === "QUOTATION_EDITOR" && <ComplaintQuotationEditor {...common} />}
+      {mode === "RESOLUTION_PAYMENT" && quotation?.resolution_payment && (
+        <RecordPaymentDialog
+          title="Record Repair Payment"
+          brandStyle={brandStyle}
+          vendorId={vendorId}
+          complaintId={c.id}
+          toRequest={(fields) => ({
+            kind: "resolutionPayment",
+            version: c.version,
+            quotation_id: quotation.resolution_payment!.quotation_id,
+            ...fields,
+          })}
+          onClose={close}
+        />
+      )}
       {mode === "REPAIR_PAYMENT" && quotation?.repair_charge && (
         <RecordPaymentDialog
           title="Record Repair Payment"
@@ -297,7 +337,7 @@ export function ComplaintStageActions({
         />
       )}
       {mode &&
-        !["INSPECTION", "QUOTATION_EDITOR", "REPAIR_PAYMENT"].includes(
+        !["INSPECTION", "REPAIR_PAYMENT", "RESOLUTION_PAYMENT"].includes(
           mode,
         ) && <StageDialog key={mode} mode={mode as SimpleMode} {...common} />}
     </>
@@ -336,11 +376,15 @@ const TITLES: Record<SimpleMode, [string, string]> = {
   ],
   START_QUOTATION: [
     "Prepare Quotation",
-    "Moves the complaint to quotation preparation.",
+    "Attach the quotation file now to share it with the client straight away, or upload it later.",
+  ],
+  UPLOAD_QUOTATION: [
+    "Upload Quotation",
+    "The uploaded quotation is shared with the client straight away.",
   ],
   PROCEED_WITHOUT_QUOTATION: [
-    "Repair Without Quotation",
-    "For work with no client cost, e.g. fully under warranty or a simple adjustment.",
+    "Free Repair (No Charge)",
+    "The repair goes ahead with no quotation and no payment from the client, e.g. under warranty or a small fix.",
   ],
   RESOLVE_WITHOUT_REPAIR: [
     "Resolve Without Repair",
@@ -356,11 +400,15 @@ const TITLES: Record<SimpleMode, [string, string]> = {
   ],
   CLIENT_RESPONSE: [
     "Client Response",
-    "Record the client's answer to the shared quotation.",
+    "Record the client's answer to the quotation, and the payment if they accept.",
   ],
   WAIVE_REPAIR: [
     "Waive Repair Charge",
     "HO exception: the repair proceeds without collecting this charge.",
+  ],
+  WAIVE_RESOLUTION: [
+    "Waive Repair Payment",
+    "HO exception: nothing is collected for this repair.",
   ],
   MATERIAL_ORDERED: ["Material Ordered", "Record the order details."],
   MATERIAL_RECEIVED: ["Material Received", "Record when the material arrived."],
@@ -428,7 +476,15 @@ function StageDialog({
   const [after, setAfter] = useState<File[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [reviewed, setReviewed] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [quoteFiles, setQuoteFiles] = useState<File[]>([]);
+  const [paymentOption, setPaymentOption] = useState("PAID_NOW");
+  const [payment, setPayment] = useState(emptyPayment());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const takesPayment =
+    mode === "CLIENT_RESPONSE" &&
+    outcome === "CLIENT_ACCEPTED" &&
+    paymentOption === "PAID_NOW";
 
   const clientMode =
     mode === "CLIENT_RESPONSE" || mode === "CLIENT_CONFIRMATION";
@@ -436,10 +492,12 @@ function StageDialog({
     [
       "WARRANTY",
       "CANCEL",
+      "START_QUOTATION",
       "PROCEED_WITHOUT_QUOTATION",
       "RESOLVE_WITHOUT_REPAIR",
       "REVIEW_QUOTATION",
       "WAIVE_REPAIR",
+      "WAIVE_RESOLUTION",
       "RESCHEDULE_REPAIR",
       "COMPLETE_WORK",
       "NO_RESPONSE",
@@ -475,6 +533,14 @@ function StageDialog({
       next.received = "Pick the date received.";
     if (mode === "COMPLETE_WORK" && !after.length)
       next.after = "Add at least one after-repair photo.";
+    if (mode === "COMPLETE_WORK" && !completion.pending_work.trim())
+      next.pending_work = "Record the pending work, or write None.";
+    if (mode === "UPLOAD_QUOTATION" && !quoteFiles.length)
+      next.quoteFiles = "Upload the quotation file.";
+    const paid = takesPayment ? checkPayment(payment) : null;
+    if (paid) Object.assign(next, paid.errors);
+    if (mode === "CLIENT_CONFIRMATION" && outcome === "SATISFIED" && !rating)
+      next.rating = "Select the client's rating.";
     if (mode === "APPROVE_CLOSURE" && !reviewed)
       next.reviewed = "Confirm the review.";
     setErrors(next);
@@ -500,9 +566,17 @@ function StageDialog({
           kind: "inspectionDecision",
           version,
           action: mode,
-          remarks: note,
+          remarks: note!,
           material_required:
             mode === "PROCEED_WITHOUT_QUOTATION" ? materialRequired : undefined,
+          files: mode === "START_QUOTATION" ? quoteFiles : undefined,
+        };
+      case "UPLOAD_QUOTATION":
+        return {
+          kind: "uploadQuotation",
+          version,
+          remarks: note,
+          files: quoteFiles,
         };
       case "REVIEW_QUOTATION":
       case "CLIENT_RESPONSE":
@@ -513,6 +587,19 @@ function StageDialog({
           action: outcome as "APPROVE",
           remarks: note,
           client_reference: clientMode ? clientReference.trim() : undefined,
+          ...(mode === "CLIENT_RESPONSE" && outcome === "CLIENT_ACCEPTED"
+            ? {
+                payment_option: paymentOption as "PAID_NOW",
+                ...(paid?.fields ?? {}),
+              }
+            : {}),
+        };
+      case "WAIVE_RESOLUTION":
+        return {
+          kind: "resolutionWaiver",
+          version,
+          quotation_id: quotation!.resolution_payment!.quotation_id,
+          remarks: note!,
         };
       case "SHARE_QUOTATION":
         return {
@@ -539,7 +626,7 @@ function StageDialog({
           replacement_details:
             completion.replacement_details.trim() || undefined,
           client_remarks: completion.client_remarks.trim() || undefined,
-          pending_work: completion.pending_work.trim() || undefined,
+          pending_work: completion.pending_work.trim(),
           before,
           after,
         };
@@ -572,6 +659,7 @@ function StageDialog({
           outcome: outcome as "SATISFIED",
           client_reference: clientReference.trim(),
           remarks: note,
+          rating: outcome === "SATISFIED" ? rating : undefined,
           photos,
         };
       case "NO_RESPONSE":
@@ -613,6 +701,39 @@ function StageDialog({
             </SelectContent>
           </Select>
         </Field>
+      )}
+      {mode === "CLIENT_RESPONSE" && outcome === "CLIENT_ACCEPTED" && (
+        <Field label="Payment">
+          <Select value={paymentOption} onValueChange={setPaymentOption}>
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_OPTIONS.map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+      {takesPayment && (
+        <PaymentInputs value={payment} onChange={setPayment} errors={errors} />
+      )}
+      {(mode === "START_QUOTATION" || mode === "UPLOAD_QUOTATION") && (
+        <FilesField
+          label={
+            mode === "START_QUOTATION"
+              ? "Quotation file (optional)"
+              : "Quotation file"
+          }
+          files={quoteFiles}
+          onChange={setQuoteFiles}
+          accept={QUOTATION_ACCEPT}
+          max={5}
+          error={errors.quoteFiles}
+        />
       )}
       {clientMode && (
         <Field label="How the client confirmed" error={errors.client}>
@@ -688,10 +809,14 @@ function StageDialog({
                 ["material_used", "Material used"],
                 ["replacement_details", "Replacement details"],
                 ["client_remarks", "Client remarks"],
-                ["pending_work", "Pending work, if any"],
+                ["pending_work", "Pending work (write None if nothing)"],
               ] as const
             ).map(([key, label]) => (
-              <Field key={key} label={`${label} (optional)`}>
+              <Field
+                key={key}
+                label={key === "pending_work" ? label : `${label} (optional)`}
+                error={errors[key]}
+              >
                 <Textarea
                   value={completion[key]}
                   onChange={(e) =>
@@ -721,6 +846,30 @@ function StageDialog({
             />
           </div>
         </>
+      )}
+      {mode === "CLIENT_CONFIRMATION" && outcome === "SATISFIED" && (
+        <Field label="Client's rating" error={errors.rating}>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setRating(n)}
+                title={`${n} star${n === 1 ? "" : "s"}`}
+                className="p-0.5"
+              >
+                <Star
+                  className={cn(
+                    "size-6",
+                    n <= rating
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-muted-foreground",
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+        </Field>
       )}
       {mode === "CLIENT_CONFIRMATION" && (
         <FilesField

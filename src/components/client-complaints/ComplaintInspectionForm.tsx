@@ -81,7 +81,7 @@ export function ComplaintInspectionForm({
 }) {
   const visit = c.permissions.inspection.report_visit!;
   const [form, setForm] = useState({
-    actual_visit_date: visit.completed_at?.slice(0, 10) ?? todayLocal(),
+    actual_visit_date: todayLocal(),
     client_available: true,
     issue_observed: "",
     root_cause: "",
@@ -90,6 +90,7 @@ export function ComplaintInspectionForm({
     responsibility: "",
     responsibility_remarks: "",
     remarks: "",
+    pending_work: "",
     estimated_work_days: "",
     expected_completion_date: "",
     additional_visit_required: false,
@@ -115,6 +116,7 @@ export function ComplaintInspectionForm({
       ["root_cause", "Record the root cause."],
       ["affected_product", "Enter the affected product."],
       ["affected_unit_number", "Enter the affected unit number."],
+      ["pending_work", "Record the pending work, or write None."],
     ];
     for (const [key, message] of required)
       if (!String(form[key]).trim()) next[key] = message;
@@ -125,6 +127,8 @@ export function ComplaintInspectionForm({
     if (form.responsibility === "OTHER" && !form.responsibility_remarks.trim())
       next.responsibility_remarks = "Explain the responsibility.";
     if (!repairActions.length) next.repair_actions = "Select at least one.";
+    if (!form.expected_completion_date)
+      next.expected_completion_date = "Pick the expected completion date.";
     if (form.material_required) {
       materials.forEach((m, i) => {
         if (!m.material_name.trim() || !(Number(m.quantity) > 0))
@@ -165,9 +169,10 @@ export function ComplaintInspectionForm({
       estimated_work_days: form.estimated_work_days
         ? Number(form.estimated_work_days)
         : undefined,
-      expected_completion_date: form.expected_completion_date || undefined,
+      expected_completion_date: form.expected_completion_date,
       additional_visit_required: form.additional_visit_required,
       further_approval_required: form.further_approval_required,
+      pending_work: form.pending_work.trim(),
     };
     return {
       kind: "inspection" as const,
@@ -180,7 +185,7 @@ export function ComplaintInspectionForm({
   };
 
   const textArea = (
-    key: "issue_observed" | "root_cause" | "remarks",
+    key: "issue_observed" | "root_cause" | "remarks" | "pending_work",
     label: string,
   ) => (
     <Field label={label} error={errors[key]}>
@@ -196,13 +201,17 @@ export function ComplaintInspectionForm({
   return (
     <WorkflowDialog
       title={`Site Inspection Report · Visit ${visit.visit_number}`}
-      description="Submitted before the complaint can move to quotation or resolution."
+      description={
+        visit.purpose === "INSTALLATION_TEAM"
+          ? "Submitting completes the installation team visit and moves the complaint to material procurement if material is required, otherwise straight to client confirmation."
+          : "Submitting completes the visit; the complaint then moves to quotation or resolution."
+      }
       brandStyle={brandStyle}
       vendorId={vendorId}
       complaintId={c.id}
       build={build}
       onClose={onClose}
-      confirmLabel="Submit Inspection"
+      confirmLabel="Complete Inspection"
       wide
     >
       <div className="grid gap-4 sm:grid-cols-3">
@@ -400,7 +409,10 @@ export function ComplaintInspectionForm({
             className="h-9 text-xs"
           />
         </Field>
-        <Field label="Expected completion date (optional)">
+        <Field
+          label="Expected completion date"
+          error={errors.expected_completion_date}
+        >
           <CustomeDatePicker
             value={form.expected_completion_date}
             onChange={(v) => set("expected_completion_date", v ?? "")}
@@ -428,6 +440,7 @@ export function ComplaintInspectionForm({
           Further approval required
         </label>
       </div>
+      {textArea("pending_work", "Pending work (write None if nothing)")}
       {textArea("remarks", "Remarks (optional)")}
 
       <div className="grid gap-4 sm:grid-cols-3">

@@ -76,12 +76,6 @@ const OUTCOMES: {
     hint: "The complaint stays on record but this cycle ends.",
     remarks: "Rejection reason",
   },
-  {
-    value: "ON_HOLD",
-    label: "Put on Hold",
-    hint: "Pause verification until it can continue.",
-    remarks: "Reason for hold",
-  },
 ];
 
 const STAGE_HINTS: Partial<Record<ComplaintDetails["status"], string>> = {
@@ -96,7 +90,7 @@ const STAGE_HINTS: Partial<Record<ComplaintDetails["status"], string>> = {
   AWAITING_CLIENT_ACCEPTANCE:
     "Inform the client of the visiting charge and record their response.",
   PAYMENT_PENDING:
-    "Collect the visiting charge and record the payment with proof for HO verification.",
+    "Collect the visiting charge and record the payment with proof, or mark it as cash at the visit.",
   VISIT_SCHEDULED:
     "Visit scheduled. Update the visit once it has happened; the inspection report follows.",
   INSPECTION_SUBMITTED:
@@ -141,15 +135,20 @@ export function ComplaintActionsPanel({
   if (actions.length === 0 && !hasVisitWork && !stageWork) return null;
 
   const has = (a: ComplaintVerificationAction) => actions.includes(a);
+  // Starting verification opens the decision straight away; the backend starts
+  // and decides in one step, so the separate start action isn't shown.
+  const notStarted = c.status === "NEW" || c.status === "REOPENED";
   const primary = (
-    ["START_REVIEW", "DECIDE", "RESUME", "INFORMATION_RECEIVED"] as const
+    ["DECIDE", "RESUME", "INFORMATION_RECEIVED"] as const
   ).filter(has);
   const labels: Record<
     ComplaintVerificationAction,
     { text: string; icon: typeof Flag }
   > = {
     START_REVIEW: { text: "Start Verification", icon: PlayCircle },
-    DECIDE: { text: "Record Decision", icon: ClipboardCheck },
+    DECIDE: notStarted
+      ? { text: "Start Verification", icon: PlayCircle }
+      : { text: "Record Decision", icon: ClipboardCheck },
     RESUME: { text: "Resume Verification", icon: PlayCircle },
     INFORMATION_RECEIVED: { text: "Information Received", icon: Inbox },
     SET_PRIORITY: {

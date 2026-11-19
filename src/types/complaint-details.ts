@@ -22,6 +22,7 @@ export interface ComplaintAttachment extends CycleRecord {
   inspection_report_id: number | null;
   execution_id: number | null;
   decision_id: number | null;
+  quotation_id: number | null;
 }
 export interface ComplaintCycle {
   id: number;
@@ -52,6 +53,8 @@ export interface ComplaintVisit extends CycleRecord {
   purpose: string;
   status: string;
   charge_mode: string;
+  /** The client pays the visiting charge in cash to the visiting team. */
+  pay_at_visit: boolean;
   standard_fee?: Amount;
   currency?: string;
   team_details: string | null;
@@ -80,6 +83,7 @@ export interface ComplaintInspection extends CycleRecord {
   expected_completion_date: string | null;
   additional_visit_required: boolean;
   further_approval_required: boolean;
+  pending_work: string | null;
   submitted_at: string;
   submittedBy: ComplaintPerson;
   materials: {
@@ -104,6 +108,8 @@ export interface ComplaintQuotation extends CycleRecord {
   client_payable_amount: Amount;
   total_amount: Amount;
   shared_at: string | null;
+  // The client pays the repair amount when the work is resolved.
+  payment_at_resolution: boolean;
   created_at: string;
   createdBy: ComplaintPerson;
   items: {
@@ -193,6 +199,7 @@ export interface ComplaintCommunication {
 export interface ComplaintClosure extends CycleRecord {
   status: string;
   client_confirmation_status: string;
+  client_rating: number | null;
   no_response_reason: string | null;
   completion_verified_at: string | null;
   financial_verified_at: string | null;
@@ -220,12 +227,12 @@ export type ComplaintVisitAction =
   | "DECLINE_CHARGE"
   | "WAIVE_CHARGE"
   | "RECORD_PAYMENT"
+  | "PAY_AT_VISIT"
   | "APPROVE_FREE"
   | "DECLINE_FREE"
   | "SCHEDULE"
   | "CONFIRM"
   | "RESCHEDULE"
-  | "COMPLETE"
   | "CLIENT_NOT_AVAILABLE"
   | "SITE_NOT_ACCESSIBLE"
   | "CANCEL";
@@ -250,16 +257,26 @@ export interface ComplaintVisitPermissions {
 
 export interface ComplaintInspectionPermissions {
   can_set_warranty: boolean;
-  // Completed visit whose inspection report is still due.
-  report_visit: { id: number; visit_number: number; completed_at: string | null } | null;
+  // Scheduled visit whose inspection report completes it.
+  report_visit: {
+    id: number;
+    visit_number: number;
+    purpose: string;
+    // Why the report cannot be submitted yet, e.g. cash still to record.
+    blocked_reason: string | null;
+  } | null;
   // HO decides how a submitted inspection proceeds.
-  after_inspection: { material_required: boolean } | null;
+  after_inspection: {
+    material_required: boolean;
+    can_prepare_quotation: boolean;
+  } | null;
 }
 
 export interface ComplaintQuotationPermissions {
   latest_id: number | null;
-  can_edit: boolean;
-  edit_from_id: number | null;
+  // Upload the quotation file; it is shared with the client at once.
+  can_upload: boolean;
+  // Approval and sharing remain only for quotations from before uploads.
   can_review: boolean;
   can_share: boolean;
   can_record_client_response: boolean;
@@ -271,6 +288,8 @@ export interface ComplaintQuotationPermissions {
     can_record: boolean;
     can_waive: boolean;
   } | null;
+  // Repair amount the client pays once the work is resolved.
+  resolution_payment: { quotation_id: number; can_waive: boolean } | null;
 }
 
 export type ComplaintExecutionAction =
@@ -315,7 +334,7 @@ export interface ComplaintDetails {
   site_address: string;
   city: string | null;
   product_type: string | null;
-  component: ComplaintComponent;
+  component: ComplaintComponent | null;
   description: string;
   additional_remarks: string | null;
   preferred_visit_date: string | null;
