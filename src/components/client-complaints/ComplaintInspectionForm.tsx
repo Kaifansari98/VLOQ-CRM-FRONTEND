@@ -22,11 +22,15 @@ import {
 import type { ComplaintDetails } from "@/types/complaint-details";
 import { Field } from "./complaint-action-ui";
 import {
+  checkVisitCash,
   DOC_ACCEPT,
   FilesField,
+  initialVisitCash,
   PHOTO_ACCEPT,
   todayLocal,
   VIDEO_ACCEPT,
+  VisitCashSection,
+  visitCashDue,
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
 
@@ -112,6 +116,11 @@ export function ComplaintInspectionForm({
   const [videos, setVideos] = useState<File[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Pay-at-visit cash is recorded here for an inspection visit; an
+  // installation team visit records it in the completion report.
+  const cashDue =
+    visit.purpose === "INSPECTION" ? visitCashDue(c, visit.id) : null;
+  const [cash, setCash] = useState(() => initialVisitCash(cashDue));
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -146,8 +155,10 @@ export function ComplaintInspectionForm({
       });
     }
     if (!photos.length) next.photos = "Add at least one damage photograph.";
+    const cashCheck = checkVisitCash(cashDue, cash);
+    setCash((prev) => ({ ...prev, errors: cashCheck.errors }));
     setErrors(next);
-    if (Object.keys(next).length) return null;
+    if (Object.keys(next).length || !cashCheck.ok) return null;
 
     const optional = (v: string) => v.trim() || undefined;
     const fields: ComplaintInspectionInput = {
@@ -191,6 +202,7 @@ export function ComplaintInspectionForm({
       photos,
       videos,
       documents,
+      visit_payment: cashCheck.payment,
     };
   };
 
@@ -488,6 +500,10 @@ export function ComplaintInspectionForm({
       </div>
       {textArea("pending_work", "Pending work (write None if nothing)")}
       {textArea("remarks", "Remarks (optional)")}
+
+      {cashDue && (
+        <VisitCashSection due={cashDue} value={cash} onChange={setCash} />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <FilesField

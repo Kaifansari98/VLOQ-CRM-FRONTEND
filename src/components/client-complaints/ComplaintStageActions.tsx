@@ -34,6 +34,10 @@ import {
   PHOTO_ACCEPT,
   RecordPaymentDialog,
   todayLocal,
+  checkVisitCash,
+  initialVisitCash,
+  VisitCashSection,
+  visitCashDue,
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
 import { ComplaintInspectionForm } from "./ComplaintInspectionForm";
@@ -492,6 +496,10 @@ function StageDialog({
   const [paymentOption, setPaymentOption] = useState("PAID_NOW");
   const [payment, setPayment] = useState(emptyPayment());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Cash an installation team collected at its visit is recorded with the
+  // completion report.
+  const cashDue = mode === "COMPLETE_WORK" ? visitCashDue(c) : null;
+  const [cash, setCash] = useState(() => initialVisitCash(cashDue));
   const takesPayment =
     mode === "CLIENT_RESPONSE" &&
     outcome === "CLIENT_ACCEPTED" &&
@@ -554,8 +562,10 @@ function StageDialog({
       next.rating = "Select the client's rating.";
     if (mode === "APPROVE_CLOSURE" && !reviewed)
       next.reviewed = "Confirm the review.";
+    const cashCheck = checkVisitCash(cashDue, cash);
+    setCash((prev) => ({ ...prev, errors: cashCheck.errors }));
     setErrors(next);
-    if (Object.keys(next).length) return null;
+    if (Object.keys(next).length || !cashCheck.ok) return null;
 
     const version = c.version;
     const note = remarks.trim() || undefined;
@@ -640,6 +650,7 @@ function StageDialog({
           pending_work: completion.pending_work.trim(),
           before,
           after,
+          visit_payment: cashCheck.payment,
         };
       case "MATERIAL_ORDERED":
       case "MATERIAL_RECEIVED":
@@ -866,6 +877,9 @@ function StageDialog({
               error={errors.after}
             />
           </div>
+          {cashDue && (
+            <VisitCashSection due={cashDue} value={cash} onChange={setCash} />
+          )}
         </>
       )}
       {mode === "CLIENT_CONFIRMATION" && outcome === "SATISFIED" && (

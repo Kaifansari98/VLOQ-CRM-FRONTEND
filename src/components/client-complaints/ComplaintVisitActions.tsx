@@ -24,7 +24,6 @@ import {
   displayText as text,
 } from "./complaint-details-format";
 import { BRAND_BUTTON, Field, rupees } from "./complaint-action-ui";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   checkPayment,
   emptyPayment,
@@ -702,18 +701,18 @@ function CompleteTaskDialog({
   const paymentStep = visitStep(c, visitId) === "payment";
   const report = c.permissions.inspection.report_visit;
   const canInspect = !paymentStep && report?.id === visitId;
-  const cashDue =
-    state.actions.includes("RECORD_PAYMENT") && state.outstanding > 0;
   const labels = paymentStep ? PAYMENT_OUTCOME_LABELS : TASK_OUTCOME_LABELS;
 
   const outcomes: TaskOutcome[] = [
     ...(canInspect ? (["INSPECTION"] as const) : []),
-    ...(paymentStep ? PAYMENT_ACTIONS : TASK_ACTIONS).filter((a) =>
-      state.actions.includes(a),
+    // Cash collected at the visit goes in the inspection or completion
+    // report, so the task itself offers no separate payment step.
+    ...(paymentStep ? PAYMENT_ACTIONS : TASK_ACTIONS).filter(
+      (a) =>
+        state.actions.includes(a) && (paymentStep || a !== "RECORD_PAYMENT"),
     ),
   ];
   const [outcome, setOutcome] = useState<TaskOutcome>(outcomes[0]);
-  const [collected, setCollected] = useState(true);
   const [payment, setPayment] = useState(
     emptyPayment(
       visit.pay_at_visit ? "CASH" : "UPI",
@@ -726,14 +725,11 @@ function CompleteTaskDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const needsClient = outcome === "DECLINE_CHARGE";
 
-  const takesPayment =
-    outcome === "RECORD_PAYMENT" ||
-    (outcome === "INSPECTION" && cashDue && collected);
+  const takesPayment = outcome === "RECORD_PAYMENT";
   const remarksRequired =
     outcome !== "INSPECTION" &&
     REMARKS_REQUIRED.includes(outcome as ComplaintVisitAction);
-  const blocked =
-    outcome === "INSPECTION" && !takesPayment ? report?.blocked_reason : null;
+  const blocked = outcome === "INSPECTION" ? report?.blocked_reason : null;
 
   const build = (): ComplaintWorkflowRequest | null => {
     if (takesPayment) {
@@ -788,14 +784,8 @@ function CompleteTaskDialog({
       complaintId={c.id}
       build={build}
       onClose={onClose}
-      // After cash is recorded the inspection report opens straight away.
-      onDone={outcome === "INSPECTION" ? onInspection : onClose}
       confirmLabel={
-        outcome === "INSPECTION"
-          ? takesPayment
-            ? "Record Payment & Continue"
-            : "Continue to Inspection"
-          : "Submit"
+        outcome === "INSPECTION" ? "Open Inspection Report" : "Submit"
       }
     >
       <Field label="Outcome" error={errors.outcome}>
@@ -824,21 +814,6 @@ function CompleteTaskDialog({
         )}
       </Field>
 
-      {outcome === "INSPECTION" && cashDue && (
-        <label className="flex items-center gap-2 text-xs">
-          <Checkbox
-            checked={collected}
-            onCheckedChange={(v) => setCollected(v === true)}
-          />
-          Visiting charge of {rupees(state.outstanding)} collected at the visit
-        </label>
-      )}
-      {outcome === "INSPECTION" && cashDue && !collected && (
-        <p className="text-[11px] text-amber-700 dark:text-amber-400">
-          The charge stays due; HO cannot close the complaint until it is
-          recorded or waived.
-        </p>
-      )}
       {takesPayment && (
         <PaymentInputs
           value={payment}
