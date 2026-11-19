@@ -466,6 +466,16 @@ export function ComplaintDetailsView({
               />
               <div className="border-t pt-4">
                 <Note title="Site address">{c.site_address}</Note>
+                {c.site_map_link && (
+                  <a
+                    href={c.site_map_link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
+                  >
+                    Open site in Maps ↗
+                  </a>
+                )}
               </div>
               <Note title="Exceptional-client reason">
                 {c.exceptional_reason}

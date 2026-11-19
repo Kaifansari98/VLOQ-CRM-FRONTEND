@@ -230,6 +230,11 @@ export function ComplaintInspectionForm({
             value={form.actual_visit_date}
             onChange={(v) => set("actual_visit_date", v ?? "")}
             restriction="pastOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.actual_visit_date && "border-destructive",
+            )}
+            placeholder="Select the actual visit date"
           />
         </Field>
         <Field label="Affected product" error={errors.affected_product}>
@@ -453,6 +458,11 @@ export function ComplaintInspectionForm({
             value={form.expected_completion_date}
             onChange={(v) => set("expected_completion_date", v ?? "")}
             restriction="futureOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.expected_completion_date && "border-destructive",
+            )}
+            placeholder="Select the expected completion date"
           />
         </Field>
       </div>

@@ -92,7 +92,7 @@ const STAGE_HINTS: Partial<Record<ComplaintDetails["status"], string>> = {
   PAYMENT_PENDING:
     "Collect the visiting charge and record the payment with proof, or mark it as cash at the visit.",
   VISIT_SCHEDULED:
-    "Visit scheduled. Update the visit once it has happened; the inspection report follows.",
+    "Visit scheduled. Press Complete Inspection to submit the inspection (and collect cash if due), or to reschedule or report the visit could not happen.",
   INSPECTION_SUBMITTED:
     "Inspection submitted. HO decides whether a quotation, a repair or another visit is needed.",
   QUOTATION_PREPARATION:

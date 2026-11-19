@@ -37,6 +37,7 @@ import {
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
 import { ComplaintInspectionForm } from "./ComplaintInspectionForm";
+import { visitHasTask } from "./ComplaintVisitActions";
 
 // Inspection → quotation → repair → closure steps (spec 12–16), plus the
 // warranty decision and cancellation. The server decides which steps apply.
@@ -163,22 +164,23 @@ export function ComplaintStageActions({
 
   return (
     <>
-      {inspection?.report_visit && (
-        <Row
-          label={`Visit ${inspection.report_visit.visit_number} inspection`}
-          detail={
-            inspection.report_visit.blocked_reason ??
-            "submitting the inspection report completes the visit"
-          }
-        >
-          {btn(
-            "INSPECTION",
-            "Complete Inspection",
-            true,
-            !!inspection.report_visit.blocked_reason,
-          )}
-        </Row>
-      )}
+      {inspection?.report_visit &&
+        !visitHasTask(c, inspection.report_visit.id) && (
+          <Row
+            label={`Visit ${inspection.report_visit.visit_number} inspection`}
+            detail={
+              inspection.report_visit.blocked_reason ??
+              "submitting the inspection report completes the visit"
+            }
+          >
+            {btn(
+              "INSPECTION",
+              "Complete Inspection",
+              true,
+              !!inspection.report_visit.blocked_reason,
+            )}
+          </Row>
+        )}
       {inspection?.after_inspection && (
         <Row
           label="Inspection submitted"
@@ -777,6 +779,8 @@ function StageDialog({
               value={expected}
               onChange={(v) => setExpected(v ?? "")}
               restriction="futureOnly"
+              className="h-9 w-full rounded-lg text-xs"
+              placeholder="Select the expected date"
             />
           </Field>
         </div>
@@ -787,6 +791,11 @@ function StageDialog({
             value={received}
             onChange={(v) => setReceived(v ?? "")}
             restriction="pastOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.received && "border-destructive",
+            )}
+            placeholder="Select the received date"
           />
         </Field>
       )}
@@ -796,6 +805,11 @@ function StageDialog({
             value={when}
             onChange={(v) => setWhen(v ?? "")}
             restriction="futureOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.when && "border-destructive",
+            )}
+            placeholder="Select the resolution visit date"
           />
         </Field>
       )}

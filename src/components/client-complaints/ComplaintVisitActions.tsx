@@ -24,10 +24,57 @@ import {
   displayText as text,
 } from "./complaint-details-format";
 import { BRAND_BUTTON, Field, rupees } from "./complaint-action-ui";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
+  checkPayment,
+  emptyPayment,
+  PaymentInputs,
   RecordPaymentDialog,
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
+import { ComplaintInspectionForm } from "./ComplaintInspectionForm";
+
+// Once a visit is scheduled its outcomes sit behind one "Complete Inspection"
+// button, the way FM tasks work.
+const TASK_ACTIONS: ComplaintVisitAction[] = [
+  "CONFIRM",
+  "RESCHEDULE",
+  "CLIENT_NOT_AVAILABLE",
+  "SITE_NOT_ACCESSIBLE",
+  "CANCEL",
+  "RECORD_PAYMENT",
+];
+const TASK_STATUSES = ["SCHEDULED", "CONFIRMED"];
+
+// While the visiting charge is awaited, its choices sit behind one
+// "Record Payment" button the same way.
+const PAYMENT_ACTIONS: ComplaintVisitAction[] = [
+  "RECORD_PAYMENT",
+  "PAY_AT_VISIT",
+  "DECLINE_CHARGE",
+  "WAIVE_CHARGE",
+  "CANCEL",
+];
+
+type VisitStep = "task" | "payment";
+
+function visitStep(c: ComplaintDetails, visitId: number): VisitStep | null {
+  const visit = c.visits.find((v) => v.id === visitId);
+  const state = c.permissions.visits.visit_actions[String(visitId)];
+  if (!visit || !state) return null;
+  if (TASK_STATUSES.includes(visit.status)) return "task";
+  if (
+    visit.status === "AWAITING_PAYMENT" &&
+    state.actions.some((a) => PAYMENT_ACTIONS.includes(a))
+  )
+    return "payment";
+  return null;
+}
+
+// True when the visit's inspection report is reached through Complete Inspection.
+export function visitHasTask(c: ComplaintDetails, visitId: number) {
+  return visitStep(c, visitId) === "task";
+}
 
 const ACTION_META: Record<
   ComplaintVisitAction,
@@ -112,7 +159,9 @@ const REMARKS_REQUIRED: ComplaintVisitAction[] = [
 type DialogState =
   | { kind: "visit"; visitId: number; action: ComplaintVisitAction }
   | { kind: "create" }
-  | { kind: "review"; paymentId: number };
+  | { kind: "review"; paymentId: number }
+  | { kind: "task"; visitId: number }
+  | { kind: "inspection" };
 
 export function ComplaintVisitActions({
   complaint: c,
@@ -181,6 +230,12 @@ export function ComplaintVisitActions({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {[...state.actions]
+                .filter((a) => {
+                  const step = visitStep(c, visit.id);
+                  if (step === "task") return !TASK_ACTIONS.includes(a);
+                  if (step === "payment") return !PAYMENT_ACTIONS.includes(a);
+                  return true;
+                })
                 .sort(
                   (a, b) =>
                     Number(!!ACTION_META[a].primary) -
@@ -197,6 +252,16 @@ export function ComplaintVisitActions({
                     {ACTION_META[action].label}
                   </Button>
                 ))}
+              {visitStep(c, visit.id) && (
+                <Button
+                  {...button(true)}
+                  onClick={() => setDialog({ kind: "task", visitId: visit.id })}
+                >
+                  {visitStep(c, visit.id) === "task"
+                    ? "Complete Inspection"
+                    : "Record Payment"}
+                </Button>
+              )}
             </div>
           </div>
         );
@@ -241,7 +306,24 @@ export function ComplaintVisitActions({
         </div>
       )}
 
-      {dialog?.kind === "visit" && dialog.action === "RECORD_PAYMENT" ? (
+      {dialog?.kind === "inspection" ? (
+        <ComplaintInspectionForm
+          complaint={c}
+          vendorId={vendorId}
+          brandStyle={brandStyle}
+          onClose={() => setDialog(null)}
+        />
+      ) : dialog?.kind === "task" ? (
+        <CompleteTaskDialog
+          key={dialog.visitId}
+          visitId={dialog.visitId}
+          complaint={c}
+          vendorId={vendorId}
+          brandStyle={brandStyle}
+          onClose={() => setDialog(null)}
+          onInspection={() => setDialog({ kind: "inspection" })}
+        />
+      ) : dialog?.kind === "visit" && dialog.action === "RECORD_PAYMENT" ? (
         <RecordPaymentDialog
           title={`Record Payment · Visit ${c.visits.find((v) => v.id === dialog.visitId)?.visit_number}`}
           outstanding={
@@ -287,7 +369,7 @@ function VisitDialog({
   brandStyle,
   onClose,
 }: {
-  state: DialogState;
+  state: Extract<DialogState, { kind: "visit" | "create" | "review" }>;
   complaint: ComplaintDetails;
   vendorId: number;
   brandStyle: CSSProperties;
@@ -503,6 +585,11 @@ function VisitDialog({
             value={when}
             onChange={(v) => setWhen(v ?? "")}
             restriction="futureOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.when && "border-destructive",
+            )}
+            placeholder="Select the visit date"
           />
         </Field>
       )}
@@ -569,6 +656,245 @@ function VisitDialog({
           className="text-xs"
         />
       </Field>
+    </WorkflowDialog>
+  );
+}
+
+type TaskOutcome = "INSPECTION" | ComplaintVisitAction;
+
+const TASK_OUTCOME_LABELS: Partial<Record<TaskOutcome, string>> = {
+  INSPECTION: "Visit done · complete inspection",
+  CONFIRM: "Client confirmed the visit",
+  RESCHEDULE: "Reschedule visit",
+  CLIENT_NOT_AVAILABLE: "Client not available",
+  SITE_NOT_ACCESSIBLE: "Site not accessible",
+  CANCEL: "Cancel visit",
+  RECORD_PAYMENT: "Record payment only",
+};
+
+const PAYMENT_OUTCOME_LABELS: Partial<Record<TaskOutcome, string>> = {
+  RECORD_PAYMENT: "Payment received",
+  PAY_AT_VISIT: "Client pays cash at the visit",
+  DECLINE_CHARGE: "Client declined the charge",
+  WAIVE_CHARGE: "Waive the charge (HO exception)",
+  CANCEL: "Cancel visit",
+};
+
+// FM-style task completion for a scheduled visit: pick what happened, then
+// fill in only what that outcome needs.
+function CompleteTaskDialog({
+  visitId,
+  complaint: c,
+  vendorId,
+  brandStyle,
+  onClose,
+  onInspection,
+}: {
+  visitId: number;
+  complaint: ComplaintDetails;
+  vendorId: number;
+  brandStyle: CSSProperties;
+  onClose: () => void;
+  onInspection: () => void;
+}) {
+  const visit = c.visits.find((v) => v.id === visitId)!;
+  const state = c.permissions.visits.visit_actions[String(visitId)];
+  const paymentStep = visitStep(c, visitId) === "payment";
+  const report = c.permissions.inspection.report_visit;
+  const canInspect = !paymentStep && report?.id === visitId;
+  const cashDue =
+    state.actions.includes("RECORD_PAYMENT") && state.outstanding > 0;
+  const labels = paymentStep ? PAYMENT_OUTCOME_LABELS : TASK_OUTCOME_LABELS;
+
+  const outcomes: TaskOutcome[] = [
+    ...(canInspect ? (["INSPECTION"] as const) : []),
+    ...(paymentStep ? PAYMENT_ACTIONS : TASK_ACTIONS).filter((a) =>
+      state.actions.includes(a),
+    ),
+  ];
+  const [outcome, setOutcome] = useState<TaskOutcome>(outcomes[0]);
+  const [collected, setCollected] = useState(true);
+  const [payment, setPayment] = useState(
+    emptyPayment(
+      visit.pay_at_visit ? "CASH" : "UPI",
+      state.outstanding ? String(state.outstanding) : "",
+    ),
+  );
+  const [remarks, setRemarks] = useState("");
+  const [when, setWhen] = useState("");
+  const [clientReference, setClientReference] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const needsClient = outcome === "DECLINE_CHARGE";
+
+  const takesPayment =
+    outcome === "RECORD_PAYMENT" ||
+    (outcome === "INSPECTION" && cashDue && collected);
+  const remarksRequired =
+    outcome !== "INSPECTION" &&
+    REMARKS_REQUIRED.includes(outcome as ComplaintVisitAction);
+  const blocked =
+    outcome === "INSPECTION" && !takesPayment ? report?.blocked_reason : null;
+
+  const build = (): ComplaintWorkflowRequest | null => {
+    if (takesPayment) {
+      const { errors: next, fields } = checkPayment(payment, state.outstanding);
+      setErrors(next);
+      return fields
+        ? {
+            kind: "visitPayment",
+            version: c.version,
+            visit_id: visitId,
+            ...fields,
+          }
+        : null;
+    }
+    if (outcome === "INSPECTION") {
+      if (blocked) {
+        setErrors({ outcome: blocked });
+        return null;
+      }
+      onInspection();
+      return null;
+    }
+    const next: Record<string, string> = {};
+    if (remarksRequired && !remarks.trim()) next.remarks = "This is required.";
+    if (outcome === "RESCHEDULE" && !when)
+      next.when = "Pick the new visit date.";
+    if (needsClient && !clientReference.trim())
+      next.client = "Record how the client confirmed.";
+    setErrors(next);
+    if (Object.keys(next).length) return null;
+    return {
+      kind: "visitAction",
+      version: c.version,
+      visit_id: visitId,
+      action: outcome,
+      remarks: remarks.trim() || undefined,
+      client_reference: needsClient ? clientReference.trim() : undefined,
+      scheduled_for: outcome === "RESCHEDULE" ? when : undefined,
+    };
+  };
+
+  return (
+    <WorkflowDialog
+      title={`${paymentStep ? "Record Payment" : "Complete Inspection"} · Visit ${visit.visit_number}`}
+      description={
+        paymentStep
+          ? `Visiting charge ${rupees(state.outstanding)}. Select how the client is paying, or what happened.`
+          : `${visit.purpose === "INSTALLATION_TEAM" ? "Installation team visit" : "Inspection visit"}${visit.scheduled_for ? ` on ${date(visit.scheduled_for)}` : ""}. Select what happened.`
+      }
+      brandStyle={brandStyle}
+      vendorId={vendorId}
+      complaintId={c.id}
+      build={build}
+      onClose={onClose}
+      // After cash is recorded the inspection report opens straight away.
+      onDone={outcome === "INSPECTION" ? onInspection : onClose}
+      confirmLabel={
+        outcome === "INSPECTION"
+          ? takesPayment
+            ? "Record Payment & Continue"
+            : "Continue to Inspection"
+          : "Submit"
+      }
+    >
+      <Field label="Outcome" error={errors.outcome}>
+        <Select
+          value={outcome}
+          onValueChange={(v) => {
+            setOutcome(v as TaskOutcome);
+            setErrors({});
+          }}
+        >
+          <SelectTrigger className="h-9 w-full text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {outcomes.map((o) => (
+              <SelectItem key={o} value={o}>
+                {labels[o]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {outcome !== "INSPECTION" && outcome !== "RECORD_PAYMENT" && (
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            {ACTION_META[outcome].description}
+          </p>
+        )}
+      </Field>
+
+      {outcome === "INSPECTION" && cashDue && (
+        <label className="flex items-center gap-2 text-xs">
+          <Checkbox
+            checked={collected}
+            onCheckedChange={(v) => setCollected(v === true)}
+          />
+          Visiting charge of {rupees(state.outstanding)} collected at the visit
+        </label>
+      )}
+      {outcome === "INSPECTION" && cashDue && !collected && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+          The charge stays due; HO cannot close the complaint until it is
+          recorded or waived.
+        </p>
+      )}
+      {takesPayment && (
+        <PaymentInputs
+          value={payment}
+          onChange={setPayment}
+          errors={errors}
+          outstanding={state.outstanding}
+        />
+      )}
+
+      {needsClient && (
+        <Field label="How the client confirmed" error={errors.client}>
+          <Input
+            value={clientReference}
+            onChange={(e) => setClientReference(e.target.value)}
+            placeholder="e.g. Phone call on 98xxx, 13 Nov 10:30"
+            className="h-9 text-xs"
+          />
+        </Field>
+      )}
+      {outcome === "RESCHEDULE" && (
+        <Field label="New visit date" error={errors.when}>
+          <CustomeDatePicker
+            value={when}
+            onChange={(v) => setWhen(v ?? "")}
+            restriction="futureOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.when && "border-destructive",
+            )}
+            placeholder="Select the visit date"
+          />
+        </Field>
+      )}
+      {outcome !== "INSPECTION" && outcome !== "RECORD_PAYMENT" && (
+        <Field
+          label={
+            outcome === "RESCHEDULE"
+              ? "Reason for rescheduling"
+              : outcome === "DECLINE_CHARGE"
+                ? "Client's reason"
+                : outcome === "WAIVE_CHARGE"
+                  ? "Reason for the waiver"
+                  : remarksRequired
+                    ? "Remarks"
+                    : "Remarks (optional)"
+          }
+          error={errors.remarks}
+        >
+          <Textarea
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            rows={3}
+            className="text-xs"
+          />
+        </Field>
+      )}
     </WorkflowDialog>
   );
 }

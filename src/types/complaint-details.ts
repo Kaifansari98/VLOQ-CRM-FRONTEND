@@ -334,6 +334,7 @@ export interface ComplaintDetails {
   client_alternate_mobile: string | null;
   client_email: string | null;
   site_address: string;
+  site_map_link: string | null;
   city: string | null;
   product_type: string | null;
   component: ComplaintComponent | null;

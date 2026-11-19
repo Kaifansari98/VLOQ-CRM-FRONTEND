@@ -45,6 +45,7 @@ export function WorkflowDialog({
   onClose,
   confirmLabel = "Confirm",
   wide,
+  onDone,
   children,
 }: {
   title: string;
@@ -57,6 +58,8 @@ export function WorkflowDialog({
   onClose: () => void;
   confirmLabel?: string;
   wide?: boolean;
+  // Runs after a successful request instead of onClose.
+  onDone?: () => void;
   children: ReactNode;
 }) {
   const workflow = useComplaintWorkflow(vendorId, complaintId);
@@ -67,7 +70,7 @@ export function WorkflowDialog({
     setError(null);
     try {
       await workflow.mutateAsync(request);
-      onClose();
+      (onDone ?? onClose)();
     } catch (e) {
       setError(workflowError(e));
     }
@@ -332,6 +335,11 @@ export function PaymentInputs({
             value={value.paidOn}
             onChange={(v) => set("paidOn", v ?? "")}
             restriction="pastOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.paidOn && "border-destructive",
+            )}
+            placeholder="Select the payment date"
           />
         </Field>
       </div>
