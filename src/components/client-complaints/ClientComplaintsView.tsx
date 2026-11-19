@@ -287,7 +287,8 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="text-[11px] text-muted-foreground truncate max-w-[240px] mt-0.5">
-                              {item.category} · {COMPONENT_LABELS[item.component]}
+                              {item.category}
+                              {item.component && ` · ${COMPONENT_LABELS[item.component]}`}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>

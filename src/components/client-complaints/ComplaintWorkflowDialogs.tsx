@@ -227,64 +227,71 @@ export type PaymentFields = {
   proof: File;
 };
 
-// Records a payment with proof against any charge; HO verifies it afterwards.
-export function RecordPaymentDialog({
-  title,
-  outstanding,
-  brandStyle,
-  vendorId,
-  complaintId,
-  toRequest,
-  onClose,
-}: {
-  title: string;
-  outstanding: number;
-  brandStyle: CSSProperties;
-  vendorId: number;
-  complaintId: number;
-  toRequest: (fields: PaymentFields) => ComplaintWorkflowRequest;
-  onClose: () => void;
-}) {
-  const [amount, setAmount] = useState(outstanding ? String(outstanding) : "");
-  const [method, setMethod] = useState("UPI");
-  const [reference, setReference] = useState("");
-  const [paidOn, setPaidOn] = useState(todayLocal());
-  const [proof, setProof] = useState<File[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+export type PaymentDraft = {
+  amount: string;
+  method: string;
+  reference: string;
+  paidOn: string;
+  proof: File[];
+};
 
-  const build = () => {
-    const next: Record<string, string> = {};
-    const value = Number(amount);
-    if (!value || value <= 0) next.amount = "Enter the amount received.";
-    else if (value > outstanding)
-      next.amount = `Only ${rupees(outstanding)} is outstanding.`;
-    if (!reference.trim()) next.reference = "Enter the transaction reference.";
-    if (!paidOn) next.paidOn = "Pick the payment date.";
-    if (!proof.length) next.proof = "Attach the payment proof.";
-    setErrors(next);
-    if (Object.keys(next).length) return null;
-    return toRequest({
+export const emptyPayment = (method = "UPI", amount = ""): PaymentDraft => ({
+  amount,
+  method,
+  reference: "",
+  paidOn: todayLocal(),
+  proof: [],
+});
+
+// Validates a payment draft. Without `outstanding` the amount is not capped.
+export function checkPayment(
+  draft: PaymentDraft,
+  outstanding?: number,
+): { errors: Record<string, string>; fields: PaymentFields | null } {
+  const errors: Record<string, string> = {};
+  const value = Number(draft.amount);
+  if (!value || value <= 0) errors.amount = "Enter the amount received.";
+  else if (outstanding !== undefined && value > outstanding)
+    errors.amount = `Only ${rupees(outstanding)} is outstanding.`;
+  if (!draft.reference.trim())
+    errors.reference = "Enter the transaction reference.";
+  if (!draft.paidOn) errors.paidOn = "Pick the payment date.";
+  if (!draft.proof.length) errors.proof = "Attach the payment proof.";
+  if (Object.keys(errors).length) return { errors, fields: null };
+  return {
+    errors,
+    fields: {
       amount: value,
-      method,
-      transaction_reference: reference.trim(),
-      payment_date: paidOn,
-      proof: proof[0],
-    });
+      method: draft.method,
+      transaction_reference: draft.reference.trim(),
+      payment_date: draft.paidOn,
+      proof: draft.proof[0],
+    },
   };
+}
 
+export function PaymentInputs({
+  value,
+  onChange,
+  errors,
+  outstanding,
+}: {
+  value: PaymentDraft;
+  onChange: (next: PaymentDraft) => void;
+  errors: Record<string, string>;
+  outstanding?: number;
+}) {
+  const set = <K extends keyof PaymentDraft>(key: K, v: PaymentDraft[K]) =>
+    onChange({ ...value, [key]: v });
   return (
-    <WorkflowDialog
-      title={title}
-      description="Payments need a transaction reference and proof, and are verified by HO."
-      brandStyle={brandStyle}
-      vendorId={vendorId}
-      complaintId={complaintId}
-      build={build}
-      onClose={onClose}
-    >
+    <>
       <div className="grid grid-cols-2 gap-3">
         <Field
-          label={`Amount (outstanding ${rupees(outstanding)})`}
+          label={
+            outstanding !== undefined
+              ? `Amount (outstanding ${rupees(outstanding)})`
+              : "Amount received"
+          }
           error={errors.amount}
         >
           <Input
@@ -292,13 +299,13 @@ export function RecordPaymentDialog({
             inputMode="decimal"
             min={1}
             max={outstanding}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            value={value.amount}
+            onChange={(e) => set("amount", e.target.value)}
             className="h-9 text-xs"
           />
         </Field>
         <Field label="Method">
-          <Select value={method} onValueChange={setMethod}>
+          <Select value={value.method} onValueChange={(v) => set("method", v)}>
             <SelectTrigger className="h-9 w-full text-xs">
               <SelectValue />
             </SelectTrigger>
@@ -315,26 +322,80 @@ export function RecordPaymentDialog({
       <div className="grid grid-cols-2 gap-3">
         <Field label="Transaction reference" error={errors.reference}>
           <Input
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
+            value={value.reference}
+            onChange={(e) => set("reference", e.target.value)}
             className="h-9 text-xs"
           />
         </Field>
         <Field label="Payment date" error={errors.paidOn}>
           <CustomeDatePicker
-            value={paidOn}
-            onChange={(v) => setPaidOn(v ?? "")}
+            value={value.paidOn}
+            onChange={(v) => set("paidOn", v ?? "")}
             restriction="pastOnly"
           />
         </Field>
       </div>
       <FilesField
         label="Payment proof"
-        files={proof}
-        onChange={setProof}
+        files={value.proof}
+        onChange={(files) => set("proof", files)}
         accept={`${PHOTO_ACCEPT},${DOC_ACCEPT}`}
         max={1}
         error={errors.proof}
+      />
+    </>
+  );
+}
+
+// Records a payment with proof against a charge.
+export function RecordPaymentDialog({
+  title,
+  outstanding,
+  brandStyle,
+  vendorId,
+  complaintId,
+  toRequest,
+  onClose,
+  defaultMethod = "UPI",
+  description = "Payments need a transaction reference and proof. HO's payments count as verified; a supervisor's are verified by HO.",
+}: {
+  title: string;
+  // Omit when there is no fixed amount to collect against.
+  outstanding?: number;
+  brandStyle: CSSProperties;
+  vendorId: number;
+  complaintId: number;
+  toRequest: (fields: PaymentFields) => ComplaintWorkflowRequest;
+  onClose: () => void;
+  defaultMethod?: string;
+  description?: string;
+}) {
+  const [draft, setDraft] = useState(
+    emptyPayment(defaultMethod, outstanding ? String(outstanding) : ""),
+  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const build = () => {
+    const { errors: next, fields } = checkPayment(draft, outstanding);
+    setErrors(next);
+    return fields ? toRequest(fields) : null;
+  };
+
+  return (
+    <WorkflowDialog
+      title={title}
+      description={description}
+      brandStyle={brandStyle}
+      vendorId={vendorId}
+      complaintId={complaintId}
+      build={build}
+      onClose={onClose}
+    >
+      <PaymentInputs
+        value={draft}
+        onChange={setDraft}
+        errors={errors}
+        outstanding={outstanding}
       />
     </WorkflowDialog>
   );

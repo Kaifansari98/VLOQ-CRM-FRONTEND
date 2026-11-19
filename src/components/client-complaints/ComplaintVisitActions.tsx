@@ -52,7 +52,12 @@ const ACTION_META: Record<
     label: "Record Payment",
     primary: true,
     description:
-      "Payments need a transaction reference and proof, and are verified by HO.",
+      "Payments need a transaction reference and proof. The visiting charge is cleared as soon as it is recorded.",
+  },
+  PAY_AT_VISIT: {
+    label: "Cash at Visit",
+    description:
+      "The client pays the visiting charge in cash to the visiting team. The visit can be scheduled now; record the cash with proof before submitting the inspection report.",
   },
   APPROVE_FREE: {
     label: "Approve Free Visit",
@@ -77,11 +82,6 @@ const ACTION_META: Record<
   RESCHEDULE: {
     label: "Reschedule",
     description: "Pick the new date and time and record why it changed.",
-  },
-  COMPLETE: {
-    label: "Visit Completed",
-    primary: true,
-    description: "The inspection report is submitted after this.",
   },
   CLIENT_NOT_AVAILABLE: {
     label: "Client Not Available",
@@ -168,6 +168,11 @@ export function ComplaintVisitActions({
                   ` (${rupees(state.outstanding)} due)`}
                 {visit.scheduled_for && ` · ${date(visit.scheduled_for, true)}`}
               </span>
+              {visit.pay_at_visit && state.outstanding > 0 && (
+                <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
+                  Cash to be collected at visit
+                </span>
+              )}
               {state.payment_pending_verification && (
                 <span className="ml-2 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                   Payment awaiting HO verification
@@ -242,6 +247,12 @@ export function ComplaintVisitActions({
           outstanding={
             perms.visit_actions[String(dialog.visitId)]?.outstanding ?? 0
           }
+          defaultMethod={
+            c.visits.find((v) => v.id === dialog.visitId)?.pay_at_visit
+              ? "CASH"
+              : undefined
+          }
+          description={ACTION_META.RECORD_PAYMENT.description}
           brandStyle={brandStyle}
           vendorId={vendorId}
           complaintId={c.id}
@@ -300,6 +311,9 @@ function VisitDialog({
   const [clientReference, setClientReference] = useState("");
   const [when, setWhen] = useState("");
   const [team, setTeam] = useState(visit?.team_details ?? "");
+  const [purpose, setPurpose] = useState<"INSPECTION" | "INSTALLATION_TEAM">(
+    "INSPECTION",
+  );
   const [chargeMode, setChargeMode] = useState<"CHARGEABLE" | "FREE_REPEAT">(
     "CHARGEABLE",
   );
@@ -383,6 +397,7 @@ function VisitDialog({
       scheduled_for: needsWhen ? new Date(when).toISOString() : undefined,
       team_details:
         action === "SCHEDULE" ? team.trim() || undefined : undefined,
+      purpose: action === "SCHEDULE" ? purpose : undefined,
     };
   };
 
@@ -453,6 +468,33 @@ function VisitDialog({
             placeholder="e.g. Phone call on 98xxx, 13 Nov 10:30"
             className="h-9 text-xs"
           />
+        </Field>
+      )}
+
+      {action === "SCHEDULE" && (
+        <Field label="Visit type">
+          <Select
+            value={purpose}
+            onValueChange={(v) => setPurpose(v as typeof purpose)}
+          >
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="INSPECTION">Inspection visit</SelectItem>
+              <SelectItem value="INSTALLATION_TEAM">
+                Installation team visit
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {purpose === "INSTALLATION_TEAM" && (
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              The team fixes the issue on site. The supervisor still submits the
+              inspection report; the complaint then skips the quotation and goes
+              to material procurement if material is listed, otherwise to client
+              confirmation.
+            </p>
+          )}
         </Field>
       )}
 

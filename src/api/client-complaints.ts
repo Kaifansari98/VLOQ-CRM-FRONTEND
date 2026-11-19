@@ -24,6 +24,8 @@ const path = (vendorId: number) => `/client-complaints/vendor/${vendorId}`;
 
 export interface ComplaintMeta {
   categories: { id: number; name: string }[];
+  // Suggestions for the City field.
+  cities: string[];
   product_types: { id: number; type: string }[];
   components: ComplaintComponent[];
   can_register: boolean;
@@ -254,6 +256,7 @@ export type ComplaintWorkflowRequest =
       client_reference?: string;
       scheduled_for?: string;
       team_details?: string;
+      purpose?: "INSPECTION" | "INSTALLATION_TEAM";
     }
   | {
       kind: "visitPayment";
@@ -280,10 +283,12 @@ export type ComplaintWorkflowRequest =
       kind: "inspectionDecision";
       version: number;
       action: "START_QUOTATION" | "PROCEED_WITHOUT_QUOTATION" | "RESOLVE_WITHOUT_REPAIR";
-      remarks?: string;
+      remarks: string;
       material_required?: boolean;
+      // Quotation file shared with the client straight away (START_QUOTATION).
+      files?: File[];
     }
-  | { kind: "saveQuotation"; version: number; items: ComplaintQuotationItemInput[]; tax_amount: number; submit: boolean }
+  | { kind: "uploadQuotation"; version: number; remarks?: string; files: File[] }
   | {
       kind: "quotationAction";
       version: number;
@@ -291,7 +296,25 @@ export type ComplaintWorkflowRequest =
       action: "APPROVE" | "SEND_FOR_REVISION" | "SHARE" | "CLIENT_ACCEPTED" | "CLIENT_REJECTED" | "MODIFICATION_REQUESTED";
       remarks?: string;
       client_reference?: string;
+      // CLIENT_ACCEPTED: how the repair is paid; PAID_NOW carries the payment.
+      payment_option?: "PAID_NOW" | "AT_RESOLUTION" | "NONE";
+      amount?: number;
+      method?: string;
+      transaction_reference?: string;
+      payment_date?: string;
+      proof?: File;
     }
+  | {
+      kind: "resolutionPayment";
+      version: number;
+      quotation_id: number;
+      amount: number;
+      method: string;
+      transaction_reference: string;
+      payment_date: string;
+      proof: File;
+    }
+  | { kind: "resolutionWaiver"; version: number; quotation_id: number; remarks: string }
   | {
       kind: "chargePayment";
       version: number;
@@ -323,7 +346,7 @@ export type ComplaintWorkflowRequest =
       material_used?: string;
       replacement_details?: string;
       client_remarks?: string;
-      pending_work?: string;
+      pending_work: string;
       before: File[];
       after: File[];
     }
@@ -333,6 +356,8 @@ export type ComplaintWorkflowRequest =
       outcome: "SATISFIED" | "NOT_SATISFIED";
       client_reference: string;
       remarks?: string;
+      // 1–5 stars, required when the client is satisfied.
+      rating?: number;
       photos: File[];
     }
   | { kind: "noResponseClosure"; version: number; remarks: string }
@@ -361,19 +386,10 @@ export interface ComplaintInspectionInput {
   }[];
   remarks?: string;
   estimated_work_days?: number;
-  expected_completion_date?: string;
+  expected_completion_date: string;
   additional_visit_required: boolean;
   further_approval_required: boolean;
-}
-
-export interface ComplaintQuotationItemInput {
-  category: string;
-  description: string;
-  quantity: number;
-  unit?: string;
-  unit_rate: number;
-  warranty_covered_amount: number;
-  chargeable_reason?: string;
+  pending_work: string;
 }
 
 export async function runComplaintWorkflow(vendorId: number, complaintId: number, request: ComplaintWorkflowRequest) {
@@ -414,9 +430,29 @@ export async function runComplaintWorkflow(vendorId: number, complaintId: number
       ]);
       return;
     }
+    case "inspectionDecision": {
+      const { kind: _, files = [], ...fields } = request;
+      await multipart(`${base}/inspection-decision`, fields, files.map((f) => ["files", f]));
+      return;
+    }
+    case "uploadQuotation": {
+      const { kind: _, files, ...fields } = request;
+      await multipart(`${base}/quotations`, fields, files.map((f) => ["files", f]));
+      return;
+    }
     case "quotationAction": {
+      const { kind: _, quotation_id, proof, ...fields } = request;
+      await multipart(`${base}/quotations/${quotation_id}/action`, fields, proof ? [["proof", proof]] : []);
+      return;
+    }
+    case "resolutionPayment": {
+      const { kind: _, quotation_id, proof, ...fields } = request;
+      await multipart(`${base}/quotations/${quotation_id}/resolution-payment`, fields, [["proof", proof]]);
+      return;
+    }
+    case "resolutionWaiver": {
       const { kind: _, quotation_id, ...body } = request;
-      await apiClient.post(`${base}/quotations/${quotation_id}/action`, body);
+      await apiClient.post(`${base}/quotations/${quotation_id}/resolution-waiver`, body);
       return;
     }
     case "chargePayment": {
@@ -458,8 +494,6 @@ export async function runComplaintWorkflow(vendorId: number, complaintId: number
         createVisit: `${base}/visits`,
         warranty: `${base}/warranty`,
         cancel: `${base}/cancel`,
-        inspectionDecision: `${base}/inspection-decision`,
-        saveQuotation: `${base}/quotations`,
         noResponseClosure: `${base}/closure/no-response`,
         approveClosure: `${base}/closure/approve`,
       }[kind];
@@ -478,6 +512,7 @@ export function useComplaintWorkflow(vendorId: number, complaintId: number) {
         queryClient.invalidateQueries({ queryKey: ["client-complaint-detail", vendorId, complaintId] }),
         queryClient.invalidateQueries({ queryKey: ["client-complaint-activity", vendorId, complaintId] }),
         queryClient.invalidateQueries({ queryKey: ["client-complaints", vendorId] }),
+        queryClient.invalidateQueries({ queryKey: ["client-complaints-my-tasks", vendorId] }),
       ]),
   });
 }
@@ -493,5 +528,36 @@ export function useComplaintAssigneeOptions(vendorId: number, complaintId: numbe
     },
     enabled,
     staleTime: 60_000,
+  });
+}
+
+export interface MyComplaintTask {
+  id: number;
+  task_type: string;
+  status: string;
+  due_date: string | null;
+  remark: string | null;
+  complaint: {
+    id: number;
+    complaint_code: string;
+    client_name: string;
+    client_mobile: string;
+    status: ComplaintStatus;
+    site_address: string;
+  };
+}
+
+export async function getMyComplaintTasks(vendorId: number) {
+  const { data } = await apiClient.get<{ data: MyComplaintTask[] }>(`${path(vendorId)}/my-tasks`);
+  return data.data;
+}
+
+// Users without complaint access get a 403; the section simply stays hidden.
+export function useMyComplaintTasks(vendorId?: number) {
+  return useQuery({
+    queryKey: ["client-complaints-my-tasks", vendorId],
+    queryFn: () => getMyComplaintTasks(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
   });
 }

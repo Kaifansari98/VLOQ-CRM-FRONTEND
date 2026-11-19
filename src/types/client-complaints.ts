@@ -45,7 +45,7 @@ export interface ClientComplaintRow {
   client_email: string | null;
   site_address: string;
   product_type: string | null;
-  component: ComplaintComponent;
+  component: ComplaintComponent | null;
   category: string;
   description: string;
   priority: ComplaintPriority | null;
@@ -94,7 +94,6 @@ export interface ComplaintPossibleDuplicates {
 }
 
 interface ComplaintDetailsInput {
-  component: ComplaintComponent;
   category_id: number;
   description: string;
   additional_remarks?: string;
@@ -109,8 +108,6 @@ export type CreateClientComplaintInput = ComplaintDetailsInput &
         client_mode: "CRM_LEAD";
         lead_code: string;
         instance_id?: number;
-        usable_handover_date?: string;
-        final_handover_date?: string;
         site_address?: string;
         site_supervisor_id?: number;
         head_site_supervisor_id?: number;
