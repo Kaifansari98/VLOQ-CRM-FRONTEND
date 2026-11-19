@@ -145,10 +145,10 @@ export function ComplaintActionsPanel({
     ComplaintVerificationAction,
     { text: string; icon: typeof Flag }
   > = {
-    START_REVIEW: { text: "Start Verification", icon: PlayCircle },
+    START_REVIEW: { text: "Record POA", icon: PlayCircle },
     DECIDE: notStarted
-      ? { text: "Start Verification", icon: PlayCircle }
-      : { text: "Record Decision", icon: ClipboardCheck },
+      ? { text: "Record POA", icon: PlayCircle }
+      : { text: "Record POA", icon: ClipboardCheck },
     RESUME: { text: "Resume Verification", icon: PlayCircle },
     INFORMATION_RECEIVED: { text: "Information Received", icon: Inbox },
     SET_PRIORITY: {
@@ -278,8 +278,8 @@ function ActionDialog({
       "Moves the complaint into the HO verification queue.",
     ],
     DECIDE: [
-      "Verification Decision",
-      "Every decision is recorded with your remarks.",
+      "Record POA",
+      "Choose the plan of action for this complaint; it is recorded with your remarks.",
     ],
     RESUME: [
       "Resume Verification",

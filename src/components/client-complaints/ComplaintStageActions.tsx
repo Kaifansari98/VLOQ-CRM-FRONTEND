@@ -30,7 +30,6 @@ import {
   DOC_ACCEPT,
   emptyPayment,
   FilesField,
-  localNow,
   PaymentInputs,
   PHOTO_ACCEPT,
   RecordPaymentDialog,
@@ -255,7 +254,7 @@ export function ComplaintStageActions({
       {execution && execution.actions.length > 0 && (
         <Row
           label="Repair"
-          detail={`${text(execution.status)}${execution.scheduled_for ? ` · ${date(execution.scheduled_for, true)}` : ""}`}
+          detail={`${text(execution.status)}${execution.scheduled_for ? ` · ${date(execution.scheduled_for)}` : ""}`}
         >
           {[...execution.actions]
             .sort(
@@ -528,7 +527,7 @@ function StageDialog({
     if (clientMode && !clientReference.trim())
       next.client = "Record how the client confirmed.";
     if ((mode === "SCHEDULE_REPAIR" || mode === "RESCHEDULE_REPAIR") && !when)
-      next.when = "Pick the date and time.";
+      next.when = "Pick the date.";
     if (mode === "MATERIAL_RECEIVED" && !received)
       next.received = "Pick the date received.";
     if (mode === "COMPLETE_WORK" && !after.length)
@@ -648,7 +647,7 @@ function StageDialog({
             mode === "MATERIAL_ORDERED" ? expected || undefined : undefined,
           material_received_date:
             mode === "MATERIAL_RECEIVED" ? received : undefined,
-          scheduled_for: when ? new Date(when).toISOString() : undefined,
+          scheduled_for: when || undefined,
           team_details:
             mode === "SCHEDULE_REPAIR" ? team.trim() || undefined : undefined,
         };
@@ -782,13 +781,11 @@ function StageDialog({
         </Field>
       )}
       {(mode === "SCHEDULE_REPAIR" || mode === "RESCHEDULE_REPAIR") && (
-        <Field label="Repair date and time" error={errors.when}>
-          <Input
-            type="datetime-local"
+        <Field label="Resolution visit date" error={errors.when}>
+          <CustomeDatePicker
             value={when}
-            min={localNow()}
-            onChange={(e) => setWhen(e.target.value)}
-            className="h-9 text-xs"
+            onChange={(v) => setWhen(v ?? "")}
+            restriction="futureOnly"
           />
         </Field>
       )}

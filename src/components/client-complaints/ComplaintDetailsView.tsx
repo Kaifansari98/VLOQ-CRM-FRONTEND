@@ -562,7 +562,7 @@ export function ComplaintDetailsView({
                   </div>
                   <Info
                     items={[
-                      ["Scheduled for", date(visit.scheduled_for, true)],
+                      ["Scheduled for", date(visit.scheduled_for)],
                       ["Completed", date(visit.completed_at, true)],
                       ["Site supervisor", visit.assignedSS?.user_name],
                       ["Team", visit.team_details],
@@ -956,7 +956,7 @@ export function ComplaintDetailsView({
                         ],
                         [
                           "Repair scheduled",
-                          date(execution.scheduled_for, true),
+                          date(execution.scheduled_for),
                         ],
                         ["Started", date(execution.started_at, true)],
                         ["Site supervisor", execution.assignedSS?.user_name],

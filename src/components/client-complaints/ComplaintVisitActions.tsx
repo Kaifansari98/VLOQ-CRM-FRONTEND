@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CustomeDatePicker from "@/components/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -24,7 +25,6 @@ import {
 } from "./complaint-details-format";
 import { BRAND_BUTTON, Field, rupees } from "./complaint-action-ui";
 import {
-  localNow,
   RecordPaymentDialog,
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
@@ -166,7 +166,7 @@ export function ComplaintVisitActions({
                   state.outstanding > 0 &&
                   state.outstanding < state.fee &&
                   ` (${rupees(state.outstanding)} due)`}
-                {visit.scheduled_for && ` · ${date(visit.scheduled_for, true)}`}
+                {visit.scheduled_for && ` · ${date(visit.scheduled_for)}`}
               </span>
               {visit.pay_at_visit && state.outstanding > 0 && (
                 <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
@@ -362,7 +362,7 @@ function VisitDialog({
     if (remarksRequired && !remarks.trim()) next.remarks = "This is required.";
     if (needsClient && !clientReference.trim())
       next.client = "Record how the client confirmed.";
-    if (needsWhen && !when) next.when = "Pick the date and time.";
+    if (needsWhen && !when) next.when = "Pick the visit date.";
     if (state.kind === "create" && chargeMode === "FREE_REPEAT" && !repeatOf)
       next.repeatOf = "Select the earlier visit.";
     setErrors(next);
@@ -394,7 +394,7 @@ function VisitDialog({
       action: state.action,
       remarks: note,
       client_reference: needsClient ? clientReference.trim() : undefined,
-      scheduled_for: needsWhen ? new Date(when).toISOString() : undefined,
+      scheduled_for: needsWhen ? when : undefined,
       team_details:
         action === "SCHEDULE" ? team.trim() || undefined : undefined,
       purpose: action === "SCHEDULE" ? purpose : undefined,
@@ -489,23 +489,20 @@ function VisitDialog({
           </Select>
           {purpose === "INSTALLATION_TEAM" && (
             <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-              The team fixes the issue on site. The supervisor still submits the
-              inspection report; the complaint then skips the quotation and goes
-              to material procurement if material is listed, otherwise to client
-              confirmation.
+              The supervisor submits the inspection report as our observations.
+              The complaint then skips the quotation: if material is required it
+              goes to material procurement first, then to the resolution visit.
             </p>
           )}
         </Field>
       )}
 
       {needsWhen && (
-        <Field label="Visit date and time" error={errors.when}>
-          <Input
-            type="datetime-local"
+        <Field label="Visit date" error={errors.when}>
+          <CustomeDatePicker
             value={when}
-            min={localNow()}
-            onChange={(e) => setWhen(e.target.value)}
-            className="h-9 text-xs"
+            onChange={(v) => setWhen(v ?? "")}
+            restriction="futureOnly"
           />
         </Field>
       )}
