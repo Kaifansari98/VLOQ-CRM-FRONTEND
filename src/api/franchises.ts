@@ -15,6 +15,9 @@ export interface FranchiseListItem {
   contact_number: string | null;
   address: string | null;
   pincode: string | null;
+  /** The vendor's store city (city master). */
+  store_city_id?: number | null;
+  storeCity?: { name: string } | null;
   is_head_office: boolean;
   status: string;
   createdAt: string | null;
@@ -36,6 +39,26 @@ export interface CreateFranchisePayload {
   contact_person?: string | null;
   is_head_office: boolean;
   address?: string | null;
+  store_city_id?: number | null;
+}
+
+export type UpdateFranchisePayload = Partial<
+  Pick<
+    CreateFranchisePayload,
+    | "shift_minutes"
+    | "franchise_name"
+    | "franchise_code"
+    | "contact_number"
+    | "contact_email"
+    | "contact_person"
+    | "address"
+    | "store_city_id"
+  >
+> & { status?: "active" | "inactive" };
+
+export interface StoreCity {
+  id: number;
+  name: string;
 }
 
 // ─── API fn ──────────────────────────────────────────────────────────────────
@@ -74,3 +97,30 @@ export const useCreateFranchise = (vendorId: number) => {
     },
   });
 };
+
+export const updateFranchise = async (id: number, payload: UpdateFranchisePayload) => {
+  const { data } = await apiClient.put(`/franchises/${id}`, payload);
+  return data;
+};
+
+export const useUpdateFranchise = (vendorId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: UpdateFranchisePayload & { id: number }) => updateFranchise(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franchises", "vendor", vendorId] });
+    },
+  });
+};
+
+/** The vendor's active cities from the city master (StoreCityMaster). */
+export const useStoreCities = (vendorId: number, enabled = true) =>
+  useQuery({
+    queryKey: ["franchises", "store-cities", vendorId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: StoreCity[] }>(`/franchises/vendor/${vendorId}/store-cities`);
+      return data.data;
+    },
+    enabled: enabled && !!vendorId,
+    staleTime: 5 * 60 * 1000,
+  });
