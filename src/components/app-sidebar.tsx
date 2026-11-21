@@ -76,11 +76,6 @@ const data = {
       icon: MessageSquareWarning,
     },
     {
-      title: "Date Revisions",
-      url: "/dashboard/project-tracker/revisions",
-      icon: CalendarClock,
-    },
-    {
       title: "CRM Reports",
       url: "/dashboard/crm-reports",
       icon: BarChart3,
@@ -1090,10 +1085,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       const finalNavItems = navItemsWithRoleAdditions.filter(
         (item) =>
           (item.title !== "Broadcast" || (isBroadcastEnabled && !isMasterAdmin)) &&
-          // Client Project Tracker date revisions are approved by HO.
-          (item.title !== "Date Revisions" ||
-            userType === "admin" ||
-            userType === "super-admin") &&
           (item.title !== "Complaints" ||
             (isClientComplaintsEnabled &&
               (userType === "super-admin" ||
