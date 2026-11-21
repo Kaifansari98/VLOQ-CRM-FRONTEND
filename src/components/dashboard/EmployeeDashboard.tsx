@@ -245,28 +245,28 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const hasMarkedIn = todayData?.has_marked_in ?? false;
   const attendance = todayData?.attendance;
+  const isSessionActive = !!attendance?.check_in && !attendance?.check_out;
 
   // Determine current status
   const statusConfig = useMemo(() => {
-    if (!hasMarkedIn) {
-      return {
-        label: "Not Checked In",
-        badgeVariant: "secondary" as const,
-        bgClass: "bg-muted text-muted-foreground border border-border",
-        icon: AlertCircle,
-        description: "You have not marked your attendance for today yet.",
-      };
-    }
-
     if (attendance?.check_out) {
       return {
         label: "Punched Out",
         badgeVariant: "outline" as const,
         bgClass: "bg-muted text-foreground border border-border",
         icon: LogOut,
-        description: `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. This attendance session is complete.`,
+        description: `Punched out at ${formatTimeOnly(attendance.check_out_local || attendance.check_out)}. You can punch in again to start a new session.`,
+      };
+    }
+
+    if (!isSessionActive) {
+      return {
+        label: "Not Checked In",
+        badgeVariant: "secondary" as const,
+        bgClass: "bg-muted text-muted-foreground border border-border",
+        icon: AlertCircle,
+        description: "You have not marked your attendance for today yet.",
       };
     }
 
@@ -277,7 +277,7 @@ export default function EmployeeDashboard() {
       icon: CheckCircle2,
       description: `Checked in at ${formatTimeOnly(attendance?.check_in_local || attendance?.check_in)}. Your attendance is active.`,
     };
-  }, [hasMarkedIn, attendance, activeTimeZone, isPunchOutFrozen]);
+  }, [isSessionActive, attendance, activeTimeZone, isPunchOutFrozen]);
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full">
@@ -357,11 +357,14 @@ export default function EmployeeDashboard() {
               {/* Punch IN Button */}
               <Button
                 size="default"
-                variant={hasMarkedIn ? "outline" : "default"}
-                onClick={() => handlePunch("IN")}
-                disabled={hasMarkedIn || markMutation.isPending || isLoadingToday || isGettingLocation}
+                variant={isSessionActive ? "outline" : "default"}
+                onClick={() => {
+                  setIsPunchOutFrozen(false);
+                  handlePunch("IN");
+                }}
+                disabled={isSessionActive || markMutation.isPending || isLoadingToday || isGettingLocation}
                 className={`h-10 px-5 min-w-[180px] text-sm font-medium transition-all ${
-                  !hasMarkedIn
+                  !isSessionActive
                     ? "bg-[#000000] text-[#FFFFFF] hover:bg-neutral-800 hover:text-[#FFFFFF] dark:bg-[#000000] dark:text-[#FFFFFF] dark:hover:bg-neutral-800 dark:hover:text-[#FFFFFF] focus-visible:ring-2 focus-visible:ring-black dark:focus-visible:ring-white shadow-sm"
                     : "opacity-60 cursor-not-allowed bg-muted text-muted-foreground border border-border"
                 }`}
@@ -378,9 +381,9 @@ export default function EmployeeDashboard() {
                   </>
                 ) : (
                   <>
-                    <LogIn className={`mr-2 h-4 w-4 ${!hasMarkedIn ? "text-[#FFFFFF]" : "text-muted-foreground"}`} />
+                    <LogIn className={`mr-2 h-4 w-4 ${!isSessionActive ? "text-[#FFFFFF]" : "text-muted-foreground"}`} />
                     <span>
-                      {hasMarkedIn ? "Checked IN (Completed)" : "Punch IN"}
+                      {isSessionActive ? "Checked IN (Active)" : "Punch IN"}
                     </span>
                   </>
                 )}
@@ -389,11 +392,11 @@ export default function EmployeeDashboard() {
               {/* Punch OUT Button */}
               <Button
                 size="default"
-                variant={hasMarkedIn && !isPunchOutFrozen ? "default" : "outline"}
+                variant={isSessionActive && !isPunchOutFrozen ? "default" : "outline"}
                 onClick={() => handlePunch("OUT")}
-                disabled={!hasMarkedIn || !!attendance?.check_out || isPunchOutFrozen || markMutation.isPending || isLoadingToday || isGettingLocation}
+                disabled={!isSessionActive || isPunchOutFrozen || markMutation.isPending || isLoadingToday || isGettingLocation}
                 className={`h-10 px-5 min-w-[180px] text-sm font-medium transition-all ${
-                  !hasMarkedIn
+                  !isSessionActive
                     ? "opacity-40 cursor-not-allowed bg-muted/40 text-muted-foreground border border-border"
                     : isPunchOutFrozen
                     ? "opacity-60 cursor-not-allowed bg-muted text-muted-foreground border border-border"
@@ -412,10 +415,10 @@ export default function EmployeeDashboard() {
                   </>
                 ) : (
                   <>
-                    <LogOut className={`mr-2 h-4 w-4 ${hasMarkedIn && !isPunchOutFrozen ? "text-[#FFFFFF]" : "text-muted-foreground"}`} />
+                    <LogOut className={`mr-2 h-4 w-4 ${isSessionActive && !isPunchOutFrozen ? "text-[#FFFFFF]" : "text-muted-foreground"}`} />
                     <span>
-                      {!hasMarkedIn
-                        ? "Checked OUT (Checked IN First)"
+                      {!isSessionActive
+                        ? "Checked OUT"
                         : isPunchOutFrozen
                         ? "Checked OUT (Completed)"
                         : "Checked OUT"}
@@ -449,9 +452,9 @@ export default function EmployeeDashboard() {
             </div>
           </div>
 
-          {hasMarkedIn && (
+          {isSessionActive && (
             <p className="text-xs text-muted-foreground italic">
-               One check-in is permitted per calendar date. Use Employees Attendance to record breaks, then check out once when your workday ends.
+              Use Employees Attendance to record breaks, then check out when your workday or session ends.
             </p>
           )}
         </CardContent>
