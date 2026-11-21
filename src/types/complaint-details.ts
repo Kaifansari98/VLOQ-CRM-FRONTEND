@@ -392,6 +392,22 @@ export interface ComplaintDetails {
   communications: ComplaintCommunication[];
   closures: ComplaintClosure[];
   task_counts: Record<string, number>;
+  tasks: ComplaintTask[];
+}
+
+export interface ComplaintTask {
+  id: number;
+  task_type: string;
+  title: string;
+  status: "open" | "in_progress" | "completed" | "closed" | "cancelled";
+  due_date: string | null;
+  created_at: string;
+  completed_at: string | null;
+  cycle_number: number;
+  assigned_to: { id: number; name: string; role: string | null };
+  completed_by: { id: number; name: string } | null;
+  /** The My Tasks row, for complaints raised against a lead. */
+  my_tasks_id: number | null;
 }
 export interface ComplaintActivity extends CycleRecord {
   action: string;

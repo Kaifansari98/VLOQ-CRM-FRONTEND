@@ -14,7 +14,6 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { FadeInProvider } from "@/components/framer-motion/FadeInProvider";
-import { MyComplaintTasks } from "@/components/client-complaints/MyComplaintTasks";
 
 export default function MyTaskLeadPage() {
   return (
@@ -42,7 +41,6 @@ export default function MyTaskLeadPage() {
 
       <main className="flex-1 overflow-x-hidden">
         <FadeInProvider>
-          <MyComplaintTasks />
           <Suspense
             fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
           >

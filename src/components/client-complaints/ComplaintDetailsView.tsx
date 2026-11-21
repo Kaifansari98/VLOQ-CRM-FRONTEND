@@ -41,6 +41,7 @@ import {
 import { ComplaintEvidence } from "./ComplaintEvidence";
 import { ComplaintActivityLog } from "./ComplaintActivityLog";
 import { ComplaintActionsPanel } from "./ComplaintActionsPanel";
+import { ComplaintTasks } from "./ComplaintTasks";
 
 const TABS = [
   { id: "overview", label: "Complaint Details", icon: House },
@@ -326,6 +327,7 @@ export function ComplaintDetailsView({
         </div>
       </div>
       <ComplaintActionsPanel complaint={c} vendorId={vendorId} />
+      <ComplaintTasks tasks={c.tasks ?? []} multiCycle={c.cycles.length > 1} />
       {c.possible_duplicate && (
         <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/20">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />

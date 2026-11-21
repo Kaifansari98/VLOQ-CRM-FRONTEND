@@ -701,9 +701,9 @@ export function useComplaintWorkflow(vendorId: number, complaintId: number) {
         queryClient.invalidateQueries({
           queryKey: ["client-complaints", vendorId],
         }),
-        queryClient.invalidateQueries({
-          queryKey: ["client-complaints-my-tasks", vendorId],
-        }),
+        // Complaint tasks also show in My Tasks.
+        queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] }),
       ]),
   });
 }
@@ -728,38 +728,5 @@ export function useComplaintAssigneeOptions(
     },
     enabled,
     staleTime: 60_000,
-  });
-}
-
-export interface MyComplaintTask {
-  id: number;
-  task_type: string;
-  status: string;
-  due_date: string | null;
-  remark: string | null;
-  complaint: {
-    id: number;
-    complaint_code: string;
-    client_name: string;
-    client_mobile: string;
-    status: ComplaintStatus;
-    site_address: string;
-  };
-}
-
-export async function getMyComplaintTasks(vendorId: number) {
-  const { data } = await apiClient.get<{ data: MyComplaintTask[] }>(
-    `${path(vendorId)}/my-tasks`,
-  );
-  return data.data;
-}
-
-// Users without complaint access get a 403; the section simply stays hidden.
-export function useMyComplaintTasks(vendorId?: number) {
-  return useQuery({
-    queryKey: ["client-complaints-my-tasks", vendorId],
-    queryFn: () => getMyComplaintTasks(vendorId!),
-    enabled: !!vendorId,
-    retry: false,
   });
 }
