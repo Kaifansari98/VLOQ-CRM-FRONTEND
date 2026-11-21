@@ -18,6 +18,7 @@ import type {
   ComplaintPriority,
   ComplaintStatus,
   CreateClientComplaintInput,
+  RegisteredComplaint,
 } from "@/types/client-complaints";
 
 const path = (vendorId: number) => `/client-complaints/vendor/${vendorId}`;
@@ -154,22 +155,27 @@ export async function createComplaint(
   vendorId: number,
   input: CreateClientComplaintInput,
 ) {
-  const { photos, videos, ...details } = input;
+  const { issues, videos, ...details } = input;
   const body = new FormData();
-  body.append("data", JSON.stringify(details));
-  photos.forEach((file) => body.append("photos", file));
+  body.append(
+    "data",
+    JSON.stringify({
+      ...details,
+      issues: issues.map(({ category_id, description }) => ({ category_id, description })),
+    }),
+  );
+  // Each category's photos go in their own field: photos_0, photos_1, …
+  issues.forEach((issue, i) =>
+    issue.photos.forEach((file) => body.append(`photos_${i}`, file)),
+  );
   videos.forEach((file) => body.append("videos", file));
   const { data } = await apiClient.post<{
-    data: {
-      id: number;
-      complaint_code: string;
-      status: ComplaintStatus;
-      possible_duplicate: boolean;
-    };
+    data: RegisteredComplaint & { complaints: RegisteredComplaint[] };
   }>(`${path(vendorId)}/complaints`, body, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-  return data.data;
+  // One complaint per selected category.
+  return data.data.complaints;
 }
 
 export function useComplaintMeta(vendorId?: number) {

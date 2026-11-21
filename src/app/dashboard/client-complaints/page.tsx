@@ -80,14 +80,20 @@ export default function ClientComplaintsPage() {
         onOpenChange={setIsCreateOpen}
         vendorId={vendorId}
         meta={meta}
-        onCreated={({ complaint_code, possible_duplicate }) =>
+        onCreated={(created) => {
+          const codes = created.map((c) => c.complaint_code).join(", ");
+          const duplicate = created.some((c) => c.possible_duplicate);
+          const registered =
+            created.length > 1
+              ? `${created.length} complaints registered: ${codes}`
+              : `Complaint ${codes} registered`;
           toastManager.add({
-            title: possible_duplicate
-              ? `Complaint ${complaint_code} registered — flagged as a possible duplicate for HO review`
-              : `Complaint ${complaint_code} registered`,
-            type: possible_duplicate ? "warning" : "success",
-          })
-        }
+            title: duplicate
+              ? `${registered} — flagged as a possible duplicate for HO review`
+              : registered,
+            type: duplicate ? "warning" : "success",
+          });
+        }}
       />
     </>
   );
