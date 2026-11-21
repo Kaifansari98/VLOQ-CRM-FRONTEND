@@ -123,4 +123,5 @@ export const useStoreCities = (vendorId: number, enabled = true) =>
     },
     enabled: enabled && !!vendorId,
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });

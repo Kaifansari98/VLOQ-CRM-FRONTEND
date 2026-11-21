@@ -76,7 +76,17 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
   const createMutation = useCreateFranchise(vendorId);
   const updateMutation = useUpdateFranchise(vendorId);
   const saving = createMutation.isPending || updateMutation.isPending;
-  const { data: cities, isLoading: citiesLoading } = useStoreCities(vendorId, open);
+  const {
+    data: cities,
+    isLoading: citiesLoading,
+    isError: citiesFailed,
+    error: citiesError,
+    refetch: retryCities,
+  } = useStoreCities(vendorId, open);
+  const citiesErrorText =
+    (citiesError as any)?.response?.status === 404
+      ? "The server doesn't have the city list yet (backend not updated)."
+      : (citiesError as any)?.response?.data?.message || "Couldn't load cities.";
   const hasCities = (cities?.length ?? 0) > 0;
 
   // Load the franchise (or a blank form) each time the dialog opens.
@@ -117,6 +127,10 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
       !form.address.trim()
     ) {
       toastManager.add({ title: "Please fill all required fields", type: "error" });
+      return;
+    }
+    if (citiesFailed) {
+      toastManager.add({ title: "Cities couldn't be loaded. Retry before saving.", type: "error" });
       return;
     }
     if (hasCities && !form.store_city_id) {
@@ -289,11 +303,26 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
                   setCityError("");
                 }}
                 placeholder="Search cities…"
-                emptyLabel={citiesLoading ? "Loading cities…" : hasCities ? "Select a city" : "No cities in city master"}
-                disabled={citiesLoading || cityOptions.length === 0}
+                emptyLabel={
+                  citiesLoading
+                    ? "Loading cities…"
+                    : citiesFailed
+                      ? "Cities unavailable"
+                      : hasCities
+                        ? "Select a city"
+                        : "No cities in city master"
+                }
+                disabled={citiesLoading || citiesFailed || cityOptions.length === 0}
                 className={cityError ? "border-destructive" : undefined}
               />
-              {cityError ? (
+              {citiesFailed ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {citiesErrorText}{" "}
+                  <button type="button" className="underline underline-offset-2" onClick={() => void retryCities()}>
+                    Retry
+                  </button>
+                </p>
+              ) : cityError ? (
                 <p role="alert" className="text-xs text-destructive">
                   {cityError}
                 </p>
