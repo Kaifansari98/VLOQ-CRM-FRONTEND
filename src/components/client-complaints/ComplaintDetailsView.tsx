@@ -41,6 +41,7 @@ import {
 import { ComplaintEvidence } from "./ComplaintEvidence";
 import { ComplaintActivityLog } from "./ComplaintActivityLog";
 import { ComplaintActionsPanel } from "./ComplaintActionsPanel";
+import { ComplaintTasks } from "./ComplaintTasks";
 
 const TABS = [
   { id: "overview", label: "Complaint Details", icon: House },
@@ -326,6 +327,7 @@ export function ComplaintDetailsView({
         </div>
       </div>
       <ComplaintActionsPanel complaint={c} vendorId={vendorId} />
+      <ComplaintTasks tasks={c.tasks ?? []} multiCycle={c.cycles.length > 1} />
       {c.possible_duplicate && (
         <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/20">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -466,6 +468,16 @@ export function ComplaintDetailsView({
               />
               <div className="border-t pt-4">
                 <Note title="Site address">{c.site_address}</Note>
+                {c.site_map_link && (
+                  <a
+                    href={c.site_map_link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
+                  >
+                    Open site in Maps ↗
+                  </a>
+                )}
               </div>
               <Note title="Exceptional-client reason">
                 {c.exceptional_reason}
@@ -562,7 +574,7 @@ export function ComplaintDetailsView({
                   </div>
                   <Info
                     items={[
-                      ["Scheduled for", date(visit.scheduled_for, true)],
+                      ["Scheduled for", date(visit.scheduled_for)],
                       ["Completed", date(visit.completed_at, true)],
                       ["Site supervisor", visit.assignedSS?.user_name],
                       ["Team", visit.team_details],
@@ -956,7 +968,7 @@ export function ComplaintDetailsView({
                         ],
                         [
                           "Repair scheduled",
-                          date(execution.scheduled_for, true),
+                          date(execution.scheduled_for),
                         ],
                         ["Started", date(execution.started_at, true)],
                         ["Site supervisor", execution.assignedSS?.user_name],

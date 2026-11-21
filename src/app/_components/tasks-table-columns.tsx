@@ -50,6 +50,8 @@ export type ProcessedTask = {
   lead_blocked_at?: string | null;
   isFastProductionRequestTask?: boolean;
   isOnlineLead?: boolean;
+  /** Complaint tasks open the complaint's details page. */
+  complaintId?: number | null;
 };
 
 export function getVendorLeadsTableColumns({

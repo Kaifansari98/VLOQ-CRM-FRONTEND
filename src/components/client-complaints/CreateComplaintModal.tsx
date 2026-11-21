@@ -28,6 +28,7 @@ import {
   ImagePlus,
   Link2,
   Loader2,
+  MapPin,
   MessageSquareWarning,
   Search,
   UserRound,
@@ -65,12 +66,15 @@ const MAX_VIDEOS = 3;
 const MAX_PHOTO_MB = 15;
 const MAX_VIDEO_MB = 50;
 
+const MAP_LINK = /^https?:\/\/\S+$/i;
+
 const emptyExternal = {
   client_name: "",
   client_mobile: "",
   client_alternate_mobile: "",
   client_email: "",
   site_address: "",
+  site_map_link: "",
   city: "",
   product_type: "",
   installation_date: "",
@@ -79,6 +83,7 @@ const emptyExternal = {
 const emptyLeadForm = {
   instance_id: "",
   site_address: "",
+  site_map_link: "",
   site_supervisor_id: "",
   head_site_supervisor_id: "",
 };
@@ -115,6 +120,20 @@ const ReadOnlyField = ({ label, value }: { label: string; value?: string | null 
   <div className="min-w-0">
     <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
     <div className="text-xs font-medium text-foreground break-words">{value || "—"}</div>
+  </div>
+);
+
+const MapLinkField = ({ href }: { href: string }) => (
+  <div className="min-w-0">
+    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Site Map Link</div>
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+    >
+      <MapPin className="w-3.5 h-3.5" /> Open in Maps
+    </a>
   </div>
 );
 
@@ -338,6 +357,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
         "lead_code",
         "instance_id",
         "lead_site_address",
+        "lead_site_map_link",
         "site_supervisor_id",
         "head_site_supervisor_id",
       );
@@ -399,6 +419,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       else {
         if (lead.products.length > 0 && !leadForm.instance_id) next.instance_id = "Select the affected product.";
         if (!lead.site_address && !leadForm.site_address.trim()) next.lead_site_address = "Site address is required.";
+        if (!lead.site_map_link && leadForm.site_map_link.trim() && !MAP_LINK.test(leadForm.site_map_link.trim()))
+          next.lead_site_map_link = "Enter a link starting with http:// or https://.";
         if (lead.site_supervisors.length > 1 && !leadForm.site_supervisor_id)
           next.site_supervisor_id = "Select the site supervisor.";
         if (lead.head_site_supervisors.length > 1 && !leadForm.head_site_supervisor_id)
@@ -416,7 +438,9 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       else if (!/^\S+@\S+\.\S+$/.test(external.client_email.trim()))
         next.client_email = "Enter a valid email.";
       if (!external.site_address.trim()) next.site_address = "Site address is required.";
-      if (!external.city.trim()) next.city = "City is required.";
+      if (external.site_map_link.trim() && !MAP_LINK.test(external.site_map_link.trim()))
+        next.site_map_link = "Enter a link starting with http:// or https://.";
+      if (!external.city.trim()) next.city = "Select the store city.";
       if (!external.product_type) next.product_type = "Select the product type.";
     }
     if (!details.category_id) next.category_id = "Select a complaint category.";
@@ -448,6 +472,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             lead_code: lead!.lead_code,
             instance_id: leadForm.instance_id ? Number(leadForm.instance_id) : undefined,
             site_address: lead!.site_address ? undefined : leadForm.site_address.trim(),
+            site_map_link: lead!.site_map_link ? undefined : leadForm.site_map_link.trim() || undefined,
             site_supervisor_id: leadForm.site_supervisor_id ? Number(leadForm.site_supervisor_id) : undefined,
             head_site_supervisor_id: leadForm.head_site_supervisor_id
               ? Number(leadForm.head_site_supervisor_id)
@@ -462,6 +487,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             client_alternate_mobile: external.client_alternate_mobile.trim() || undefined,
             client_email: external.client_email.trim(),
             site_address: external.site_address.trim(),
+            site_map_link: external.site_map_link.trim() || undefined,
             city: external.city.trim(),
             product_type: external.product_type,
             installation_date: external.installation_date || undefined,
@@ -630,6 +656,11 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                             <ReadOnlyField label="Site Address" value={lead.site_address} />
                           </div>
                         )}
+                        {lead.site_map_link && (
+                          <div className="col-span-2">
+                            <MapLinkField href={lead.site_map_link} />
+                          </div>
+                        )}
                         {/* Taken from the lead's installation stage. */}
                         <ReadOnlyField
                           label="Usable Handover"
@@ -671,6 +702,23 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                           aria-invalid={!!errors.lead_site_address}
                         />
                         <FieldError message={errors.lead_site_address} />
+                      </div>
+                    )}
+
+                    {!lead.site_map_link && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Site Map Link (optional)</Label>
+                        <Input
+                          value={leadForm.site_map_link}
+                          onChange={(e) => {
+                            setLeadForm((p) => ({ ...p, site_map_link: e.target.value }));
+                            clearError("lead_site_map_link");
+                          }}
+                          placeholder="This lead has no map link in the CRM · paste a Google Maps link"
+                          className="h-9 text-xs rounded-xl"
+                          aria-invalid={!!errors.lead_site_map_link}
+                        />
+                        <FieldError message={errors.lead_site_map_link} />
                       </div>
                     )}
 
@@ -827,23 +875,36 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                   />
                   <FieldError message={errors.site_address} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Site Map Link (optional)</Label>
+                  <Input
+                    value={external.site_map_link}
+                    onChange={(e) => setExternalField("site_map_link", e.target.value)}
+                    placeholder="Paste the Google Maps link"
+                    className="h-9 text-xs rounded-xl"
+                    aria-invalid={!!errors.site_map_link}
+                  />
+                  <FieldError message={errors.site_map_link} />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">City</Label>
-                    <Input
-                      list="complaint-city-options"
-                      value={external.city}
-                      onChange={(e) => setExternalField("city", e.target.value)}
-                      disabled={!!linkedClient}
-                      placeholder="Select or type the city"
-                      className="h-9 text-xs rounded-xl"
-                      aria-invalid={!!errors.city}
-                    />
-                    <datalist id="complaint-city-options">
-                      {meta?.cities.map((city) => (
-                        <option key={city} value={city} />
-                      ))}
-                    </datalist>
+                    <Label className="text-xs">Store City</Label>
+                    {linkedClient ? (
+                      <Input value={external.city} disabled className="h-9 text-xs rounded-xl" />
+                    ) : (
+                      <Select value={external.city} onValueChange={(v) => setExternalField("city", v)}>
+                        <SelectTrigger className="w-full h-9 text-xs rounded-xl" aria-invalid={!!errors.city}>
+                          <SelectValue placeholder="Select store city" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {meta?.cities.map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FieldError message={errors.city} />
                   </div>
                   <div className="space-y-1.5">
@@ -871,6 +932,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                     value={external.installation_date}
                     onChange={(v) => setExternalField("installation_date", v ?? "")}
                     restriction="pastOnly"
+                    className="h-9 w-full rounded-xl text-xs"
+                    placeholder="Select the installation date"
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
@@ -978,6 +1041,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                 value={details.preferred_visit_date}
                 onChange={(v) => setDetails((p) => ({ ...p, preferred_visit_date: v ?? "" }))}
                 restriction="futureOnly"
+                className="h-9 w-full rounded-xl text-xs"
+                placeholder="Select a preferred visit date"
               />
             </div>
             <div className="space-y-1.5">

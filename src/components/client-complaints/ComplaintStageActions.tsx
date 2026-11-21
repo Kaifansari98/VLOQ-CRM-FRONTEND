@@ -30,14 +30,18 @@ import {
   DOC_ACCEPT,
   emptyPayment,
   FilesField,
-  localNow,
   PaymentInputs,
   PHOTO_ACCEPT,
   RecordPaymentDialog,
   todayLocal,
+  checkVisitCash,
+  initialVisitCash,
+  VisitCashSection,
+  visitCashDue,
   WorkflowDialog,
 } from "./ComplaintWorkflowDialogs";
 import { ComplaintInspectionForm } from "./ComplaintInspectionForm";
+import { visitHasTask } from "./ComplaintVisitActions";
 
 // Inspection → quotation → repair → closure steps (spec 12–16), plus the
 // warranty decision and cancellation. The server decides which steps apply.
@@ -72,7 +76,7 @@ const EXECUTION_LABELS: Record<ComplaintExecutionAction, string> = {
   MATERIAL_ORDERED: "Material Ordered",
   MATERIAL_RECEIVED: "Material Received",
   MATERIAL_READY: "Material Ready",
-  SCHEDULE_REPAIR: "Schedule Repair",
+  SCHEDULE_REPAIR: "Start Resolution",
   RESCHEDULE_REPAIR: "Reschedule",
   START_WORK: "Start Work",
   COMPLETE_WORK: "Work Completed",
@@ -164,22 +168,23 @@ export function ComplaintStageActions({
 
   return (
     <>
-      {inspection?.report_visit && (
-        <Row
-          label={`Visit ${inspection.report_visit.visit_number} inspection`}
-          detail={
-            inspection.report_visit.blocked_reason ??
-            "submitting the inspection report completes the visit"
-          }
-        >
-          {btn(
-            "INSPECTION",
-            "Complete Inspection",
-            true,
-            !!inspection.report_visit.blocked_reason,
-          )}
-        </Row>
-      )}
+      {inspection?.report_visit &&
+        !visitHasTask(c, inspection.report_visit.id) && (
+          <Row
+            label={`Visit ${inspection.report_visit.visit_number} inspection`}
+            detail={
+              inspection.report_visit.blocked_reason ??
+              "submitting the inspection report completes the visit"
+            }
+          >
+            {btn(
+              "INSPECTION",
+              "Complete Inspection",
+              true,
+              !!inspection.report_visit.blocked_reason,
+            )}
+          </Row>
+        )}
       {inspection?.after_inspection && (
         <Row
           label="Inspection submitted"
@@ -252,10 +257,20 @@ export function ComplaintStageActions({
         </Row>
       )}
 
+      {execution &&
+        execution.factory_request_id &&
+        execution.actions.length === 0 && (
+          <Row
+            label="Material"
+            detail={`waiting for the factory to mark Miscellaneous request #${execution.factory_request_id} ready`}
+          >
+            {null}
+          </Row>
+        )}
       {execution && execution.actions.length > 0 && (
         <Row
-          label="Repair"
-          detail={`${text(execution.status)}${execution.scheduled_for ? ` · ${date(execution.scheduled_for, true)}` : ""}`}
+          label="Resolution"
+          detail={`${text(execution.status)}${execution.scheduled_for ? ` · ${date(execution.scheduled_for)}` : ""}`}
         >
           {[...execution.actions]
             .sort(
@@ -414,8 +429,8 @@ const TITLES: Record<SimpleMode, [string, string]> = {
   MATERIAL_RECEIVED: ["Material Received", "Record when the material arrived."],
   MATERIAL_READY: ["Material Ready", "Material is ready for the repair."],
   SCHEDULE_REPAIR: [
-    "Schedule Repair",
-    "Creates the repair task for the site supervisor.",
+    "Start Resolution",
+    "Records the resolution visit date; the completion report follows when the work is done.",
   ],
   RESCHEDULE_REPAIR: [
     "Reschedule Repair",
@@ -481,6 +496,10 @@ function StageDialog({
   const [paymentOption, setPaymentOption] = useState("PAID_NOW");
   const [payment, setPayment] = useState(emptyPayment());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Cash an installation team collected at its visit is recorded with the
+  // completion report.
+  const cashDue = mode === "COMPLETE_WORK" ? visitCashDue(c) : null;
+  const [cash, setCash] = useState(() => initialVisitCash(cashDue));
   const takesPayment =
     mode === "CLIENT_RESPONSE" &&
     outcome === "CLIENT_ACCEPTED" &&
@@ -528,7 +547,7 @@ function StageDialog({
     if (clientMode && !clientReference.trim())
       next.client = "Record how the client confirmed.";
     if ((mode === "SCHEDULE_REPAIR" || mode === "RESCHEDULE_REPAIR") && !when)
-      next.when = "Pick the date and time.";
+      next.when = "Pick the date.";
     if (mode === "MATERIAL_RECEIVED" && !received)
       next.received = "Pick the date received.";
     if (mode === "COMPLETE_WORK" && !after.length)
@@ -543,8 +562,10 @@ function StageDialog({
       next.rating = "Select the client's rating.";
     if (mode === "APPROVE_CLOSURE" && !reviewed)
       next.reviewed = "Confirm the review.";
+    const cashCheck = checkVisitCash(cashDue, cash);
+    setCash((prev) => ({ ...prev, errors: cashCheck.errors }));
     setErrors(next);
-    if (Object.keys(next).length) return null;
+    if (Object.keys(next).length || !cashCheck.ok) return null;
 
     const version = c.version;
     const note = remarks.trim() || undefined;
@@ -629,6 +650,7 @@ function StageDialog({
           pending_work: completion.pending_work.trim(),
           before,
           after,
+          visit_payment: cashCheck.payment,
         };
       case "MATERIAL_ORDERED":
       case "MATERIAL_RECEIVED":
@@ -648,7 +670,7 @@ function StageDialog({
             mode === "MATERIAL_ORDERED" ? expected || undefined : undefined,
           material_received_date:
             mode === "MATERIAL_RECEIVED" ? received : undefined,
-          scheduled_for: when ? new Date(when).toISOString() : undefined,
+          scheduled_for: when || undefined,
           team_details:
             mode === "SCHEDULE_REPAIR" ? team.trim() || undefined : undefined,
         };
@@ -768,6 +790,8 @@ function StageDialog({
               value={expected}
               onChange={(v) => setExpected(v ?? "")}
               restriction="futureOnly"
+              className="h-9 w-full rounded-lg text-xs"
+              placeholder="Select the expected date"
             />
           </Field>
         </div>
@@ -778,17 +802,25 @@ function StageDialog({
             value={received}
             onChange={(v) => setReceived(v ?? "")}
             restriction="pastOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.received && "border-destructive",
+            )}
+            placeholder="Select the received date"
           />
         </Field>
       )}
       {(mode === "SCHEDULE_REPAIR" || mode === "RESCHEDULE_REPAIR") && (
-        <Field label="Repair date and time" error={errors.when}>
-          <Input
-            type="datetime-local"
+        <Field label="Resolution visit date" error={errors.when}>
+          <CustomeDatePicker
             value={when}
-            min={localNow()}
-            onChange={(e) => setWhen(e.target.value)}
-            className="h-9 text-xs"
+            onChange={(v) => setWhen(v ?? "")}
+            restriction="futureOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.when && "border-destructive",
+            )}
+            placeholder="Select the resolution visit date"
           />
         </Field>
       )}
@@ -845,6 +877,9 @@ function StageDialog({
               error={errors.after}
             />
           </div>
+          {cashDue && (
+            <VisitCashSection due={cashDue} value={cash} onChange={setCash} />
+          )}
         </>
       )}
       {mode === "CLIENT_CONFIRMATION" && outcome === "SATISFIED" && (

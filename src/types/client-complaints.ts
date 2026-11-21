@@ -65,6 +65,7 @@ export interface ComplaintLeadLookup {
   alternate_mobile: string | null;
   email: string | null;
   site_address: string | null;
+  site_map_link: string | null;
   usable_handover_date: string | null;
   final_handover_date: string | null;
   products: { instance_id: number; title: string; product_type: string }[];
@@ -109,6 +110,7 @@ export type CreateClientComplaintInput = ComplaintDetailsInput &
         lead_code: string;
         instance_id?: number;
         site_address?: string;
+        site_map_link?: string;
         site_supervisor_id?: number;
         head_site_supervisor_id?: number;
       }
@@ -120,6 +122,7 @@ export type CreateClientComplaintInput = ComplaintDetailsInput &
         client_alternate_mobile?: string;
         client_email?: string;
         site_address: string;
+        site_map_link?: string;
         city: string;
         product_type: string;
         installation_date?: string;

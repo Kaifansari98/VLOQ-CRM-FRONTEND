@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import {
   useComplaintWorkflow,
   type ComplaintWorkflowRequest,
 } from "@/api/client-complaints";
+import type { ComplaintDetails } from "@/types/complaint-details";
 import { displayText as text } from "./complaint-details-format";
 import {
   BRAND_BUTTON,
@@ -45,6 +47,7 @@ export function WorkflowDialog({
   onClose,
   confirmLabel = "Confirm",
   wide,
+  onDone,
   children,
 }: {
   title: string;
@@ -57,6 +60,8 @@ export function WorkflowDialog({
   onClose: () => void;
   confirmLabel?: string;
   wide?: boolean;
+  // Runs after a successful request instead of onClose.
+  onDone?: () => void;
   children: ReactNode;
 }) {
   const workflow = useComplaintWorkflow(vendorId, complaintId);
@@ -67,7 +72,7 @@ export function WorkflowDialog({
     setError(null);
     try {
       await workflow.mutateAsync(request);
-      onClose();
+      (onDone ?? onClose)();
     } catch (e) {
       setError(workflowError(e));
     }
@@ -253,7 +258,8 @@ export function checkPayment(
   if (!value || value <= 0) errors.amount = "Enter the amount received.";
   else if (outstanding !== undefined && value > outstanding)
     errors.amount = `Only ${rupees(outstanding)} is outstanding.`;
-  if (!draft.reference.trim())
+  // Cash has no transaction reference; the receipt photo is the proof.
+  if (!draft.reference.trim() && draft.method !== "CASH")
     errors.reference = "Enter the transaction reference.";
   if (!draft.paidOn) errors.paidOn = "Pick the payment date.";
   if (!draft.proof.length) errors.proof = "Attach the payment proof.";
@@ -320,7 +326,14 @@ export function PaymentInputs({
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Transaction reference" error={errors.reference}>
+        <Field
+          label={
+            value.method === "CASH"
+              ? "Receipt number (optional)"
+              : "Transaction reference"
+          }
+          error={errors.reference}
+        >
           <Input
             value={value.reference}
             onChange={(e) => set("reference", e.target.value)}
@@ -332,6 +345,11 @@ export function PaymentInputs({
             value={value.paidOn}
             onChange={(v) => set("paidOn", v ?? "")}
             restriction="pastOnly"
+            className={cn(
+              "h-9 w-full rounded-lg text-xs",
+              errors.paidOn && "border-destructive",
+            )}
+            placeholder="Select the payment date"
           />
         </Field>
       </div>
@@ -398,5 +416,96 @@ export function RecordPaymentDialog({
         outstanding={outstanding}
       />
     </WorkflowDialog>
+  );
+}
+
+// Cash the client owes for a "pay at visit" visit. Without `visitId`, any such
+// visit on the complaint (the completion report of an installation team visit).
+export function visitCashDue(
+  c: ComplaintDetails,
+  visitId?: number,
+): { visit_number: number; outstanding: number } | null {
+  const visit = c.visits.find(
+    (v) =>
+      v.pay_at_visit &&
+      (visitId === undefined || v.id === visitId) &&
+      (c.permissions.visits.visit_actions[String(v.id)]?.outstanding ?? 0) > 0,
+  );
+  return visit
+    ? {
+        visit_number: visit.visit_number,
+        outstanding:
+          c.permissions.visits.visit_actions[String(visit.id)].outstanding,
+      }
+    : null;
+}
+
+export type VisitCashState = {
+  collected: boolean;
+  draft: PaymentDraft;
+  errors: Record<string, string>;
+};
+
+export const initialVisitCash = (
+  due: { outstanding: number } | null,
+): VisitCashState => ({
+  collected: true,
+  draft: emptyPayment("CASH", due ? String(due.outstanding) : ""),
+  errors: {},
+});
+
+// Validates the cash section; `ok` is false while it has errors.
+export function checkVisitCash(
+  due: { outstanding: number } | null,
+  state: VisitCashState,
+): { ok: boolean; errors: Record<string, string>; payment?: PaymentFields } {
+  if (!due || !state.collected) return { ok: true, errors: {} };
+  const { errors, fields } = checkPayment(state.draft, due.outstanding);
+  return fields ? { ok: true, errors, payment: fields } : { ok: false, errors };
+}
+
+// "Visiting charge collected" block shown inside the inspection or
+// completion report when the client chose to pay at the visit.
+export function VisitCashSection({
+  due,
+  value,
+  onChange,
+}: {
+  due: { visit_number: number; outstanding: number };
+  value: VisitCashState;
+  onChange: (next: VisitCashState) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+      <div>
+        <p className="text-xs font-semibold">Visiting charge · pay at visit</p>
+        <p className="text-[11px] text-muted-foreground">
+          Visit {due.visit_number} · {rupees(due.outstanding)} to collect from
+          the client
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-xs">
+        <Checkbox
+          checked={value.collected}
+          onCheckedChange={(v) =>
+            onChange({ ...value, collected: v === true, errors: {} })
+          }
+        />
+        Collected {rupees(due.outstanding)} at the visit
+      </label>
+      {value.collected ? (
+        <PaymentInputs
+          value={value.draft}
+          onChange={(draft) => onChange({ ...value, draft })}
+          errors={value.errors}
+          outstanding={due.outstanding}
+        />
+      ) : (
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+          The charge stays due; HO cannot close the complaint until it is
+          recorded or waived.
+        </p>
+      )}
+    </div>
   );
 }

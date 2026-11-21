@@ -24,8 +24,10 @@ const path = (vendorId: number) => `/client-complaints/vendor/${vendorId}`;
 
 export interface ComplaintMeta {
   categories: { id: number; name: string }[];
-  // Suggestions for the City field.
+  // The vendor's store cities (Store City dropdown).
   cities: string[];
+  // Miscellaneous types for the factory request raised from an inspection.
+  misc_types: { id: number; name: string }[];
   product_types: { id: number; type: string }[];
   components: ComplaintComponent[];
   can_register: boolean;
@@ -37,13 +39,20 @@ export function useUpdateComplaintSettings(vendorId?: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (settings: { visit_fee: number }) => {
-      const { data } = await apiClient.put<{ data: { visit_fee: number } }>(`${path(vendorId!)}/settings`, settings);
+      const { data } = await apiClient.put<{ data: { visit_fee: number } }>(
+        `${path(vendorId!)}/settings`,
+        settings,
+      );
       return data.data;
     },
     onSuccess: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["client-complaints-meta", vendorId] }),
-        queryClient.invalidateQueries({ queryKey: ["client-complaint-detail", vendorId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-complaints-meta", vendorId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-complaint-detail", vendorId],
+        }),
       ]),
   });
 }
@@ -64,15 +73,24 @@ export interface ComplaintListResponse {
 }
 
 export async function getComplaintMeta(vendorId: number) {
-  const { data } = await apiClient.get<{ data: ComplaintMeta }>(`${path(vendorId)}/meta`);
+  const { data } = await apiClient.get<{ data: ComplaintMeta }>(
+    `${path(vendorId)}/meta`,
+  );
   return data.data;
 }
 
-export async function lookupComplaintLead(vendorId: number, leadCode: string, signal?: AbortSignal) {
-  const { data } = await apiClient.get<{ data: ComplaintLeadLookup }>(`${path(vendorId)}/lead-lookup`, {
-    params: { lead_code: leadCode },
-    signal,
-  });
+export async function lookupComplaintLead(
+  vendorId: number,
+  leadCode: string,
+  signal?: AbortSignal,
+) {
+  const { data } = await apiClient.get<{ data: ComplaintLeadLookup }>(
+    `${path(vendorId)}/lead-lookup`,
+    {
+      params: { lead_code: leadCode },
+      signal,
+    },
+  );
   return data.data;
 }
 
@@ -83,13 +101,24 @@ export interface ComplaintLeadOption {
   lead_code: string;
 }
 
-export async function getComplaintLeadOptions(vendorId: number, params: { search?: string; franchise_id?: number; after_id?: number }, signal?: AbortSignal) {
-  const { data } = await apiClient.get<{ data: { rows: ComplaintLeadOption[]; next_cursor: number | null } }>(`${path(vendorId)}/lead-options`, { params, signal });
+export async function getComplaintLeadOptions(
+  vendorId: number,
+  params: { search?: string; franchise_id?: number; after_id?: number },
+  signal?: AbortSignal,
+) {
+  const { data } = await apiClient.get<{
+    data: { rows: ComplaintLeadOption[]; next_cursor: number | null };
+  }>(`${path(vendorId)}/lead-options`, { params, signal });
   return data.data;
 }
 
-export async function getComplaintLeadFranchises(vendorId: number, signal?: AbortSignal) {
-  const { data } = await apiClient.get<{ data: { id: number; franchise_name: string }[] }>(`${path(vendorId)}/lead-franchises`, { signal });
+export async function getComplaintLeadFranchises(
+  vendorId: number,
+  signal?: AbortSignal,
+) {
+  const { data } = await apiClient.get<{
+    data: { id: number; franchise_name: string }[];
+  }>(`${path(vendorId)}/lead-franchises`, { signal });
   return data.data;
 }
 
@@ -98,29 +127,48 @@ export async function getComplaintDuplicates(
   params: { mobile?: string; name?: string; address?: string },
   signal?: AbortSignal,
 ) {
-  const { data } = await apiClient.get<{ data: ComplaintPossibleDuplicates }>(`${path(vendorId)}/duplicates`, {
-    params,
-    signal,
-  });
+  const { data } = await apiClient.get<{ data: ComplaintPossibleDuplicates }>(
+    `${path(vendorId)}/duplicates`,
+    {
+      params,
+      signal,
+    },
+  );
   return data.data;
 }
 
-export async function getComplaints(vendorId: number, params: ComplaintListParams) {
-  const { data } = await apiClient.get<{ data: ComplaintListResponse }>(`${path(vendorId)}/complaints`, {
-    params: { ...params, status: params.status?.join(",") || undefined },
-  });
+export async function getComplaints(
+  vendorId: number,
+  params: ComplaintListParams,
+) {
+  const { data } = await apiClient.get<{ data: ComplaintListResponse }>(
+    `${path(vendorId)}/complaints`,
+    {
+      params: { ...params, status: params.status?.join(",") || undefined },
+    },
+  );
   return data.data;
 }
 
-export async function createComplaint(vendorId: number, input: CreateClientComplaintInput) {
+export async function createComplaint(
+  vendorId: number,
+  input: CreateClientComplaintInput,
+) {
   const { photos, videos, ...details } = input;
   const body = new FormData();
   body.append("data", JSON.stringify(details));
   photos.forEach((file) => body.append("photos", file));
   videos.forEach((file) => body.append("videos", file));
   const { data } = await apiClient.post<{
-    data: { id: number; complaint_code: string; status: ComplaintStatus; possible_duplicate: boolean };
-  }>(`${path(vendorId)}/complaints`, body, { headers: { "Content-Type": "multipart/form-data" } });
+    data: {
+      id: number;
+      complaint_code: string;
+      status: ComplaintStatus;
+      possible_duplicate: boolean;
+    };
+  }>(`${path(vendorId)}/complaints`, body, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data.data;
 }
 
@@ -133,7 +181,10 @@ export function useComplaintMeta(vendorId?: number) {
   });
 }
 
-export function useComplaints(vendorId: number | undefined, params: ComplaintListParams) {
+export function useComplaints(
+  vendorId: number | undefined,
+  params: ComplaintListParams,
+) {
   return useQuery({
     queryKey: ["client-complaints", vendorId, params],
     queryFn: () => getComplaints(vendorId!, params),
@@ -145,8 +196,12 @@ export function useComplaints(vendorId: number | undefined, params: ComplaintLis
 export function useCreateComplaint(vendorId?: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateClientComplaintInput) => createComplaint(vendorId!, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-complaints", vendorId] }),
+    mutationFn: (input: CreateClientComplaintInput) =>
+      createComplaint(vendorId!, input),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["client-complaints", vendorId],
+      }),
   });
 }
 
@@ -223,6 +278,15 @@ export function useComplaintActivity(
   });
 }
 
+// Cash collected at a visit, sent with the inspection or completion report.
+export type VisitCashPayment = {
+  amount: number;
+  method: string;
+  transaction_reference: string;
+  payment_date: string;
+  proof: File;
+};
+
 // HO verification stage. Every call sends the complaint version the viewer saw,
 // so the backend can refuse actions taken on a stale page.
 export type ComplaintWorkflowRequest =
@@ -238,8 +302,19 @@ export type ComplaintWorkflowRequest =
       duplicate_review_remarks?: string;
     }
   | { kind: "information"; version: number; remarks: string; files: File[] }
-  | { kind: "priority"; version: number; priority: ComplaintPriority; remarks?: string }
-  | { kind: "reassign"; version: number; role: "SITE_SUPERVISOR" | "DEPARTMENT_HEAD"; user_id: number; reason: string }
+  | {
+      kind: "priority";
+      version: number;
+      priority: ComplaintPriority;
+      remarks?: string;
+    }
+  | {
+      kind: "reassign";
+      version: number;
+      role: "SITE_SUPERVISOR" | "DEPARTMENT_HEAD";
+      user_id: number;
+      reason: string;
+    }
   | {
       kind: "createVisit";
       version: number;
@@ -268,8 +343,19 @@ export type ComplaintWorkflowRequest =
       payment_date: string;
       proof: File;
     }
-  | { kind: "paymentReview"; version: number; payment_id: number; outcome: "VERIFIED" | "REJECTED"; remarks?: string }
-  | { kind: "warranty"; version: number; outcome: "COVERED" | "PARTIALLY_COVERED" | "NOT_COVERED"; remarks: string }
+  | {
+      kind: "paymentReview";
+      version: number;
+      payment_id: number;
+      outcome: "VERIFIED" | "REJECTED";
+      remarks?: string;
+    }
+  | {
+      kind: "warranty";
+      version: number;
+      outcome: "COVERED" | "PARTIALLY_COVERED" | "NOT_COVERED";
+      remarks: string;
+    }
   | { kind: "cancel"; version: number; remarks: string }
   | {
       kind: "inspection";
@@ -278,22 +364,38 @@ export type ComplaintWorkflowRequest =
       photos: File[];
       videos: File[];
       documents: File[];
+      // Cash collected at the visit, recorded with the report.
+      visit_payment?: VisitCashPayment;
     }
   | {
       kind: "inspectionDecision";
       version: number;
-      action: "START_QUOTATION" | "PROCEED_WITHOUT_QUOTATION" | "RESOLVE_WITHOUT_REPAIR";
+      action:
+        | "START_QUOTATION"
+        | "PROCEED_WITHOUT_QUOTATION"
+        | "RESOLVE_WITHOUT_REPAIR";
       remarks: string;
       material_required?: boolean;
       // Quotation file shared with the client straight away (START_QUOTATION).
       files?: File[];
     }
-  | { kind: "uploadQuotation"; version: number; remarks?: string; files: File[] }
+  | {
+      kind: "uploadQuotation";
+      version: number;
+      remarks?: string;
+      files: File[];
+    }
   | {
       kind: "quotationAction";
       version: number;
       quotation_id: number;
-      action: "APPROVE" | "SEND_FOR_REVISION" | "SHARE" | "CLIENT_ACCEPTED" | "CLIENT_REJECTED" | "MODIFICATION_REQUESTED";
+      action:
+        | "APPROVE"
+        | "SEND_FOR_REVISION"
+        | "SHARE"
+        | "CLIENT_ACCEPTED"
+        | "CLIENT_REJECTED"
+        | "MODIFICATION_REQUESTED";
       remarks?: string;
       client_reference?: string;
       // CLIENT_ACCEPTED: how the repair is paid; PAID_NOW carries the payment.
@@ -314,7 +416,12 @@ export type ComplaintWorkflowRequest =
       payment_date: string;
       proof: File;
     }
-  | { kind: "resolutionWaiver"; version: number; quotation_id: number; remarks: string }
+  | {
+      kind: "resolutionWaiver";
+      version: number;
+      quotation_id: number;
+      remarks: string;
+    }
   | {
       kind: "chargePayment";
       version: number;
@@ -325,7 +432,12 @@ export type ComplaintWorkflowRequest =
       payment_date: string;
       proof: File;
     }
-  | { kind: "chargeWaiver"; version: number; charge_id: number; remarks: string }
+  | {
+      kind: "chargeWaiver";
+      version: number;
+      charge_id: number;
+      remarks: string;
+    }
   | {
       kind: "executionAction";
       version: number;
@@ -349,6 +461,8 @@ export type ComplaintWorkflowRequest =
       pending_work: string;
       before: File[];
       after: File[];
+      // Cash an installation team collected at its visit.
+      visit_payment?: VisitCashPayment;
     }
   | {
       kind: "clientConfirmation";
@@ -361,7 +475,12 @@ export type ComplaintWorkflowRequest =
       photos: File[];
     }
   | { kind: "noResponseClosure"; version: number; remarks: string }
-  | { kind: "approveClosure"; version: number; remarks: string; reports_reviewed: boolean };
+  | {
+      kind: "approveClosure";
+      version: number;
+      remarks: string;
+      reports_reviewed: boolean;
+    };
 
 export interface ComplaintInspectionInput {
   visit_id: number;
@@ -390,25 +509,39 @@ export interface ComplaintInspectionInput {
   additional_visit_required: boolean;
   further_approval_required: boolean;
   pending_work: string;
+  // Required when material is needed on a CRM-lead complaint.
+  misc_type_id?: number;
 }
 
-export async function runComplaintWorkflow(vendorId: number, complaintId: number, request: ComplaintWorkflowRequest) {
+export async function runComplaintWorkflow(
+  vendorId: number,
+  complaintId: number,
+  request: ComplaintWorkflowRequest,
+) {
   const base = `${path(vendorId)}/complaints/${complaintId}`;
   const multipart = (url: string, fields: object, files: [string, File][]) => {
     const form = new FormData();
     form.append("data", JSON.stringify(fields));
     files.forEach(([name, file]) => form.append(name, file));
-    return apiClient.post(url, form, { headers: { "Content-Type": "multipart/form-data" } });
+    return apiClient.post(url, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   };
   switch (request.kind) {
     case "information": {
       const { kind: _, files, ...fields } = request;
-      await multipart(`${base}/verification/information-received`, fields, files.map((f) => ["files", f]));
+      await multipart(
+        `${base}/verification/information-received`,
+        fields,
+        files.map((f) => ["files", f]),
+      );
       return;
     }
     case "visitPayment": {
       const { kind: _, visit_id, proof, ...fields } = request;
-      await multipart(`${base}/visits/${visit_id}/payments`, fields, [["proof", proof]]);
+      await multipart(`${base}/visits/${visit_id}/payments`, fields, [
+        ["proof", proof],
+      ]);
       return;
     }
     case "visitAction": {
@@ -422,42 +555,74 @@ export async function runComplaintWorkflow(vendorId: number, complaintId: number
       return;
     }
     case "inspection": {
-      const { version, fields, photos, videos, documents } = request;
-      await multipart(`${base}/inspections`, { ...fields, version }, [
-        ...photos.map((f): [string, File] => ["photos", f]),
-        ...videos.map((f): [string, File] => ["videos", f]),
-        ...documents.map((f): [string, File] => ["documents", f]),
-      ]);
+      const { version, fields, photos, videos, documents, visit_payment } =
+        request;
+      const { proof, ...payment } = visit_payment ?? {};
+      await multipart(
+        `${base}/inspections`,
+        {
+          ...fields,
+          version,
+          ...(visit_payment ? { visit_payment: payment } : {}),
+        },
+        [
+          ...photos.map((f): [string, File] => ["photos", f]),
+          ...videos.map((f): [string, File] => ["videos", f]),
+          ...documents.map((f): [string, File] => ["documents", f]),
+          ...(proof ? [["payment_proof", proof] as [string, File]] : []),
+        ],
+      );
       return;
     }
     case "inspectionDecision": {
       const { kind: _, files = [], ...fields } = request;
-      await multipart(`${base}/inspection-decision`, fields, files.map((f) => ["files", f]));
+      await multipart(
+        `${base}/inspection-decision`,
+        fields,
+        files.map((f) => ["files", f]),
+      );
       return;
     }
     case "uploadQuotation": {
       const { kind: _, files, ...fields } = request;
-      await multipart(`${base}/quotations`, fields, files.map((f) => ["files", f]));
+      await multipart(
+        `${base}/quotations`,
+        fields,
+        files.map((f) => ["files", f]),
+      );
       return;
     }
     case "quotationAction": {
       const { kind: _, quotation_id, proof, ...fields } = request;
-      await multipart(`${base}/quotations/${quotation_id}/action`, fields, proof ? [["proof", proof]] : []);
+      await multipart(
+        `${base}/quotations/${quotation_id}/action`,
+        fields,
+        proof ? [["proof", proof]] : [],
+      );
       return;
     }
     case "resolutionPayment": {
       const { kind: _, quotation_id, proof, ...fields } = request;
-      await multipart(`${base}/quotations/${quotation_id}/resolution-payment`, fields, [["proof", proof]]);
+      await multipart(
+        `${base}/quotations/${quotation_id}/resolution-payment`,
+        fields,
+        [["proof", proof]],
+      );
       return;
     }
     case "resolutionWaiver": {
       const { kind: _, quotation_id, ...body } = request;
-      await apiClient.post(`${base}/quotations/${quotation_id}/resolution-waiver`, body);
+      await apiClient.post(
+        `${base}/quotations/${quotation_id}/resolution-waiver`,
+        body,
+      );
       return;
     }
     case "chargePayment": {
       const { kind: _, charge_id, proof, ...fields } = request;
-      await multipart(`${base}/charges/${charge_id}/payments`, fields, [["proof", proof]]);
+      await multipart(`${base}/charges/${charge_id}/payments`, fields, [
+        ["proof", proof],
+      ]);
       return;
     }
     case "chargeWaiver": {
@@ -471,16 +636,33 @@ export async function runComplaintWorkflow(vendorId: number, complaintId: number
       return;
     }
     case "executionComplete": {
-      const { kind: _, execution_id, before, after, ...fields } = request;
-      await multipart(`${base}/executions/${execution_id}/complete`, fields, [
-        ...before.map((f): [string, File] => ["before", f]),
-        ...after.map((f): [string, File] => ["after", f]),
-      ]);
+      const {
+        kind: _,
+        execution_id,
+        before,
+        after,
+        visit_payment,
+        ...fields
+      } = request;
+      const { proof, ...payment } = visit_payment ?? {};
+      await multipart(
+        `${base}/executions/${execution_id}/complete`,
+        { ...fields, ...(visit_payment ? { visit_payment: payment } : {}) },
+        [
+          ...before.map((f): [string, File] => ["before", f]),
+          ...after.map((f): [string, File] => ["after", f]),
+          ...(proof ? [["payment_proof", proof] as [string, File]] : []),
+        ],
+      );
       return;
     }
     case "clientConfirmation": {
       const { kind: _, photos, ...fields } = request;
-      await multipart(`${base}/closure/client-confirmation`, fields, photos.map((f) => ["photos", f]));
+      await multipart(
+        `${base}/closure/client-confirmation`,
+        fields,
+        photos.map((f) => ["photos", f]),
+      );
       return;
     }
     default: {
@@ -505,59 +687,46 @@ export async function runComplaintWorkflow(vendorId: number, complaintId: number
 export function useComplaintWorkflow(vendorId: number, complaintId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: ComplaintWorkflowRequest) => runComplaintWorkflow(vendorId, complaintId, request),
+    mutationFn: (request: ComplaintWorkflowRequest) =>
+      runComplaintWorkflow(vendorId, complaintId, request),
     // Refresh even on failure: a 409 means the page is stale.
     onSettled: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["client-complaint-detail", vendorId, complaintId] }),
-        queryClient.invalidateQueries({ queryKey: ["client-complaint-activity", vendorId, complaintId] }),
-        queryClient.invalidateQueries({ queryKey: ["client-complaints", vendorId] }),
-        queryClient.invalidateQueries({ queryKey: ["client-complaints-my-tasks", vendorId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-complaint-detail", vendorId, complaintId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-complaint-activity", vendorId, complaintId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["client-complaints", vendorId],
+        }),
+        // Complaint tasks also show in My Tasks.
+        queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] }),
       ]),
   });
 }
 
-export function useComplaintAssigneeOptions(vendorId: number, complaintId: number, enabled: boolean) {
+export function useComplaintAssigneeOptions(
+  vendorId: number,
+  complaintId: number,
+  enabled: boolean,
+) {
   return useQuery({
     queryKey: ["client-complaint-assignees", vendorId, complaintId],
     queryFn: async ({ signal }) => {
       const { data } = await apiClient.get<{
-        data: { site_supervisors: ComplaintAssigneeOption[]; head_site_supervisors: ComplaintAssigneeOption[] };
-      }>(`${path(vendorId)}/complaints/${complaintId}/assignee-options`, { signal });
+        data: {
+          site_supervisors: ComplaintAssigneeOption[];
+          head_site_supervisors: ComplaintAssigneeOption[];
+        };
+      }>(`${path(vendorId)}/complaints/${complaintId}/assignee-options`, {
+        signal,
+      });
       return data.data;
     },
     enabled,
     staleTime: 60_000,
-  });
-}
-
-export interface MyComplaintTask {
-  id: number;
-  task_type: string;
-  status: string;
-  due_date: string | null;
-  remark: string | null;
-  complaint: {
-    id: number;
-    complaint_code: string;
-    client_name: string;
-    client_mobile: string;
-    status: ComplaintStatus;
-    site_address: string;
-  };
-}
-
-export async function getMyComplaintTasks(vendorId: number) {
-  const { data } = await apiClient.get<{ data: MyComplaintTask[] }>(`${path(vendorId)}/my-tasks`);
-  return data.data;
-}
-
-// Users without complaint access get a 403; the section simply stays hidden.
-export function useMyComplaintTasks(vendorId?: number) {
-  return useQuery({
-    queryKey: ["client-complaints-my-tasks", vendorId],
-    queryFn: () => getMyComplaintTasks(vendorId!),
-    enabled: !!vendorId,
-    retry: false,
   });
 }

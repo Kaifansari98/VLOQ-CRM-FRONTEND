@@ -1,5 +1,7 @@
 "use client";
 
+import { ClientTrackerTab } from "@/components/project-tracker/ClientTrackerTab";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -1127,6 +1129,10 @@ export default function ClientDocumentationLeadDetails() {
                 Documents
               </TabsTrigger>
             )}
+              <TabsTrigger value="client-tracker">
+                <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                Client Tracker
+              </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -1185,6 +1191,9 @@ export default function ClientDocumentationLeadDetails() {
             />
           </TabsContent>
         )}
+        <TabsContent value="client-tracker">
+          <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+        </TabsContent>
       </Tabs>
 
       {/* MODALS */}
