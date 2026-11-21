@@ -125,3 +125,18 @@ export const useStoreCities = (vendorId: number, enabled = true) =>
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+/** Adds a city to the vendor's city master; an existing one with that name is reused. */
+export const useAddStoreCity = (vendorId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data } = await apiClient.post<{ data: StoreCity & { created: boolean } }>(
+        `/franchises/vendor/${vendorId}/store-cities`,
+        { name },
+      );
+      return data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["franchises", "store-cities", vendorId] }),
+  });
+};

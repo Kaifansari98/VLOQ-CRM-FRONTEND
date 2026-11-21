@@ -998,7 +998,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
-                  No CRM lead is created. Usable and final handover dates are added by the Site Supervisor later.
+                  A placeholder CRM lead (vendor code + EX, e.g. VLOQEX-1) is created for this client under the franchise of the selected store city, or the head office if none, and listed in Delivered Projects. The client's later complaints reuse it.
                 </p>
 
                 {hasDuplicates && (

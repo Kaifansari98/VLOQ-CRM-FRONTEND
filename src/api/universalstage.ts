@@ -212,6 +212,8 @@ export const useUniversalStageLeads = (
 };
 
 export interface UniversalStagePostPayload {
+  /** Delivered Projects also lists complaint placeholder leads. */
+  include_complaint_placeholders?: boolean;
   userId: number;
   franchise_id?: number;
   franchise_ids?: number[];
@@ -308,6 +310,8 @@ export const useUniversalStageLeadsPost = (
 
 // hooks/postVendorLeadsByTag.ts
 export interface VendorLeadsByTagPostPayload {
+  /** Delivered Projects also lists complaint placeholder leads. */
+  include_complaint_placeholders?: boolean;
   userId?: number | null; // optional (for exclusion logic)
   franchise_id?: number;
   franchise_ids?: number[];

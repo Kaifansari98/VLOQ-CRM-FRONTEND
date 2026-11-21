@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MapPin } from "lucide-react";
+import { Loader2, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
 import { toastManager } from "@/components/ui/toast";
 import {
+  useAddStoreCity,
   useCreateFranchise,
   useStoreCities,
   useUpdateFranchise,
@@ -89,6 +90,36 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
       : (citiesError as any)?.response?.data?.message || "Couldn't load cities.";
   const hasCities = (cities?.length ?? 0) > 0;
 
+  // Inline "Add City": saves to the vendor's city master and selects it.
+  const addCityMutation = useAddStoreCity(vendorId);
+  const [addingCity, setAddingCity] = React.useState(false);
+  const [newCity, setNewCity] = React.useState("");
+  const [newCityError, setNewCityError] = React.useState("");
+  const closeAddCity = () => {
+    setAddingCity(false);
+    setNewCity("");
+    setNewCityError("");
+  };
+  const saveCity = async () => {
+    const name = newCity.trim().replace(/\s+/g, " ");
+    if (!name) {
+      setNewCityError("Enter the city name.");
+      return;
+    }
+    try {
+      const city = await addCityMutation.mutateAsync(name);
+      setForm((prev) => ({ ...prev, store_city_id: String(city.id) }));
+      setCityError("");
+      closeAddCity();
+      toastManager.add({
+        title: city.created ? `${city.name} added to the city master` : `${city.name} is already in the city master — selected`,
+        type: "success",
+      });
+    } catch (error: any) {
+      setNewCityError(error?.response?.data?.message || "Couldn't add the city.");
+    }
+  };
+
   // Load the franchise (or a blank form) each time the dialog opens.
   React.useEffect(() => {
     if (!open) return;
@@ -96,6 +127,9 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
     setCodeError("");
     setCityError("");
     setSavedMapLocation(null);
+    setAddingCity(false);
+    setNewCity("");
+    setNewCityError("");
   }, [open, franchise]);
 
   const handleFieldChange = (field: keyof Form) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -294,7 +328,19 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
               />
             </div>
             <div className="grid gap-2">
-              <Label>City {hasCities ? <Required /> : null}</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>City {hasCities ? <Required /> : null}</Label>
+                {!addingCity && !citiesFailed && (
+                  <button
+                    type="button"
+                    onClick={() => setAddingCity(true)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add City
+                  </button>
+                )}
+              </div>
               <AssignToPicker
                 data={cityOptions}
                 value={form.store_city_id ? Number(form.store_city_id) : undefined}
@@ -328,9 +374,56 @@ export default function FranchiseFormDialog({ open, onOpenChange, vendorId, fran
                 </p>
               ) : (
                 !citiesLoading &&
-                !hasCities && (
-                  <p className="text-xs text-muted-foreground">Add cities to this vendor&apos;s city master to tag one.</p>
+                !hasCities &&
+                !addingCity && (
+                  <p className="text-xs text-muted-foreground">
+                    No cities yet. Use <span className="font-medium">Add City</span> to create one.
+                  </p>
                 )
+              )}
+              {addingCity && (
+                <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      autoFocus
+                      value={newCity}
+                      onChange={(e) => {
+                        setNewCity(e.target.value);
+                        setNewCityError("");
+                      }}
+                      onKeyDown={(e) => {
+                        // Enter saves the city, not the franchise form.
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void saveCity();
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          closeAddCity();
+                        }
+                      }}
+                      placeholder="New city name"
+                      maxLength={120}
+                      aria-label="New city name"
+                      aria-invalid={!!newCityError}
+                      className="h-8 text-sm"
+                    />
+                    <Button type="button" size="sm" className="h-8" onClick={() => void saveCity()} disabled={addCityMutation.isPending}>
+                      {addCityMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-8" onClick={closeAddCity} disabled={addCityMutation.isPending}>
+                      Cancel
+                    </Button>
+                  </div>
+                  {newCityError ? (
+                    <p role="alert" className="text-xs text-destructive">
+                      {newCityError}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">Saved to this vendor&apos;s city master and selected.</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
