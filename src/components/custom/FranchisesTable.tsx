@@ -18,6 +18,8 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pencil } from "lucide-react";
+import FranchiseFormDialog from "@/components/custom/FranchiseFormDialog";
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,7 @@ type FranchiseRow = {
   contact_number: string;
   address: string;
   pincode: string;
+  city: string;
   is_head_office: boolean;
   status: string;
   createdAt: string;
@@ -52,7 +55,7 @@ function formatDate(value?: string | null) {
 
 // ─── Columns ─────────────────────────────────────────────────────────────────
 
-const columns: ColumnDef<FranchiseRow>[] = [
+const baseColumns: ColumnDef<FranchiseRow>[] = [
   { accessorKey: "shift_minutes", header: "Daily shift", cell: ({ row }) => <span className="whitespace-nowrap text-xs">{row.original.shift_minutes / 60} hours</span> },
   {
     accessorKey: "srNo",
@@ -118,6 +121,12 @@ const columns: ColumnDef<FranchiseRow>[] = [
     cell: ({ row }) => (
       <span>{row.getValue("contact_number") || "—"}</span>
     ),
+    enableSorting: false,
+  },
+  {
+    accessorKey: "city",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="City" />,
+    cell: ({ row }) => <span className="text-sm">{row.getValue("city") || "—"}</span>,
     enableSorting: false,
   },
   {
@@ -213,6 +222,33 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const { data, isLoading, isError, error } = useFranchisesByVendor(vendorId);
+  const [editing, setEditing] = React.useState<FranchiseListItem | null>(null);
+
+  // Edit button on every row; it opens the franchise form with its details.
+  const columns = React.useMemo<ColumnDef<FranchiseRow>[]>(
+    () => [
+      ...baseColumns,
+      {
+        id: "actions",
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setEditing(data?.data?.find((f) => f.id === row.original.id) ?? null)}
+            aria-label={`Edit ${row.original.franchise_name}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Button>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+    ],
+    [data],
+  );
 
   const tableData = React.useMemo<FranchiseRow[]>(
     () =>
@@ -227,6 +263,7 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
         contact_number: item.contact_number ?? "",
         address: item.address ?? "",
         pincode: item.pincode ?? "",
+        city: item.storeCity?.name ?? "",
         is_head_office: item.is_head_office === true,
         status: item.status ?? "",
         createdAt: item.createdAt ?? "",
@@ -273,6 +310,12 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
             <DataTable table={table} />
           </div>
         )}
+        <FranchiseFormDialog
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditing(null)}
+          vendorId={vendorId}
+          franchise={editing}
+        />
       </CardContent>
     </Card>
   );

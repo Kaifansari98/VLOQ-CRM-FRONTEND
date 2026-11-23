@@ -44,19 +44,21 @@ import {
   ComplaintLeadLookup,
   ComplaintPossibleDuplicates,
   CreateClientComplaintInput,
+  RegisteredComplaint,
 } from "@/types/client-complaints";
 import { STATUS_META } from "./complaint-meta";
 import { useAppSelector } from "@/redux/store";
 import { useVendorBrandStyle } from "@/hooks/use-vendor-theme-color";
 import { ComplaintLeadPicker } from "./ComplaintLeadPicker";
-import AssignToPicker from "@/components/assign-to-picker";
+import MultipleSelector from "@/components/ui/multiselect";
 
 interface CreateComplaintModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorId: number;
   meta?: ComplaintMeta;
-  onCreated: (result: { complaint_code: string; possible_duplicate: boolean }) => void;
+  /** One complaint per selected category. */
+  onCreated: (created: RegisteredComplaint[]) => void;
 }
 
 type ClientMode = "CRM_LEAD" | "EXTERNAL";
@@ -65,6 +67,8 @@ const MAX_PHOTOS = 10;
 const MAX_VIDEOS = 3;
 const MAX_PHOTO_MB = 15;
 const MAX_VIDEO_MB = 50;
+// Matches the backend's limit on categories per registration.
+const MAX_CATEGORIES = 10;
 
 const MAP_LINK = /^https?:\/\/\S+$/i;
 
@@ -88,12 +92,27 @@ const emptyLeadForm = {
   head_site_supervisor_id: "",
 };
 
+// Shared by every complaint registered.
 const emptyDetails = {
-  category_id: "",
-  description: "",
   additional_remarks: "",
   preferred_visit_date: "",
 };
+
+type Preview = { file: File; url: string };
+
+// One selected category: it becomes its own complaint with its own
+// description and photos. The first entry has no category until one is picked.
+type Issue = { key: string; categoryId: number | null; description: string; photos: Preview[] };
+
+let issueKey = 0;
+const newIssue = (categoryId: number | null = null): Issue => ({
+  key: `issue-${++issueKey}`,
+  categoryId,
+  description: "",
+  photos: [],
+});
+
+const revoke = (files: Preview[]) => files.forEach((p) => URL.revokeObjectURL(p.url));
 
 type Errors = Record<string, string | undefined>;
 
@@ -257,8 +276,8 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
   const [linkedClient, setLinkedClient] = useState<ComplaintPossibleDuplicates["external_clients"][number] | null>(null);
   const [duplicates, setDuplicates] = useState<ComplaintPossibleDuplicates | null>(null);
   const [details, setDetails] = useState(emptyDetails);
-  const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
-  const [videos, setVideos] = useState<{ file: File; url: string }[]>([]);
+  const [issues, setIssues] = useState<Issue[]>(() => [newIssue()]);
+  const [videos, setVideos] = useState<Preview[]>([]);
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -267,9 +286,9 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     if (open) return;
     leadRequestRef.current?.abort();
     setLeadLoading(false);
-    setPhotos((prev) => {
-      prev.forEach((p) => URL.revokeObjectURL(p.url));
-      return [];
+    setIssues((prev) => {
+      prev.forEach((issue) => revoke(issue.photos));
+      return [newIssue()];
     });
     setVideos((prev) => {
       prev.forEach((p) => URL.revokeObjectURL(p.url));
@@ -382,35 +401,73 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     void fetchLead(code);
   };
 
-  const addFiles = (kind: "photo" | "video", list: FileList | null) => {
+  const updateIssue = (key: string, change: (issue: Issue) => Issue) =>
+    setIssues((prev) => prev.map((issue) => (issue.key === key ? change(issue) : issue)));
+
+  // Photos belong to one category's issue (`issueKey`); videos are shared.
+  const addFiles = (kind: "photo" | "video", list: FileList | null, issueKey?: string) => {
     if (!list) return;
     const isPhoto = kind === "photo";
     const accepted = Array.from(list).filter((f) => f.type.startsWith(isPhoto ? "image/" : "video/"));
     const maxBytes = (isPhoto ? MAX_PHOTO_MB : MAX_VIDEO_MB) * 1024 * 1024;
     const tooLarge = accepted.filter((f) => f.size > maxBytes);
-    const setter = isPhoto ? setPhotos : setVideos;
-    setter((prev) => [
+    const append = (prev: Preview[]) => [
       ...prev,
       ...accepted
         .filter((f) => f.size <= maxBytes)
         .slice(0, (isPhoto ? MAX_PHOTOS : MAX_VIDEOS) - prev.length)
         .map((file) => ({ file, url: URL.createObjectURL(file) })),
-    ]);
+    ];
+    if (isPhoto && issueKey) updateIssue(issueKey, (issue) => ({ ...issue, photos: append(issue.photos) }));
+    else setVideos(append);
     setErrors((prev) => ({
       ...prev,
-      [isPhoto ? "photos" : "videos"]: tooLarge.length
+      [isPhoto ? `photos_${issueKey}` : "videos"]: tooLarge.length
         ? `${tooLarge.map((f) => f.name).join(", ")} exceeds ${isPhoto ? MAX_PHOTO_MB : MAX_VIDEO_MB} MB.`
         : undefined,
     }));
   };
 
-  const removeFile = (kind: "photo" | "video", index: number) => {
-    const setter = kind === "photo" ? setPhotos : setVideos;
-    setter((prev) => {
+  const removeFile = (kind: "photo" | "video", index: number, issueKey?: string) => {
+    const drop = (prev: Preview[]) => {
       URL.revokeObjectURL(prev[index].url);
       return prev.filter((_, i) => i !== index);
-    });
+    };
+    if (kind === "photo" && issueKey) updateIssue(issueKey, (issue) => ({ ...issue, photos: drop(issue.photos) }));
+    else setVideos(drop);
   };
+
+  // Keeps one issue per selected category, in the order picked. Text and
+  // photos already entered for a category stay with it; what was typed before
+  // any category was picked goes to the first one.
+  const selectCategories = (ids: number[]) => {
+    setIssues((prev) => {
+      const draft = prev.find((issue) => issue.categoryId === null);
+      let draftUsed = false;
+      const next = ids.map((id) => {
+        const existing = prev.find((issue) => issue.categoryId === id);
+        if (existing) return existing;
+        if (draft && !draftUsed) {
+          draftUsed = true;
+          return { ...draft, categoryId: id };
+        }
+        return newIssue(id);
+      });
+      if (next.length === 0) {
+        // Nothing selected: keep the only issue's text as the draft.
+        const only = prev.length === 1 ? prev[0] : draft;
+        prev.filter((issue) => issue !== only).forEach((issue) => revoke(issue.photos));
+        return [only ? { ...only, categoryId: null } : newIssue()];
+      }
+      prev.filter((issue) => !next.includes(issue) && !(draftUsed && issue === draft)).forEach((issue) => revoke(issue.photos));
+      return next;
+    });
+    clearError("category_id");
+  };
+
+  const categoryName = (id: number | null) => meta?.categories.find((c) => c.id === id)?.name ?? "";
+  const selectedIssues = issues.filter((issue) => issue.categoryId !== null);
+  const multiple = selectedIssues.length > 1;
 
   const validate = (): Errors => {
     const next: Errors = {};
@@ -443,9 +500,11 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       if (!external.city.trim()) next.city = "Select the store city.";
       if (!external.product_type) next.product_type = "Select the product type.";
     }
-    if (!details.category_id) next.category_id = "Select a complaint category.";
-    if (!details.description.trim()) next.description = "Describe the issue.";
-    if (photos.length === 0) next.photos = "Add at least one photo of the issue.";
+    if (selectedIssues.length === 0) next.category_id = "Select at least one complaint category.";
+    for (const issue of issues) {
+      if (!issue.description.trim()) next[`description_${issue.key}`] = "Describe the issue.";
+      if (issue.photos.length === 0) next[`photos_${issue.key}`] = "Add at least one photo of the issue.";
+    }
     return next;
   };
 
@@ -457,11 +516,13 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     if (Object.keys(nextErrors).length > 0) return;
 
     const common = {
-      category_id: Number(details.category_id),
-      description: details.description.trim(),
+      issues: selectedIssues.map((issue) => ({
+        category_id: issue.categoryId!,
+        description: issue.description.trim(),
+        photos: issue.photos.map((p) => p.file),
+      })),
       additional_remarks: details.additional_remarks.trim() || undefined,
       preferred_visit_date: details.preferred_visit_date || undefined,
-      photos: photos.map((p) => p.file),
       videos: videos.map((v) => v.file),
     };
     const input: CreateClientComplaintInput =
@@ -498,7 +559,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
       onCreated(result);
       onOpenChange(false);
     } catch (error) {
-      setSubmitError(apiMessage(error, "Unable to register the complaint."));
+      setSubmitError(apiMessage(error, multiple ? "Unable to register the complaints." : "Unable to register the complaint."));
     }
   };
 
@@ -937,7 +998,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
-                  No CRM lead is created. Usable and final handover dates are added by the Site Supervisor later.
+                  A placeholder CRM lead (vendor code + EX, e.g. VLOQEX-1) is created for this client under the franchise of the selected store city, or the head office if none, and listed in Delivered Projects. The client's later complaints reuse it.
                 </p>
 
                 {hasDuplicates && (
@@ -985,53 +1046,98 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
 
           {/* Complaint */}
           <section className="space-y-4">
-            <div className="space-y-1.5" role="group" aria-label="Complaint category">
-              <Label className="text-xs">Complaint Category</Label>
-              <AssignToPicker
-                data={(meta?.categories ?? []).map(category => ({ id: category.id, label: category.name }))}
-                value={details.category_id ? Number(details.category_id) : undefined}
-                onChange={(id) => {
-                  setDetails((p) => ({ ...p, category_id: id ? String(id) : "" }));
-                  clearError("category_id");
-                }}
-                placeholder="Search complaint categories…"
-                emptyLabel={meta ? "Select a category" : "Loading categories…"}
+            <div className="space-y-1.5" role="group" aria-label="Complaint categories">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Complaint Category</Label>
+                <span className="text-[11px] text-muted-foreground">Select one or more</span>
+              </div>
+              <MultipleSelector
+                options={(meta?.categories ?? []).map((category) => ({
+                  value: String(category.id),
+                  label: category.name,
+                }))}
+                value={selectedIssues.map((issue) => ({
+                  value: String(issue.categoryId),
+                  label: categoryName(issue.categoryId),
+                }))}
+                onChange={(selected) => selectCategories(selected.map((option) => Number(option.value)))}
+                placeholder={meta ? "Search complaint categories…" : "Loading categories…"}
                 disabled={!meta}
-                className={`h-9 rounded-xl text-xs ${errors.category_id ? "border-destructive" : ""}`}
-                textClassName="text-xs"
+                maxSelected={MAX_CATEGORIES}
+                hidePlaceholderWhenSelected
+                showSelectedOptionsInDropdown
+                className={`rounded-xl text-xs ${errors.category_id ? "border-destructive" : ""}`}
+                inputProps={{ "aria-label": "Search complaint categories" }}
               />
               <FieldError message={errors.category_id} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Issue Description</Label>
-              <Textarea
-                value={details.description}
-                onChange={(e) => {
-                  setDetails((p) => ({ ...p, description: e.target.value }));
-                  clearError("description");
-                }}
-                placeholder="What happened, where, and since when"
-                rows={4}
-                className="text-xs rounded-xl resize-none"
-                aria-invalid={!!errors.description}
-              />
-              <FieldError message={errors.description} />
+              {multiple && (
+                <p className="text-[11px] text-muted-foreground">
+                  {selectedIssues.length} complaints will be registered, one per category. Add the issue description
+                  and photos for each below.
+                </p>
+              )}
             </div>
 
-            <MediaPicker
-              kind="photo"
-              files={photos}
-              onAdd={(f) => addFiles("photo", f)}
-              onRemove={(i) => removeFile("photo", i)}
-              error={errors.photos}
-            />
-            <MediaPicker
-              kind="video"
-              files={videos}
-              onAdd={(f) => addFiles("video", f)}
-              onRemove={(i) => removeFile("video", i)}
-              error={errors.videos}
-            />
+            {(multiple ? selectedIssues : issues.slice(0, 1)).map((issue, index) => {
+              const fields = (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Issue Description</Label>
+                    <Textarea
+                      value={issue.description}
+                      onChange={(e) => {
+                        const description = e.target.value;
+                        updateIssue(issue.key, (it) => ({ ...it, description }));
+                        clearError(`description_${issue.key}`);
+                      }}
+                      placeholder="What happened, where, and since when"
+                      rows={multiple ? 3 : 4}
+                      className="text-xs rounded-xl resize-none bg-background"
+                      aria-invalid={!!errors[`description_${issue.key}`]}
+                      aria-label={multiple ? `Issue description for ${categoryName(issue.categoryId)}` : undefined}
+                    />
+                    <FieldError message={errors[`description_${issue.key}`]} />
+                  </div>
+                  <MediaPicker
+                    kind="photo"
+                    files={issue.photos}
+                    onAdd={(f) => {
+                      addFiles("photo", f, issue.key);
+                      clearError(`photos_${issue.key}`);
+                    }}
+                    onRemove={(i) => removeFile("photo", i, issue.key)}
+                    error={errors[`photos_${issue.key}`]}
+                  />
+                </>
+              );
+              if (!multiple) return <React.Fragment key={issue.key}>{fields}</React.Fragment>;
+              return (
+                <div key={issue.key} className="space-y-3 rounded-xl border bg-muted/20 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-semibold">{categoryName(issue.categoryId)}</h4>
+                    <span className="text-[11px] text-muted-foreground">
+                      Complaint {index + 1} of {selectedIssues.length}
+                    </span>
+                  </div>
+                  {fields}
+                </div>
+              );
+            })}
+
+            <div className="space-y-1">
+              <MediaPicker
+                kind="video"
+                files={videos}
+                onAdd={(f) => addFiles("video", f)}
+                onRemove={(i) => removeFile("video", i)}
+                error={errors.videos}
+              />
+              {multiple && (
+                <p className="text-[11px] text-muted-foreground">
+                  Videos, the preferred visit date and remarks are added to every complaint.
+                </p>
+              )}
+            </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs">
@@ -1083,7 +1189,7 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
             disabled={isSubmitting}
           >
             {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            Submit Complaint
+            {multiple ? `Submit ${selectedIssues.length} Complaints` : "Submit Complaint"}
           </Button>
         </DialogFooter>
       </DialogContent>

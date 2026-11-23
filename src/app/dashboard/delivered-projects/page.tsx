@@ -61,6 +61,7 @@ export default function DeliveredProjectsPage() {
             description="Delivered projects for quick tracking and handover review."
             type="Type 17"
             enableAdminTabs={true}
+            includeComplaintPlaceholders
             onRowNavigate={navigateDeliveredProjects}
           />
         </Suspense>

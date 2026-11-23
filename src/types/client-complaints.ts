@@ -94,13 +94,26 @@ export interface ComplaintPossibleDuplicates {
   leads: { lead_id: number; lead_code: string; client_name: string; site_address: string | null }[];
 }
 
-interface ComplaintDetailsInput {
+/** One selected category; each becomes its own complaint. */
+export interface ComplaintIssueInput {
   category_id: number;
   description: string;
+  photos: File[];
+}
+
+interface ComplaintDetailsInput {
+  issues: ComplaintIssueInput[];
+  /** Shared by every complaint registered. */
   additional_remarks?: string;
   preferred_visit_date?: string;
-  photos: File[];
   videos: File[];
+}
+
+export interface RegisteredComplaint {
+  id: number;
+  complaint_code: string;
+  status: string;
+  possible_duplicate: boolean;
 }
 
 export type CreateClientComplaintInput = ComplaintDetailsInput &

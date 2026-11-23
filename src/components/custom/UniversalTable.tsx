@@ -61,6 +61,8 @@ import {
 // -------------------------------------------------------
 
 export interface UniversalTableProps {
+  /** Also list complaint placeholder leads (<VendorCode>EX-n). Delivered Projects only. */
+  includeComplaintPlaceholders?: boolean;
   getRowId?: (row: LeadColumn) => string;
   onRowNavigate: (row: LeadColumn) => string;
   type: string;
@@ -500,6 +502,7 @@ export function UniversalTable({
   materialIssueReadyOnly = false,
   materialIssueCompletedOnly = false,
   defaultSelectFranchiseFromRedux = false,
+  includeComplaintPlaceholders = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -849,6 +852,7 @@ export function UniversalTable({
       isCaller && myFranchisesFilter.length > 0 ? myFranchisesFilter[0] : undefined;
 
     return {
+      ...(includeComplaintPlaceholders ? { include_complaint_placeholders: true } : {}),
       userId: userId!,
       franchise_id: isAdminOverallLeads ? assignedFranchiseId ?? undefined :
         !ignoreFranchiseScope && shouldIncludeFranchise
@@ -896,6 +900,7 @@ export function UniversalTable({
           : undefined,
     };
   }, [
+    includeComplaintPlaceholders,
     userId,
     userType,
     isCaller,
@@ -938,6 +943,7 @@ export function UniversalTable({
       isCaller && overallFranchisesFilter.length > 0 ? overallFranchisesFilter[0] : undefined;
 
     return {
+      ...(includeComplaintPlaceholders ? { include_complaint_placeholders: true } : {}),
       userId: overallUserId,
       franchise_id: isAdminOverallLeads ? assignedFranchiseId ?? undefined :
         !ignoreFranchiseScope && shouldIncludeFranchise
@@ -990,6 +996,7 @@ export function UniversalTable({
           : undefined,
     };
   }, [
+    includeComplaintPlaceholders,
     userId,
     userType,
     isAdmin,

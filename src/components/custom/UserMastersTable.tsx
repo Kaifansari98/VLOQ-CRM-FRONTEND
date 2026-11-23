@@ -280,11 +280,105 @@ function DocumentUploadBox({
   );
 }
 
+// Role filter in the User Type column header. Several roles can be picked;
+// the server filters on them, so it works across every page.
+function UserTypeColumnFilter({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [query, setQuery] = React.useState("");
+  const selected = new Set(value.map((v) => v.toLowerCase()));
+  const visible = options.filter((o) =>
+    formatUserTypeLabel(o).toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  const toggle = (option: string) =>
+    onChange(
+      selected.has(option.toLowerCase())
+        ? value.filter((v) => v.toLowerCase() !== option.toLowerCase())
+        : [...value, option],
+    );
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>User Type</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Filter by user type"
+            className={cn(
+              "inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs transition-colors hover:bg-accent hover:text-accent-foreground",
+              value.length ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+            )}
+          >
+            <ListFilter className="h-3.5 w-3.5" />
+            {value.length > 0 && (
+              <span className="rounded bg-primary px-1 text-[10px] font-medium leading-4 text-primary-foreground">
+                {value.length}
+              </span>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-0" align="start">
+          <div className="border-b p-2">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search roles..."
+              className="h-8 text-sm"
+              aria-label="Search roles"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto p-1">
+            {visible.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">No roles found.</p>
+            ) : (
+              visible.map((option) => (
+                <label
+                  key={option}
+                  className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-normal hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Checkbox
+                    checked={selected.has(option.toLowerCase())}
+                    onCheckedChange={() => toggle(option)}
+                  />
+                  {formatUserTypeLabel(option)}
+                </label>
+              ))
+            )}
+          </div>
+          {value.length > 0 && (
+            <div className="border-t p-1">
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="w-full rounded-sm px-2 py-1.5 text-center text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 function getUserMasterColumns(
   isEmployeeMaster: boolean,
   isHrmsMasterEnabled?: boolean,
   onManagePrivileges?: (row: UserMasterRow) => void,
   onEdit?: (row: UserMasterRow) => void,
+  userTypeFilter?: {
+    options: string[];
+    value: string[];
+    onChange: (next: string[]) => void;
+  },
 ): ColumnDef<UserMasterRow>[] {
   const baseColumns: ColumnDef<UserMasterRow>[] = [
     {
@@ -351,9 +445,12 @@ function getUserMasterColumns(
   if (!isEmployeeMaster || isHrmsMasterEnabled) {
     baseColumns.push({
       accessorKey: "user_type",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="User Type" />
-      ),
+      header: ({ column }) =>
+        userTypeFilter ? (
+          <UserTypeColumnFilter {...userTypeFilter} />
+        ) : (
+          <DataTableColumnHeader column={column} title="User Type" />
+        ),
       cell: ({ row }) => (
         <span>{formatUserTypeLabel(row.getValue("user_type") as string)}</span>
       ),
@@ -628,6 +725,10 @@ export default function UserMastersTable({
   const [franchiseFilter, setFranchiseFilter] = React.useState<
     number | undefined
   >(undefined);
+  // Roles picked in the User Type column header.
+  const [userTypeColumnFilter, setUserTypeColumnFilter] = React.useState<
+    string[]
+  >([]);
   const [form, setForm] = React.useState(defaultForm);
   const [originalForm, setOriginalForm] = React.useState(defaultForm);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -666,10 +767,11 @@ export default function UserMastersTable({
   const effectiveEntityName =
     isHrmsEmployeeFlow ? "User" : entityName;
 
-  const queryUserType =
-    isEmployeeMaster
-      ? undefined
-      : userTypeFilter;
+  // A page fixed to one role keeps it; otherwise the header filter applies.
+  const queryUserType = isEmployeeMaster
+    ? undefined
+    : userTypeFilter ||
+      (userTypeColumnFilter.length ? userTypeColumnFilter.join(",") : undefined);
 
   const { data, isLoading, isError, error } = useUsersForMaster(
     {
@@ -883,6 +985,24 @@ export default function UserMastersTable({
     ],
   );
 
+  // Every role except master-admin, alphabetically, for the header filter.
+  const roleFilterOptions = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (userTypesData?.data ?? [])
+            .map((ut) => ut.user_type?.trim())
+            .filter(
+              (t): t is string => !!t && t.toLowerCase() !== "master-admin",
+            ),
+        ),
+      ).sort((a, b) =>
+        formatUserTypeLabel(a).localeCompare(formatUserTypeLabel(b)),
+      ),
+    [userTypesData],
+  );
+  const showUserTypeFilter = !isEmployeeMaster && !userTypeFilter;
+
   const columns = React.useMemo(
     () =>
       getUserMasterColumns(
@@ -890,8 +1010,21 @@ export default function UserMastersTable({
         isHrmsMasterEnabled,
         handleManagePrivileges,
         handleRowDoubleClick,
+        showUserTypeFilter
+          ? {
+              options: roleFilterOptions,
+              value: userTypeColumnFilter,
+              onChange: (next) => {
+                setUserTypeColumnFilter(next);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              },
+            }
+          : undefined,
       ),
     [
+      showUserTypeFilter,
+      roleFilterOptions,
+      userTypeColumnFilter,
       isEmployeeMaster,
       isHrmsMasterEnabled,
       isHrmsEmployeeFlow,
@@ -1221,6 +1354,7 @@ export default function UserMastersTable({
         limit: 1000000,
         search: "",
         franchise_id: franchiseFilter,
+        user_type: queryUserType,
       });
 
       const exportRows = response.data.filter(
