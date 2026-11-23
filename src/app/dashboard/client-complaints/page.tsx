@@ -19,6 +19,7 @@ import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { ClientComplaintsView } from "@/components/client-complaints/ClientComplaintsView";
 import { CreateComplaintModal } from "@/components/client-complaints/CreateComplaintModal";
+import { ComplaintsHelpButton } from "@/components/client-complaints/ComplaintsHelpGuide";
 import { useComplaintMeta } from "@/api/client-complaints";
 
 export default function ClientComplaintsPage() {
@@ -59,6 +60,7 @@ export default function ClientComplaintsPage() {
 
         <div className="flex items-center gap-3">
           <NotificationBell />
+          <ComplaintsHelpButton />
           <AnimatedThemeToggler />
         </div>
       </header>
