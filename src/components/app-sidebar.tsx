@@ -1085,6 +1085,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       const finalNavItems = navItemsWithRoleAdditions.filter(
         (item) =>
           (item.title !== "Broadcast" || (isBroadcastEnabled && !isMasterAdmin)) &&
+          // Client Project Tracker date revisions are approved by HO, and only
+          // for vendors with HRMS enabled.
+          (item.title !== "Date Revisions" ||
+            (isHrmsMasterEnabled &&
+              (userType === "admin" || userType === "super-admin"))) &&
           (item.title !== "Complaints" ||
             (isClientComplaintsEnabled &&
               (userType === "super-admin" ||
