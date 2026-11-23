@@ -14,6 +14,9 @@ import {
 import BaseModal from "@/components/utils/baseModal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
+import { fmContentFields } from "@/lib/fm-requirements";
+import { useFMRequirements } from "@/hooks/useFMRequirements";
+import FMRequirementsForm from "@/components/fm-requirements/FMRequirementsForm";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { toastManager } from "@/components/ui/toast";
@@ -39,6 +42,10 @@ import {
   Layers,
   Image as ImageIcon,
   FileText,
+  ClipboardCheck,
+  MessageSquareText,
+  ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
@@ -147,6 +154,7 @@ const FinalMeasurementModal = ({
   onOpenChange,
   data,
 }: LeadViewModalProps) => {
+  const formId = React.useId();
   const queryClient = useQueryClient();
   const router = useRouter();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -242,6 +250,9 @@ const FinalMeasurementModal = ({
     handlesLargeScaleProjectsFromAuth ||
     leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
     leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+  const fmRequirements = useFMRequirements(vendorId, leadId, open && !handlesLargeScaleProjects);
+  const hasFMRequirements = !handlesLargeScaleProjects && fmRequirements.forms.length > 0;
+  const useFMPrimaryUploads = hasFMRequirements && ["site_photos", "measurement_document"].every(purpose => fmRequirements.forms.some(form => fmContentFields(form.fields).some(field => field.purpose === purpose)));
   const {
     data: structureInstancesData,
     isLoading: isStructureInstancesLoading,
@@ -371,6 +382,12 @@ const FinalMeasurementModal = ({
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!data) return;
 
+    const fmGroups = hasFMRequirements ? fmRequirements.prepare() : undefined;
+    if (hasFMRequirements && !fmGroups) {
+      document.getElementById("fm-requirements")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
     const flattenedFinalMeasurementDocs: Array<{
       file: File;
       instanceId: number | null;
@@ -414,7 +431,7 @@ const FinalMeasurementModal = ({
           });
         });
       }
-    } else {
+    } else if (!useFMPrimaryUploads) {
       values.finalMeasurementDocs.forEach((file) => {
         flattenedFinalMeasurementDocs.push({ file, instanceId: null });
       });
@@ -533,6 +550,7 @@ const FinalMeasurementModal = ({
 
     finalMeasurementMutation.mutate(
       {
+        fm_requirements: fmGroups ?? undefined,
         lead_id: data.id,
         account_id: data.accountId,
         vendor_id: vendorId!,
@@ -571,6 +589,7 @@ const FinalMeasurementModal = ({
             queryKey: ["vendorAllTasks"],
           });
 
+          queryClient.invalidateQueries({ queryKey: ["fm-requirement-lead", vendorId, leadId] });
           handleModalChange(false);
 
           // 👇 redirect to client documentation page
@@ -815,15 +834,78 @@ const FinalMeasurementModal = ({
       <BaseModal
         open={open}
         onOpenChange={handleModalChange}
-        title={`Final Measurement for ${data?.name || "Customer"}`}
-        size="lg"
-        description="Submit final measurement details with optional notes and attachments."
+        title="Final Measurement"
+        size="xl"
+        className="rounded-2xl sm:max-w-[68rem] md:max-w-[68rem] lg:max-w-[68rem]"
+        icon={
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-primary">
+            <ClipboardCheck className="h-5 w-5" />
+          </span>
+        }
+        description={data?.name || "Record site details, measurements and supporting files."}
+        footer={
+          <div className="flex w-full items-center justify-between gap-3">
+            <p role="status" className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+              <ClipboardCheck className="size-3.5 shrink-0" />
+              {fmRequirements.isUploading
+                ? "Uploading attachments…"
+                : "Review the site details before submitting."}
+            </p>
+            <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                className="shrink-0 text-muted-foreground"
+                disabled={
+                  finalMeasurementMutation.isPending ||
+                  fmRequirements.isUploading ||
+                  fmRequirements.isSavingDraft
+                }
+                onClick={() => {
+                  resetForm();
+                  fmRequirements.reset();
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                form={formId}
+                className="h-auto min-h-10 min-w-0 flex-1 whitespace-normal px-4 py-2 text-sm leading-5 sm:flex-none sm:whitespace-nowrap"
+                disabled={
+                  finalMeasurementMutation.isPending ||
+                  (!handlesLargeScaleProjects &&
+                    (fmRequirements.isUploading ||
+                      fmRequirements.isSavingDraft ||
+                      fmRequirements.query.isFetching ||
+                      fmRequirements.query.isError))
+                }
+              >
+                {finalMeasurementMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                {finalMeasurementMutation.isPending
+                  ? "Submitting..."
+                  : existingFinalMeasurementDocs.length > 0 ||
+                      existingSitePhotos.length > 0
+                    ? "Move to Client Document"
+                    : "Submit measurement"}
+                {!finalMeasurementMutation.isPending && (
+                  <ArrowRight className="hidden h-4 w-4 shrink-0 sm:block" />
+                )}
+              </Button>
+            </div>
+          </div>
+        }
       >
         <Form {...form}>
           <form
+            id={formId}
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-5  p-5"
+            className="space-y-5 bg-muted/15 p-4 sm:p-6"
           >
+            {!handlesLargeScaleProjects && (hasFMRequirements || fmRequirements.query.isLoading || fmRequirements.query.isError) && <FMRequirementsForm model={fmRequirements} disabled={finalMeasurementMutation.isPending} />}
             {/* Top Boxes: Product Structure Instances */}
             {isBoxesFlow && (
               <div className="space-y-3 border-b pb-5">
@@ -908,7 +990,7 @@ const FinalMeasurementModal = ({
               </div>
             )}
 
-            {handlesLargeScaleProjects &&
+            {useFMPrimaryUploads ? null : handlesLargeScaleProjects &&
             (isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
             isStructureInstancesLoading ? (
               <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
@@ -1217,13 +1299,26 @@ const FinalMeasurementModal = ({
               control={form.control}
               name="criticalDiscussion"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Critical Discussion Notes
-                  </FormLabel>
+                <FormItem className="space-y-3 rounded-xl border border-border/80 bg-background p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                      <MessageSquareText className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                    <div className="flex-1 space-y-1">
+                      <FormLabel className="text-sm font-semibold">
+                        Critical Discussion Notes
+                      </FormLabel>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Capture key decisions or instructions for the team.
+                      </p>
+                    </div>
+                    <span className="rounded-md bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground">Optional</span>
+                  </div>
                   <FormControl>
                     <TextAreaInput
-                      placeholder="Enter your remarks"
+                      placeholder="Add discussion notes, decisions or site instructions…"
+                      className="min-h-[88px] resize-y bg-muted/10 shadow-none focus-visible:bg-background"
+                      disabled={finalMeasurementMutation.isPending}
                       {...field}
                     />
                   </FormControl>
@@ -1231,24 +1326,6 @@ const FinalMeasurementModal = ({
                 </FormItem>
               )}
             />
-
-            {/* ---- Buttons ---- */}
-            <div className="flex justify-end gap-3 pt-6">
-              <Button type="button" variant="outline" onClick={resetForm}>
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                disabled={finalMeasurementMutation.isPending}
-              >
-                {finalMeasurementMutation.isPending
-                  ? "Submitting..."
-                  : existingFinalMeasurementDocs.length > 0 ||
-                      existingSitePhotos.length > 0
-                    ? "Move to Client Document"
-                    : "Submit"}
-              </Button>
-            </div>
           </form>
         </Form>
       </BaseModal>

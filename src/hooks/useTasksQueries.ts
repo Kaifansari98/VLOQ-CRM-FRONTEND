@@ -51,6 +51,7 @@ export interface VendorUserTask {
 // -------------------------------
 
 export interface ActiveLeadTask {
+  id: number;
   task_type: string;
   lead_stage: string | null;
   due_date: string;

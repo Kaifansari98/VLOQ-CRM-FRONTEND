@@ -9,6 +9,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+import { useAppSelector } from "@/redux/store";
+import { Button } from "@/components/ui/button";
+import FranchiseShiftEditor from "@/components/hrms/FranchiseShiftEditor";
 import { cn } from "@/lib/utils";
 import { useFranchisesByVendor, type FranchiseListItem } from "@/api/franchises";
 import { DataTable } from "@/components/data-table/data-table";
@@ -19,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // ─── Row type ────────────────────────────────────────────────────────────────
 
 type FranchiseRow = {
+  shift_minutes: number;
   srNo: number;
   id: number;
   franchise_name: string;
@@ -49,6 +53,7 @@ function formatDate(value?: string | null) {
 // ─── Columns ─────────────────────────────────────────────────────────────────
 
 const columns: ColumnDef<FranchiseRow>[] = [
+  { accessorKey: "shift_minutes", header: "Daily shift", cell: ({ row }) => <span className="whitespace-nowrap text-xs">{row.original.shift_minutes / 60} hours</span> },
   {
     accessorKey: "srNo",
     header: ({ column }) => (
@@ -202,6 +207,9 @@ interface FranchisesTableProps {
 }
 
 export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
+  const [shiftOpen, setShiftOpen] = React.useState(false);
+  const user = useAppSelector(state => state.auth.user);
+  const canEditShifts = user?.vendor_id === vendorId && String(user?.user_type?.user_type || "").trim().toLowerCase().replace(/[ _]+/g, "-") === "super-admin" && user?.vendor?.is_hrms_master_enabled === true;
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const { data, isLoading, isError, error } = useFranchisesByVendor(vendorId);
@@ -209,6 +217,7 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
   const tableData = React.useMemo<FranchiseRow[]>(
     () =>
       (data?.data ?? []).map((item: FranchiseListItem, index: number) => ({
+        shift_minutes: item.shift_minutes ?? 480,
         srNo: index + 1,
         id: item.id,
         franchise_name: item.franchise_name ?? "",
@@ -237,6 +246,8 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
   return (
     <Card className="rounded-2xl border-0 p-0">
       <CardContent className="p-0">
+        {canEditShifts && <div className="mb-3 flex justify-end"><Button variant="outline" size="sm" onClick={() => setShiftOpen(true)}>Manage location shifts</Button></div>}
+        {canEditShifts && <FranchiseShiftEditor vendorId={vendorId} locations={(data?.data || []).map(item => ({ id: String(item.id), name: item.franchise_name, unit: item.Department || "FRANCHISE", shift_minutes: item.shift_minutes ?? 480 }))} open={shiftOpen} onOpenChange={setShiftOpen} />}
         {isLoading ? (
           <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
             Loading franchises...

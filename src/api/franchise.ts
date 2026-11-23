@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useQuery } from "@tanstack/react-query";
 
 export interface FranchiseSummary {
+  shift_minutes?: number;
   id: number;
   vendor_id: number;
   franchise_name: string;

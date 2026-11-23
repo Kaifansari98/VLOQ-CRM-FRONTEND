@@ -1,6 +1,10 @@
 "use client";
 
-import { LeadStageItem } from "@/api/dashboard/dashboard.api";
+import {
+  getLeadSearchDetailsPath,
+  getLeadSearchItems,
+  type LeadSearchItem,
+} from "@/lib/global-lead-search";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Command,
@@ -29,6 +33,9 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
@@ -112,7 +119,7 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   // -----------------------------------------------
   // 5️⃣ Handle Lead Click → Navigate to details
   // -----------------------------------------------
-  const handleLeadClick = (stageKey: string, lead: LeadStageItem) => {
+  const handleLeadClick = (stageKey: string, lead: LeadSearchItem) => {
     const basePath = STAGE_PATH_MAP[stageKey];
 
     if (!basePath) {
@@ -120,13 +127,8 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
       return;
     }
 
-    if (stageKey === "projectCompletedStage") {
-      router.push(
-        `${basePath}/${lead.id}?accountId=${lead.account_id}&tab=servicing&source=servicing`
-      );
-    } else {
-      router.push(`${basePath}/${lead.id}?accountId=${lead.account_id}`);
-    }
+    router.push(getLeadSearchDetailsPath(basePath, stageKey, lead));
+    onOpenChange(false);
   };
 
   return (
@@ -140,6 +142,8 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
             {/* Loop all stages dynamically */}
             {stages.map(([stageKey, leads]) => {
               if (!leads || leads.length === 0) return null;
+              const items = getLeadSearchItems(stageKey, leads, handlesLargeScaleProjects);
+              if (items.length === 0) return null;
 
               const stageName = stageLabels[stageKey] ?? stageKey;
 
@@ -149,10 +153,10 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
                   heading={stageName}
                   className="px-2"
                 >
-                  {leads.map((lead: LeadStageItem) => (
+                  {items.map((lead) => (
                     <CommandItem
-                      key={lead.id}
-                      value={`${lead.name} ${lead.lead_code}`}
+                      key={`${stageKey}-${lead.id}-${lead.instance_id ?? "lead"}`}
+                      value={`${lead.name} ${lead.lead_code} ${lead.instance_label ?? ""} ${stageKey}-${lead.id}-${lead.instance_id ?? "lead"}`}
                       className="cursor-pointer"
                       onSelect={() => handleLeadClick(stageKey, lead)}
                     >
@@ -170,6 +174,11 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
                           <span className="text-xs text-gray-500">
                             {lead.lead_code || "No Code"}
                           </span>
+                          {lead.instance_label && (
+                            <span className="text-xs text-gray-500">
+                              {lead.instance_label}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </CommandItem>

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { leaveTypeCodes, type Holiday, type LeaveDraft, type LeaveLocation, type LeaveRequest, type WeekOffPolicy } from "@/lib/hrms/leaves";
-export type LeaveWorkspaceData = { year: number; scope: string; today: string; time_zone: string; company_name: string; franchises: LeaveLocation[]; holidays: Holiday[]; policies: WeekOffPolicy; summary: { total: number; pending: number; approved: number; rejected: number }; available_years: number[] };
+export type LeaveWorkspaceData = { year: number; scope: string; today: string; time_zone: string; company_name: string; franchises: LeaveLocation[]; holidays: Holiday[]; policies: WeekOffPolicy; summary: { total: number; pending: number; approved: number; rejected: number; recorded: number }; available_years: number[] };
 export type LeaveQuery = { mode: "admin" | "personal"; year: number; scope: string };
 export const leaveErrorMessage = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Could not save changes. Please try again.";
 export function useLeaveWorkspace(vendorId: number, userId: number, params: LeaveQuery) {
@@ -13,7 +13,7 @@ export function useLeaveWorkspace(vendorId: number, userId: number, params: Leav
 export type LeaveRequestFilters = LeaveQuery & { status: string; search: string; type: string; from: string; to: string; page: number };
 export function useLeaveRequests(vendorId: number, userId: number, params: LeaveRequestFilters) {
   return useQuery({ queryKey: ["hrms-leaves", vendorId, userId, "requests", params],
-    queryFn: async ({ signal }) => (await apiClient.get<{ data: { items: LeaveRequest[]; total: number; counts: { all: number; PENDING: number; APPROVED: number; REJECTED: number }; page: number; page_size: number; total_pages: number } }>("/leaves/requests", { params: { ...params, type: leaveTypeCodes[params.type] || params.type, from: params.from || undefined, to: params.to || undefined }, signal })).data.data,
+    queryFn: async ({ signal }) => (await apiClient.get<{ data: { items: LeaveRequest[]; total: number; counts: { all: number; PENDING: number; APPROVED: number; REJECTED: number; RECORDED: number }; page: number; page_size: number; total_pages: number } }>("/leaves/requests", { params: { ...params, type: leaveTypeCodes[params.type] || params.type, from: params.from || undefined, to: params.to || undefined }, signal })).data.data,
     retry: 1, refetchOnWindowFocus: true, refetchInterval: 30000,
   });
 }

@@ -23,6 +23,7 @@ import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTab
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
 import SiteReadinessQuestionMasters from "@/components/custom/SiteReadinessQuestionMasters";
+import FMRequirementMasters from "@/components/custom/FMRequirementMasters";
 import WalkinQuestionMasters from "@/components/custom/WalkinQuestionMasters";
 import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import * as React from "react";
@@ -65,6 +66,8 @@ export default function FieldMastersPage() {
   const showBroadcastMaster = vendorIdOverride
     ? (vendorResponse?.data as any)?.is_broadcast_enabled === true
     : sessionVendorAllowsBroadcast;
+  const sessionVendorAllowsFMRequirements = useAppSelector((state) => state.auth.user?.vendor?.handlesLargeScaleProjects === false);
+  const showFMRequirements = isVendorUser && (!vendorIdOverride || vendorIdOverride === sessionVendorId) && sessionVendorAllowsFMRequirements;
   const showSpecsMaster = isVendorUser && !vendorIdOverride && !sessionVendorAllowsLargeScale;
 
   const showProcessBriefMaster = useMemo(() => {
@@ -143,6 +146,7 @@ export default function FieldMastersPage() {
           },
         ]
       : []),
+    ...(showFMRequirements ? [{ id: "fm-requirements", title: "FM Requirements", color: "bg-black hover:bg-black", cardContent: <FMRequirementMasters /> }] : []),
     // The walk-in question APIs only serve the signed-in user's own vendor.
     ...(isVendorUser && walkinQuestionsEnabled && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
       ? [

@@ -2,14 +2,14 @@ export const leaveTypes = ["Paid Leave", "Sick Leave", "Casual Leave", "Unpaid L
 export const leaveTypeCodes: Record<string, string> = { "Paid Leave": "PAID", "Sick Leave": "SICK", "Casual Leave": "CASUAL", "Unpaid Leave": "UNPAID" };
 export const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export type LeaveLocation = { id: string; name: string; unit: string };
-export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "RECORDED";
 export type Holiday = { id: string; date: string; name: string; remark: string; scope: string };
 export type WeekOffPolicy = Record<string, number[]>;
 export type LeaveAttachment = { name: string; size: number };
 export type LeaveDraft = { title: string; type: string; remark: string; startDate: string; endDate: string; file?: File };
 export type LeaveRequest = {
   id: string; userId: number; employee: string; code: string; franchise: string; locationName: string;
-  title: string; type: string; remark: string; startDate: string; endDate: string; dayCount: number; status: LeaveStatus;
+  title: string; type: string; remark: string; startDate: string; endDate: string; dayCount: number; status: LeaveStatus; isBackdated: boolean; approvalRequired: boolean;
   submittedAt: string; submittedDate: string; reviewedDate?: string | null; rejectionReason?: string; reviewedBy?: string; reviewedAt?: string;
   attachment?: LeaveAttachment;
 };
@@ -29,4 +29,13 @@ export function effectiveWeeklyOffs(policies: WeekOffPolicy, scope: string) { re
 export function leaveDayCount(start: string, end: string) {
   if (!validLeaveDate(start) || !validLeaveDate(end) || end < start) return 0;
   return Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86400000) + 1;
+}
+
+export function sortHolidaysByProximity(holidays: Holiday[], today: string) {
+  const currentDay = Date.parse(`${today}T00:00:00Z`);
+  return [...holidays].sort((a, b) => {
+    const aDistance = Math.abs(Date.parse(`${a.date}T00:00:00Z`) - currentDay);
+    const bDistance = Math.abs(Date.parse(`${b.date}T00:00:00Z`) - currentDay);
+    return aDistance - bDistance || Number(a.date < today) - Number(b.date < today) || a.date.localeCompare(b.date);
+  });
 }
