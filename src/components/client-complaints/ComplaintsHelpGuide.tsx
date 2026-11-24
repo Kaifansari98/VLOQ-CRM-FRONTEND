@@ -319,42 +319,105 @@ const ILLUSTRATIONS: (() => React.ReactNode)[] = [
   // 1. Dashboard
   () => (
     <Frame title="Dashboard › Complaints">
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+      {/* Top Header Row with Title, Subtitle, Visiting Charge & Register Complaint Buttons */}
+      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b">
+        <div>
+          <div className="text-sm font-bold tracking-tight text-foreground">Client Complaints</div>
+          <div className="text-[10px] text-muted-foreground">
+            Register, track and resolve after-sales complaints from clients
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="inline-flex items-center gap-1 rounded-lg border bg-card px-2 py-1 text-[10px] font-medium text-foreground shadow-2xs">
+            ₹ Visiting Charge · ₹800
+          </span>
+          <FakeBtn primary>
+            <Plus className="w-3 h-3" /> Register Complaint
+          </FakeBtn>
+        </div>
+      </div>
+
+      {/* 12 Status Metric Cards exactly matching Client Complaints Dashboard */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {[
-          ["Total", 42],
-          ["Open", 18],
-          ["New", 5],
-          ["Visit Scheduled", 4],
-          ["Quotation Pending", 3],
-          ["Closed", 24],
-        ].map(([l, n], i) => (
-          <div key={l} className={`rounded-lg border p-2 ${i === 1 ? "ring-2 ring-primary/40" : ""}`}>
-            <div className="text-[10px] text-muted-foreground truncate">{l}</div>
-            <div className="text-base font-bold">{n}</div>
+          { label: "Total Complaints", count: 48, dot: "bg-muted-foreground", selected: true },
+          { label: "Open", count: 26, dot: "bg-blue-500" },
+          { label: "New", count: 6, dot: "bg-blue-500" },
+          { label: "Under Verification", count: 4, dot: "bg-blue-500" },
+          { label: "Visit Scheduled", count: 5, dot: "bg-indigo-500" },
+          { label: "Inspection Completed", count: 3, dot: "bg-indigo-500" },
+          { label: "Quotation Pending", count: 4, dot: "bg-violet-500" },
+          { label: "Payment Pending", count: 2, dot: "bg-amber-500" },
+          { label: "Material Pending", count: 3, dot: "bg-orange-500" },
+          { label: "Work in Progress", count: 5, dot: "bg-indigo-500" },
+          { label: "Closed", count: 22, dot: "bg-emerald-500" },
+          { label: "Reopened", count: 2, dot: "bg-orange-500" },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className={`rounded-xl border bg-card p-2 text-left transition-colors ${
+              card.selected ? "border-primary ring-1 ring-primary/30" : ""
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[9px] text-muted-foreground font-medium truncate">{card.label}</span>
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${card.dot}`} />
+            </div>
+            <div className="text-sm font-bold text-foreground mt-0.5">{card.count}</div>
           </div>
         ))}
       </div>
+
+      {/* Search & Status Bar */}
       <div className="flex gap-2 mt-3">
-        <div className="flex-1 flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5 text-[11px] text-muted-foreground">
-          <Search className="w-3 h-3" /> Search by Complaint ID, client, mobile…
+        <div className="flex-1 flex items-center gap-1.5 rounded-xl border bg-card px-2.5 py-1.5 text-[11px] text-muted-foreground">
+          <Search className="w-3 h-3" /> Search by Complaint ID, client, mobile, lead code or issue...
         </div>
         <FakeBtn>Status: All</FakeBtn>
       </div>
-      <div className="mt-3 rounded-lg border divide-y text-[11px]">
-        {(
-          [
-            ["CMP-0042", "Rahul Mehta", "NEW"],
-            ["CMP-0041", "Priya Shah", "VISIT_SCHEDULED"],
-            ["CMP-0039", "Anil Kumar", "QUOTATION_SHARED"],
-          ] as [string, string, ComplaintStatus][]
-        ).map(([code, name, s], i) => (
-          <div key={code} className={`flex items-center justify-between gap-2 px-3 py-2 ${i === 0 ? "bg-primary/5" : ""}`}>
-            <span className="font-semibold">{code}</span>
-            <span className="flex-1 truncate text-muted-foreground">{name}</span>
-            <Status s={s} />
-            {i === 0 && <MousePointerClick className="w-3.5 h-3.5 text-primary shrink-0" />}
-          </div>
-        ))}
+
+      {/* Main Table Preview exactly matching Client Complaints */}
+      <div className="mt-3 rounded-xl border overflow-x-auto bg-card text-[11px]">
+        <table className="w-full text-left min-w-[500px]">
+          <thead className="border-b bg-muted/30 text-[9px] font-semibold tracking-wider uppercase text-muted-foreground">
+            <tr>
+              <th className="py-2 px-3">Complaint</th>
+              <th className="py-2 px-3">Client</th>
+              <th className="py-2 px-3">Product</th>
+              <th className="py-2 px-3">Priority</th>
+              <th className="py-2 px-3">Status</th>
+              <th className="py-2 px-3">Assigned</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            <tr className="hover:bg-muted/30 transition-colors">
+              <td className="py-2 px-3">
+                <div className="flex items-start gap-1.5">
+                  <div className="p-1 rounded bg-muted/40 border shrink-0 mt-0.5">
+                    <MessageSquareWarning className="w-3 h-3 text-amber-600" />
+                  </div>
+                  <div>
+                    <span className="font-bold font-mono text-[10px]">CMP-0042</span>
+                    <span className="block text-[9px] text-muted-foreground">Hardware Issue · Shutter</span>
+                  </div>
+                </div>
+              </td>
+              <td className="py-2 px-3">
+                <span className="font-medium text-foreground block">Rahul Mehta</span>
+                <span className="text-[9px] text-muted-foreground block">91 9876543210</span>
+              </td>
+              <td className="py-2 px-3 text-muted-foreground text-[10px]">Modular Kitchen - L Shape</td>
+              <td className="py-2 px-3 text-muted-foreground text-[10px]">Medium</td>
+              <td className="py-2 px-3">
+                <Status s="MATERIAL_RECEIVED" />
+              </td>
+              <td className="py-2 px-3 text-[10px] text-muted-foreground">
+                <div><span className="font-semibold text-muted-foreground text-[9px]">SS</span> Amit Sharma</div>
+                <div><span className="font-semibold text-muted-foreground text-[9px]">HSS</span> Imran Shaikh</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </Frame>
   ),

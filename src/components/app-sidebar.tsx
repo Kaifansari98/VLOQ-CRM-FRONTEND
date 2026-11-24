@@ -20,7 +20,7 @@ import {
   MapPinned,
   Building2,
   Megaphone,
-  MessageSquareWarning,
+  MessageSquareWarning, 
   Magnet,
   TriangleAlert,
   CalendarCheck,

@@ -44,6 +44,8 @@ import {
   Palette,
   CopyX,
   FileWarning,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import ClearInput from "@/components/origin-input";
 import MultipleSelector, {
@@ -1014,6 +1016,26 @@ function MasterListingTable({
     [],
   );
   const [globalFilter, setGlobalFilter] = React.useState("");
+  const [selectedParent, setSelectedParent] = React.useState<string>("all");
+
+  // Extract unique parent names for the filter dropdown
+  const parentOptions = React.useMemo(() => {
+    if (!showParent) return [];
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.parent && r.parent.trim()) {
+        set.add(r.parent.trim());
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows, showParent]);
+
+  // Filter rows based on selected parent before passing to table
+  const filteredRows = React.useMemo(() => {
+    if (!showParent || selectedParent === "all") return rows;
+    return rows.filter((r) => r.parent?.trim() === selectedParent);
+  }, [rows, showParent, selectedParent]);
+
   const columns = React.useMemo<ColumnDef<MasterRow>[]>(() => {
     const nameColumn: ColumnDef<MasterRow> = {
       accessorKey: "name",
@@ -1050,7 +1072,56 @@ function MasterListingTable({
         ? [
             {
               accessorKey: "parent",
-              header: parentHeader,
+              header: () => (
+                parentOptions.length > 0 ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 font-semibold text-foreground hover:text-primary transition-colors focus:outline-none group",
+                          selectedParent !== "all" && "text-primary"
+                        )}
+                        title={`Filter ${parentHeader}`}
+                      >
+                        <span>{parentHeader}</span>
+                        <ChevronDown className={cn(
+                          "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-hover:text-primary",
+                          selectedParent !== "all" && "text-primary font-bold"
+                        )} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="max-h-72 w-52 overflow-y-auto p-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      <DropdownMenuItem
+                        className="flex items-center justify-between text-xs py-2 px-2.5 rounded-sm cursor-pointer"
+                        onSelect={() => setSelectedParent("all")}
+                      >
+                        <span className={cn(selectedParent === "all" ? "font-semibold text-primary" : "")}>
+                          All {parentHeader}s
+                        </span>
+                        {selectedParent === "all" && <Check className="h-3.5 w-3.5 text-primary" />}
+                      </DropdownMenuItem>
+                      {parentOptions.map((name) => (
+                        <DropdownMenuItem
+                          key={name}
+                          className="flex items-center justify-between text-xs py-2 px-2.5 rounded-sm cursor-pointer"
+                          onSelect={() => setSelectedParent(name)}
+                        >
+                          <span className={cn("truncate", selectedParent === name ? "font-semibold text-primary" : "")}>
+                            {name}
+                          </span>
+                          {selectedParent === name && <Check className="h-3.5 w-3.5 text-primary" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <span>{parentHeader}</span>
+                )
+              ),
               cell: ({ row }: { row: { original: MasterRow } }) =>
                 row.original.parent || "—",
             } satisfies ColumnDef<MasterRow>,
@@ -1151,10 +1222,10 @@ function MasterListingTable({
         },
       },
     ];
-  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit, onDelete, statusToggle]);
+  }, [showParent, nameHeader, parentHeader, grandParentHeader, parentFirst, onEdit, onDelete, statusToggle, parentOptions, selectedParent]);
 
   const table = useReactTable({
-    data: rows,
+    data: filteredRows,
     columns,
     state: {
       sorting,
@@ -1214,12 +1285,14 @@ function MasterListingTable({
         ) : (
           <DataTable table={table} className="px-0 pt-0">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <ClearInput
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="h-9 w-full md:w-72"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <ClearInput
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="h-9 w-full md:w-72"
+                />
+              </div>
             </div>
           </DataTable>
         )}

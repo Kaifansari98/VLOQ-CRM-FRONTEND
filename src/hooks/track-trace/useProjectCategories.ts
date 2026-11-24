@@ -7,6 +7,7 @@ import {
   getProjectCategories,
   getProjectCategoryTypes,
   toggleProjectCategoryStatus,
+  deleteProjectCategory,
   updateProjectCategory,
   checkExternalToken,
   syncCategoriesFromExternal,
@@ -144,6 +145,27 @@ export function useToggleCategoryStatus(vendorId: number) {
     onError: (error: any) => {
       toastManager.add({
         title: error?.response?.data?.message ?? "Failed to update status",
+        type: "error",
+      });
+    },
+  });
+}
+
+export function useDeleteProjectCategory(vendorId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deleteProjectCategory(id),
+    onSuccess: (data: any) => {
+      toastManager.add({
+        title: data?.message ?? "Category deleted successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({ queryKey: KEYS.categories(vendorId) });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message ?? "Failed to delete category",
         type: "error",
       });
     },
