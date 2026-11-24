@@ -970,10 +970,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                     placeholder="Select the installation date"
                   />
                 </div>
-                <p className="text-[11px] text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
-                  A placeholder CRM lead (vendor code + EX, e.g. VLOQEX-1) is created for this client under the franchise of the selected store city, or the head office if none, and listed in Delivered Projects. The client's later complaints reuse it.
-                </p>
-
                 {hasDuplicates && (
                   <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-500/10 px-3 py-2.5 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
