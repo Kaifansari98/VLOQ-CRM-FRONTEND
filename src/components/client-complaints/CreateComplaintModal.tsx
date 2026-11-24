@@ -50,6 +50,7 @@ import { STATUS_META } from "./complaint-meta";
 import { useAppSelector } from "@/redux/store";
 import { useVendorBrandStyle } from "@/hooks/use-vendor-theme-color";
 import { ComplaintLeadPicker } from "./ComplaintLeadPicker";
+import { SiteLocationField } from "./SiteLocationField";
 import MultipleSelector from "@/components/ui/multiselect";
 
 interface CreateComplaintModalProps {
@@ -755,39 +756,24 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                       </div>
                     )}
 
-                    {!lead.site_address && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Site Address</Label>
-                        <Textarea
-                          value={leadForm.site_address}
-                          onChange={(e) => {
-                            setLeadForm((p) => ({ ...p, site_address: e.target.value }));
-                            clearError("lead_site_address");
-                          }}
-                          placeholder="This lead has no site address in the CRM"
-                          rows={2}
-                          className="text-xs rounded-xl resize-none"
-                          aria-invalid={!!errors.lead_site_address}
-                        />
-                        <FieldError message={errors.lead_site_address} />
-                      </div>
-                    )}
-
-                    {!lead.site_map_link && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Site Map Link (optional)</Label>
-                        <Input
-                          value={leadForm.site_map_link}
-                          onChange={(e) => {
-                            setLeadForm((p) => ({ ...p, site_map_link: e.target.value }));
-                            clearError("lead_site_map_link");
-                          }}
-                          placeholder="This lead has no map link in the CRM · paste a Google Maps link"
-                          className="h-9 text-xs rounded-xl"
-                          aria-invalid={!!errors.lead_site_map_link}
-                        />
-                        <FieldError message={errors.lead_site_map_link} />
-                      </div>
+                    {/* Only what the CRM lead is missing: the address, the map pin, or both. */}
+                    {(!lead.site_address || !lead.site_map_link) && (
+                      <SiteLocationField
+                        label={lead.site_address ? "Site Location (optional)" : "Site Address"}
+                        addressMode={lead.site_address ? "hidden" : "edit"}
+                        placeholder="This lead has no site address in the CRM · type it, paste a Google Maps link or use the map"
+                        address={lead.site_address ? lead.site_address : leadForm.site_address}
+                        onAddressChange={(value) => {
+                          setLeadForm((p) => ({ ...p, site_address: value }));
+                          clearError("lead_site_address");
+                        }}
+                        mapLink={leadForm.site_map_link || lead.site_map_link || ""}
+                        onMapLinkChange={(link) => {
+                          setLeadForm((p) => ({ ...p, site_map_link: link }));
+                          clearError("lead_site_map_link");
+                        }}
+                        error={errors.lead_site_address ?? errors.lead_site_map_link}
+                      />
                     )}
 
                     {lead.products.length > 0 && (
@@ -933,30 +919,17 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                   />
                   <FieldError message={errors.client_email} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Complete Site Address</Label>
-                  <Textarea
-                    value={external.site_address}
-                    onChange={(e) => setExternalField("site_address", e.target.value)}
-                    disabled={!!linkedClient}
-                    placeholder="Flat / building, area"
-                    rows={2}
-                    className="text-xs rounded-xl resize-none"
-                    aria-invalid={!!errors.site_address}
-                  />
-                  <FieldError message={errors.site_address} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Site Map Link (optional)</Label>
-                  <Input
-                    value={external.site_map_link}
-                    onChange={(e) => setExternalField("site_map_link", e.target.value)}
-                    placeholder="Paste the Google Maps link"
-                    className="h-9 text-xs rounded-xl"
-                    aria-invalid={!!errors.site_map_link}
-                  />
-                  <FieldError message={errors.site_map_link} />
-                </div>
+                <SiteLocationField
+                  label="Complete Site Address"
+                  // A linked existing client keeps their saved address; only the pin can change.
+                  addressMode={linkedClient ? "locked" : "edit"}
+                  placeholder="Flat / building, area · or paste a Google Maps link or use the map"
+                  address={external.site_address}
+                  onAddressChange={(value) => setExternalField("site_address", value)}
+                  mapLink={external.site_map_link}
+                  onMapLinkChange={(link) => setExternalField("site_map_link", link)}
+                  error={errors.site_address ?? errors.site_map_link}
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Store City</Label>
@@ -1007,10 +980,6 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                     placeholder="Select the installation date"
                   />
                 </div>
-                <p className="text-[11px] text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
-                  A placeholder CRM lead (vendor code + EX, e.g. VLOQEX-1) is created for this client under the franchise of the selected store city, or the head office if none, and listed in Delivered Projects. The client's later complaints reuse it.
-                </p>
-
                 {hasDuplicates && (
                   <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-500/10 px-3 py-2.5 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
