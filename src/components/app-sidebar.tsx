@@ -49,6 +49,7 @@ import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstall
 import { useMiscellaneousStatusCounts } from "@/api/miscellaneousModuleApi";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useUnreadBroadcastCount } from "@/api/broadcast";
+import { useActiveComplaintsCount } from "@/api/client-complaints";
 import { useVendorLeadsByTagPost } from "@/api/universalstage";
 import { useTheme } from "next-themes";
 import { sanitize } from "@/components/utils/sanitizeCapitalize";
@@ -666,6 +667,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } =
     useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
 
+  const isComplaintsEligible =
+    isClientComplaintsEnabled &&
+    (userType === "super-admin" ||
+      userType === "head-site-supervisor" ||
+      userType === "site-supervisor" ||
+      userType === "sales-executive" ||
+      userType === "sales executive");
+
+  const { count: activeComplaintsCount, isLoading: isComplaintsCountLoading } =
+    useActiveComplaintsCount(vendorId ?? undefined, isComplaintsEligible);
+
   const userData = user
     ? {
       name: user?.user_name || "username",
@@ -744,6 +756,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               badgeBg || badgeText
                 ? undefined
                 : "bg-red-500 text-white font-bold",
+            badgeStyle:
+              badgeBg || badgeText
+                ? { backgroundColor: badgeBg, color: badgeText }
+                : undefined,
+          };
+        }
+        if (item.title === "Complaints") {
+          return {
+            ...item,
+            customCount: activeComplaintsCount,
+            customCountLoading: isComplaintsCountLoading,
+            badgeClassName:
+              badgeBg || badgeText
+                ? undefined
+                : undefined,
             badgeStyle:
               badgeBg || badgeText
                 ? { backgroundColor: badgeBg, color: badgeText }
@@ -1094,7 +1121,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             (isClientComplaintsEnabled &&
               (userType === "super-admin" ||
                 userType === "head-site-supervisor" ||
-                userType === "site-supervisor"))),
+                userType === "site-supervisor" ||
+                userType === "sales-executive" ||
+                userType === "sales executive"))),
       );
 
     const finalTrackTraceItems =
@@ -1194,6 +1223,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isCrmEnabled,
     isBroadcastEnabled,
     isClientComplaintsEnabled,
+    activeComplaintsCount,
+    isComplaintsCountLoading,
     isInventoryEnabled,
     materialIssueProjectsCount,
     isMaterialIssueProjectsLoading,
