@@ -56,6 +56,10 @@ import {
   useTrackerAction,
 } from "@/api/project-tracker";
 
+// The Client Tracker tab is hidden in production for now.
+export const isClientTrackerEnabled =
+  (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "").toUpperCase() !== "PRODUCTION";
+
 // CRM "Client Tracker" tab: what the client sees in the app for this booking,
 // and the controls to keep it accurate. Internal notes never reach the client;
 // every field marked "shown to the client" does.
