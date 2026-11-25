@@ -1,6 +1,8 @@
 "use client";
 
 import { ClientTrackerTab } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
 import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
@@ -681,6 +683,10 @@ export default function DispatchPlanningLeadDetails() {
                 <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
                 Client Tracker
               </TabsTrigger>
+              <TabsTrigger value="client-chat">
+                <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                Client Chat
+              </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -743,6 +749,9 @@ export default function DispatchPlanningLeadDetails() {
         )}
         <TabsContent value="client-tracker">
           <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+        </TabsContent>
+        <TabsContent value="client-chat">
+          <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
         </TabsContent>
       </Tabs>
 
