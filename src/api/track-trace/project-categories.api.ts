@@ -128,6 +128,11 @@ export const toggleProjectCategoryStatus = async (id: number, status: "Yes" | "N
   return data;
 };
 
+export const deleteProjectCategory = async (id: number) => {
+  const { data } = await apiClient.delete(`/track-trace/project-categories/${id}`);
+  return data;
+};
+
 export const checkExternalToken = async (vendorId: number) => {
   const res = await apiClient.get(`/track-trace/category/project-categories/check-token?vendor_id=${vendorId}`);
   return res.data.data as { has_token: boolean; token: { name: string; email: string; created_at: string } | null };

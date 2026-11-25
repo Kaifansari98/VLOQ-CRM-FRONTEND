@@ -487,10 +487,10 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
     } else {
       if (!external.client_name.trim()) next.client_name = "Client name is required.";
       const mobileDigits = digitCount(external.client_mobile);
-      if (mobileDigits < 10 || mobileDigits > 15) next.client_mobile = "Enter a valid mobile number.";
+      if (mobileDigits !== 10) next.client_mobile = "Enter a valid 10-digit mobile number.";
       if (external.client_alternate_mobile.trim()) {
         const altDigits = digitCount(external.client_alternate_mobile);
-        if (altDigits < 10 || altDigits > 15) next.client_alternate_mobile = "Enter a valid mobile number.";
+        if (altDigits !== 10) next.client_alternate_mobile = "Enter a valid 10-digit mobile number.";
       }
       if (!external.client_email.trim()) next.client_email = "Email is required.";
       else if (!/^\S+@\S+\.\S+$/.test(external.client_email.trim()))
@@ -565,6 +565,13 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
   };
 
   const setExternalField = (key: keyof typeof emptyExternal, value: string) => {
+    // Mobile numbers: digits only and capped at exactly 10 digits
+    if (key === "client_mobile" || key === "client_alternate_mobile") {
+      const sanitized = value.replace(/\D/g, "").slice(0, 10);
+      setExternal((prev) => ({ ...prev, [key]: sanitized }));
+      clearError(key);
+      return;
+    }
     setExternal((prev) => ({ ...prev, [key]: value }));
     clearError(key);
   };
@@ -874,8 +881,9 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                       value={external.client_mobile}
                       onChange={(e) => setExternalField("client_mobile", e.target.value)}
                       disabled={!!linkedClient}
-                      inputMode="tel"
-                      placeholder="+91 98xxx xxxxx"
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="Enter 10-digit mobile number"
                       className="h-9 text-xs rounded-xl"
                       aria-invalid={!!errors.client_mobile}
                     />
@@ -888,7 +896,9 @@ export const CreateComplaintModal: React.FC<CreateComplaintModalProps> = ({
                     <Input
                       value={external.client_alternate_mobile}
                       onChange={(e) => setExternalField("client_alternate_mobile", e.target.value)}
-                      inputMode="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="Optional 10-digit number"
                       className="h-9 text-xs rounded-xl"
                       aria-invalid={!!errors.client_alternate_mobile}
                     />

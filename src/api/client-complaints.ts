@@ -199,6 +199,24 @@ export function useComplaints(
   });
 }
 
+const FINISHED_STATUSES: ComplaintStatus[] = ["CLOSED", "REJECTED", "CANCELLED"];
+
+export function useActiveComplaintsCount(vendorId?: number, enabled = true) {
+  const query = useComplaints(vendorId, { page: 1, limit: 1 });
+  const counts = query.data?.status_counts ?? {};
+  const activeCount = Object.entries(counts).reduce((sum, [status, count]) => {
+    if (!FINISHED_STATUSES.includes(status as ComplaintStatus)) {
+      return sum + (count ?? 0);
+    }
+    return sum;
+  }, 0);
+
+  return {
+    count: activeCount,
+    isLoading: query.isLoading,
+  };
+}
+
 export function useCreateComplaint(vendorId?: number) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -467,6 +485,7 @@ export type ComplaintWorkflowRequest =
       pending_work: string;
       before: File[];
       after: File[];
+      resolution_form?: File[];
       // Cash an installation team collected at its visit.
       visit_payment?: VisitCashPayment;
     }
@@ -647,6 +666,7 @@ export async function runComplaintWorkflow(
         execution_id,
         before,
         after,
+        resolution_form,
         visit_payment,
         ...fields
       } = request;
@@ -657,6 +677,7 @@ export async function runComplaintWorkflow(
         [
           ...before.map((f): [string, File] => ["before", f]),
           ...after.map((f): [string, File] => ["after", f]),
+          ...(resolution_form ?? []).map((f): [string, File] => ["resolution_form", f]),
           ...(proof ? [["payment_proof", proof] as [string, File]] : []),
         ],
       );

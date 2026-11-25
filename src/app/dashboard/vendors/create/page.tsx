@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { OnlineLeadExecutiveMappingCard } from "@/components/vendors/OnlineLeadExecutiveMappingCard";
+import { ComplaintExecutiveMappingCard } from "@/components/vendors/ComplaintExecutiveMappingCard";
 import { CutlistHeaderMappingCard } from "@/components/vendors/CutlistHeaderMappingCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -886,10 +887,11 @@ function OnboardVendorFormContent() {
                         <Select
                           value={form.cutlist_configuration || "default"}
                           onValueChange={(value) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              cutlist_configuration: value,
-                            }))
+                            setForm((prev) =>
+                              prev.cutlist_configuration === value
+                                ? prev
+                                : { ...prev, cutlist_configuration: value }
+                            )
                           }
                         >
                           <SelectTrigger id="cutlist_configuration" className="h-8 text-xs w-[130px] bg-background">
@@ -916,10 +918,11 @@ function OnboardVendorFormContent() {
                         <Select
                           value={form.show_status_on_scan || "1"}
                           onValueChange={(value) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              show_status_on_scan: value,
-                            }))
+                            setForm((prev) =>
+                              prev.show_status_on_scan === value
+                                ? prev
+                                : { ...prev, show_status_on_scan: value }
+                            )
                           }
                         >
                           <SelectTrigger id="show_status_on_scan" className="h-8 text-xs w-[170px] bg-background">
@@ -1110,6 +1113,7 @@ function OnboardVendorFormContent() {
             <>
               <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
               <OnlineLeadExecutiveMappingCard key={`online-leads-${editingVendorId}`} vendorId={editingVendorId} />
+              <ComplaintExecutiveMappingCard key={`complaints-${editingVendorId}`} vendorId={editingVendorId} />
             </>
           ) : (
             <div className="rounded-xl border bg-muted/20 p-5 text-sm text-muted-foreground">

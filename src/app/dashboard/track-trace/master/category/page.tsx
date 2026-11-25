@@ -39,6 +39,7 @@ import {
   useSyncCategories,
   useToggleCategoryStatus,
   useUpdateProjectCategory,
+  useDeleteProjectCategory,
 } from "@/hooks/track-trace/useProjectCategories";
 import type {
   ProjectCategory,
@@ -121,8 +122,25 @@ export default function ProjectCategoriesPage() {
 
   const toggleStatus = useToggleCategoryStatus(vendorId ?? 0);
   const updateCategoryMutation = useUpdateProjectCategory(vendorId ?? 0);
+  const deleteCategoryMutation = useDeleteProjectCategory(vendorId ?? 0);
   const { data: hasToken } = useCheckExternalToken(vendorId);
   const syncMutation = useSyncCategories(vendorId ?? 0);
+
+  const [categoryToDelete, setCategoryToDelete] = useState<ProjectCategory | null>(null);
+
+  const handleDelete = (category: ProjectCategory) => {
+    setCategoryToDelete(category);
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+    try {
+      await deleteCategoryMutation.mutateAsync(categoryToDelete.id);
+      setCategoryToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete category", err);
+    }
+  };
 
   const [subCategoryToEdit, setSubCategoryToEdit] =
     useState<ProjectCategory | null>(null);
@@ -369,6 +387,7 @@ export default function ProjectCategoriesPage() {
                 isScanPackEnabled={isScanPackEnabled}
                 onEditClick={handleEdit}
                 onToggleStatusClick={handleToggle}
+                onDeleteClick={handleDelete}
                 isToggling={toggleStatus.isPending}
                 className="px-0"
               />
@@ -443,6 +462,56 @@ export default function ProjectCategoriesPage() {
               )}
               <span>
                 {updateCategoryMutation.isPending ? "Saving..." : "Save Changes"}
+              </span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog Modal */}
+      <Dialog
+        open={!!categoryToDelete}
+        onOpenChange={(open) => {
+          if (!open) setCategoryToDelete(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-destructive">
+              Delete Category
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Are you sure you want to permanently delete category{" "}
+              <span className="font-semibold text-foreground">
+                "{categoryToDelete?.category_name}"
+              </span>
+              ? This will completely remove it from the database.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCategoryToDelete(null)}
+              disabled={deleteCategoryMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={confirmDelete}
+              disabled={deleteCategoryMutation.isPending}
+              className="gap-1.5"
+            >
+              {deleteCategoryMutation.isPending && (
+                <Loader2 className="size-3.5 animate-spin" />
+              )}
+              <span>
+                {deleteCategoryMutation.isPending ? "Deleting..." : "Delete Permanently"}
               </span>
             </Button>
           </DialogFooter>

@@ -47,6 +47,7 @@ import {
   Pencil,
   RotateCcw,
   XCircle,
+  Trash2,
   Power,
 } from "lucide-react";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -71,6 +72,7 @@ interface TrackTraceCategoryTableProps {
   onSort?: (field: string) => void;
   onEditClick: (category: ProjectCategory) => void;
   onToggleStatusClick: (category: ProjectCategory) => void;
+  onDeleteClick?: (category: ProjectCategory) => void;
   isToggling?: boolean;
   isScanPackEnabled?: boolean;
   className?: string;
@@ -364,6 +366,7 @@ export default function TrackTraceCategoryTable({
   onSort,
   onEditClick,
   onToggleStatusClick,
+  onDeleteClick,
   isToggling = false,
   isScanPackEnabled = false,
   className,
@@ -639,6 +642,19 @@ export default function TrackTraceCategoryTable({
                   <Power size={14} />
                   {row.original.status === "Yes" ? "Deactivate" : "Activate"}
                 </DropdownMenuItem>
+
+                {onDeleteClick && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                      onClick={() => onDeleteClick(row.original)}
+                    >
+                      <Trash2 size={14} />
+                      Delete Category
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -656,6 +672,7 @@ export default function TrackTraceCategoryTable({
     isScanPackEnabled,
     onEditClick,
     onToggleStatusClick,
+    onDeleteClick,
     isToggling,
   ]);
 

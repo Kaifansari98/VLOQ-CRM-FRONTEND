@@ -489,6 +489,7 @@ function StageDialog({
   });
   const [before, setBefore] = useState<File[]>([]);
   const [after, setAfter] = useState<File[]>([]);
+  const [resolutionFormFiles, setResolutionFormFiles] = useState<File[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [reviewed, setReviewed] = useState(false);
   const [rating, setRating] = useState(0);
@@ -552,6 +553,8 @@ function StageDialog({
       next.received = "Pick the date received.";
     if (mode === "COMPLETE_WORK" && !after.length)
       next.after = "Add at least one after-repair photo.";
+    if (mode === "COMPLETE_WORK" && !resolutionFormFiles.length)
+      next.resolutionForm = "Complaint resolution form is required.";
     if (mode === "COMPLETE_WORK" && !completion.pending_work.trim())
       next.pending_work = "Record the pending work, or write None.";
     if (mode === "UPLOAD_QUOTATION" && !quoteFiles.length)
@@ -650,6 +653,7 @@ function StageDialog({
           pending_work: completion.pending_work.trim(),
           before,
           after,
+          resolution_form: resolutionFormFiles,
           visit_payment: cashCheck.payment,
         };
       case "MATERIAL_ORDERED":
@@ -875,6 +879,16 @@ function StageDialog({
               accept={PHOTO_ACCEPT}
               max={10}
               error={errors.after}
+            />
+          </div>
+          <div>
+            <FilesField
+              label="Complaint resolution form"
+              files={resolutionFormFiles}
+              onChange={setResolutionFormFiles}
+              accept={`${PHOTO_ACCEPT},.pdf,application/pdf`}
+              max={1}
+              error={errors.resolutionForm}
             />
           </div>
           {cashDue && (
