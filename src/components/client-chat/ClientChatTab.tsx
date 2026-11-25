@@ -33,6 +33,10 @@ import {
   useClientChat,
 } from "@/api/client-chats";
 
+// The Client Chat tab is hidden in production for now.
+export const isClientChatEnabled =
+  (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "").toUpperCase() !== "PRODUCTION";
+
 // "Client Chat" tab on a lead's stage pages: the booking's conversation with
 // the client in the Furnix client app, in a WhatsApp Web style. The lead's
 // team and admins can reply; internal discussion stays in the lead chat.

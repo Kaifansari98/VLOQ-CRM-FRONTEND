@@ -1,7 +1,7 @@
 "use client";
 
 import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
-import { ClientChatTab } from "@/components/client-chat/ClientChatTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
 import { MessagesSquare as ClientChatIcon } from "lucide-react";
 import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
@@ -752,10 +752,12 @@ export default function OrderLoginLeadDetails() {
                   Client Tracker
                 </TabsTrigger>
               )}
-              <TabsTrigger value="client-chat">
-                <ClientChatIcon size={16} className="mr-1 opacity-60" />
-                Client Chat
-              </TabsTrigger>
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
               </TabsList>
             </div>
           </div>
@@ -831,9 +833,11 @@ export default function OrderLoginLeadDetails() {
             <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
           </TabsContent>
         )}
-        <TabsContent value="client-chat">
-          <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
-        </TabsContent>
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* --- NEW: ActivityStatusModal */}
