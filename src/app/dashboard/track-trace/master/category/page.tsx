@@ -22,6 +22,7 @@ import {
   XCircle,
   GitBranch,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import {
   Dialog,
@@ -475,43 +476,49 @@ export default function ProjectCategoriesPage() {
           if (!open) setCategoryToDelete(null);
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-destructive">
-              Delete Category
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Are you sure you want to permanently delete category{" "}
-              <span className="font-semibold text-foreground">
-                "{categoryToDelete?.category_name}"
-              </span>
-              ? This will completely remove it from the database.
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[420px] p-6 gap-5">
+          <DialogHeader className="flex flex-col items-center text-center space-y-3 sm:text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div className="space-y-1.5">
+              <DialogTitle className="text-lg font-semibold text-foreground">
+                Delete Category
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                Are you sure you want to permanently delete{" "}
+                <span className="font-semibold text-foreground">
+                  "{categoryToDelete?.category_name}"
+                </span>
+                ? This action cannot be undone.
+              </DialogDescription>
+            </div>
           </DialogHeader>
 
-          <DialogFooter className="gap-2 sm:gap-0 mt-3">
+          <DialogFooter className="grid grid-cols-2 gap-3 sm:space-x-0 mt-2">
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => setCategoryToDelete(null)}
               disabled={deleteCategoryMutation.isPending}
+              className="w-full"
             >
               Cancel
             </Button>
             <Button
               type="button"
               variant="destructive"
-              size="sm"
               onClick={confirmDelete}
               disabled={deleteCategoryMutation.isPending}
-              className="gap-1.5"
+              className="w-full gap-2"
             >
-              {deleteCategoryMutation.isPending && (
-                <Loader2 className="size-3.5 animate-spin" />
+              {deleteCategoryMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
               )}
               <span>
-                {deleteCategoryMutation.isPending ? "Deleting..." : "Delete Permanently"}
+                {deleteCategoryMutation.isPending ? "Deleting..." : "Delete"}
               </span>
             </Button>
           </DialogFooter>
