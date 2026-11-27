@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { CategoryUnits, StandardUnitsData, UnitRelation, UnitRole } from "@/api/standard-units";
 
 // Purchase, stock and consumption units of a category or sub-category. Pick a
-// unit class, then a unit in it. Each role uses a different class, and the
-// Quantity / Packing classes are for the purchase unit only.
+// unit class, then a unit in it.
 
 export type UnitSaveStatus = "idle" | "saving" | "saved" | "error" | "pending";
 
@@ -18,9 +17,6 @@ const ROLES: { key: UnitRole; label: string; hint: string; icon: typeof Shopping
   { key: "stock_unit_id", label: "Stock Unit", hint: "Secondary · stored / used in", icon: Warehouse },
   { key: "consumption_unit_id", label: "Consumption Unit", hint: "Third · consumed in", icon: Wrench },
 ];
-
-const COUNT_CLASSES = new Set(["quantity", "packing"]);
-const isCountClass = (name: string) => COUNT_CLASSES.has(name.toLowerCase());
 
 const qty = (n: number) => Number(n.toFixed(6)).toLocaleString("en-IN", { maximumFractionDigits: 6 });
 
@@ -43,9 +39,6 @@ export function CategoryUnitsPicker({ data, loading, value, onChange, status = "
     unitId ? data?.units.find((u) => u.id === unitId)?.unit_class_id ?? null : null;
   const classFor = (role: UnitRole) =>
     pickedClass[role] !== undefined ? pickedClass[role]! : classOfUnit(value[role]);
-
-  const takenBy = (role: UnitRole, classId: number) =>
-    ROLES.find((r) => r.key !== role && classFor(r.key) === classId);
 
   const chooseClass = (role: UnitRole, classId: number | null) => {
     setPickedClass((p) => ({ ...p, [role]: classId }));
@@ -73,7 +66,7 @@ export function CategoryUnitsPicker({ data, loading, value, onChange, status = "
             <h4 className={cn("font-bold tracking-tight text-foreground", compact ? "text-xs" : "text-sm")}>Unit Conversions</h4>
             {!compact && (
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Choose a unit class, then the unit. Each unit comes from a different class.
+                Choose a unit class, then the unit.
               </p>
             )}
           </div>
@@ -138,17 +131,11 @@ export function CategoryUnitsPicker({ data, loading, value, onChange, status = "
                     <SelectContent>
                       {data.classes
                         .filter((c) => c.is_active || c.id === classId)
-                        .map((c) => {
-                          const other = takenBy(role.key, c.id);
-                          const countBlocked = role.key !== "purchase_unit_id" && isCountClass(c.name);
-                          const reason = other ? `Used for ${other.label}` : countBlocked ? "Purchase unit only" : null;
-                          return (
-                            <SelectItem key={c.id} value={String(c.id)} disabled={!!reason} className="text-xs">
-                              {c.name}
-                              {reason && <span className="ml-auto text-[10px] text-muted-foreground">{reason}</span>}
-                            </SelectItem>
-                          );
-                        })}
+                        .map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)} className="text-xs">
+                            {c.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
 
