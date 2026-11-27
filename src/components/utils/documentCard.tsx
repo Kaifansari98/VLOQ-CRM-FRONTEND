@@ -245,6 +245,8 @@ interface DocumentCardProps {
   isDesignDoc?: boolean;
   designType?: DesignType;
   className?: string;
+  /** Extra button shown next to Download, e.g. Re-upload. */
+  extraAction?: React.ReactNode;
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
@@ -460,6 +462,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   isDesignDoc = false,
   designType: propDesignType,
   className,
+  extraAction,
 }) => {
   const params = useParams();
   const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
@@ -697,6 +700,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 <Download className="w-3.5 h-3.5" />
               )}
             </button>
+            {extraAction}
             {canDelete && !shouldHideDelete && (
               <button
                 type="button"
@@ -879,6 +883,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                   </>
                 )}
               </button>
+              {extraAction}
             </div>
 
             {/* Design Tag at right bottom corner */}
@@ -1124,6 +1129,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                   </>
                 )}
               </button>
+              {extraAction}
             </div>
 
             {/* Status & Design Type / Tag Label */}

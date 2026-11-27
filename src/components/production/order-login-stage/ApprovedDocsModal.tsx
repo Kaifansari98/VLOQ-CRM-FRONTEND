@@ -11,6 +11,7 @@ import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-h
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 import SectionHeader from "@/utils/sectionHeader";
+import { ReuploadDocumentButton } from "./ReuploadDocumentButton";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { Ban, File, FileText, FolderOpen, ImageIcon } from "lucide-react";
@@ -260,6 +261,20 @@ export default function ApprovedDocsSection({
   };
 
   const canDelete = userType === "admin" || userType === "super-admin";
+  // Small order leads: super-admins can replace an approved document.
+  const canReupload =
+    isSmallOrderRequestLead &&
+    !!vendorId &&
+    String(userType ?? "").trim().toLowerCase().replace(/[_\s]+/g, "-") === "super-admin";
+  const reuploadAction = (doc: any) =>
+    canReupload ? (
+      <ReuploadDocumentButton
+        vendorId={vendorId!}
+        leadId={leadId}
+        requestDocumentId={doc.id}
+        fileName={getDocName(doc)}
+      />
+    ) : undefined;
 
   // ✅ UI States
   if (isLoading) {
@@ -439,6 +454,7 @@ export default function ApprovedDocsSection({
                     index={index}
                     canDelete={canDelete && !isSmallOrderRequestLead}
                     onDelete={(id) => setConfirmDelete(Number(id))}
+                    extraAction={reuploadAction(doc)}
                   />
                 ))}
               </div>
@@ -465,6 +481,7 @@ export default function ApprovedDocsSection({
                     }}
                     canDelete={canDelete && !isSmallOrderRequestLead}
                     onDelete={(id) => setConfirmDelete(id)}
+                    extraAction={reuploadAction(doc)}
                   />
                 ))}
               </div>

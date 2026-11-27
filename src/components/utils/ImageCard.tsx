@@ -26,6 +26,8 @@ interface DocumentCardProps {
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
   isLoading?: boolean;
   disableActions?: boolean;
+  /** Extra button shown next to View, e.g. Re-upload. */
+  extraAction?: React.ReactNode;
 }
 
 // Skeleton Loading Component
@@ -75,6 +77,7 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   status,
   isLoading = false,
   disableActions = false,
+  extraAction,
 }) => {
   const params = useParams();
   const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
@@ -210,6 +213,7 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
 
           {/* Footer Actions */}
           <div className="flex items-end justify-between mt-3">
+            <div className="flex items-center gap-2">
             <button
               onClick={handleView}
               className="
@@ -222,6 +226,8 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
               <SquareArrowOutUpRight className="w-4 h-4" />
               View
             </button>
+            {extraAction}
+            </div>
 
             {status && (
               <div className="flex items-center gap-2">
