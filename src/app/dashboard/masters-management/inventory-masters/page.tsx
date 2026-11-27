@@ -22,6 +22,7 @@ import GradeMasterPage from "@/app/dashboard/track-trace/master/grade/page";
 import FinishMasterPage from "@/app/dashboard/track-trace/master/finish/page";
 import TypeMasterPage from "@/app/dashboard/track-trace/master/type/page";
 import CoreProductMasterPage from "@/app/dashboard/track-trace/master/core-product/page";
+import UnitConversionsMaster from "@/components/inventory-masters/UnitConversionsMaster";
 
 // Each master is also a standalone route, so hide its own page header inside the tab.
 const MasterTab = ({ children }: { children: ReactNode }) => (
@@ -37,6 +38,7 @@ const tabs = [
   { id: "type", title: "Type", Page: TypeMasterPage },
   { id: "core-product", title: "Core Product", Page: CoreProductMasterPage },
   { id: "company-vendor", title: "Company Vendor", Page: CompanyVendorMasterPage },
+  { id: "unit-conversions", title: "Unit Conversions", Page: UnitConversionsMaster },
 ];
 
 const tabItems = tabs.map(({ id, title, Page }) => ({
