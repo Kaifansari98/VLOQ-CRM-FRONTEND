@@ -28,6 +28,7 @@ export interface ProductPayload {
   /** Purchase expenses on top of the purchase rate: % of it or a ₹ amount. */
   purchase_expense_type?: "percent" | "amount" | null;
   purchase_expense_value?: number | null;
+  location_id?: number | null;
 
   min_stock_qty?: number | null;
   min_stock_unit_id?: number | null;

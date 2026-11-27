@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { LocationPicker } from "@/components/inventory-masters/LocationPicker";
 import {
   createProductMasterApi,
   fetchProductById,
@@ -74,6 +75,7 @@ const emptyForm: ProductPayload = {
   level1_price: null,
   purchase_expense_type: "percent",
   purchase_expense_value: null,
+  location_id: null,
 
   min_stock_qty: null,
   min_stock_unit_id: null,
@@ -378,6 +380,7 @@ export function ProductMasterFormPage({
               product.purchase_expense_value === null || product.purchase_expense_value === undefined
                 ? null
                 : Number(product.purchase_expense_value),
+            location_id: product.location_id || null,
 
             min_stock_qty: product.min_stock_qty
               ? Number(product.min_stock_qty)
@@ -677,6 +680,7 @@ export function ProductMasterFormPage({
     level1_price: toNumOrNull(form.level1_price),
     purchase_expense_type: form.purchase_expense_type === "amount" ? "amount" : "percent",
     purchase_expense_value: toNumOrNull(form.purchase_expense_value),
+    location_id: toNumOrNull(form.location_id),
 
     min_stock_qty: toNumOrNull(form.min_stock_qty),
     min_stock_unit_id: toNumOrNull(form.min_stock_unit_id),
@@ -1188,6 +1192,15 @@ export function ProductMasterFormPage({
                       placeholder="Search HSN..."
                       emptyLabel="Select HSN"
                       className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Location">
+                    <LocationPicker
+                      vendorId={vendorId}
+                      value={form.location_id}
+                      onChange={(id) => set("location_id", id)}
+                      className="input"
                     />
                   </Field>
 
@@ -2226,29 +2239,38 @@ function PurchaseExpenseInput({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-stretch gap-1.5">
+      <div className="flex h-10 items-center rounded-[10px] border border-border bg-background pl-3 pr-1 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[border-color,box-shadow] hover:border-ring focus-within:border-foreground focus-within:shadow-[0_0_0_1.5px_var(--foreground)]">
+        {type === "amount" && (
+          <span className="mr-1 text-[13px] font-medium text-muted-foreground">₹</span>
+        )}
         <input
           type="number"
+          inputMode="decimal"
           min="0"
           step="0.01"
           value={(value as any) ?? ""}
           onChange={(e) => onValueChange(e.target.value)}
-          className="input min-w-0 flex-1"
+          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+          className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-medium text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           placeholder={type === "percent" ? "e.g. 10" : "e.g. 100"}
         />
-        <div className="flex shrink-0 rounded-md border bg-muted/40 p-0.5">
+        {type === "percent" && (
+          <span className="mr-2 text-[13px] font-medium text-muted-foreground">%</span>
+        )}
+        <div className="flex h-8 shrink-0 items-center rounded-lg bg-muted p-0.5">
           {(["percent", "amount"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => onTypeChange(t)}
+              aria-pressed={type === t}
+              title={t === "percent" ? "Percent of purchase rate" : "Rupee amount"}
               className={cn(
-                "w-8 rounded text-xs font-semibold transition-colors",
+                "h-full w-8 rounded-md text-xs font-bold transition-all",
                 type === t
-                  ? "bg-background text-foreground shadow-xs"
+                  ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
-              title={t === "percent" ? "Percent of purchase rate" : "Rupee amount"}
             >
               {t === "percent" ? "%" : "₹"}
             </button>
@@ -2256,10 +2278,12 @@ function PurchaseExpenseInput({
         </div>
       </div>
       {hasRate && hasExtra && (
-        <p className="text-[11px] text-muted-foreground">
-          Rate after expenses:{" "}
+        <p className="flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+          Rate after expenses
           <span className="font-semibold text-foreground">{inr(base + added)}</span>
-          {type === "percent" && <span> (+{inr(added)})</span>}
+          <span className="rounded bg-emerald-50 px-1 font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+            +{inr(added)}
+          </span>
         </p>
       )}
     </div>
