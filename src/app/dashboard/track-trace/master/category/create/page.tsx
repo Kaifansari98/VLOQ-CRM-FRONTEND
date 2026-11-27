@@ -69,6 +69,18 @@ import {
 import { ProjectCategory } from "@/api/track-trace/project-categories.api";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import {
+  CategoryUnits,
+  EMPTY_CATEGORY_UNITS,
+  unitError,
+  useCategoryUnits,
+  useSaveCategoryUnits,
+  useStandardUnits,
+} from "@/api/standard-units";
+import {
+  CategoryUnitsPicker,
+  UnitSaveStatus,
+} from "@/components/inventory-masters/CategoryUnitsPicker";
 
 const STRUCTURE_ATTRIBUTES = [
   { key: "article_code", label: "Item Code", sample: "TAPE001" },
@@ -103,7 +115,19 @@ interface SubCategoryEntry {
   name: string;
   status?: "Yes" | "No";
   type_ids: number[];
+  /** Units picked before the sub-category is saved. */
+  units?: CategoryUnits;
 }
+
+const hasUnits = (u?: CategoryUnits) =>
+  !!u && Object.values(u).some((v) => v !== null);
+
+/** The new category's id from a create response. */
+const createdId = (result: any): number | undefined =>
+  result?.data?.category?.id ??
+  result?.data?.id ??
+  result?.category?.id ??
+  result?.id;
 
 function CategoryFormContent() {
   const router = useRouter();
@@ -155,6 +179,41 @@ function CategoryFormContent() {
   const [delimiter, setDelimiter] = useState<string>("_");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  // Unit Conversions: purchase / stock / consumption units. Saved as soon as a
+  // unit is picked; for a category or sub-category not saved yet, they're kept
+  // here and saved with it.
+  const { data: unitsData, isLoading: unitsLoading } = useStandardUnits(vendorId);
+  const { data: unitSettings } = useCategoryUnits(vendorId);
+  const saveUnits = useSaveCategoryUnits(vendorId);
+  const [pendingCategoryUnits, setPendingCategoryUnits] =
+    useState<CategoryUnits>(EMPTY_CATEGORY_UNITS);
+  const [unitStatus, setUnitStatus] = useState<Record<number, UnitSaveStatus>>({});
+
+  const savedUnitsOf = (categoryId: number): CategoryUnits => {
+    const found = unitSettings?.find((u) => u.category_id === categoryId);
+    return found
+      ? {
+          purchase_unit_id: found.purchase_unit_id,
+          stock_unit_id: found.stock_unit_id,
+          consumption_unit_id: found.consumption_unit_id,
+        }
+      : EMPTY_CATEGORY_UNITS;
+  };
+
+  const saveUnitsNow = (categoryId: number, units: CategoryUnits) => {
+    setUnitStatus((p) => ({ ...p, [categoryId]: "saving" }));
+    saveUnits.mutate(
+      { categoryId, units },
+      {
+        onSuccess: () => setUnitStatus((p) => ({ ...p, [categoryId]: "saved" })),
+        onError: (err) => {
+          setUnitStatus((p) => ({ ...p, [categoryId]: "error" }));
+          toastManager.add({ title: unitError(err), type: "error" });
+        },
+      }
+    );
+  };
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.setData("text/plain", index.toString());
@@ -187,6 +246,8 @@ function CategoryFormContent() {
   }, [allCategories, editId]);
 
   const isEdit = !!editData;
+  const unitTargetId = editData?.id ?? activeCategory?.id ?? null;
+  const activeSubCount = subCategories.filter((s) => s.status !== "No").length;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const mainCategoryOptions = useMemo(() => {
@@ -422,13 +483,16 @@ function CategoryFormContent() {
             }
           } else {
             if (sub.name.trim() && sub.status !== "No") {
-              await createMutation.mutateAsync({
+              const created = await createMutation.mutateAsync({
                 vendor_id: vendorId,
                 category_name: sub.name.trim(),
                 parent_id: targetCategory.id,
                 type_ids: [],
                 created_by: userId,
               });
+              const subId = createdId(created);
+              if (subId && hasUnits(sub.units))
+                await saveUnits.mutateAsync({ categoryId: subId, units: sub.units! });
             }
           }
         }
@@ -449,22 +513,24 @@ function CategoryFormContent() {
           } : null,
         });
 
-        const parentId =
-          result?.data?.category?.id ??
-          result?.data?.id ??
-          result?.category?.id ??
-          result?.id;
+        const parentId = createdId(result);
+        const liveSubs = subCategories.filter((s) => s.name.trim());
+        if (parentId && liveSubs.length === 0 && hasUnits(pendingCategoryUnits))
+          await saveUnits.mutateAsync({ categoryId: parentId, units: pendingCategoryUnits });
 
         if (parentId && subCategories.length > 0) {
           for (const sub of subCategories) {
             if (sub.name.trim()) {
-              await createMutation.mutateAsync({
+              const created = await createMutation.mutateAsync({
                 vendor_id: vendorId,
                 category_name: sub.name.trim(),
                 parent_id: parentId,
                 type_ids: [],
                 created_by: userId,
               });
+              const subId = createdId(created);
+              if (subId && hasUnits(sub.units))
+                await saveUnits.mutateAsync({ categoryId: subId, units: sub.units! });
             }
           }
         }
@@ -647,6 +713,7 @@ function CategoryFormContent() {
                       setScanPackValidate(false);
                       setSelectedTypeIds([]);
                       setSubCategories([]);
+                      setPendingCategoryUnits(EMPTY_CATEGORY_UNITS);
                       if (error) setError("");
                     }}
                     title={
@@ -725,6 +792,255 @@ function CategoryFormContent() {
               </div>
             )}
           </div>
+
+          {/* Row 2: Packing & Scan Validation Options */}
+          {(!activeCategory || !activeCategory.parent_id) && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
+                  includeInPacking
+                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
+                    : "bg-card hover:bg-muted/30"
+                )}
+              >
+                <Checkbox
+                  checked={includeInPacking}
+                  onCheckedChange={(checked) => {
+                    const val = !!checked;
+                    setIncludeInPacking(val);
+                    if (!val) {
+                      if (scanPackValidate) setScanPackValidate(false);
+                      if (useInAssembledPacking) setUseInAssembledPacking(false);
+                    }
+                  }}
+                  className="mt-0.5"
+                />
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-foreground">
+                      Include in Packing
+                    </span>
+                    {(scanPackValidate || useInAssembledPacking) && (
+                      <span className="text-[10px] font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded border">
+                        Required
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Check if any item under this category is applicable for packing
+                  </span>
+                </div>
+              </label>
+
+              <label
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
+                  scanPackValidate
+                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
+                    : "bg-card hover:bg-muted/30"
+                )}
+              >
+                <Checkbox
+                  checked={scanPackValidate}
+                  onCheckedChange={(checked) => {
+                    const val = !!checked;
+                    setScanPackValidate(val);
+                    if (val) {
+                      setIncludeInPacking(true);
+                    } else {
+                      if (useInAssembledPacking) setUseInAssembledPacking(false);
+                    }
+                  }}
+                  className="mt-0.5"
+                />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-foreground">
+                    Scan & Pack Validate
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Check if items under this category must be scanned before packing
+                  </span>
+                </div>
+              </label>
+
+              <label
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
+                  useInAssembledPacking
+                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
+                    : "bg-card hover:bg-muted/30"
+                )}
+              >
+                <Checkbox
+                  checked={useInAssembledPacking}
+                  onCheckedChange={(checked) => {
+                    const val = !!checked;
+                    setUseInAssembledPacking(val);
+                    if (val) {
+                      setIncludeInPacking(true);
+                      setScanPackValidate(true);
+                    }
+                  }}
+                  className="mt-0.5"
+                />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-foreground">
+                    Use in Assembled Packing
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Check if items under this category are used in assembled packing
+                  </span>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {/* Unit Conversions: on the category when it has no sub-categories,
+              otherwise on each sub-category */}
+          {activeSubCount === 0 && (
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs">
+              <CategoryUnitsPicker
+                data={unitsData}
+                loading={unitsLoading}
+                value={unitTargetId ? savedUnitsOf(unitTargetId) : pendingCategoryUnits}
+                status={unitTargetId ? unitStatus[unitTargetId] : hasUnits(pendingCategoryUnits) ? "pending" : "idle"}
+                onChange={(next) =>
+                  unitTargetId ? saveUnitsNow(unitTargetId, next) : setPendingCategoryUnits(next)
+                }
+              />
+            </div>
+          )}
+
+          {/* Row 3: Sub Categories */}
+          {(!activeCategory || !activeCategory.parent_id) && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-semibold text-foreground">
+                    Sub Categories
+                  </Label>
+                  {subCategories.filter((s) => s.status !== "No").length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs font-bold bg-muted text-foreground border"
+                    >
+                      {subCategories.filter((s) => s.status !== "No").length}
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addSubCategory}
+                  className="gap-1.5 h-8 text-xs font-semibold"
+                >
+                  <Plus className="size-3.5" /> Add Sub Category
+                </Button>
+              </div>
+
+              {subCategories.filter((s) => s.status !== "No").length === 0 ? (
+                <div
+                  onClick={addSubCategory}
+                  className="rounded-xl border border-dashed border-muted-foreground/30 p-6 text-center cursor-pointer hover:border-foreground/50 hover:bg-muted/30 transition-all flex flex-col items-center justify-center gap-2"
+                >
+                  <div className="rounded-full bg-muted p-2.5 text-foreground">
+                    <GitBranch className="size-5" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">
+                    No sub-categories added yet
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Click{" "}
+                    <span className="font-semibold text-foreground">
+                      Add Sub Category
+                    </span>{" "}
+                    to define sub-items under this category
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {subCategories.map((sub, index) => {
+                    if (sub.status === "No") return null;
+                    const hasError =
+                      error.startsWith("Sub") &&
+                      !sub.name.trim() &&
+                      index === Number(error.match(/\d+/)?.[0] ?? -1) - 1;
+
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-xl border bg-muted/20 p-4 flex flex-col gap-3 transition-all hover:bg-muted/30"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="size-2 rounded-full bg-foreground" />
+                            Sub Category {index + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (sub.id) {
+                                setSubCategories((prev) =>
+                                  prev.map((s, i) =>
+                                    i === index ? { ...s, status: "No" } : s
+                                  )
+                                );
+                              } else {
+                                removeSubCategory(index);
+                              }
+                            }}
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-md"
+                            title="Remove sub-category"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <Input
+                            placeholder="Sub-category name..."
+                            value={sub.name}
+                            onChange={(e) =>
+                              updateSubCategoryName(index, e.target.value)
+                            }
+                            className={cn(
+                              "h-9 text-xs bg-background",
+                              hasError && "border-destructive ring-1 ring-destructive"
+                            )}
+                          />
+                          {hasError && (
+                            <p className="text-xs text-destructive font-medium">
+                              Sub-category name is required
+                            </p>
+                          )}
+                        </div>
+
+                        <CategoryUnitsPicker
+                          compact
+                          className="border-t border-border/60 pt-3"
+                          data={unitsData}
+                          loading={unitsLoading}
+                          value={sub.id ? savedUnitsOf(sub.id) : sub.units ?? EMPTY_CATEGORY_UNITS}
+                          status={sub.id ? unitStatus[sub.id] : hasUnits(sub.units) ? "pending" : "idle"}
+                          onChange={(next) =>
+                            sub.id
+                              ? saveUnitsNow(sub.id, next)
+                              : setSubCategories((prev) =>
+                                  prev.map((s, i) => (i === index ? { ...s, units: next } : s))
+                                )
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Product Name Structure Builder */}
           {!editData?.parent_id && (
@@ -1004,223 +1320,6 @@ function CategoryFormContent() {
                       );
                     })}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Row 2: Packing & Scan Validation Options */}
-          {(!activeCategory || !activeCategory.parent_id) && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label
-                className={cn(
-                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
-                  includeInPacking
-                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
-                    : "bg-card hover:bg-muted/30"
-                )}
-              >
-                <Checkbox
-                  checked={includeInPacking}
-                  onCheckedChange={(checked) => {
-                    const val = !!checked;
-                    setIncludeInPacking(val);
-                    if (!val) {
-                      if (scanPackValidate) setScanPackValidate(false);
-                      if (useInAssembledPacking) setUseInAssembledPacking(false);
-                    }
-                  }}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold text-foreground">
-                      Include in Packing
-                    </span>
-                    {(scanPackValidate || useInAssembledPacking) && (
-                      <span className="text-[10px] font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded border">
-                        Required
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    Check if any item under this category is applicable for packing
-                  </span>
-                </div>
-              </label>
-
-              <label
-                className={cn(
-                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
-                  scanPackValidate
-                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
-                    : "bg-card hover:bg-muted/30"
-                )}
-              >
-                <Checkbox
-                  checked={scanPackValidate}
-                  onCheckedChange={(checked) => {
-                    const val = !!checked;
-                    setScanPackValidate(val);
-                    if (val) {
-                      setIncludeInPacking(true);
-                    } else {
-                      if (useInAssembledPacking) setUseInAssembledPacking(false);
-                    }
-                  }}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-foreground">
-                    Scan & Pack Validate
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Check if items under this category must be scanned before packing
-                  </span>
-                </div>
-              </label>
-
-              <label
-                className={cn(
-                  "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all hover:border-foreground/40",
-                  useInAssembledPacking
-                    ? "bg-muted/50 border-foreground/30 ring-1 ring-foreground/20"
-                    : "bg-card hover:bg-muted/30"
-                )}
-              >
-                <Checkbox
-                  checked={useInAssembledPacking}
-                  onCheckedChange={(checked) => {
-                    const val = !!checked;
-                    setUseInAssembledPacking(val);
-                    if (val) {
-                      setIncludeInPacking(true);
-                      setScanPackValidate(true);
-                    }
-                  }}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-foreground">
-                    Use in Assembled Packing
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Check if items under this category are used in assembled packing
-                  </span>
-                </div>
-              </label>
-            </div>
-          )}
-
-          {/* Row 3: Sub Categories */}
-          {(!activeCategory || !activeCategory.parent_id) && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-semibold text-foreground">
-                    Sub Categories
-                  </Label>
-                  {subCategories.filter((s) => s.status !== "No").length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs font-bold bg-muted text-foreground border"
-                    >
-                      {subCategories.filter((s) => s.status !== "No").length}
-                    </Badge>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addSubCategory}
-                  className="gap-1.5 h-8 text-xs font-semibold"
-                >
-                  <Plus className="size-3.5" /> Add Sub Category
-                </Button>
-              </div>
-
-              {subCategories.filter((s) => s.status !== "No").length === 0 ? (
-                <div
-                  onClick={addSubCategory}
-                  className="rounded-xl border border-dashed border-muted-foreground/30 p-6 text-center cursor-pointer hover:border-foreground/50 hover:bg-muted/30 transition-all flex flex-col items-center justify-center gap-2"
-                >
-                  <div className="rounded-full bg-muted p-2.5 text-foreground">
-                    <GitBranch className="size-5" />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">
-                    No sub-categories added yet
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Click{" "}
-                    <span className="font-semibold text-foreground">
-                      Add Sub Category
-                    </span>{" "}
-                    to define sub-items under this category
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {subCategories.map((sub, index) => {
-                    if (sub.status === "No") return null;
-                    const hasError =
-                      error.startsWith("Sub") &&
-                      !sub.name.trim() &&
-                      index === Number(error.match(/\d+/)?.[0] ?? -1) - 1;
-
-                    return (
-                      <div
-                        key={index}
-                        className="rounded-xl border bg-muted/20 p-4 flex flex-col gap-3 transition-all hover:bg-muted/30"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                            <span className="size-2 rounded-full bg-foreground" />
-                            Sub Category {index + 1}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (sub.id) {
-                                setSubCategories((prev) =>
-                                  prev.map((s, i) =>
-                                    i === index ? { ...s, status: "No" } : s
-                                  )
-                                );
-                              } else {
-                                removeSubCategory(index);
-                              }
-                            }}
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-md"
-                            title="Remove sub-category"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <Input
-                            placeholder="Sub-category name..."
-                            value={sub.name}
-                            onChange={(e) =>
-                              updateSubCategoryName(index, e.target.value)
-                            }
-                            className={cn(
-                              "h-9 text-xs bg-background",
-                              hasError && "border-destructive ring-1 ring-destructive"
-                            )}
-                          />
-                          {hasError && (
-                            <p className="text-xs text-destructive font-medium">
-                              Sub-category name is required
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>

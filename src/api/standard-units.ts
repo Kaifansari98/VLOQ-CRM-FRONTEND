@@ -102,3 +102,64 @@ export function useStandardUnitChange(vendorId?: number) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key(vendorId) }),
   });
 }
+
+/* ----------------------------- Category units ----------------------------- */
+
+// Purchase, stock and consumption units of a category or sub-category.
+
+export type UnitRole = "purchase_unit_id" | "stock_unit_id" | "consumption_unit_id";
+
+export type CategoryUnits = Record<UnitRole, number | null>;
+
+export interface CategoryUnitSetting extends CategoryUnits {
+  category_id: number;
+}
+
+export const EMPTY_CATEGORY_UNITS: CategoryUnits = {
+  purchase_unit_id: null,
+  stock_unit_id: null,
+  consumption_unit_id: null,
+};
+
+const categoryUnitsKey = (vendorId?: number) => ["category-units", vendorId] as const;
+
+export function useCategoryUnits(vendorId?: number) {
+  return useQuery({
+    queryKey: categoryUnitsKey(vendorId),
+    enabled: !!vendorId,
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: CategoryUnitSetting[] }>(
+        `${path(vendorId!)}/category-units`
+      );
+      return data.data;
+    },
+  });
+}
+
+/** Saves a category's units; the change shows at once and is undone if it fails. */
+export function useSaveCategoryUnits(vendorId?: number) {
+  const queryClient = useQueryClient();
+  const queryKey = categoryUnitsKey(vendorId);
+  return useMutation({
+    mutationFn: async ({ categoryId, units }: { categoryId: number; units: CategoryUnits }) => {
+      const { data } = await apiClient.put<{ data: CategoryUnitSetting }>(
+        `${path(vendorId!)}/category-units/${categoryId}`,
+        units
+      );
+      return data.data;
+    },
+    onMutate: async ({ categoryId, units }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<CategoryUnitSetting[]>(queryKey);
+      queryClient.setQueryData<CategoryUnitSetting[]>(queryKey, (list = []) => [
+        ...list.filter((s) => s.category_id !== categoryId),
+        { category_id: categoryId, ...units },
+      ]);
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      queryClient.setQueryData(queryKey, context?.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  });
+}
