@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -84,9 +88,10 @@ import {
   useLatestOrderLoginByLead,
   useMarkProductionCompleted,
   usePostProductionCompleteness,
+  usePreProductionFiles,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
@@ -102,7 +107,6 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
-import { fetchLeadLogs } from "@/api/leads";
 import BaseModal from "@/components/utils/baseModal";
 import TextAreaInput from "@/components/origin-text-area";
 export default function ProductionLeadDetails() {
@@ -117,6 +121,16 @@ export default function ProductionLeadDetails() {
     instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const handlesLargeScaleProjects = useAppSelector((state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true);
+  const usesPreProductionCompletion = useAppSelector((state) =>
+    state.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+    state.auth.user?.vendor?.is_tracktrace_enabled === true,
+  );
+  const { data: preProductionFiles, isSuccess: preProductionFilesLoaded } = usePreProductionFiles(
+    usesPreProductionCompletion && validInstanceId ? vendorId : undefined,
+    leadIdNum,
+    validInstanceId,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
@@ -144,7 +158,6 @@ export default function ProductionLeadDetails() {
     string | undefined
   >(undefined);
   const [masterErdRemark, setMasterErdRemark] = useState("");
-  const [factoryErdLocked, setFactoryErdLocked] = useState(false);
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -182,22 +195,7 @@ export default function ProductionLeadDetails() {
     Number(leadIdNum),
     validInstanceId ?? undefined,
   );
-  const { data: masterErdChangeLogData } = useQuery({
-    queryKey: ["master-erd-change-log", vendorId, leadIdNum],
-    queryFn: () =>
-      fetchLeadLogs({
-        leadId: leadIdNum,
-        vendorId: vendorId!,
-        limit: 1,
-        historyType: "Lead",
-        search: validInstanceId
-          ? "Instance ERD changed to"
-          : "Expected Order Login ready date changed to",
-      }),
-    enabled: !!vendorId && !!leadIdNum,
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+
 
 
 
@@ -398,9 +396,11 @@ export default function ProductionLeadDetails() {
   );
 
   const hasInstances = instances.length > 0;
-  const allInstancesCompleted = hasInstances
-    ? incompleteInstances.length === 0
-    : true;
+  const readyToDispatchEligible = handlesLargeScaleProjects
+    ? !!validInstanceId && currentInstance?.is_archived !== true &&
+      currentInstance?.is_production_completed === true &&
+      (!currentInstance?.stageStatus?.tag || ["Type 8", "Type 9", "Type 10"].includes(currentInstance.stageStatus.tag))
+    : !hasInstances || incompleteInstances.length === 0;
 
   const incompleteTitles =
     incompleteInstances
@@ -411,7 +411,11 @@ export default function ProductionLeadDetails() {
   const missingDocsOrRemarks: string[] = [];
 
   if (validInstanceId) {
-    if (isSmallOrderSingleUploadFlow) {
+    if (usesPreProductionCompletion) {
+      if (!preProductionFilesLoaded || !Array.isArray(preProductionFiles) || preProductionFiles.length === 0) {
+        missingDocsOrRemarks.push("Upload a Woodwork or Metalwork file in Pre-Production Files for this instance");
+      }
+    } else if (isSmallOrderSingleUploadFlow) {
       const hasAnyPostProductionUpload =
         !!instanceCompleteness?.qc_photos ||
         !!instanceCompleteness?.hardware_docs ||
@@ -436,7 +440,7 @@ export default function ProductionLeadDetails() {
   }
 
   if (validInstanceId && currentInstance) {
-    if (!currentInstance?.no_of_boxes || currentInstance?.no_of_boxes <= 0) {
+    if (!usesPreProductionCompletion && (!currentInstance?.no_of_boxes || currentInstance?.no_of_boxes <= 0)) {
       missingPrerequisites.push("Set No. of Boxes");
     }
 
@@ -447,11 +451,12 @@ export default function ProductionLeadDetails() {
 
   const canMarkProductionCompleted =
     !!validInstanceId &&
+    !!currentInstance &&
     !currentInstance?.is_production_completed &&
     missingDocsOrRemarks.length === 0 &&
     missingPrerequisites.length === 0;
 
-  const pendingProductionRequirements = isSmallOrderSingleUploadFlow
+  const pendingProductionRequirements = isSmallOrderSingleUploadFlow && !usesPreProductionCompletion
     ? [
         ...((missingDocsOrRemarks.length > 0
           ? [
@@ -493,21 +498,7 @@ export default function ProductionLeadDetails() {
         : null;
     const isDisplayedErdChange =
       !!existingDisplayedErd && existingDisplayedErd !== newDate;
-    const isFactoryLockedForDisplayedErd =
-      normalizedUserType === "factory" &&
-      !!existingDisplayedErd &&
-      (factoryErdLocked || hasMasterErdBeenChangedOnce);
-
-    if (isFactoryLockedForDisplayedErd) {
-      toastManager.add({
-        title:
-          "Factory can change this Expected Ready Date only once after setting it.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (isDisplayedErdChange && !isSuperAdmin) {
+    if (normalizedUserType === "factory" || (isDisplayedErdChange && !isSuperAdmin)) {
       setPendingMasterErdDate(newDate);
       setShowMasterErdRemarkModal(true);
       return;
@@ -541,9 +532,6 @@ export default function ProductionLeadDetails() {
           validInstanceId ?? undefined,
         ],
       });
-      if (normalizedUserType === "factory" && isDisplayedErdChange) {
-        setFactoryErdLocked(true);
-      }
     } catch (err: any) {
       toastManager.add({
         title: err?.message || "Failed to update expected order login date",
@@ -626,6 +614,7 @@ export default function ProductionLeadDetails() {
       return;
     }
 
+    if (!readyToDispatchEligible) return;
     setOpenReadyToDispatch(true);
   };
 
@@ -655,20 +644,11 @@ export default function ProductionLeadDetails() {
     userType,
   });
 
-  const hasMasterErdBeenChangedOnce =
-    (masterErdChangeLogData?.data?.length ?? 0) > 0;
   const displayedErdValue = validInstanceId
     ? currentInstance?.production_erd_date
     : lead?.expected_order_login_ready_date;
-  const isMasterErdLocked =
-    normalizedUserType === "factory" &&
-    !!displayedErdValue &&
-    (factoryErdLocked || hasMasterErdBeenChangedOnce);
-
   const disabledReason = shouldDisableBlockedActions
     ? blockedTooltip
-    : isMasterErdLocked
-      ? "Master ERD can only be changed once after setting. Please contact Super Admin for further changes."
     : !canUpdateExpectedDate
       ? "You do not have permission to update this date."
       : completeness?.any_exists
@@ -741,7 +721,7 @@ export default function ProductionLeadDetails() {
               <CustomeTooltip
                 value={blockedTooltip}
                 truncateValue={
-                  allInstancesCompleted ? (
+                  readyToDispatchEligible ? (
                     <Button
                       size="sm"
                       className="hidden md:flex"
@@ -761,7 +741,7 @@ export default function ProductionLeadDetails() {
                   )
                 }
               />
-            ) : allInstancesCompleted ? (
+            ) : readyToDispatchEligible ? (
               <Button
                 size="sm"
                 className="hidden md:flex"
@@ -866,13 +846,13 @@ export default function ProductionLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="md:hidden" disabled>
                         <Truck size={20} />
-                        {allInstancesCompleted
+                        {readyToDispatchEligible
                           ? "Ready To Dispatch"
                           : "Mark Completed"}
                       </DropdownMenuItem>
                     }
                   />
-                ) : allInstancesCompleted ? (
+                ) : readyToDispatchEligible ? (
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={handleReadyToDispatchClick}
@@ -1104,6 +1084,18 @@ export default function ProductionLeadDetails() {
                   Documents
                 </TabsTrigger>
               )}{" "}
+              {isClientTrackerEnabled && (
+                <TabsTrigger value="client-tracker">
+                  <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                  Client Tracker
+                </TabsTrigger>
+              )}
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -1201,6 +1193,16 @@ export default function ProductionLeadDetails() {
             />
           </TabsContent>
         )}
+        {isClientTrackerEnabled && (
+          <TabsContent value="client-tracker">
+            <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}
@@ -1250,14 +1252,16 @@ export default function ProductionLeadDetails() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isSmallOrderLead
+              {(isSmallOrderLead && !handlesLargeScaleProjects)
                 ? "Move to Dispatch Planning?"
                 : "Move to Ready To Dispatch?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isSmallOrderLead
+              {(isSmallOrderLead && !handlesLargeScaleProjects)
                 ? "This will move the small-order lead from Production directly to the Dispatch Planning stage. Are you sure you want to continue?"
-                : "This will move the lead from Production to the Ready-To-Dispatch stage. Are you sure you want to continue?"}
+                : handlesLargeScaleProjects
+                  ? `This will move only "${instanceName || "this instance"}" to Ready To Dispatch. Other instances will remain in their current stages.`
+                  : "This will move the lead from Production to the Ready-To-Dispatch stage. Are you sure you want to continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1268,7 +1272,7 @@ export default function ProductionLeadDetails() {
                 moveLeadToDispatchPlanningMutation.isPending
               }
               onClick={async () => {
-                if (!vendorId || !userId || !leadIdNum) {
+                if (!vendorId || !userId || !leadIdNum || !readyToDispatchEligible) {
                   toastManager.add({
                     title: "Missing vendor or user information!",
                     type: "error",
@@ -1277,7 +1281,7 @@ export default function ProductionLeadDetails() {
                 }
 
                 try {
-                  if (isSmallOrderLead) {
+                  if ((isSmallOrderLead && !handlesLargeScaleProjects)) {
                     await moveLeadToDispatchPlanningMutation.mutateAsync({
                       vendorId,
                       leadId: leadIdNum,
@@ -1293,10 +1297,11 @@ export default function ProductionLeadDetails() {
                       vendorId,
                       leadId: leadIdNum,
                       updated_by: userId,
+                      instance_id: handlesLargeScaleProjects ? validInstanceId ?? undefined : undefined,
                     });
 
                     toastManager.add({
-                      title: "Lead moved to Ready-To-Dispatch successfully!",
+                      title: handlesLargeScaleProjects ? "Instance moved to Ready-To-Dispatch successfully!" : "Lead moved to Ready-To-Dispatch successfully!",
                       type: "success",
                     });
                   }
@@ -1316,7 +1321,7 @@ export default function ProductionLeadDetails() {
 
                   setTimeout(() => {
                     router.push(
-                      isSmallOrderLead
+                      (isSmallOrderLead && !handlesLargeScaleProjects)
                         ? "/dashboard/installation/dispatch-planning"
                         : "/dashboard/production/ready-to-dispatch",
                     );
@@ -1326,7 +1331,7 @@ export default function ProductionLeadDetails() {
                     title:
                       err?.response?.data?.message ||
                       err?.message ||
-                      (isSmallOrderLead
+                      ((isSmallOrderLead && !handlesLargeScaleProjects)
                         ? "Failed to move lead to Dispatch Planning"
                         : "Failed to move lead to Ready-To-Dispatch"),
                     type: "error",
@@ -1469,12 +1474,6 @@ export default function ProductionLeadDetails() {
                       validInstanceId ?? undefined,
                     ],
                   });
-                  queryClient.invalidateQueries({
-                    queryKey: ["master-erd-change-log", vendorId, leadIdNum],
-                  });
-                  if (normalizedUserType === "factory") {
-                    setFactoryErdLocked(true);
-                  }
                   setShowMasterErdRemarkModal(false);
                   setPendingMasterErdDate(undefined);
                   setMasterErdRemark("");

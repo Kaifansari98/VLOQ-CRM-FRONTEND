@@ -93,12 +93,38 @@ export interface CompanyVendorMasterResponse {
 }
 
 export interface UserMasterEntry {
+  franchise_ids?: number[];
+  franchises?: { id: number; franchise_name: string }[];
   id: number;
   vendor_id: number;
   franchise_id?: number | null;
+  employee_type?: string | null;
+  employee_code?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_name: string;
+  designation?: string | null;
   user_contact: string;
   user_email: string;
+  personal_email?: string | null;
   user_timezone: string;
   status: string;
   created_at: string;
@@ -169,6 +195,7 @@ export interface PrivilegeMasterResponse {
 
 export interface CarcassTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
   can_do_fast_production?: boolean;
@@ -187,6 +214,7 @@ export interface ShutterSubTypeMasterEntry {
 
 export interface ShutterTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
   subTypes?: ShutterSubTypeMasterEntry[];
@@ -199,6 +227,7 @@ export interface ShutterTypeMasterResponse {
 
 export interface CarcasMaterialFinishMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   carcas_material_id: number;
   material?: { id: number; name: string };
@@ -211,6 +240,7 @@ export interface CarcasMaterialFinishMasterResponse {
 
 export interface CarcasMaterialMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
 }
@@ -220,20 +250,37 @@ export interface CarcasMaterialMasterResponse {
   data: CarcasMaterialMasterEntry[];
 }
 
-export interface ShutterMaterialFinishMasterEntry {
+export interface ShutterOuterFinishMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   shutter_material_id: number;
   material?: { id: number; name: string };
 }
 
-export interface ShutterMaterialFinishMasterResponse {
+
+export interface ShutterInnerFinishMasterEntry {
+  id: number;
+  status?: string; // "active" | "inactive"
+  name: string;
+  shutter_material_id: number;
+  material?: { id: number; name: string };
+}
+
+export interface ShutterOuterFinishMasterResponse {
   success: boolean;
-  data: ShutterMaterialFinishMasterEntry[];
+  data: ShutterOuterFinishMasterEntry[];
+}
+
+
+export interface ShutterInnerFinishMasterResponse {
+  success: boolean;
+  data: ShutterInnerFinishMasterEntry[];
 }
 
 export interface ShutterMaterialMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
 }
@@ -243,41 +290,44 @@ export interface ShutterMaterialMasterResponse {
   data: ShutterMaterialMasterEntry[];
 }
 
-export interface SkirtingCarcassLegsColorMasterEntry {
+export interface HardwareItemOptionMasterEntry {
   id: number;
-  carcass_legs_id: number;
-  skirting_carcass_legs_id: number;
-  color: string;
-  skirtingCarcassLegs?: { id: number; name: string };
-}
-
-export interface SkirtingCarcassLegsColorMasterResponse {
-  success: boolean;
-  data: SkirtingCarcassLegsColorMasterEntry[];
-}
-
-export interface SkirtingCarcassLegsMasterEntry {
-  id: number;
+  status?: string; // "active" | "inactive"
+  hardware_type_id: number;
+  hardware_item_id: number;
   name: string;
-  carcass_legs_id: number;
-  inScope: boolean;
-  carcassLegs?: { id: number; name: string };
+  hardwareItem?: { id: number; name: string };
 }
 
-export interface SkirtingCarcassLegsMasterResponse {
+export interface HardwareItemOptionMasterResponse {
   success: boolean;
-  data: SkirtingCarcassLegsMasterEntry[];
+  data: HardwareItemOptionMasterEntry[];
 }
 
-export interface CarcassLegsMasterEntry {
+export interface HardwareItemMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
+  name: string;
+  hardware_type_id: number;
+  inScope: boolean;
+  hardwareType?: { id: number; name: string };
+}
+
+export interface HardwareItemMasterResponse {
+  success: boolean;
+  data: HardwareItemMasterEntry[];
+}
+
+export interface HardwareTypeMasterEntry {
+  id: number;
+  status?: string; // "active" | "inactive"
   name: string;
   vendor_id: number;
 }
 
-export interface CarcassLegsMasterResponse {
+export interface HardwareTypeMasterResponse {
   success: boolean;
-  data: CarcassLegsMasterEntry[];
+  data: HardwareTypeMasterEntry[];
 }
 
 export interface HandleTypeMasterEntry {
@@ -293,6 +343,7 @@ export interface HandleTypeMasterResponse {
 
 export interface LightCarcasTypeMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   type: string;
   vendor_id: number;
 }
@@ -304,6 +355,7 @@ export interface LightCarcasTypeMasterResponse {
 
 export interface LightCarcasUnitMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   type: string;
   vendor_id: number;
   light_carcas_type_id: number;
@@ -319,6 +371,7 @@ export const OTHER_APPLIANCE_TYPES = ["Appliances", "Stone", "Sinks", "Faucets"]
 
 export interface OtherAppliancesMasterEntry {
   id: number;
+  status?: string; // "active" | "inactive"
   vendor_id: number;
   type: string;
   article_number: string;
@@ -417,12 +470,18 @@ export interface CreateShutterMaterialPayload {
   name: string;
 }
 
-export interface CreateShutterMaterialFinishPayload {
+export interface CreateShutterOuterFinishPayload {
   shutter_material_id: number;
   name: string;
 }
 
-export interface BulkUploadShutterMaterialFinishesResponse {
+
+export interface CreateShutterInnerFinishPayload {
+  shutter_material_id: number;
+  name: string;
+}
+
+export interface BulkUploadShutterOuterFinishesResponse {
   success: boolean;
   data: {
     typesCreated: number;
@@ -437,24 +496,40 @@ export interface BulkUploadShutterMaterialFinishesResponse {
   };
 }
 
-export interface CreateCarcassLegsPayload {
+
+export interface BulkUploadShutterInnerFinishesResponse {
+  success: boolean;
+  data: {
+    typesCreated: number;
+    materialsCreated: number;
+    finishesCreated: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
+}
+
+export interface CreateHardwareTypePayload {
   vendor_id: number;
   name: string;
 }
 
-export interface CreateSkirtingCarcassLegsPayload {
-  carcass_legs_id: number;
+export interface CreateHardwareItemPayload {
+  hardware_type_id: number;
   name: string;
   inScope: boolean;
 }
 
-export interface CreateSkirtingCarcassLegsColorPayload {
-  carcass_legs_id: number;
-  skirting_carcass_legs_id: number;
-  color: string;
+export interface CreateHardwareItemOptionPayload {
+  hardware_type_id: number;
+  hardware_item_id: number;
+  name: string;
 }
 
-export interface BulkUploadSkirtingCarcassLegsColorsResponse {
+export interface BulkUploadHardwareItemOptionsResponse {
   success: boolean;
   data: {
     typesCreated: number;
@@ -533,8 +608,8 @@ export interface CreateProductItemCodeMasterPayload {
   item_code: string;
   product_structure_id: number;
   sub_product_structure_id: number;
-  description: string;
-  specification: string;
+  description?: string;
+  specification?: string;
 }
 
 export interface UpdateSourceTypeMasterPayload {
@@ -800,9 +875,9 @@ export const createShutterMaterial = async (
   return res.data;
 }
 
-export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) => {
-  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
-    `/leads/get-shutter-material-finishes/${shutterMaterialId}`,
+export const fetchShutterOuterFinishes = async (shutterMaterialId: number) => {
+  const res = await apiClient.get<ShutterOuterFinishMasterResponse>(
+    `/leads/get-shutter-outer-finishes/${shutterMaterialId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -810,9 +885,10 @@ export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) =>
   };
 }
 
-export const fetchAllShutterMaterialFinishes = async (vendorId: number) => {
-  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
-    `/leads/get-all-shutter-material-finishes/${vendorId}`,
+
+export const fetchShutterInnerFinishes = async (shutterMaterialId: number) => {
+  const res = await apiClient.get<ShutterInnerFinishMasterResponse>(
+    `/leads/get-shutter-inner-finishes/${shutterMaterialId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -820,19 +896,51 @@ export const fetchAllShutterMaterialFinishes = async (vendorId: number) => {
   };
 }
 
-export const createShutterMaterialFinish = async (
-  payload: CreateShutterMaterialFinishPayload,
+export const fetchAllShutterOuterFinishes = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterOuterFinishMasterResponse>(
+    `/leads/get-all-shutter-outer-finishes/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+
+export const fetchAllShutterInnerFinishes = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterInnerFinishMasterResponse>(
+    `/leads/get-all-shutter-inner-finishes/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createShutterOuterFinish = async (
+  payload: CreateShutterOuterFinishPayload,
 ) => {
   const res = await apiClient.post(
-    "/leads/create-shutter-material-finish",
+    "/leads/create-shutter-outer-finish",
     payload,
   );
   return res.data;
 }
 
-export const uploadShutterMaterialFinishes = async (formData: FormData) => {
-  const res = await apiClient.post<BulkUploadShutterMaterialFinishesResponse>(
-    "/leads/upload-shutter-material-finish",
+
+export const createShutterInnerFinish = async (
+  payload: CreateShutterInnerFinishPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-shutter-inner-finish",
+    payload,
+  );
+  return res.data;
+}
+
+export const uploadShutterOuterFinishes = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadShutterOuterFinishesResponse>(
+    "/leads/upload-shutter-outer-finish",
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
@@ -841,24 +949,21 @@ export const uploadShutterMaterialFinishes = async (formData: FormData) => {
   return res.data;
 }
 
-export const fetchCarcassLegs = async (vendorId: number) => {
-  const res = await apiClient.get<CarcassLegsMasterResponse>(
-    `/leads/get-all-carcass-legs/${vendorId}`,
-  );
-  return {
-    success: Boolean(res.data?.success),
-    data: Array.isArray(res.data?.data) ? res.data.data : [],
-  };
-}
 
-export const createCarcassLegs = async (payload: CreateCarcassLegsPayload) => {
-  const res = await apiClient.post("/leads/create-carcass-legs", payload);
+export const uploadShutterInnerFinishes = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadShutterInnerFinishesResponse>(
+    "/leads/upload-shutter-inner-finish",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
   return res.data;
 }
 
-export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
-  const res = await apiClient.get<SkirtingCarcassLegsMasterResponse>(
-    `/leads/get-skirting-carcass-legs/${carcassLegsId}`,
+export const fetchHardwareTypes = async (vendorId: number) => {
+  const res = await apiClient.get<HardwareTypeMasterResponse>(
+    `/leads/get-all-hardware-types/${vendorId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -866,9 +971,14 @@ export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
   };
 }
 
-export const fetchAllSkirtingCarcassLegs = async (vendorId: number) => {
-  const res = await apiClient.get<SkirtingCarcassLegsMasterResponse>(
-    `/leads/get-all-skirting-carcass-legs/${vendorId}`,
+export const createHardwareType = async (payload: CreateHardwareTypePayload) => {
+  const res = await apiClient.post("/leads/create-hardware-type", payload);
+  return res.data;
+}
+
+export const fetchHardwareItems = async (hardwareTypeId: number) => {
+  const res = await apiClient.get<HardwareItemMasterResponse>(
+    `/leads/get-hardware-items/${hardwareTypeId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -876,21 +986,31 @@ export const fetchAllSkirtingCarcassLegs = async (vendorId: number) => {
   };
 }
 
-export const createSkirtingCarcassLegs = async (
-  payload: CreateSkirtingCarcassLegsPayload,
+export const fetchAllHardwareItems = async (vendorId: number) => {
+  const res = await apiClient.get<HardwareItemMasterResponse>(
+    `/leads/get-all-hardware-items/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createHardwareItem = async (
+  payload: CreateHardwareItemPayload,
 ) => {
   const res = await apiClient.post(
-    "/leads/create-skirting-carcass-legs",
+    "/leads/create-hardware-item",
     payload,
   );
   return res.data;
 }
 
-export const fetchSkirtingCarcassLegsColors = async (
-  skirtingCarcassLegsId: number,
+export const fetchHardwareItemOptions = async (
+  hardwareItemId: number,
 ) => {
-  const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
-    `/leads/get-skirting-carcass-legs-colors/${skirtingCarcassLegsId}`,
+  const res = await apiClient.get<HardwareItemOptionMasterResponse>(
+    `/leads/get-hardware-item-options/${hardwareItemId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -898,9 +1018,9 @@ export const fetchSkirtingCarcassLegsColors = async (
   };
 }
 
-export const fetchAllSkirtingCarcassLegsColors = async (vendorId: number) => {
-  const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
-    `/leads/get-all-skirting-carcass-legs-colors/${vendorId}`,
+export const fetchAllHardwareItemOptions = async (vendorId: number) => {
+  const res = await apiClient.get<HardwareItemOptionMasterResponse>(
+    `/leads/get-all-hardware-item-options/${vendorId}`,
   );
   return {
     success: Boolean(res.data?.success),
@@ -908,19 +1028,19 @@ export const fetchAllSkirtingCarcassLegsColors = async (vendorId: number) => {
   };
 }
 
-export const createSkirtingCarcassLegsColor = async (
-  payload: CreateSkirtingCarcassLegsColorPayload,
+export const createHardwareItemOption = async (
+  payload: CreateHardwareItemOptionPayload,
 ) => {
   const res = await apiClient.post(
-    "/leads/create-skirting-carcass-legs-color",
+    "/leads/create-hardware-item-option",
     payload,
   );
   return res.data;
 }
 
-export const uploadSkirtingCarcassLegsColors = async (formData: FormData) => {
-  const res = await apiClient.post<BulkUploadSkirtingCarcassLegsColorsResponse>(
-    "/leads/upload-skirting-carcass-legs-color",
+export const uploadHardwareItemOptions = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadHardwareItemOptionsResponse>(
+    "/leads/upload-hardware-item-options",
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
@@ -1230,9 +1350,69 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number, isInventory
   };
 }
 
+export interface UserDetailData {
+  id: number;
+  vendor_id: number;
+  franchise_id: number | null;
+  user_name: string;
+  designation?: string | null;
+  user_contact: string;
+  user_email: string;
+  user_timezone?: string;
+  status: string;
+  created_at: string;
+  employee_type?: string | null;
+  employee_code?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
+  user_type: {
+    id?: number;
+    user_type: string;
+  };
+  franchise?: {
+    id: number;
+    franchise_name: string;
+  } | null;
+  franchises: { id: number; franchise_name: string }[];
+  franchise_ids: number[];
+}
+
+export const fetchUserDetail = async (userId: number, vendorId?: number) => {
+  const res = await apiClient.get<{ success: boolean; data: UserDetailData }>(
+    `/users/detail/${userId}`,
+    { params: vendorId ? { vendorId } : {} },
+  );
+  return res.data;
+};
+
 export const fetchUsersForMaster = async (
   vendorId: number,
-  params: { page: number; limit: number; search?: string; franchise_id?: number },
+  params: {
+    page: number;
+    limit: number;
+    search?: string;
+    franchise_id?: number;
+    user_type?: string;
+    exclude_user_type?: string;
+  },
 ) => {
   const res = await apiClient.get<UserMasterResponse>(`/users/vendor/${vendorId}`, {
     params: {
@@ -1240,6 +1420,8 @@ export const fetchUsersForMaster = async (
       limit: params.limit,
       search: params.search ?? "",
       ...(params.franchise_id ? { franchise_id: params.franchise_id } : {}),
+      ...(params.user_type ? { user_type: params.user_type } : {}),
+      ...(params.exclude_user_type ? { exclude_user_type: params.exclude_user_type } : {}),
     },
   });
   return {
@@ -1271,6 +1453,31 @@ export const createCompanyVendor = async (
   )
   return res.data
 }
+
+export const bulkUploadCompanyVendors = async (
+  vendorId: number,
+  file: File,
+  userId: number,
+  isInventory: boolean = false,
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", String(userId));
+  if (isInventory) {
+    formData.append("is_inventory", "true");
+  }
+
+  const res = await apiClient.post(
+    `/vendor/company-vendors/vendorId/${vendorId}/bulk-upload${isInventory ? "?is_inventory=true" : ""}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+  return res.data;
+};
 
 export const updateInstallerUser = async (
   id: number,
@@ -1433,6 +1640,45 @@ export const createProductItemCode = async (
   return res.data;
 }
 
+export const updateProductItemCode = async (
+  { id, ...payload }: CreateProductItemCodeMasterPayload & { id: number },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-item-code/${id}`, payload);
+  return res.data;
+}
+
+export const updateProductTypeStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-type-status/${id}`, payload);
+  return res.data;
+};
+
+export const updateProductStructureStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-productStructure-status/${id}`, payload);
+  return res.data;
+};
+
+export const updateProductSubStructureStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-sub-structure-status/${id}`, payload);
+  return res.data;
+};
+
+export const updateProductItemCodeStatus = async (
+  id: number,
+  payload: { status: string },
+) => {
+  const res = await apiClient.patch(`/leads/update-product-item-code-status/${id}`, payload);
+  return res.data;
+};
+
 export const fetchSmallOrderRequestTypes = async (vendorId: number) => {
   const res = await apiClient.get(
     `/leads/get-all-small-order-request-types/${vendorId}`,
@@ -1462,9 +1708,35 @@ export interface UserTypeMasterResponse {
 }
 
 export interface CreateUserMasterPayload {
+  personal_email?: string | null;
+  confirm_additional_supervisor?: boolean;
+  franchise_ids?: number[];
   vendor_id: number;
   franchise_id: number;
+  employee_type?: string | null;
+  employee_code?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_name: string;
+  designation?: string | null;
   user_contact: string;
   user_email: string;
   user_timezone: string;
@@ -1517,9 +1789,35 @@ export const createUser = async (payload: CreateUserMasterPayload) => {
 }
 
 export interface UpdateUserMasterPayload {
+  employee_type?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
+  confirm_additional_supervisor?: boolean;
+  franchise_ids?: number[];
+  employee_code?: string | null;
+  department?: string | null;
+  aadhar_no?: string | null;
+  pan_no?: string | null;
+  permanent_address?: string | null;
+  current_address?: string | null;
+  aadhar_card_file?: string | null;
+  pan_card_file?: string | null;
+  bank_account_holder_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc_code?: string | null;
+  bank_name?: string | null;
+  bank_document_file?: string | null;
+  joining_date?: string | null;
+  exit_date?: string | null;
+  salary_rate_type?: string | null;
+  salary_amount?: string | null;
+  statutory_compliance?: string | null;
+  work_location?: string | null;
   user_name?: string;
+  designation?: string | null;
   user_contact?: string;
   user_email?: string;
+  personal_email?: string | null;
   user_timezone?: string;
   password?: string;
   user_type_id?: number;
@@ -1695,4 +1993,25 @@ export const deleteDetailedCompanyVendor = async (id: number, vendorId: number, 
     }
   );
   return res.data;
+};
+export const uploadUserDocument = async (file: File, vendorId?: number) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (vendorId) formData.append("vendor_id", String(vendorId));
+  const res = await apiClient.post<{ success: boolean; file_url: string; filename: string; signed_url?: string }>(
+    "/users/upload-document",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+  return res.data;
+};
+
+export const fetchUserDocumentUrl = async (key: string) => {
+  const res = await apiClient.get<{ success: boolean; url: string }>(
+    "/users/document-url",
+    { params: { key } }
+  );
+  return res.data?.url || key;
 };

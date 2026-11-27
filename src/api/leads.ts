@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toastManager } from "@/components/ui/toast";
 import { getErrorMessage } from "@/lib/utils";
+import type { WalkinAnswerGroup } from "@/types/walkin-lead-questions";
 
 interface ApiErrorResponse {
   message?: string;
@@ -28,6 +29,7 @@ export interface UploadProgressInfo {
 }
 
 export interface CreateLeadPayload {
+  walkin_answers?: WalkinAnswerGroup[];
   firstname: string;
   lastname: string;
   country_code: string;
@@ -58,6 +60,7 @@ export interface Lead {
   id: number;
   lead_code?: string;
   is_draft?: boolean;
+  draft_in_open_leads?: boolean;
   is_small_order_request?: boolean;
   is_so_value_received?: boolean;
   so_value_received_at?: string | null;
@@ -227,6 +230,7 @@ export interface AssignToPayload {
 }
 
 export interface EditLeadPayload {
+  convert_to_lead?: boolean;
   firstname?: string;
   lastname?: string;
   country_code?: string;
@@ -429,6 +433,71 @@ export const uploadMoreSitePhotos = async ({
   );
 
   return response.data;
+};
+
+/** Upload Current Site Dimension documents (large-scale vendors). */
+export const uploadSiteDimensionDocuments = async ({
+  vendorId,
+  leadId,
+  createdBy,
+  files,
+}: {
+  vendorId: number;
+  leadId: number;
+  createdBy: number;
+  files: File[];
+}) => {
+  const formData = new FormData();
+  formData.append("vendor_id", vendorId.toString());
+  formData.append("lead_id", leadId.toString());
+  formData.append("created_by", createdBy.toString());
+  files.forEach((file) => formData.append("documents", file));
+
+  const response = await apiClient.post(
+    "/leads/upload-site-dimension-documents",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+
+  return response.data;
+};
+
+export const getSiteDimensionDocuments = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/site-dimension-documents`,
+  );
+  return data?.data ?? [];
+};
+
+export const useSiteDimensionDocuments = (
+  vendorId?: number,
+  leadId?: number,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ["siteDimensionDocuments", vendorId, leadId],
+    queryFn: () => getSiteDimensionDocuments(vendorId!, leadId!),
+    enabled: enabled && !!vendorId && !!leadId,
+  });
+};
+
+export const useUploadSiteDimensionDocuments = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: uploadSiteDimensionDocuments,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "siteDimensionDocuments",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+  });
 };
 
 export const createSmallOrderRequest = async (
@@ -738,6 +807,8 @@ export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = [],
   onUploadProgress?: (info: UploadProgressInfo) => void,
+  /** Large-scale vendors: Current Site Dimension documents. */
+  siteDimensionFiles: File[] = [],
 ) => {
   const formData = new FormData();
 
@@ -745,7 +816,7 @@ export const createLead = async (
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       if (Array.isArray(value)) {
-        if (value.length > 0 && typeof value[0] === "object") {
+        if (key === "walkin_answers" || (value.length > 0 && typeof value[0] === "object")) {
           formData.append(key, JSON.stringify(value));
         } else {
           value.forEach((item) => {
@@ -762,9 +833,15 @@ export const createLead = async (
   files.forEach((file) => {
     formData.append("documents", file);
   });
+  siteDimensionFiles.forEach((file) => {
+    formData.append("site_dimension_documents", file);
+  });
 
   // Pre-calculate total file bytes for accurate progress reporting
-  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const totalBytes = [...files, ...siteDimensionFiles].reduce(
+    (sum, f) => sum + f.size,
+    0,
+  );
 
   try {
     const response = await apiClient.post("leads/create", formData, {
@@ -997,10 +1074,12 @@ export const getVendorSalesExecutiveUsers = async (
     assigneeUserType?: string;
     requiredPrivilegeCode?: string;
     taskType?: string;
+    strictFranchise?: boolean;
   },
 ) => {
   const params: Record<string, string | number> = {};
   if (franchiseId) params.franchise_id = franchiseId;
+  if (options?.strictFranchise) params.strict_franchise = "true";
   if (options?.assigneeUserType) {
     params.assignee_user_type = options.assigneeUserType;
   }
@@ -1256,7 +1335,7 @@ export const fetchLeadLogs = async ({
   vendorId: number;
   limit?: number;
   cursor?: number;
-  historyType?: "Lead" | "Task" | "FollowUp" | "Approval";
+  historyType?: "Lead" | "Task" | "FollowUp" | "Approval" | "TrackTrace";
   search?: string;
   userTypeId?: number;
 }) => {
@@ -1393,6 +1472,7 @@ export const useDeleteDocument = (leadId?: number) => {
 
       // ✅ Invalidate both queries safely
       queryClient.invalidateQueries({ queryKey: ["lead"] });
+      queryClient.invalidateQueries({ queryKey: ["siteDimensionDocuments"] });
 
       if (leadId) {
         queryClient.invalidateQueries({
@@ -1508,6 +1588,10 @@ export const useDeleteDocument = (leadId?: number) => {
         queryKey: ["preProductionFiles"],
         exact: false,
       });
+
+      for (const key of ["preProductionFilesReady", "metalCutlist", "track-trace-cutlist", "track-trace-projects", "track-trace-project", "track-trace-leads", "noOfBoxes"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
 
       queryClient.invalidateQueries({
         queryKey: ["currentSitePhotosAtSiteReadiness"],

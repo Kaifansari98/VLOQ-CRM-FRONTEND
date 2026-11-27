@@ -17,6 +17,7 @@ export interface BookingPayload {
   bookingAmountPaymentDetailsText: string;
   finalBookingAmount: number;
   siteSupervisorId?: number;
+  realSiteSupervisorId?: number;
   final_documents: File[];
   booking_payment_file: File[];
   mrpValue: number;
@@ -56,6 +57,15 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   if (payload.siteSupervisorId !== undefined && payload.siteSupervisorId !== null) {
     formData.append("siteSupervisorId", payload.siteSupervisorId.toString());
   }
+  if (
+    payload.realSiteSupervisorId !== undefined &&
+    payload.realSiteSupervisorId !== null
+  ) {
+    formData.append(
+      "realSiteSupervisorId",
+      payload.realSiteSupervisorId.toString()
+    );
+  }
   payload.booking_payment_file.forEach((file) => {
     formData.append("booking_payment_file", file);
   });
@@ -76,9 +86,20 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   return data;
 };
 
-export const getAllSiteSuperVisors = async (vendorId: number) => {
+export const getAllSiteSuperVisors = async (
+  vendorId: number,
+  franchiseId?: number,
+  leadId?: number
+) => {
+  const params: Record<string, any> = {};
+  if (franchiseId) params.franchise_id = franchiseId;
+  if (leadId) params.lead_id = leadId;
+
   const { data } = await apiClient.get(
-    `/leads/site-supervisor/vendor/${vendorId}`
+    `/leads/site-supervisor/vendor/${vendorId}`,
+    {
+      params: Object.keys(params).length > 0 ? params : undefined,
+    }
   );
   return data;
 };

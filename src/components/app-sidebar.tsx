@@ -20,10 +20,19 @@ import {
   MapPinned,
   Building2,
   Megaphone,
+  MessageSquareWarning, 
   Magnet,
   TriangleAlert,
+  CalendarCheck,
+  FileClock,
+  CalendarDays,
+  NotebookTabs,
+  Package,
+  Flag,
+  CalendarClock,
 } from "lucide-react";
 
+import { MetaIcon } from "@/components/icons/meta-icon";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -40,6 +49,7 @@ import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstall
 import { useMiscellaneousStatusCounts } from "@/api/miscellaneousModuleApi";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useUnreadBroadcastCount } from "@/api/broadcast";
+import { useActiveComplaintsCount } from "@/api/client-complaints";
 import { useVendorLeadsByTagPost } from "@/api/universalstage";
 import { useTheme } from "next-themes";
 import { sanitize } from "@/components/utils/sanitizeCapitalize";
@@ -60,6 +70,11 @@ const data = {
       title: "Broadcast",
       url: "/dashboard/broadcast",
       icon: Megaphone,
+    },
+    {
+      title: "Complaints",
+      url: "/dashboard/client-complaints",
+      icon: MessageSquareWarning,
     },
     {
       title: "CRM Reports",
@@ -329,8 +344,12 @@ const data = {
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
         { title: "Workstations", url: "/dashboard/track-trace/machines" },
         {
-          title: "Projects",
+          title: "Woodwork Projects",
           url: "/dashboard/track-trace/manage-project",
+        },
+        {
+          title: "Metalwork Projects",
+          url: "/dashboard/track-trace/metalwork-projects",
         },
         {
           title: "Defects",
@@ -374,46 +393,17 @@ const data = {
         { title: "Issued Projects", url: "/dashboard/inventory/material-issue/issued-items" },
       ],
     },
+    {
+      title: "Products Master",
+      url: "/dashboard/inventory/master/products/list",
+      icon: Package,
+    },
   ],
   inventoryMasterNav: [
     {
-      title: "Master",
-      url: "#",
+      title: "Inventory Masters",
+      url: "/dashboard/masters-management/inventory-masters",
       icon: FolderKanban,
-      items: [
-        {
-          title: "Products",
-          url: "/dashboard/inventory/master/products/list",
-        },
-        {
-          title: "Category",
-          url: "/dashboard/track-trace/master/category",
-        },
-        {
-          title: "Brand",
-          url: "/dashboard/track-trace/master/brand",
-        },
-        {
-          title: "Grade",
-          url: "/dashboard/track-trace/master/grade",
-        },
-        {
-          title: "Finish",
-          url: "/dashboard/track-trace/master/finish",
-        },
-        {
-          title: "Type",
-          url: "/dashboard/track-trace/master/type",
-        },
-        {
-          title: "Core Product",
-          url: "/dashboard/track-trace/master/core-product",
-        },
-        {
-          title: "Company Vendor",
-          url: "/dashboard/inventory/master/company-vendor",
-        },
-      ],
     },
   ],
   mastersNav: [
@@ -431,6 +421,67 @@ const data = {
           url: "/dashboard/masters-management/user-master",
         },
       ],
+    },
+  ],
+  hrmsManagementNav: [
+    {
+      title: "Employees Master",
+      url: "/dashboard/masters-management/hrms-masters/employee-master",
+      icon: Users,
+    },
+    {
+      title: "Employees Attendance",
+      url: "/dashboard/hrms/employees-attendance",
+      icon: CalendarCheck,
+    },
+    {
+      title: "Attendance Logs",
+      url: "/dashboard/hrms/attendance-logs",
+      icon: FileClock,
+    },
+    {
+      title: "Leaves Management",
+      url: "/dashboard/hrms/leaves-management",
+      icon: CalendarDays,
+    },
+    {
+      title: "Attendance Geo-Fencing",
+      url: "/dashboard/hrms/geo-fencing",
+      icon: MapPinned,
+    },
+    {
+      title: "Employee Complaints",
+      url: "/dashboard/hrms/complaints",
+      icon: Flag,
+    },
+    {
+      title: "My Leaves",
+      url: "/dashboard/hrms/my-leaves",
+      icon: NotebookTabs,
+    },
+  ],
+  hrmsMastersNav: [
+    {
+      title: "HRMS Masters",
+      url: "#",
+      icon: Users,
+      items: [
+        {
+          title: "Field Masters",
+          url: "/dashboard/masters-management/hrms-masters/field-masters",
+        },
+        {
+          title: "Employee Master",
+          url: "/dashboard/masters-management/hrms-masters/employee-master",
+        },
+      ],
+    },
+  ],
+  integrationNav: [
+    {
+      title: "Meta",
+      url: "/dashboard/integration/meta",
+      icon: MetaIcon,
     },
   ],
   masterAdminNav: [
@@ -485,11 +536,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
   const isMiscellaneousEnabled = user?.vendor?.is_miscellaneous_enabled === true;
   const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
+  const isClientComplaintsEnabled =
+    user?.vendor?.is_client_complaints_enabled === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const isOnlineLeadFeatureEnabled =
     user?.vendor?.is_online_lead_feature_enabled === true;
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const isHrmsMasterEnabled =
+    user?.vendor?.is_hrms_master_enabled === true ||
+    (user as any)?.vendorMaster?.is_hrms_master_enabled === true;
   const handlesLargeScaleProjects =
     user?.vendor?.handlesLargeScaleProjects === true;
   const canSeeOverallLeads =
@@ -503,6 +559,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "vloq master" ||
     userType === "masteradmin" ||
     userType === "master_admin";
+  const isHrmsAdmin =
+    userType === "hrms-admin" ||
+    userType === "hrms admin" ||
+    userType === "hrmsadmin" ||
+    userType === "hrms_admin";
   const shouldBootstrapFranchise =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -606,6 +667,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } =
     useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
 
+  const isComplaintsEligible =
+    isClientComplaintsEnabled &&
+    (userType === "super-admin" ||
+      userType === "head-site-supervisor" ||
+      userType === "site-supervisor" ||
+      userType === "sales-executive" ||
+      userType === "sales executive");
+
+  const { count: activeComplaintsCount, isLoading: isComplaintsCountLoading } =
+    useActiveComplaintsCount(vendorId ?? undefined, isComplaintsEligible);
+
   const userData = user
     ? {
       name: user?.user_name || "username",
@@ -614,16 +686,57 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
     : data.user;
 
-  const { navItems, trackTraceItems, inventoryItems, mastersItems, inventoryMasterItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, hrmsItems, mastersItems, integrationItems } = React.useMemo(() => {
     // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
     if (isMasterAdmin) {
       return {
-  navItems: data.masterAdminNav,
-  trackTraceItems: [],
-  inventoryItems: [],
-  inventoryMasterItems: [],
-  mastersItems: [],
-};
+        navItems: data.masterAdminNav,
+        trackTraceItems: [],
+        inventoryItems: [],
+        hrmsItems: [],
+        mastersItems: [],
+        integrationItems: [],
+      };
+    }
+
+    // Employees can access their dashboard and personal attendance.
+    if (userType === "employee") {
+      return {
+        navItems: [
+          {
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: LayoutDashboard,
+          },
+        ],
+        trackTraceItems: [],
+        inventoryItems: [],
+        hrmsItems: isHrmsMasterEnabled
+          ? data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
+          : [],
+        mastersItems: [],
+        integrationItems: [],
+      };
+    }
+
+    // HRMS admins retain attendance administration and personal attendance.
+    if (isHrmsAdmin) {
+      return {
+        navItems: [
+          {
+            title: "Attendance",
+            url: "/dashboard/attendance",
+            icon: CalendarCheck,
+          },
+        ],
+        trackTraceItems: [],
+        inventoryItems: [],
+        hrmsItems: isHrmsMasterEnabled
+          ? data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
+          : [],
+        mastersItems: [],
+        integrationItems: [],
+      };
     }
 
       const environment = (
@@ -643,6 +756,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               badgeBg || badgeText
                 ? undefined
                 : "bg-red-500 text-white font-bold",
+            badgeStyle:
+              badgeBg || badgeText
+                ? { backgroundColor: badgeBg, color: badgeText }
+                : undefined,
+          };
+        }
+        if (item.title === "Complaints") {
+          return {
+            ...item,
+            customCount: activeComplaintsCount,
+            customCountLoading: isComplaintsCountLoading,
+            badgeClassName:
+              badgeBg || badgeText
+                ? undefined
+                : undefined,
             badgeStyle:
               badgeBg || badgeText
                 ? { backgroundColor: badgeBg, color: badgeText }
@@ -981,10 +1109,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }
       }
 
-      const finalNavItems =
-        isBroadcastEnabled && !isMasterAdmin
-          ? navItemsWithRoleAdditions
-          : navItemsWithRoleAdditions.filter((item) => item.title !== "Broadcast");
+      const finalNavItems = navItemsWithRoleAdditions.filter(
+        (item) =>
+          (item.title !== "Broadcast" || (isBroadcastEnabled && !isMasterAdmin)) &&
+          // Client Project Tracker date revisions are approved by HO, and only
+          // for vendors with HRMS enabled.
+          (item.title !== "Date Revisions" ||
+            (isHrmsMasterEnabled &&
+              (userType === "admin" || userType === "super-admin"))) &&
+          (item.title !== "Complaints" ||
+            (isClientComplaintsEnabled &&
+              (userType === "super-admin" ||
+                userType === "head-site-supervisor" ||
+                userType === "site-supervisor" ||
+                userType === "sales-executive" ||
+                userType === "sales executive"))),
+      );
 
     const finalTrackTraceItems =
       isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)
@@ -1020,19 +1160,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ? data.inventoryMasterNav
       : [];
 
-    const finalMastersItems = isSuperAdmin && isCrmEnabled
-      ? data.mastersNav.map((section) => ({
-        ...section,
-        items:
-          environment === "PRODUCTION"
-            ? section.items.filter((item) =>
-              item.title === "User Master"
-                ? isCustomUserTypeOnlyVendor
-                : true,
-            )
-            : section.items,
-      }))
-      : [];
+    const finalMastersItems = [
+      ...(isSuperAdmin && isCrmEnabled
+        ? data.mastersNav.map((section) => ({
+            ...section,
+            items:
+              environment === "PRODUCTION"
+                ? section.items.filter((item) =>
+                  item.title === "User Master"
+                    ? isCustomUserTypeOnlyVendor
+                    : true,
+                )
+                : section.items,
+          }))
+        : []),
+      ...finalInventoryMasterItems,
+      ...(isSuperAdmin && isCrmEnabled && isHrmsMasterEnabled
+        ? data.hrmsMastersNav
+        : []),
+    ];
+
+    const finalIntegrationItems =
+      isSuperAdmin && isCrmEnabled && isOnlineLeadFeatureEnabled
+        ? data.integrationNav
+        : [];
     let resolvedNavItems = (
       isOnlineLeadFeatureEnabled
         ? finalNavItems
@@ -1052,8 +1203,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       navItems: resolvedNavItems,
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
+      hrmsItems: isHrmsMasterEnabled
+        ? isSuperAdmin
+          ? data.hrmsManagementNav.filter(item => !["Attendance Logs", "Leaves Management", "Attendance Geo-Fencing", "Employee Complaints"].includes(item.title) || userType === "super-admin")
+          : data.hrmsManagementNav.filter(item => ["Employees Attendance", "My Leaves"].includes(item.title))
+        : [],
       mastersItems: finalMastersItems,
-      inventoryMasterItems: finalInventoryMasterItems
+      integrationItems: finalIntegrationItems,
     };
   }, [
     mounted,
@@ -1066,6 +1222,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isCustomUserTypeOnlyVendor,
     isCrmEnabled,
     isBroadcastEnabled,
+    isClientComplaintsEnabled,
+    activeComplaintsCount,
+    isComplaintsCountLoading,
     isInventoryEnabled,
     materialIssueProjectsCount,
     isMaterialIssueProjectsLoading,
@@ -1074,6 +1233,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isTrackTraceEnabled,
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,
+    isHrmsMasterEnabled,
+    isHrmsAdmin,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
     handlesLargeScaleProjects,
@@ -1097,14 +1258,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const activeFranchise = franchises.find(
       (franchise) => franchise.id === franchiseId,
     );
+    const normalizedUserType = (user?.user_type?.user_type || "")
+      .trim()
+      .toLowerCase();
+    const isSiteSupervisor = normalizedUserType === "site-supervisor";
     const userTypeLabel = sanitize(user?.user_type?.user_type || "");
 
     const fallbackTeam = {
       id: user.franchise_id ?? user.vendor_id,
-      name:
-        activeFranchise?.franchise_name ||
-        user.vendor?.vendor_name ||
-        "Default Vendor",
+      name: isSiteSupervisor
+        ? user.vendor?.vendor_name ||
+          activeFranchise?.franchise_name ||
+          "Default Vendor"
+        : activeFranchise?.franchise_name ||
+          user.vendor?.vendor_name ||
+          "Default Vendor",
       logo: GalleryVerticalEnd,
       plan: userTypeLabel,
     };
@@ -1156,9 +1324,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items={navItems}
           trackTraceItems={trackTraceItems}
           inventoryItems={inventoryItems}
+          hrmsItems={hrmsItems}
           mastersItems={mastersItems}
-          inventoryMasterItems={inventoryMasterItems}
-
+          integrationItems={integrationItems}
+          crmGroupLabel={userType === "employee" || isHrmsAdmin ? "HRMS" : undefined}
         />
       </SidebarContent>
 

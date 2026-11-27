@@ -22,11 +22,14 @@ import { Ban, Images, FileText, Plus, Upload } from "lucide-react";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { canEditFMValues } from "@/lib/fm-requirements";
+import FMRequirementsSummary from "@/components/fm-requirements/FMRequirementsSummary";
 import Loader from "@/components/utils/loader";
 import SectionHeader from "@/utils/sectionHeader";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCSPBookingPhotos } from "@/hooks/useCSPBookingPhotos";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
 import {
@@ -110,6 +113,9 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     vendorId,
     leadId,
   );
+  // Required documents attached while assigning the Final Measurement task
+  const { data: cspBookingData } = useCSPBookingPhotos(vendorId, leadId);
+  const fmRequiredDocuments = cspBookingData?.requiredDocuments ?? [];
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const { mutateAsync: addMoreFiles, isPending: addingFiles } =
@@ -127,23 +133,26 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(null);
 
   // 🧩 --- Permissions ---
-  const canDelete =
-    effectiveUserType === "admin" || effectiveUserType === "super-admin";
-  const canUpload =
-    effectiveUserType === "admin" || effectiveUserType === "super-admin";
+  const canEditFM = canEditFMValues(userType);
+  const canDelete = handlesLargeScaleProjects
+    ? effectiveUserType === "admin" || effectiveUserType === "super-admin"
+    : canEditFM;
+  const canUpload = handlesLargeScaleProjects
+    ? effectiveUserType === "admin" || effectiveUserType === "super-admin"
+    : canEditFM;
   const canViewCurrentSitePhotos =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.current_site_photos.view",
         )
       : true;
-  const canDeleteCurrentSitePhotos =
+  const canDeleteCurrentSitePhotos = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.current_site_photos.delete",
         )
       : canDelete;
-  const canUploadCurrentSitePhotos =
+  const canUploadCurrentSitePhotos = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.current_site_photos.upload",
@@ -155,13 +164,13 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           "project.final_measurement.measurement_documents.view",
         )
       : true;
-  const canDeleteMeasurementDocuments =
+  const canDeleteMeasurementDocuments = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.measurement_documents.delete",
         )
       : canDelete;
-  const canUploadMeasurementDocuments =
+  const canUploadMeasurementDocuments = !handlesLargeScaleProjects ? canEditFM :
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "project.final_measurement.measurement_documents.upload",
@@ -443,6 +452,48 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Data Extraction ---
   const { sitePhotos = [], measurementDocs = [], final_desc_note } = data;
 
+  const requiredDocumentsSection = canViewMeasurementDocuments &&
+    fmRequiredDocuments.length > 0 && (
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-border overflow-hidden">
+        <SectionHeader title="Required Documents" icon={<FileText size={20} />} />
+
+        <motion.div
+          variants={itemVariants}
+          className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+            {fmRequiredDocuments.map((doc, index) =>
+              /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
+                doc.originalName,
+              ) ? (
+                <ImageComponent
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    doc_og_name: doc.originalName,
+                    signedUrl: doc.signedUrl,
+                    created_at: doc.createdAt,
+                  }}
+                  index={index}
+                />
+              ) : (
+                <DocumentCard
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.originalName,
+                    signedUrl: doc.signedUrl,
+                    created_at: doc.createdAt,
+                  }}
+                  alwaysShowText={true}
+                />
+              ),
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+
   if (isCustomVendorFlow && handlesLargeScaleProjects) {
     return (
       <motion.div
@@ -510,6 +561,9 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             );
           })}
         </div>
+
+        {/* -------- Required Documents -------- */}
+        {requiredDocumentsSection}
 
         {/* -------- Discussion Note -------- */}
         <div
@@ -809,6 +863,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     bg-[#fff] dark:bg-[#0a0a0a]
   "
     >
+      {!handlesLargeScaleProjects && <FMRequirementsSummary vendorId={vendorId} leadId={leadId} />}
       {/* -------- Current Site Photos -------- */}
       {canViewCurrentSitePhotos && (
         <div
@@ -986,6 +1041,9 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             </motion.div>
           </div>
         )}
+
+      {/* -------- Required Documents -------- */}
+      {requiredDocumentsSection}
 
       {/* -------- Discussion Note -------- */}
       <div

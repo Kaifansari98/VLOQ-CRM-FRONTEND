@@ -105,6 +105,7 @@ export interface UniversalStageLead {
   lead_code: string;
   is_small_order_request?: boolean;
   is_draft?: boolean;
+  draft_in_open_leads?: boolean;
   is_fast_production?: boolean;
   is_blocked?: boolean;
 
@@ -135,6 +136,7 @@ export interface UniversalStageLead {
   source: SourceInfo | null;
 
   assignedTo?: AssignedUser | null;
+  statusType?: { tag?: string | null } | null;
   smallOrderRequest?: {
     is_request_resolved?: boolean;
     request_source?: string | null;
@@ -210,6 +212,8 @@ export const useUniversalStageLeads = (
 };
 
 export interface UniversalStagePostPayload {
+  /** Delivered Projects also lists complaint placeholder leads. */
+  include_complaint_placeholders?: boolean;
   userId: number;
   franchise_id?: number;
   franchise_ids?: number[];
@@ -306,6 +310,8 @@ export const useUniversalStageLeadsPost = (
 
 // hooks/postVendorLeadsByTag.ts
 export interface VendorLeadsByTagPostPayload {
+  /** Delivered Projects also lists complaint placeholder leads. */
+  include_complaint_placeholders?: boolean;
   userId?: number | null; // optional (for exclusion logic)
   franchise_id?: number;
   franchise_ids?: number[];
@@ -414,6 +420,7 @@ export interface DraftLeadTableDataPostPayload {
     from: string;
     to: string;
   };
+  view_type?: "my" | "overall";
 }
 
 export const postDraftLeadTableData = async (

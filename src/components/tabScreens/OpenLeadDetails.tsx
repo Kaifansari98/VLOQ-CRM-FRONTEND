@@ -26,6 +26,9 @@ import {
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
+import WalkinLeadAnswers from "./WalkinLeadAnswers";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import {
   useLeadById,
   useLeadProductStructureInstances,
@@ -59,6 +62,7 @@ import {
 import { useMemo, useRef, useState, useEffect } from "react";
 import { ImageComponent } from "../utils/ImageCard";
 import DocumentCard from "../utils/documentCard";
+import CurrentSiteDimensionSection from "./CurrentSiteDimensionSection";
 import { Button } from "@/components/ui/button";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -247,11 +251,14 @@ const renameLeadSitePhotoFiles = ({
   clientName,
   targetLabel,
   uploadDate,
+  prefix = "CSP",
 }: {
   files: File[];
   clientName: string;
   targetLabel: string;
   uploadDate: string;
+  /** CSP = Current Site Photos, CSD = Current Site Dimension */
+  prefix?: "CSP" | "CSD";
 }) => {
   const safeClientName = sanitizeFileSegment(clientName || "Client");
   const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
@@ -260,7 +267,7 @@ const renameLeadSitePhotoFiles = ({
     (file, index) =>
       new File(
         [file],
-        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        `${prefix}${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
           file.name,
         )}`,
         {
@@ -274,6 +281,7 @@ const renameLeadSitePhotoFiles = ({
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 1. REDUX STATE
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const userId = useAppSelector((state) => state.auth.user?.id);
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
@@ -334,10 +342,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const latestRemarkInfo = useMemo(() => {
     const leadObj = data?.data?.lead;
     if (!leadObj) return null;
+    const isQuestionnaireText = (rem: string) => {
+      const lower = rem.toLowerCase();
+      return (
+        lower.includes("bulk imported") ||
+        lower.startsWith("**•") ||
+        lower.startsWith("•") ||
+        lower.includes("**•") ||
+        lower.includes("what modular solution") ||
+        lower.includes("when do you need your modular") ||
+        lower.startsWith("lead registered via") ||
+        lower.startsWith("lead updated with new data via") ||
+        lower.startsWith("lead assignments updated") ||
+        lower.includes("lead automatically created") ||
+        lower.startsWith("design remarks updated") ||
+        lower.includes("product structure instance added") ||
+        lower.startsWith("status marked as active") ||
+        lower.includes("lead conversion")
+      );
+    };
+
     const isInvalidRemark = (r?: string | null) => {
       if (!r) return true;
       const t = r.trim().toLowerCase();
-      return !t || t === "n/a" || t === "-" || t === "none" || t === "null";
+      const leadRem = ((leadObj as any).remark || "").trim().toLowerCase();
+      return (
+        !t ||
+        t === "n/a" ||
+        t === "-" ||
+        t === "none" ||
+        t === "null" ||
+        isQuestionnaireText(r) ||
+        (isOnlineLeadFeatureEnabled && leadRem ? t === leadRem : false)
+      );
     };
 
     const logs = (leadObj as any).call_log || [];
@@ -369,7 +406,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       }
     }
     return null;
-  }, [data?.data?.lead]);
+  }, [data?.data?.lead, isOnlineLeadFeatureEnabled]);
 
   const renderRemarkContent = (remarkText: string | null, defaultText = "No remarks provided") => {
     if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-" || remarkText.trim() === "N/A") {
@@ -451,7 +488,72 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       );
     }
 
-    const blocks = cleanText.split(/\n\s*\n/);
+    const rawBlocks = cleanText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+
+    // Deduplicate questionnaire blocks so that questions are only shown once (latest update wins)
+    const deduplicatedBlocks: string[] = [];
+    const questionMap = new Map<string, string>();
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
+      return norm;
+    };
+
+    for (const block of rawBlocks) {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const headerLine = lines[0] || "";
+      const isQuestion = headerLine.includes("•") || headerLine.endsWith("?") || headerLine.startsWith("**");
+      if (isQuestion) {
+        const key = getQuestionKey(headerLine);
+        const existingBlock = questionMap.get(key);
+        if (existingBlock) {
+          const existingLines = existingBlock.split("\n").map((l) => l.trim()).filter(Boolean);
+          const existingHeader = existingLines[0] || "";
+          const cleanHeader = getCleanHeader(headerLine);
+          const cleanExisting = getCleanHeader(existingHeader);
+          const isCurrentBetterHeader =
+            (cleanHeader.includes(" ") || cleanHeader.endsWith("?")) &&
+            (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+          const currentAnswer = lines.slice(1).join("\n").trim();
+          const existingAnswer = existingLines.slice(1).join("\n").trim();
+          const chosenAnswer = currentAnswer || existingAnswer;
+          const chosenHeader = isCurrentBetterHeader ? headerLine : existingHeader;
+          questionMap.set(key, chosenAnswer ? `${chosenHeader}\n${chosenAnswer}` : chosenHeader);
+        } else {
+          questionMap.set(key, block);
+        }
+      } else {
+        deduplicatedBlocks.push(block);
+      }
+    }
+    const blocks = [...deduplicatedBlocks, ...Array.from(questionMap.values())];
     return (
       <div className="space-y-3">
         {blocks.map((block, bIdx) => {
@@ -462,9 +564,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 const isBoldHeader = (line.startsWith("**") && line.endsWith("**")) || line.endsWith("?");
                 if (isBoldHeader) {
                   let cleanHeader = line.replace(/^\*\*|\*\*$/g, "").trim();
-                  if (cleanHeader.startsWith("•")) {
-                    cleanHeader = cleanHeader.replace(/^•\s*/, "").trim();
-                  }
+                  cleanHeader = cleanHeader.replace(/^(?:•|ΓÇó)\s*/, "").trim();
                   return (
                     <p key={lIdx} className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
@@ -901,7 +1001,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     () =>
       structureInstances.filter(
         (item: any) =>
-          item?.isLargeScaleProjectInstance === true || item?.product_item_code_id,
+          (item?.isLargeScaleProjectInstance === true || item?.product_item_code_id) &&
+          item.productItemCode?.is_deleted !== true,
       ),
     [structureInstances],
   );
@@ -940,9 +1041,47 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   }, [boqDisplaySearch]);
 
   const filteredBoqItemCodes = useMemo(() => {
+    // Helper: returns true if a status string is "active" (or absent)
+    const isActive = (status?: string | null) =>
+      (status ?? "active").toLowerCase() === "active";
+
+    // Exclude items that are deleted or inactive at ANY level in the hierarchy:
+    // Item Code → Sub-Item Category → Item Category → Item Group
+    const activeItems = productItemCodes.filter((item: any) => {
+      // 0. Item Code itself soft-delete check
+      if (item.is_deleted === true) return false;
+
+      // 1. Item Code itself active check
+      if (!isActive(item.status)) return false;
+
+      // 2. Sub-Item Category (subProductStructure)
+      const sub = item.subProductStructure;
+      if (sub) {
+        if (sub.is_deleted === true || !isActive(sub.status)) return false;
+        // 3. Item Category via subProductStructure path
+        const cat = sub.productStructure;
+        if (cat) {
+          if (cat.is_deleted === true || !isActive(cat.status)) return false;
+          // 4. Item Group via subProductStructure path
+          if (cat.productType?.is_deleted === true || !isActive(cat.productType?.status)) return false;
+        }
+      } else {
+        // 3. Item Category directly on item
+        const cat = item.productStructure;
+        if (cat) {
+          if (cat.is_deleted === true || !isActive(cat.status)) return false;
+          // 4. Item Group via productStructure path
+          if (cat.productType?.is_deleted === true || !isActive(cat.productType?.status)) return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Then apply search filter
     const search = boqSearch.trim().toLowerCase();
-    if (!search) return productItemCodes;
-    return productItemCodes.filter((item: any) => {
+    if (!search) return activeItems;
+    return activeItems.filter((item: any) => {
       const haystack = [
         item.item_code,
         item.description,
@@ -2117,42 +2256,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     value={
                       (() => {
                         const derivedTypes: string[] = [];
+
+                        // 1. Direct explicit product types from lead.productMappings (primary source of truth)
+                        if (lead?.productMappings && Array.isArray(lead.productMappings)) {
+                          lead.productMappings.forEach((pm: any) => {
+                            const pType = pm.productType?.type || pm.product_type?.type;
+                            if (pType) derivedTypes.push(pType);
+                          });
+                        }
+
+                        // 2. Direct product types from structure instances
                         const instancesToUse = (structureInstancesData?.data || displayInstances || []);
-
                         instancesToUse.forEach((si: any) => {
-                          // 1. Structure master lookup for specific structure types (Kitchen, Wardrobe, etc.)
-                          const structId = si.product_structure_id;
-                          const pstObj = productStructureTypes?.data?.find(
-                            (pst: any) => pst.id === structId,
-                          );
-
-                          if (pstObj) {
-                            const pstName = (pstObj.type || "").trim().toLowerCase();
-                            if (pstName && productTypes?.data) {
-                              const matchedPt = productTypes.data.find((pt: any) => {
-                                const ptName = pt.type.trim().toLowerCase();
-                                if (ptName === pstName) return true;
-                                if (pstName.includes("kitchen") && ptName.includes("kitchen")) return true;
-                                if (pstName.includes("wardrobe") && ptName.includes("wardrobe")) return true;
-                                return false;
-                              });
-                              if (matchedPt?.type) {
-                                derivedTypes.push(matchedPt.type);
-                                return;
-                              }
-                            }
-                            if (pstObj.product_type_id && productTypes?.data) {
-                              const pt = productTypes.data.find(
-                                (t: any) => t.id === pstObj.product_type_id,
-                              );
-                              if (pt?.type && pt.type.toLowerCase() !== "others" && pt.type.toLowerCase() !== "other furniture") {
-                                derivedTypes.push(pt.type);
-                                return;
-                              }
-                            }
-                          }
-
-                          // 2. Direct product_type_id or productType relation on instance
                           const typeId = si.product_type_id;
                           if (typeId && productTypes?.data) {
                             const found = productTypes.data.find((pt: any) => pt.id === typeId);
@@ -2168,37 +2283,49 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                             return;
                           }
 
-                          // 3. Match si.title against valid productTypes in master list (flexible matching e.g. "Consoles" / "Console")
+                          // Structure master lookup (by explicit product_type_id or exact name match)
+                          const structId = si.product_structure_id;
+                          const pstObj = productStructureTypes?.data?.find(
+                            (pst: any) => pst.id === structId,
+                          );
+
+                          if (pstObj) {
+                            if (pstObj.product_type_id && productTypes?.data) {
+                              const pt = productTypes.data.find(
+                                (t: any) => t.id === pstObj.product_type_id,
+                              );
+                              if (pt?.type && pt.type.toLowerCase() !== "others" && pt.type.toLowerCase() !== "other furniture") {
+                                derivedTypes.push(pt.type);
+                                return;
+                              }
+                            }
+                            const pstName = (pstObj.type || "").trim().toLowerCase();
+                            if (pstName && productTypes?.data) {
+                              const matchedPt = productTypes.data.find(
+                                (pt: any) => pt.type.trim().toLowerCase() === pstName,
+                              );
+                              if (matchedPt?.type) {
+                                derivedTypes.push(matchedPt.type);
+                                return;
+                              }
+                            }
+                          }
+
+                          // Match si.title against valid productTypes in master list (exact match)
                           if (si.title && productTypes?.data) {
                             const titleName = si.title.trim().toLowerCase();
-                            const matchedType = productTypes.data.find((pt: any) => {
-                              const ptName = pt.type.trim().toLowerCase();
-                              if (ptName === titleName) return true;
-                              if (ptName.length >= 3 && (titleName.includes(ptName) || ptName.includes(titleName))) return true;
-                              return false;
-                            });
+                            const matchedType = productTypes.data.find(
+                              (pt: any) => pt.type.trim().toLowerCase() === titleName,
+                            );
                             if (matchedType?.type) {
                               derivedTypes.push(matchedType.type);
                               return;
                             }
                           }
-
-                          // 4. Fallback to instance title if clean and not generic
-                          if (si.title && si.title !== "—" && si.title.toLowerCase() !== "others") {
-                            derivedTypes.push(si.title);
-                          }
                         });
 
-                        // 5. From productMappings if no derived types from instances
-                        if (derivedTypes.length === 0 && lead.productMappings && Array.isArray(lead.productMappings)) {
-                          lead.productMappings.forEach((pm: any) => {
-                            const pType = pm.productType?.type || pm.product_type?.type;
-                            if (pType) derivedTypes.push(pType);
-                          });
-                        }
-
-                        // 6. From leadProductStructureMapping if still empty
-                        if (derivedTypes.length === 0 && lead.leadProductStructureMapping && Array.isArray(lead.leadProductStructureMapping)) {
+                        // 3. Fallback to leadProductStructureMapping if still empty
+                        if (derivedTypes.length === 0 && lead?.leadProductStructureMapping && Array.isArray(lead.leadProductStructureMapping)) {
                           lead.leadProductStructureMapping.forEach((ps: any) => {
                             const pType = ps.productStructure?.productType?.type;
                             if (pType) derivedTypes.push(pType);
@@ -2208,11 +2335,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                         const uniqueTypes = Array.from(new Set(derivedTypes.filter(Boolean)));
                         if (uniqueTypes.length > 0) return uniqueTypes.join(", ");
 
-                        const fromMappings = lead.productMappings
-                          ?.map((pm: any) => pm.productType?.type || pm.product_type?.type)
-                          ?.filter(Boolean)
-                          ?.join(", ");
-                        return fromMappings || undefined;
+                        return undefined;
                       })()
                     }
                   />
@@ -3372,6 +3495,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </motion.div>
           </motion.section>
           )}
+
+          {/* Current Site Dimension (large-scale vendors) */}
+          {handlesLargeScaleProjects && !isB2b && vendorId && userId && (
+            <motion.div variants={itemVariants}>
+              <CurrentSiteDimensionSection
+                vendorId={vendorId}
+                leadId={leadId}
+                userId={userId}
+                canManage={canUploadSitePhotos}
+                shouldDisableBlockedActions={shouldDisableBlockedActions}
+                blockedTooltip={blockedTooltip}
+                renameFiles={(files) =>
+                  isCustomDocNomenclatureEnabled
+                    ? renameLeadSitePhotoFiles({
+                      files,
+                      clientName: `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim(),
+                      targetLabel: currentProductTypeLabel || "Furniture Type",
+                      uploadDate: formatFileDate(new Date()),
+                      prefix: "CSD",
+                    })
+                    : files
+                }
+              />
+            </motion.div>
+          )}
+
+          <WalkinLeadAnswers
+            vendorId={vendorId}
+            leadId={leadId}
+            enabled={walkinQuestionsEnabled && isWalkinSource(lead?.source?.type ?? "")}
+            canEdit={canEditStructures}
+            isDraft={isDraftLead}
+          />
 
           <Dialog
             open={boqModalOpen}

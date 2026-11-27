@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAppSelector } from "@/redux/store";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, RotateCw, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -13,7 +14,7 @@ import {
   type InventoryProduct, type ProductionPreview, type ProductionPreviewRow,
 } from "./production-file-preview";
 
-import { useFreezeProductionMaterials, useIssueProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
+import { useOutsourceProductionMaterials, useFreezeProductionMaterials, useIssueProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import ProductionMaterialsTable from "./ProductionMaterialsTable";
@@ -25,6 +26,7 @@ interface Props {
   materialsLoading?: boolean;
   materialsError?: boolean;
   embedded?: boolean;
+  viewOnly?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   files: File[];
@@ -38,11 +40,18 @@ interface Props {
   onDownloadTemplate: () => void;
 }
 
-export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
+export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, viewOnly = false, open, onOpenChange, files, onFilesChange, vendorId,
   leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const isIssuedItemsView = isMaterialIssueView && searchParams.get("mode") === "issued";
+  const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector((state) => state.customPrivileges.codes);
+  const hasRequiredMaterialsPrivilege = (action: string) =>
+    userType?.trim().toLowerCase() !== "custom" ||
+    customPrivilegeCodes.includes(
+      `production.order_login.required_production_materials.${action}`,
+    );
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [phase, setPhase] = useState<"reading" | "matching" | "done">("reading");
@@ -51,13 +60,16 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const [tab, setTab] = useState<"products" | "logs">("products");
   // Tie the result to the exact selection and vendor; an old preview can never approve new files.
   const [checkedSelection, setCheckedSelection] = useState<{ files: File[]; vendorId: number } | null>(null);
+  const [outsourceKeys, setOutsourceKeys] = useState<string[] | null>(null);
+  const outsourceMutation = useOutsourceProductionMaterials(vendorId, leadId, instanceId);
   const [freezeKeys, setFreezeKeys] = useState<string[] | null>(null);
   const [issueKeys, setIssueKeys] = useState<string[] | null>(null);
   const [reuploadOpen, setReuploadOpen] = useState(false);
   const freezeMutation = useFreezeProductionMaterials(vendorId, leadId, instanceId);
   const issueMutation = useIssueProductionMaterials(vendorId, leadId, instanceId);
   // Once materials are saved, uploading again happens in its own dialog instead of inline.
-  const moveUploadToModal = embedded && savedMaterials.length > 0 && !isIssuedItemsView;
+  const moveUploadToModal = embedded && !viewOnly && savedMaterials.length > 0 && !isIssuedItemsView;
+  const showUpload = !viewOnly && !isIssuedItemsView && !moveUploadToModal;
 
   // handleUpload clears the parent's file selection only on success, so a completed
   // upload (uploading flips true -> false) that leaves no files behind is our signal
@@ -108,10 +120,17 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
       return { key: String(material.id), source: "", type: material.type, category: material.category,
         qty: Number(material.qty), unit: material.unit, name: material.name, articleCode: material.article_code,
         frozenQty: Number(material.frozen_item_qty) || 0, issuedQty: Number(material.issued_item_qty) || 0,
+        orderLoginId: material.order_login_id,
         errors: [], status: "unmatched" };
     }) };
     return applyInventoryMatches(savedPreview, matches).rows;
   }, [savedMaterials]);
+  // Outsourced materials are fulfilled through Order Login, so they are not issued from inventory.
+  const tableRows = useMemo(() => isMaterialIssueView ? savedRows.filter((row) => !row.orderLoginId) : savedRows, [savedRows, isMaterialIssueView]);
+  const outsourceRows = savedRows.filter((row) => outsourceKeys?.includes(row.key) && !row.orderLoginId);
+  const canOutsource = embedded && !viewOnly && !isMaterialIssueView && canUpload && hasRequiredMaterialsPrivilege("outsource") && !!leadId && !uploading;
+  const canFreeze = isMaterialIssueView && hasRequiredMaterialsPrivilege("freeze");
+  const canIssue = isMaterialIssueView && hasRequiredMaterialsPrivilege("issue");
   const freezeRows = useMemo(() => savedRows.filter((row) => freezeKeys?.includes(row.key)), [savedRows, freezeKeys]);
   const issueRows = useMemo(() => savedRows.filter((row) => issueKeys?.includes(row.key)), [savedRows, issueKeys]);
   const rows = preview?.rows ?? [];
@@ -131,7 +150,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx or .csv · Required headers in the first row · Additional columns allowed</p></div>
           <Button variant="outline" size="sm" onClick={onDownloadTemplate}>Download template</Button>
         </div>
-        <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple disabled={uploading || !canUpload} />
+        <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple={!embedded} disabled={uploading || !canUpload} />
         <div className="mt-3 flex flex-wrap gap-1.5">{REQUIRED_PRODUCTION_HEADERS.map((header) => <Badge key={header} variant="secondary">{header}</Badge>)}</div>
       </div>
 
@@ -184,7 +203,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
             <div className="flex items-center gap-3">
               <div className="rounded-xl border bg-background p-2.5 text-primary"><FileSpreadsheet className="size-6" /></div>
               <div>{embedded ? (
-                <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">Check your Excel rows and inventory before uploading production files.</p></>
+                <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">{viewOnly ? "Materials saved during Order Login. View only." : "Check your Excel rows and inventory before uploading production files."}</p></>
               ) : (
                 <><DialogTitle className="text-lg">Required Production Materials</DialogTitle><DialogDescription className="mt-1">Check your Excel rows and inventory before uploading production files.</DialogDescription></>
               )}</div>
@@ -198,22 +217,52 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           {materialsError && <p role="alert" className="text-destructive">Could not load saved materials. Reload this page to retry.</p>}
           {!!savedMaterials.length && <div className="space-y-3">
             <ProductionMaterialsTable
-              rows={savedRows}
-              enableRowSelection={isMaterialIssueView && !isIssuedItemsView}
+              rows={tableRows}
+              enableRowSelection={(isMaterialIssueView && !isIssuedItemsView) || canOutsource}
+              busy={outsourceMutation.isPending}
               isMaterialIssueView={isMaterialIssueView}
-              onFreezeSelected={(selected) => setFreezeKeys(selected.map((row) => row.key))}
-              onIssueSelected={(selected) => setIssueKeys(selected.map((row) => row.key))}
-              hideSelectionBar={freezeKeys !== null || issueKeys !== null}
+              onFreezeSelected={canFreeze ? (selected) => setFreezeKeys(selected.map((row) => row.key)) : undefined}
+              onIssueSelected={canIssue ? (selected) => setIssueKeys(selected.map((row) => row.key)) : undefined}
+              onOutsourceSelected={canOutsource ? (selected) => setOutsourceKeys(selected.map((row) => row.key)) : undefined}
+              hideSelectionBar={freezeKeys !== null || issueKeys !== null || outsourceKeys !== null}
             />
           </div>}
 
-          {!isIssuedItemsView && !moveUploadToModal && uploadBody}
+          {viewOnly && !materialsLoading && !materialsError && !savedMaterials.length && (
+            <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">No required production materials have been uploaded in Order Login yet.</p>
+          )}
+          {showUpload && uploadBody}
         </div>
-        {!isIssuedItemsView && !moveUploadToModal && uploadFooter}
+        {showUpload && uploadFooter}
         <AlertDialog open={confirmReplace} onOpenChange={setConfirmReplace}>
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Replace saved materials?</AlertDialogTitle>
             <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>
           </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(saveableRows, true); }}>Replace and upload</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={outsourceKeys !== null} onOpenChange={(next) => { if (!next && !outsourceMutation.isPending) setOutsourceKeys(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Outsource selected items?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will create Order Login cards titled with the selected item names and mark these material rows as outsourced. Items with the same name share a card.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <ul className="max-h-60 list-disc space-y-1 overflow-y-auto pl-5 text-sm">
+              {outsourceRows.map((row) => <li key={row.key}>{row.name} <span className="text-muted-foreground">({row.articleCode})</span></li>)}
+            </ul>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={outsourceMutation.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={!canOutsource || !outsourceRows.length || outsourceMutation.isPending} onClick={async (event) => {
+                event.preventDefault();
+                try {
+                  await outsourceMutation.mutateAsync(outsourceRows.map((row) => Number(row.key)));
+                  setOutsourceKeys(null);
+                } catch { /* The mutation displays the error and keeps the selection for retry. */ }
+              }}>
+                {outsourceMutation.isPending ? "Outsourcing…" : "Confirm Outsource"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
         <FreezeMaterialsModal
           open={freezeKeys !== null}

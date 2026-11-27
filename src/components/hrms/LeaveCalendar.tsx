@@ -1,0 +1,135 @@
+"use client";
+import { useRef, useState } from "react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Globe2, Info, Loader2, MapPin, Plus, Trash2, Upload, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import CustomeDatePicker from "@/components/date-picker";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toastManager } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import { effectiveHolidays, effectiveWeeklyOffs, leaveDateLabel, scopeName, sortHolidaysByProximity, validLeaveDate, weekdays, type Holiday, type WeekOffPolicy, type LeaveLocation } from "@/lib/hrms/leaves";
+import { leaveErrorMessage, useLeaveActions } from "@/api/hrms-leaves";
+import { downloadLeaveTemplate, parseLeaveWorkbook, type HolidayImportRow } from "@/lib/hrms/leave-workbook";
+
+type Props = { year: number; today: string; scope: string; holidays: Holiday[]; vendorId: number; locations: LeaveLocation[]; policies: WeekOffPolicy; readOnly?: boolean };
+export default function LeaveCalendar({ year, today, scope, holidays, vendorId, locations, policies, readOnly = false }: Props) {
+  const action = useLeaveActions(vendorId);
+  const label = (scope: string) => scopeName(scope, locations);
+  const [month, setMonth] = useState(Number(today.slice(5, 7)) - 1);
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [importRows, setImportRows] = useState<HolidayImportRow[] | null>(null), [fileName, setFileName] = useState("");
+  const [allowUpdates, setAllowUpdates] = useState(false);
+  const [addOpen, setAddOpen] = useState(false), [name, setName] = useState(""), [startDate, setStartDate] = useState(""), [endDate, setEndDate] = useState(""), [remark, setRemark] = useState("");
+  const [removing, setRemoving] = useState<Holiday | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const effective = effectiveHolidays(holidays, scope, year), offs = effectiveWeeklyOffs(policies, scope);
+  const sortedHolidays = sortHolidaysByProximity(effective, today);
+  const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate(), offset = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const monthRows = effective.filter(row => Number(row.date.slice(5, 7)) === month + 1);
+  const monthName = new Intl.DateTimeFormat("en", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(year, month, 1)));
+  const existingCount = importRows?.filter(row => row.existing).length || 0;
+  const invalidCount = importRows?.filter(row => row.errors.length).length || 0;
+  const showError = (error: unknown) => setError(error instanceof Error ? error.message : "Could not read this workbook. Check the file and try again.");
+  const template = async () => { setBusy(true); setError(""); try { await downloadLeaveTemplate(year); } catch (e) { showError(e); } finally { setBusy(false); } };
+  const upload = async (file?: File) => {
+    if (!file) return; setBusy(true); setError("");
+    try { const rows = await parseLeaveWorkbook(file, year, holidays, scope); setImportRows(rows); setFileName(file.name); setAllowUpdates(false); } catch (e) { showError(e); } finally { setBusy(false); if (input.current) input.current.value = ""; }
+  };
+  const applyImport = async () => {
+    if (!importRows || invalidCount || (existingCount > 0 && !allowUpdates)) return;
+    try {
+      await action.mutateAsync({ kind: "import", scope, year, rows: importRows.map(({ date, name, remark }) => ({ date, name, remark })), allow_updates: allowUpdates });
+      setImportRows(null); toastManager.add({ title: `${importRows.length} paid holidays saved`, type: "success" });
+    } catch (error) { toastManager.add({ title: leaveErrorMessage(error), type: "error" }); }
+  };
+  const add = async () => {
+    const start = startDate.trim();
+    const end = (endDate.trim() || start);
+    if (!validLeaveDate(start) || !validLeaveDate(end) || end < start) return;
+    if (Number(start.slice(0, 4)) !== year || Number(end.slice(0, 4)) !== year) return;
+    if (!name.trim() || name.trim().length > 100 || remark.length > 500) return;
+
+    // Generate dates from start to end inclusive
+    const rows: { date: string; name: string; remark: string }[] = [];
+    const current = new Date(`${start}T12:00:00Z`);
+    const stop = new Date(`${end}T12:00:00Z`);
+    while (current <= stop) {
+      rows.push({
+        date: current.toISOString().slice(0, 10),
+        name: name.trim(),
+        remark: remark.trim(),
+      });
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+
+    try {
+      await action.mutateAsync({ kind: "import", scope, year, rows, allow_updates: true });
+      setAddOpen(false);
+      toastManager.add({ title: rows.length > 1 ? `${rows.length} paid holidays saved` : "Paid holiday saved", type: "success" });
+    } catch (error) {
+      toastManager.add({ title: leaveErrorMessage(error), type: "error" });
+    }
+  };
+  const remove = async () => {
+    if (!removing) return;
+    try { await action.mutateAsync({ kind: "delete", id: removing.id }); setRemoving(null); toastManager.add({ title: "Paid holiday removed", type: "success" }); }
+    catch (error) { toastManager.add({ title: leaveErrorMessage(error), type: "error" }); }
+  };
+  return <div className="space-y-5">
+    {error && <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"><p>{error}</p><button aria-label="Dismiss calendar error" onClick={() => setError("")}><X className="size-4" /></button></div>}
+    <div className="grid auto-rows-[480px] gap-5 sm:auto-rows-[520px] xl:grid-cols-[1fr_1.1fr]">
+      <section className="flex h-full min-h-0 flex-col rounded-2xl border bg-background p-4 shadow-sm sm:p-5" aria-label="Paid holiday calendar">
+        <div className="mb-5 flex shrink-0 items-center justify-between gap-3"><div><h2 className="text-base font-semibold tracking-tight">{monthName} {year}</h2><p className="mt-1 text-xs text-muted-foreground">{monthRows.length} paid {monthRows.length === 1 ? "holiday" : "holidays"} this month</p></div><div className="flex gap-1"><Button variant="ghost" size="icon" className="size-8" aria-label="Previous calendar month" disabled={month === 0} onClick={() => setMonth(month - 1)}><ChevronLeft className="size-4" /></Button><Button variant="ghost" size="icon" className="size-8" aria-label="Next calendar month" disabled={month === 11} onClick={() => setMonth(month + 1)}><ChevronRight className="size-4" /></Button></div></div>
+        <div className="grid min-h-0 flex-1 grid-cols-7 gap-1 text-center" style={{ gridTemplateRows: `auto repeat(${Math.ceil((offset + days) / 7)}, minmax(0, 1fr))` }}>
+          {weekdays.map(day => <span key={day} className="pb-2 text-[10px] font-medium text-muted-foreground">{day.slice(0, 3)}</span>)}
+          {Array.from({ length: offset }, (_, index) => <span key={`blank-${index}`} />)}
+          {Array.from({ length: days }, (_, index) => {
+            const day = index + 1, key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`, holiday = effective.find(row => row.date === key), off = offs.includes((offset + index) % 7);
+            return <div key={key} title={holiday ? `${holiday.name} · Paid holiday` : off ? "Weekly off" : "Working day"} aria-label={`${leaveDateLabel(key)}: ${holiday ? holiday.name + ', paid holiday' : off ? 'Weekly off' : 'Working day'}`} className={cn("flex min-h-0 flex-col items-center justify-center rounded-xl border border-transparent text-xs transition-colors sm:text-sm", holiday ? "border-[#FF8D28]/40 bg-[#FF8D28]/10 font-semibold text-[#9A4300] dark:border-[#FF8D28]/30 dark:bg-[#FF8D28]/15 dark:text-[#FF8D28]" : off ? "bg-muted/70 text-muted-foreground" : "text-foreground")}><span>{day}</span><span className={cn("mt-1.5 size-1 rounded-full", holiday ? "bg-[#FF8D28]" : "bg-transparent")} /></div>;
+          })}
+        </div>
+        <div className="mt-5 flex shrink-0 flex-wrap gap-x-4 gap-y-2 border-t pt-4 text-[10px] text-muted-foreground"><span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#FF8D28]" />Paid holiday</span><span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-muted-foreground/25" />Weekly off</span><span className="hidden sm:inline">Hover a date for details</span></div>
+      </section>
+      <section aria-label="Paid holidays list" className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b bg-gradient-to-r from-[#FF8D28]/5 to-transparent p-4 sm:p-5"><div className="flex min-w-0 items-start gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#FF8D28]/15 bg-[#FF8D28]/10 text-[#FF8D28] dark:text-[#FF8D28]"><CalendarDays className="size-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-semibold tracking-tight sm:text-base">Paid holidays</h2><span className="rounded-full bg-[#FF8D28]/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#9A4300] dark:text-[#FF8D28]">{effective.length}</span></div><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{year} calendar · Nearest dates first</p></div></div>{!readOnly && <Button variant="outline" size="sm" className="shrink-0 gap-1.5 bg-background text-xs" onClick={() => { setName(""); setStartDate(""); setEndDate(""); setRemark(""); setAddOpen(true); }}><Plus className="size-3.5" />Add holiday</Button>}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+          {effective.length ? <ol className="space-y-2.5 p-3 sm:p-4">{sortedHolidays.map(row => {
+            const inMonth = Number(row.date.slice(5, 7)) === month + 1;
+            const inherited = row.scope === "company" && scope !== "company";
+            const remarkText = row.remark.replace(/^\[HRMS_SAMPLE_DATA:[^\]]+\]\s*/, "");
+            const ScopeIcon = row.scope === "company" ? Globe2 : MapPin;
+            return <li key={row.id} className={cn("group flex items-start gap-3 rounded-xl border p-3 transition-colors sm:p-3.5", inMonth ? "border-[#FF8D28]/30 bg-[#FF8D28]/[0.04]" : "border-border/70 bg-background hover:bg-muted/20")}>
+              <span className="flex w-12 shrink-0 flex-col items-center overflow-hidden rounded-xl border border-[#FF8D28]/20 bg-[#FF8D28]/5 text-[#9A4300] dark:text-[#FF8D28]"><span className="w-full bg-[#FF8D28]/10 py-1 text-center text-[9px] font-semibold uppercase tracking-wider">{new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" }).format(new Date(`${row.date}T12:00:00Z`))}</span><span className="py-1.5 text-xl font-semibold leading-none tabular-nums">{Number(row.date.slice(8))}</span></span>
+              <div className="min-w-0 flex-1"><p className="break-words text-xs font-semibold leading-relaxed sm:text-sm">{row.name}</p><div className="mt-1.5 flex flex-wrap items-center gap-1.5"><span className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"><ScopeIcon className="size-2.5 shrink-0" /><span className="truncate">{label(row.scope)}</span></span>{inherited && <span className="text-[9px] text-muted-foreground">Inherited</span>}{inMonth && <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#9A4300] dark:text-[#FF8D28]"><span className="size-1 rounded-full bg-[#FF8D28]" />This month</span>}</div>{remarkText && <p title={remarkText} className="mt-2 line-clamp-2 break-words text-[11px] leading-relaxed text-muted-foreground">{remarkText}</p>}</div>
+              {!readOnly && row.scope === scope && <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label={`Remove ${row.name}`} onClick={() => setRemoving(row)}><Trash2 className="size-3.5" /></Button>}
+            </li>;
+          })}</ol> : <div className="flex h-full flex-col items-center justify-center px-5 py-8 text-center"><span className="mb-3 rounded-2xl bg-[#FF8D28]/5 p-3"><CalendarDays className="size-7 text-orange-500/70" /></span><p className="text-sm font-medium">No paid holidays for {year}</p><p className="mt-2 max-w-60 text-xs leading-relaxed text-muted-foreground">{readOnly ? "Your company calendar will appear here once configured." : "Upload your calendar or add your first holiday."}</p></div>}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-muted/15 px-4 py-3 text-[10px] text-muted-foreground sm:px-5"><span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[#FF8D28]" />Paid time off</span><span>{scope !== "company" ? "Includes company holidays" : "Company-wide calendar"}</span></div>
+      </section>
+    </div>
+      {!readOnly && <div className="rounded-2xl border border-teal-600/20 bg-teal-500/5 p-5 sm:p-6"><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex items-start gap-3"><div className="rounded-xl bg-teal-600/10 p-3 text-teal-700 dark:text-teal-300"><FileSpreadsheet className="size-6" /></div><div><h2 className="text-base font-semibold">Upload your paid-leave calendar</h2><p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">Download the Excel template, add your paid holidays, and review every row before adding it to <span className="font-medium text-foreground">{label(scope)}</span>.</p><p className="mt-2 text-[11px] text-muted-foreground">.xlsx only · Up to 5 MB · Date and Leave Name required · Remark optional</p></div></div><div className="flex shrink-0 flex-wrap gap-2"><Button variant="outline" className="gap-2" onClick={template} disabled={busy || action.isPending}><Download className="size-4" />Download template</Button><Button className="gap-2" onClick={() => input.current?.click()} disabled={busy || action.isPending}>{busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}Upload Excel</Button><input ref={input} className="hidden" type="file" accept=".xlsx" aria-label="Upload paid leave calendar" onChange={event => void upload(event.target.files?.[0])} /></div></div></div>}
+    <Dialog open={!!importRows} onOpenChange={open => { if (!open && !action.isPending) setImportRows(null); }}><DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>Review paid-leave calendar</DialogTitle><DialogDescription>{fileName} · {label(scope)} · {year}. Nothing is saved until you confirm.</DialogDescription></DialogHeader><div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-muted px-3 py-1.5">{importRows?.length} rows</span><span className={cn("rounded-full px-3 py-1.5", invalidCount ? "bg-red-500/10 text-red-700 dark:text-red-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>{invalidCount ? `${invalidCount} rows need attention` : "All rows valid"}</span><span className="rounded-full bg-muted px-3 py-1.5">{existingCount} existing dates</span></div><div className="max-h-80 overflow-auto rounded-xl border"><table className="w-full min-w-[560px] text-left text-xs"><thead className="sticky top-0 bg-muted"><tr>{["Row", "Date", "Leave name", "Validation"].map(text => <th key={text} className="px-3 py-3 font-medium">{text}</th>)}</tr></thead><tbody className="divide-y">{importRows?.map(row => <tr key={row.row}><td className="px-3 py-3">{row.row}</td><td className="whitespace-nowrap px-3 py-3">{row.date}</td><td className="max-w-52 break-words px-3 py-3">{row.name}</td><td className={cn("max-w-64 px-3 py-3 text-[11px]", row.errors.length ? "text-destructive" : "text-muted-foreground")}>{row.errors.length ? row.errors.join(" ") : row.existing ? "Updates existing holiday" : "Ready to add"}</td></tr>)}</tbody></table></div>{invalidCount > 0 && <p role="alert" className="text-xs text-destructive">Fix the highlighted rows in Excel and upload again. No partial imports will be applied.</p>}{existingCount > 0 && <label className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-xs leading-relaxed"><Checkbox className="mt-0.5" aria-label="Allow existing holiday updates" checked={allowUpdates} onCheckedChange={value => setAllowUpdates(value === true)} /><span>Update the {existingCount} existing holidays in this scope with the uploaded values. Other holidays stay in the calendar.</span></label>}<DialogFooter><Button variant="outline" disabled={action.isPending} onClick={() => setImportRows(null)}>Cancel import</Button><Button disabled={action.isPending || !!invalidCount || (!!existingCount && !allowUpdates)} onClick={applyImport}>{action.isPending ? "Saving…" : "Import calendar"}</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={addOpen} onOpenChange={open => { if (!action.isPending) setAddOpen(open); }}><DialogContent><DialogHeader><DialogTitle>Add paid holiday</DialogTitle><DialogDescription>{label(scope)} · {year}. This is a paid calendar holiday, separate from employee leave requests.</DialogDescription></DialogHeader><div className="space-y-2"><Label htmlFor="holiday-name">Leave name <span className="text-destructive">*</span></Label><Input id="holiday-name" value={name} maxLength={100} onChange={e => setName(e.target.value)} placeholder="e.g. Festival holiday" /></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="holiday-start-date">Start date <span className="text-destructive">*</span></Label><CustomeDatePicker value={startDate} onChange={val => { setStartDate(val || ""); if (!endDate || (val && endDate < val)) setEndDate(val || ""); }} className="h-10 w-full" placeholder="Select start date" dateFormat="dd MMM yyyy" fromYear={year} toYear={year} minDate={`${year}-01-01`} /></div><div className="space-y-2"><Label htmlFor="holiday-end-date">End date <span className="text-destructive">*</span></Label><CustomeDatePicker value={endDate} onChange={val => setEndDate(val || "")} className="h-10 w-full" placeholder="Select end date" dateFormat="dd MMM yyyy" fromYear={year} toYear={year} minDate={startDate || `${year}-01-01`} /></div></div><div className="space-y-2"><Label htmlFor="holiday-remark">Remark <span className="text-xs text-muted-foreground">(optional)</span></Label><Textarea id="holiday-remark" value={remark} maxLength={500} onChange={e => setRemark(e.target.value)} /></div><DialogFooter><Button variant="outline" disabled={action.isPending} onClick={() => setAddOpen(false)}>Cancel</Button><Button disabled={Boolean(action.isPending || !name.trim() || !validLeaveDate(startDate) || (endDate && (!validLeaveDate(endDate) || endDate < startDate)) || Number(startDate.slice(0, 4)) !== year || (endDate && Number(endDate.slice(0, 4)) !== year))} onClick={add}>{action.isPending ? "Saving…" : "Save holiday"}</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={!!removing} onOpenChange={open => { if (!open && !action.isPending) setRemoving(null); }}><DialogContent><DialogHeader><DialogTitle>Remove paid holiday?</DialogTitle><DialogDescription>Remove {removing?.name} from {label(scope)}? {scope === "company" ? "This changes the inherited calendar for every location for this company." : "Company holidays still apply to this location."}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={action.isPending} onClick={() => setRemoving(null)}>Keep holiday</Button><Button variant="destructive" disabled={action.isPending} onClick={remove}>Remove holiday</Button></DialogFooter></DialogContent></Dialog>
+  </div>;
+}
+
+export function WeeklyOffs({ scope, policies, vendorId, locations }: { scope: string; policies: WeekOffPolicy; vendorId: number; locations: LeaveLocation[] }) {
+  const action = useLeaveActions(vendorId);
+  const label = (scope: string) => scopeName(scope, locations);
+  const inherited = scope !== "company" && policies[scope] === undefined;
+  const [draft, setDraft] = useState<number[]>(effectiveWeeklyOffs(policies, scope));
+  const [override, setOverride] = useState(!inherited);
+  const saved = effectiveWeeklyOffs(policies, scope);
+  const changed = scope === "company" && policies.company === undefined ? true : inherited ? override : !override || draft.join(",") !== saved.join(",");
+  const preview = !override && scope !== "company" ? policies.company || [] : draft;
+  const save = async () => {
+    try { await action.mutateAsync({ kind: "weekly", scope, inherit: scope !== "company" && !override, days: draft }); toastManager.add({ title: "Weekly offs saved", type: "success" }); }
+    catch (error) { toastManager.add({ title: leaveErrorMessage(error), type: "error" }); }
+  };
+  return <section className="overflow-hidden rounded-2xl border bg-background shadow-sm"><div className="border-b p-5 sm:p-6"><div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300"><CalendarDays className="size-5" /></div><h2 className="text-lg font-semibold">Which days does your company take off?</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Choose one or multiple days as recurring weekly offs for {label(scope)}. These days are shown separately from paid holidays.</p></div><div className="space-y-6 p-5 sm:p-6">{scope !== "company" && <label className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4"><Checkbox aria-label="Use custom weekly offs" disabled={action.isPending} checked={override} onCheckedChange={value => setOverride(value === true)} /><span><span className="block text-sm font-medium">Use custom weekly offs for this location</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">When off, this location follows the company schedule. A custom schedule replaces the company weekly offs for this location.</span></span></label>}<div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">{weekdays.map((day, index) => <button key={day} type="button" aria-pressed={preview.includes(index)} disabled={action.isPending || (scope !== "company" && !override)} onClick={() => setDraft(previous => previous.includes(index) ? previous.filter(value => value !== index) : [...previous, index].sort())} className={cn("flex min-h-24 flex-col items-start justify-between rounded-xl border p-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default", preview.includes(index) ? "border-teal-600/40 bg-teal-500/10 text-teal-900 dark:text-teal-200" : "bg-background text-muted-foreground hover:bg-muted/30")}><span className="flex w-full items-center justify-between gap-2 font-medium">{day.slice(0, 3)}<span className={cn("flex size-4 items-center justify-center rounded-full border", preview.includes(index) && "border-teal-600 bg-teal-600 text-white")}>{preview.includes(index) && <Check className="size-3" />}</span></span><span className="mt-4 text-[10px]">{preview.includes(index) ? "Weekly off" : "Working day"}</span></button>)}</div><div className="flex items-start gap-2 rounded-xl bg-muted/40 p-4 text-xs leading-relaxed text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" /><p>{preview.length ? `Effective weekly offs: ${preview.map(index => weekdays[index]).join(", ")}.` : "No weekly offs selected. Every weekday is treated as a working day."} {scope === "company" ? "Applies to locations that follow company settings." : !override ? "Inherited from company settings." : "Only this location uses this schedule."} This defines your recurring calendar; payroll calculations are managed separately.</p></div><div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5"><p className="text-xs text-muted-foreground">{changed ? "You have unsaved changes." : "Settings are up to date."}</p><Button className="gap-2" disabled={!changed || action.isPending} onClick={save}><Check className="size-4" />Save weekly offs</Button></div></div></section>;
+}

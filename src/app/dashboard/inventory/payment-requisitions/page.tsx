@@ -17,8 +17,17 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import CustomeDatePicker from "@/components/date-picker";
 
 const statusClass = (status: string) => {
   switch (status) {
@@ -114,8 +123,8 @@ export default function PaymentRequisitionPage() {
         </Button>
       </div>
 
-      <div className="grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-4">
-        <div className="relative">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4">
+        <div className="relative w-72 md:w-80">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -131,42 +140,92 @@ export default function PaymentRequisitionPage() {
               }
             }}
             placeholder="Search PO / Supplier"
-            className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+            className="h-10 w-full rounded-xl border bg-background pl-9 pr-8 text-sm outline-none transition-colors hover:bg-muted/20 focus:border-foreground/30 focus:ring-1 focus:ring-foreground/20"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
 
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="h-10 rounded-xl border bg-background px-3 text-sm"
-        >
-          <option value="">All Status</option>
-          <option value="Pending">Pending</option>
-          <option value="PartiallyPaid">Partially Paid</option>
-          <option value="Paid">Paid</option>
-          <option value="Overdue">Overdue</option>
-          <option value="Cancelled">Cancelled</option>
-        </select>
+        <div className="w-[160px]">
+          <Select
+            value={status || "all"}
+            onValueChange={(val) => {
+              setStatus(val === "all" ? "" : val);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-10 w-full rounded-xl border bg-background text-sm font-normal">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border bg-popover text-sm shadow-lg">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Pending">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  Pending
+                </span>
+              </SelectItem>
+              <SelectItem value="PartiallyPaid">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  Partially Paid
+                </span>
+              </SelectItem>
+              <SelectItem value="Paid">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  Paid
+                </span>
+              </SelectItem>
+              <SelectItem value="Overdue">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  Overdue
+                </span>
+              </SelectItem>
+              <SelectItem value="Cancelled">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-slate-400" />
+                  Cancelled
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <select
-          value={due}
-          onChange={(e) => {
-            setDue(e.target.value);
-            setPage(1);
-          }}
-          className="h-10 rounded-xl border bg-background px-3 text-sm"
-        >
-          <option value="">All Due</option>
-          <option value="today">Due Today</option>
-          <option value="overdue">Overdue</option>
-          <option value="upcoming">Upcoming</option>
-        </select>
+        <div className="w-[140px]">
+          <Select
+            value={due || "all"}
+            onValueChange={(val) => {
+              setDue(val === "all" ? "" : val);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-10 w-full rounded-xl border bg-background text-sm font-normal">
+              <SelectValue placeholder="All Due" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border bg-popover text-sm shadow-lg">
+              <SelectItem value="all">All Due</SelectItem>
+              <SelectItem value="today">Due Today</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="upcoming">Upcoming</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <Button
           type="button"
+          className="h-10 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-medium text-sm px-6"
           onClick={() => {
             setPage(1);
             load();
@@ -370,11 +429,12 @@ function RescheduleModal({
         <div className="mt-4 space-y-3">
           <div>
             <label className="text-xs font-semibold">New Due Date *</label>
-            <input
-              type="date"
+            <CustomeDatePicker
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="mt-1 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+              onChange={(val) => setDueDate(val || "")}
+              dateFormat="dd MMM yyyy"
+              placeholder="Select new due date"
+              className="mt-1 h-10 w-full rounded-xl"
             />
           </div>
 
@@ -497,28 +557,33 @@ function PaymentModal({
 
           <div>
             <label className="text-xs font-semibold">Payment Date *</label>
-            <input
-              type="date"
+            <CustomeDatePicker
               value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="mt-1 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+              onChange={(val) => setPaymentDate(val || "")}
+              dateFormat="dd MMM yyyy"
+              placeholder="Select payment date"
+              className="mt-1 h-10 w-full rounded-xl"
             />
           </div>
 
           <div>
             <label className="text-xs font-semibold">Payment Mode *</label>
-            <select
+            <Select
               value={paymentMode}
-              onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-              className="mt-1 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+              onValueChange={(val) => setPaymentMode(val as PaymentMode)}
             >
-              <option value="Cash">Cash</option>
-              <option value="BankTransfer">Bank Transfer</option>
-              <option value="Cheque">Cheque</option>
-              <option value="UPI">UPI</option>
-              <option value="RTGS">RTGS</option>
-              <option value="NEFT">NEFT</option>
-            </select>
+              <SelectTrigger className="mt-1 h-10 w-full rounded-xl border bg-background text-sm font-normal">
+                <SelectValue placeholder="Select Payment Mode" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border bg-popover text-sm shadow-lg">
+                <SelectItem value="Cash">Cash</SelectItem>
+                <SelectItem value="BankTransfer">Bank Transfer</SelectItem>
+                <SelectItem value="Cheque">Cheque</SelectItem>
+                <SelectItem value="UPI">UPI</SelectItem>
+                <SelectItem value="RTGS">RTGS</SelectItem>
+                <SelectItem value="NEFT">NEFT</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

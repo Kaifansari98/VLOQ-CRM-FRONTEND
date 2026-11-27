@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
   CreateCategoryPayload,
@@ -7,6 +7,7 @@ import {
   getProjectCategories,
   getProjectCategoryTypes,
   toggleProjectCategoryStatus,
+  deleteProjectCategory,
   updateProjectCategory,
   checkExternalToken,
   syncCategoriesFromExternal,
@@ -15,7 +16,9 @@ import {
 
 const KEYS = {
   categories: (vendorId: number, filters?: ProjectCategoryFilters) =>
-    ["project-categories", vendorId, filters] as const,
+    filters
+      ? (["project-categories", vendorId, filters] as const)
+      : (["project-categories", vendorId] as const),
   types: () => ["project-category-types"] as const,
   externalToken: (vendorId: number) => ["external-token", vendorId] as const,
 };
@@ -29,6 +32,8 @@ export function useProjectCategories(
     queryFn: () => getProjectCategories(vendorId!, filters),
     enabled: !!vendorId,
     staleTime: 30_000,
+    // Keep the current page visible while the next page loads.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -140,6 +145,27 @@ export function useToggleCategoryStatus(vendorId: number) {
     onError: (error: any) => {
       toastManager.add({
         title: error?.response?.data?.message ?? "Failed to update status",
+        type: "error",
+      });
+    },
+  });
+}
+
+export function useDeleteProjectCategory(vendorId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deleteProjectCategory(id),
+    onSuccess: (data: any) => {
+      toastManager.add({
+        title: data?.message ?? "Category deleted successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({ queryKey: KEYS.categories(vendorId) });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message ?? "Failed to delete category",
         type: "error",
       });
     },

@@ -53,6 +53,7 @@ import {
   Trash2,
   XCircle,
   RotateCcw,
+  Truck,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
@@ -74,6 +75,7 @@ interface TrackTraceProjectTableProps {
   onPackagingClick?: (row: TrackTraceProjectListRow) => void;
   isPackagingDisabled?: boolean;
   onEditClick?: (row: TrackTraceProjectListRow) => void;
+  onDispatchClick?: (row: TrackTraceProjectListRow) => void;
   onDeleteClick?: (row: TrackTraceProjectListRow) => void;
   isDeleting?: boolean;
   className?: string;
@@ -86,6 +88,42 @@ interface TrackTraceProjectTableProps {
   deletedFilter?: string;
   onDeletedChange?: (deleted: string) => void;
   onResetFilters?: () => void;
+  vendorTimeZone?: string;
+}
+
+function formatProjectCreatedDate(
+  dateString: string | null | undefined,
+  timeZone?: string | null
+): string {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+
+  const targetTimeZone = timeZone?.trim() || "UTC";
+
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: targetTimeZone,
+    }).format(date);
+  } catch {
+    try {
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(date);
+    } catch {
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+  }
 }
 
 function ProjectColumnHeader<TData, TValue>({
@@ -327,6 +365,7 @@ export default function TrackTraceProjectTable({
   onPackagingClick,
   isPackagingDisabled = false,
   onEditClick,
+  onDispatchClick,
   onDeleteClick,
   isDeleting = false,
   className,
@@ -337,7 +376,15 @@ export default function TrackTraceProjectTable({
   deletedFilter = "active",
   onDeletedChange,
   onResetFilters,
+  vendorTimeZone,
 }: TrackTraceProjectTableProps) {
+  const authVendor = useAppSelector((state) => state.auth.user?.vendor);
+  const fallbackTimeZone =
+    vendorTimeZone ||
+    authVendor?.time_zone_master?.time_zone_name ||
+    authVendor?.time_zone ||
+    "UTC";
+
   const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
   const canDelete = userTypeId === 1 || userTypeId === 2;
 
@@ -507,17 +554,18 @@ export default function TrackTraceProjectTable({
             sortOrder={sortOrder}
           />
         ),
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap text-xs text-muted-foreground">
-            {row.original.created_at
-              ? new Date(row.original.created_at).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-              : "-"}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const timeZone =
+            row.original.vendor_time_zone ||
+            row.original.vendor?.time_zone ||
+            fallbackTimeZone;
+
+          return (
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {formatProjectCreatedDate(row.original.created_at, timeZone)}
+            </span>
+          );
+        },
       },
       {
         id: "action",
@@ -592,6 +640,17 @@ export default function TrackTraceProjectTable({
                     Packaging
                   </DropdownMenuItem>
 
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDispatchClick?.(row.original);
+                    }}
+                  >
+                    <Truck size={14} />
+                    Dispatch
+                  </DropdownMenuItem>
+
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
@@ -629,6 +688,7 @@ export default function TrackTraceProjectTable({
       onDeleteClick,
       canDelete,
       isDeleting,
+      fallbackTimeZone,
     ]
   );
 
@@ -639,8 +699,9 @@ export default function TrackTraceProjectTable({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: totalPages !== undefined,
-    pageCount: totalPages ?? 1,
+    manualPagination: true,
+    pageCount: totalPages !== undefined && totalPages > 0 ? totalPages : 1,
+    rowCount: totalCount,
     state: {
       rowSelection,
       columnFilters,
@@ -651,6 +712,20 @@ export default function TrackTraceProjectTable({
         pageIndex: page - 1,
         pageSize: limit,
       },
+    },
+    onPaginationChange: (updater) => {
+      const currentPagination = {
+        pageIndex: page - 1,
+        pageSize: limit,
+      };
+      const nextPagination =
+        typeof updater === "function" ? updater(currentPagination) : updater;
+
+      if (nextPagination.pageSize !== currentPagination.pageSize) {
+        onLimitChange?.(nextPagination.pageSize);
+      } else if (nextPagination.pageIndex !== currentPagination.pageIndex) {
+        onPageChange?.(nextPagination.pageIndex + 1);
+      }
     },
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,

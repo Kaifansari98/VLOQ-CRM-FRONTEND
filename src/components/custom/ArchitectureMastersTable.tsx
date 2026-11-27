@@ -302,9 +302,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
     if (!form.name.trim()) {
       newErrors.name = "Name is required";
     }
-    if (!form.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       newErrors.email = "Enter a valid email address";
     }
 
@@ -408,7 +406,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
         {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="arch-email">Email</Label>
+        <Label htmlFor="arch-email">Email (optional)</Label>
         <Input
           id="arch-email"
           type="email"
@@ -438,12 +436,12 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
         {errors.mobile && errors.mobile !== " " && <p className="text-xs text-destructive">{errors.mobile}</p>}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="arch-alt-mobile">Alt. Mobile</Label>
+        <Label htmlFor="arch-alt-mobile">Alt. Mobile (optional)</Label>
         <PhoneInput
           id="arch-alt-mobile"
           value={form.alt_mobile}
           onChange={(val) => {
-            setForm((prev) => ({ ...prev, alt_mobile: val || "" }));
+            setForm((prev) => ({ ...prev, alt_mobile: val === "+91" ? "" : val || "" }));
             if (errors.alt_mobile) setErrors((prev) => ({ ...prev, alt_mobile: undefined }));
           }}
           defaultCountry="IN"
@@ -670,7 +668,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
           }
         }}
         title="Import Architects"
-        description="Upload a CSV or XLSX file containing Name, Email, Mobile, and Alt Contact columns."
+        description="Upload a CSV or XLSX file with Name and Mobile (or Contact). Email and Alt Contact are optional; you may leave them blank or omit their columns."
         size="smd"
       
       >

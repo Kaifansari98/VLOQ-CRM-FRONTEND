@@ -59,8 +59,11 @@ const targetUrl = useMemo(() => {
 
   let routeBase: string | undefined;
 
-  // Prefer the latest persisted lead status tag first.
-  if (leadStatus.lead_status_tag) {
+  // An instance may be ahead of the parent lead for large-scale vendors.
+  if (leadStatus.instance_stage_tag) {
+    routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.instance_stage_tag];
+  }
+  if (!routeBase && leadStatus.lead_status_tag) {
     routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
   }
 

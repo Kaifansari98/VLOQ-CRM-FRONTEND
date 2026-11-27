@@ -19,6 +19,7 @@ export default function UnderInstallationTabsWrapper({
   leadId,
   accountId,
   name,
+  instanceId,
 }: {
   leadId: number;
   accountId?: number;
@@ -51,11 +52,11 @@ export default function UnderInstallationTabsWrapper({
     preferredTabId === "misc" || Boolean(miscId) || Boolean(taskId);
 
   // 🔹 Fetch installation details
-  const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
+  const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId, instanceId);
   const installationStarted = !!underDetails?.actual_installation_start_date;
 
   // 🔥 Fetch usable handover readiness
-  const { data: readyData } = useUsableHandoverReady(vendorId, leadId);
+  const { data: readyData } = useUsableHandoverReady(vendorId, leadId, instanceId);
   const { data: smallOrderRequestsData } = useSmallOrderRequestsByLead(
     vendorId,
     leadId,
@@ -143,6 +144,7 @@ export default function UnderInstallationTabsWrapper({
           leadId={leadId}
           accountId={accountId}
           name={name}
+          instanceId={instanceId}
         />
       ),
     },

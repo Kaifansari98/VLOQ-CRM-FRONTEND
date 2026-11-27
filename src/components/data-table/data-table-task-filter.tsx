@@ -34,7 +34,30 @@ const TASK_TYPES = [
   "Production Ready",
   "Request Fast Production",
   "Site Readiness",
-  "Small order request"
+  "Small order request",
+  // Complaint tasks (complaints raised against a lead).
+  "Complaint Verification",
+  "Reopened Complaint Review",
+  "Complaint Information Follow-up",
+  "On-Hold Complaint Review",
+  "Complaint Visit Planning",
+  "Complaint Free Visit Approval",
+  "Complaint Visit Charge Follow-up",
+  "Complaint Visit Scheduling",
+  "Complaint Site Visit",
+  "Complaint Visit Cash Collection",
+  "Complaint Payment Verification",
+  "Complaint Inspection Review",
+  "Complaint Quotation Preparation",
+  "Complaint Quotation Approval",
+  "Complaint Quotation Client Follow-up",
+  "Complaint Repair Payment Collection",
+  "Complaint Resolution Payment Collection",
+  "Complaint Material Procurement",
+  "Complaint Resolution Start",
+  "Complaint Resolution Work",
+  "Complaint Client Confirmation",
+  "Complaint Closure Approval",
 ];
 
 /* ===========================

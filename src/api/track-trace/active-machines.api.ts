@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import type { MachineFabrication } from "@/types/track-trace";
 
 export interface ActiveMachine {
   id: number;
@@ -7,6 +8,7 @@ export interface ActiveMachine {
   machine_type_id: number | null;
   image_path: string | null;
   sequence_no: number | null;
+  fabrication?: MachineFabrication;
 }
 
 interface ActiveMachinesResponse {
@@ -24,3 +26,46 @@ export const getActiveMachinesByVendor = async (
 
   return data.data ?? [];
 };
+
+export interface PreviewMachineInfo {
+  id: number;
+  machine_code: string;
+  machine_name: string;
+  machine_type_id: number | null;
+  sequence_no: number | null;
+}
+
+export interface PreviewRowMapping {
+  rowIndex: number;
+  assignedMachineIds: number[];
+  assignedMachineCodes: string[];
+  machineAssignments: Record<string, boolean>;
+}
+
+export interface PreviewMachineMappingResponse {
+  success: boolean;
+  message: string;
+  data: {
+    machines: PreviewMachineInfo[];
+    rowMappings: PreviewRowMapping[];
+  };
+}
+
+export const previewCutlistMachineMapping = async (
+  vendorId: number,
+  items: Array<Record<string, any>>,
+  packingType?: string,
+  fabrication?: "WOODWORK" | "METALWORK",
+): Promise<{ machines: PreviewMachineInfo[]; rowMappings: PreviewRowMapping[] }> => {
+  const { data } = await apiClient.post<PreviewMachineMappingResponse>(
+    `/track-trace-project/onboard/${vendorId}/preview-machine-mapping`,
+    {
+      items,
+      packing_type: packingType,
+      fabrication,
+    },
+  );
+
+  return data.data ?? { machines: [], rowMappings: [] };
+};
+

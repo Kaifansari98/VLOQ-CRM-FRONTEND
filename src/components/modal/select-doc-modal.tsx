@@ -21,6 +21,8 @@ interface Props {
   activeProductTypeId?: number | null;
   activeInstanceIds?: number[];
   onSelectDocs?: (files: File[]) => void; // 👈 callback to booking modal
+  /** Names of documents already in use, highlighted as currently selected */
+  currentDocNames?: string[];
 }
 
 export interface DocItem {
@@ -93,6 +95,7 @@ const SelectDocumentModal: React.FC<Props> = ({
   activeProductTypeId,
   activeInstanceIds,
   onSelectDocs,
+  currentDocNames,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorCustomUserTypeMode = useAppSelector(
@@ -366,7 +369,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                               className={`flex w-full items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
                                 isSelected(doc)
                                   ? "border-emerald-400 bg-emerald-50/60"
-                                  : "border-border hover:bg-muted/40"
+                                  : currentDocNames?.includes(doc.doc_og_name)
+                                    ? "border-blue-400 bg-blue-50/40 dark:bg-blue-950/20"
+                                    : "border-border hover:bg-muted/40"
                               }`}
                             >
                               <div className="flex items-start gap-3">
@@ -382,6 +387,11 @@ const SelectDocumentModal: React.FC<Props> = ({
                                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                                       {doc.type}
                                     </span>
+                                    {currentDocNames?.includes(doc.doc_og_name) && (
+                                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                                        Currently selected
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-sm font-medium leading-5">
                                     {doc.doc_og_name}

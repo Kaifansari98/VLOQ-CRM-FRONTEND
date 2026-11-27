@@ -51,13 +51,21 @@ export default function AssignDesignerModal({
         | null
         | undefined,
   );
+  const currentUserType = useAppSelector(
+    (state) =>
+      state.auth.user?.user_type?.user_type ||
+      state.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: [
       "assignDesignerUsers",
       vendorId,
       data.franchiseId ?? null,
-      "leads.open_leads.details_of_lead.move_to_designing_stage",
+      "leads.designing_stage.designs.upload",
     ],
     queryFn: async () => {
       if (!vendorId) return [];
@@ -68,10 +76,11 @@ export default function AssignDesignerModal({
         vendorCustomUserTypeMode === true
           ? {
               assigneeUserType: "custom",
-              requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
+              requiredPrivilegeCode: "leads.designing_stage.designs.upload",
             }
           : {
               assigneeUserType: "designer",
+              requiredPrivilegeCode: "leads.designing_stage.designs.upload",
             },
       );
 
@@ -103,8 +112,20 @@ export default function AssignDesignerModal({
   }, [data.assignedDesigners, users]);
 
   const availableUsers = useMemo(
-    () => users.filter((u: any) => !assignedIds.has(u.id)),
-    [users, assignedIds],
+    () =>
+      users
+        .filter((u: any) => !assignedIds.has(u.id))
+        .filter((user: any) => {
+          const isUserSuperAdmin =
+            String(user.user_type?.user_type || "")
+              .trim()
+              .toLowerCase() === "super-admin";
+          if (isUserSuperAdmin) {
+            return isSuperAdmin;
+          }
+          return true;
+        }),
+    [users, assignedIds, isSuperAdmin],
   );
 
   const assignMutation = useMutation({

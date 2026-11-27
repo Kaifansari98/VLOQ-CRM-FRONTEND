@@ -23,8 +23,6 @@ export interface Item {
   lead: Lead;
   cut_list: CutList;
   actual_in_at_formatted: string;
-
-
 }
 export interface Operator {
   user_name: string;
@@ -34,6 +32,9 @@ export interface CutList {
   item_name: string;
   material_details: string;
   description: string;
+  top_drill?: string | null;
+  bottom_drill?: string | null;
+  is_drill?: string | null;
 }
 
 export interface Operator {
@@ -59,9 +60,7 @@ export interface Project {
   processed: string;
   sqft_pending: string;
   pending: string;
-  progress_sqft: string
-
-
+  progress_sqft: string;
 }
 
 export interface BottleneckData {
@@ -107,25 +106,28 @@ export type FilterOptions = {
   operator: string;
   status: string;
   dateRange:
-  | "today"
-  | "yesterday"
-  | "last7days"
-  | "thisMonth"
-  | "lastMonth"
-  | "custom";
+    | "today"
+    | "yesterday"
+    | "last7days"
+    | "thisMonth"
+    | "lastMonth"
+    | "custom";
   startDate?: string; // format: "YYYY-MM-DD", only used when dateRange === "custom"
-  endDate?: string;   // format: "YYYY-MM-DD", only used when dateRange === "custom"
+  endDate?: string; // format: "YYYY-MM-DD", only used when dateRange === "custom"
 };
+
+export type MachineFabrication = "WOODWORK" | "METALWORK";
 
 export type MachineStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED";
 export type MachineScanType = "IN" | "OUT" | "BOTH" | "PASS";
 
 export interface MachineData {
+  fabrication?: MachineFabrication;
   id: number;
   machine_name: string;
   machine_code: string;
   machine_type_id: number;
-  machine_type: string,
+  machine_type: string;
   status: MachineStatus;
   scan_type: MachineScanType;
   description: string;
@@ -133,12 +135,26 @@ export interface MachineData {
   factory_id?: number;
   sequence_no: number;
   target_per_hour: string;
+  purchased_at?: string | null;
   image_path: string;
   created_by: number;
   created_at: string;
   updated_at: string;
   updated_by: number;
-
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: number | null;
+  rules_count?: number;
+  active_rules_count?: number;
+  has_rules?: boolean;
+  has_active_rules?: boolean;
+  rules?: {
+    id: number;
+    status: string;
+    rule_name: string;
+    rule_code?: string;
+    priority?: number;
+  }[];
 }
 
 export interface GetMachinesByVendorResponse {
@@ -147,6 +163,7 @@ export interface GetMachinesByVendorResponse {
 }
 
 export interface CreateMachinePayload {
+  fabrication?: MachineFabrication;
   vendor_id?: number;
   machine_name: string;
   machine_code: string;
@@ -156,13 +173,16 @@ export interface CreateMachinePayload {
   description: string;
   factory_id?: number | null;
   sequence_no: number;
-  target_per_hour: number;
+  target_per_hour?: number;
+  // "yyyy-MM-dd"
+  purchased_at?: string | null;
   created_by?: number;
   machine_image: File;
   updated_by?: number;
 }
 
 export interface UpdateMachinePayload {
+  fabrication?: MachineFabrication;
   machine_name: string;
   machine_code: string;
   machine_type_id: number;
@@ -171,7 +191,9 @@ export interface UpdateMachinePayload {
   description: string;
   factory_id?: number | null;
   sequence_no: number;
-  target_per_hour: number;
+  target_per_hour?: number;
+  // "yyyy-MM-dd"; null clears it
+  purchased_at?: string | null;
   machine_image: File;
   updated_by: number;
 }
@@ -351,13 +373,19 @@ export type CreateTrackTraceProjectRequest = {
   is_multi_location?: boolean;
   box_info_fields?: ProjectBoxInfoField[];
   no_of_boxes?: number;
-remove_box_ids?: number[];
-
+  remove_box_ids?: number[];
+  created_by?: number;
+  instance_id?: number | null;
+  source_document_id?: number;
+  /** Let the backend name the project after the lead (Firstname-Lastname-LEADCODE[.index]). */
+  use_lead_project_name?: boolean;
+  fabrication?: "WOODWORK" | "METALWORK";
 };
 
 export interface CreateTrackTraceProjectResponse {
   success: boolean;
   project_id: number;
+  unique_project_id: string;
   excel_url: string;
   storage_key: string;
   message?: string;
@@ -379,21 +407,14 @@ export interface TrackTraceVendorConfig {
 }
 
 export enum PackingType {
-  DEFAULT =
-  "DEFAULT",
+  DEFAULT = "DEFAULT",
 
-  GROUPWISE =
-  "GROUPWISE",
+  GROUPWISE = "GROUPWISE",
 
-  CUSTOM_GROUP =
-  "CUSTOM_GROUP",
+  CUSTOM_GROUP = "CUSTOM_GROUP",
 }
 
-export type BoxInfoFieldType =
-  | "TEXT"
-  | "NUMBER"
-  | "DATE"
-  | "TEXTAREA";
+export type BoxInfoFieldType = "TEXT" | "NUMBER" | "DATE" | "TEXTAREA";
 
 export type ProjectBoxInfoField = {
   id?: number;
@@ -406,6 +427,7 @@ export type ProjectBoxInfoField = {
 
 export type ProjectLocationRow = {
   location_name: string;
+  contact_no?: string;
   quantities: Record<string, number>;
 };
 
@@ -537,4 +559,3 @@ export interface CreateRulePayload {
 export interface UpdateRulePayload extends Partial<CreateRulePayload> {
   updated_by?: number;
 }
-

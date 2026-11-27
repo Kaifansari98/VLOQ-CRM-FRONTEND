@@ -17,10 +17,14 @@ import {
 } from "@/hooks/useLeadsQueries";
 import {
   useProductionFiles,
+  useRequiredProductionMaterials,
   useUpdateSoValueReceivedStatus,
 } from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import WalkinLeadAnswers from "@/components/tabScreens/WalkinLeadAnswers";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,12 +89,19 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     return (user?.vendorMaster?.is_inventory_enabled ?? user?.vendor?.is_inventory_enabled) === true;
   });
   const showRequiredMaterials = handlesLargeScaleProjects && isInventoryEnabled;
+  const canViewRequiredProductionMaterials =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.required_production_materials.view",
+        )
+      : true;
   const productionFilesTitle = showRequiredMaterials ? "Required Production Materials" : "Production Files";
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -201,6 +212,15 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     leadId,
     scopedInstanceId,
   );
+  const {
+    data: requiredProductionMaterials = [],
+    isLoading: requiredProductionMaterialsLoading,
+  } = useRequiredProductionMaterials(
+    vendorId,
+    leadId,
+    scopedInstanceId,
+    showRequiredMaterials,
+  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -214,6 +234,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     orderLogin: "order-login",
     approvedDocs: "approved-docs",
     productionFiles: "production-files",
+    productionDocuments: "production-documents",
   };
 
   const activeTab =
@@ -256,9 +277,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       : true;
   const canViewProductionFiles =
     userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "production.order_login.production_files.view",
-        )
+      ? showRequiredMaterials
+        ? canViewRequiredProductionMaterials
+        : customPrivilegeCodes.includes(
+            "production.order_login.production_files.view",
+          )
       : true;
   const canAccessOrderLoginDetails =
     userType === "custom"
@@ -271,6 +294,15 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     materialIssueProductionFiles.length > 0;
   const isMaterialIssueOrderLoginDisabled =
     isMaterialIssueView && !hasMaterialIssueProductionFiles;
+  const hasOutsourcedMaterials = requiredProductionMaterials.some(
+    (material) => !!material.order_login_id,
+  );
+  const isOrderLoginAwaitingOutsourcedMaterials =
+    showRequiredMaterials &&
+    (requiredProductionMaterialsLoading || !hasOutsourcedMaterials);
+  const outsourcedMaterialsTooltip = requiredProductionMaterialsLoading
+    ? "Checking Required Production Materials"
+    : "Mark at least one row as Outsourced in Required Production Materials to enable Order Login.";
   const safeDefaultTab = isMaterialIssueView
     ? tabParam
       ? activeTab === "approved-docs"
@@ -278,9 +310,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         : activeTab
       : "production-files"
     : isOrderLoginLocked &&
-        (activeTab === "order-login" || activeTab === "production-files")
+        (activeTab === "order-login" || activeTab === "production-files" || activeTab === "production-documents")
       ? "approved-docs"
-      : activeTab;
+      : isOrderLoginAwaitingOutsourcedMaterials && activeTab === "order-login"
+        ? "production-files"
+        : activeTab;
   const resolvedDefaultTab =
     safeDefaultTab;
   const smallOrderRequestDocuments =
@@ -307,6 +341,29 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             ),
           },
         ]
+      : []),
+    ...(showRequiredMaterials
+      ? [{
+          id: "production-documents",
+          title: "Production Files",
+          color: "bg-zinc-800 hover:bg-zinc-900",
+          disabled: isOrderLoginLocked || !canViewProductionFiles,
+          disabledReason: !canViewProductionFiles
+            ? "You don’t have permission to access Production Files."
+            : lockedTabsTooltip,
+          cardContent: (
+            <ProductionFilesSection
+              documentsOnly
+              leadId={leadId}
+              accountId={accountId}
+              instanceId={scopedInstanceId}
+              readOnly={isMaterialIssueView}
+              orderLoginApprovalPending={isOrderLoginLocked}
+              orderLoginApprovalPendingTooltip={lockedTabsTooltip}
+              hideDeliveryDateBanner
+            />
+          ),
+        }]
       : []),
     {
       id: "production-files",
@@ -336,14 +393,18 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       disabled:
         isOrderLoginLocked ||
         !canAccessOrderLoginDetails ||
-        isMaterialIssueOrderLoginDisabled,
+        isMaterialIssueOrderLoginDisabled ||
+        isOrderLoginAwaitingOutsourcedMaterials,
       disabledReason: isMaterialIssueOrderLoginDisabled
         ? "Production File is required to perform Order Login."
         : !canAccessOrderLoginDetails
         ? "You don’t have permission to access Order Login."
+        : !isOrderLoginLocked && isOrderLoginAwaitingOutsourcedMaterials
+        ? outsourcedMaterialsTooltip
         : lockedTabsTooltip,
       cardContent: (
         <OrderLoginTab
+          hideSections={showRequiredMaterials}
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
@@ -515,6 +576,14 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           ) : null
         }
       />
+
+      {!isMaterialIssueView && (
+        <WalkinLeadAnswers
+          vendorId={vendorId}
+          leadId={leadId}
+          enabled={walkinQuestionsEnabled && isWalkinSource(leadResponse?.data?.lead?.source?.type ?? "")}
+        />
+      )}
 
       {!isMaterialIssueView && (
         <AlertDialog

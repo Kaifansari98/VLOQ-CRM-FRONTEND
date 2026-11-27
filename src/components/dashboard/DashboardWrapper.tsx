@@ -11,6 +11,8 @@ import FactoryDashboard from "./FactoryDashboard";
 import PreProdDashboard from "./PreProdDashboard";
 import BackendDashboard from "./BackendDashboard";
 import TechCheckDashboard from "./TechCheckDashboard";
+import EmployeeDashboard from "./EmployeeDashboard";
+import HrmsAttendanceDashboard from "./HrmsAttendanceDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -98,6 +100,27 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <PreProdDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "employee") {
+    return (
+      <FadeInProvider>
+        <EmployeeDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (
+    normalizedUserType === "hrms-admin" ||
+    normalizedUserType === "hrms admin" ||
+    normalizedUserType === "hrmsadmin" ||
+    normalizedUserType === "hrms_admin"
+  ) {
+    return (
+      <FadeInProvider>
+        <HrmsAttendanceDashboard />
       </FadeInProvider>
     );
   }

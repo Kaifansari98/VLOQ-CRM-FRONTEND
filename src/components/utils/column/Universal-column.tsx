@@ -364,8 +364,8 @@ export function getUniversalTableColumns(
             accessorKey: "status",
             filterFn: tableMultiValueFilter,
 
-            header: ({ column }) => (
-              <DataTableColumnHeader column={column} title="Stage" />
+            header: ({ column, table }) => (
+              <DataTableColumnHeader column={column} table={table} title="Stage" />
             ),
 
             cell: ({ row }) => {
@@ -716,8 +716,8 @@ export function getUniversalTableColumns(
     // 7) Sales Executive
     {
       accessorKey: "sales_executive",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sales Executive" />
+      header: ({ column, table }) => (
+        <DataTableColumnHeader column={column} table={table} title="Sales Executive" />
       ),
       cell: ({ row }) => (
         <span>{(row.getValue("sales_executive") as string) || "—"}</span>

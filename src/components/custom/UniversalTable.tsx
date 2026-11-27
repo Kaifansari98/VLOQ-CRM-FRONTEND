@@ -20,6 +20,14 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableMonthFilter } from "@/components/data-table/data-table-month-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { usePersistedColumnVisibility } from "@/hooks/usePersistedColumnVisibility";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -53,6 +61,8 @@ import {
 // -------------------------------------------------------
 
 export interface UniversalTableProps {
+  /** Also list complaint placeholder leads (<VendorCode>EX-n). Delivered Projects only. */
+  includeComplaintPlaceholders?: boolean;
   getRowId?: (row: LeadColumn) => string;
   onRowNavigate: (row: LeadColumn) => string;
   type: string;
@@ -492,6 +502,7 @@ export function UniversalTable({
   materialIssueReadyOnly = false,
   materialIssueCompletedOnly = false,
   defaultSelectFranchiseFromRedux = false,
+  includeComplaintPlaceholders = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -505,6 +516,7 @@ export function UniversalTable({
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
+  const assignedFranchiseId = useAppSelector((s) => s.auth.user?.franchise_id);
   const reduxModuledForB2b = useAppSelector(
     (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
   );
@@ -550,21 +562,43 @@ export function UniversalTable({
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
     normalizedUserType === "auditor";
-  const shouldIncludeFranchise =
-    normalizedUserType === "admin" ||
-    normalizedUserType === "super-admin" ||
-    normalizedUserType === "auditor" ||
-    normalizedUserType === "sales-executive" ||
-    normalizedUserType === "site-supervisor" ||
-    normalizedUserType === "head-site-supervisor";
   const normalizedType = String(type || "")
     .trim()
     .toLowerCase();
-  const canSeeMyOverallTabs = normalizedUserType === "sales-executive";
+  const isAdminOverallLeads = normalizedUserType === "admin" && normalizedType === "all";
+  const isHeadSiteSupervisor = normalizedUserType === "head-site-supervisor";
+  const isUnderInstallation = normalizedType === "type 15";
+  const shouldIncludeFranchise =
+    (normalizedUserType === "admin" ||
+      normalizedUserType === "super-admin" ||
+      normalizedUserType === "auditor" ||
+      normalizedUserType === "sales-executive" ||
+      normalizedUserType === "site-supervisor" ||
+      normalizedUserType === "head-site-supervisor") &&
+    !(isHeadSiteSupervisor && isUnderInstallation);
+  const isCaller =
+    [
+      "telecaller",
+      "telecaller-team-lead",
+      "caller",
+      "store-caller",
+    ].includes(normalizedUserType || "") ||
+    /^(telecaller|caller|store[-_\s]*caller)/i.test(normalizedUserType || "");
+
+  const canSeeMyOverallTabs =
+    normalizedUserType === "sales-executive" ||
+    (isOnlineLeadFeatureEnabled && isCaller);
   const hideOverallToggle =
     !canSeeMyOverallTabs ||
     (normalizedType === "type 8" && normalizedUserType === "sales-executive");
   const shouldShowLeadCodeFranchiseFilter = false;
+
+  const callerStores = useMemo(() => {
+    return (franchisesForB2b || []).filter((s: any) => {
+      const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+      return name !== "b2b";
+    });
+  }, [franchisesForB2b]);
 
   // -------------------- LOCAL UI STATE --------------------
 
@@ -695,14 +729,22 @@ export function UniversalTable({
   >(undefined);
 
   const [rowSelection, setRowSelection] = useState({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    architechName: false,
-    source: false,
-    createdAt: false,
-    altContact: false,
-    email: false,
-    designerRemark: false,
-  });
+  const universalStorageKey = useMemo(() => {
+    const rawKey = title || type || "leads";
+    return `universal_${rawKey.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+  }, [title, type]);
+
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    universalStorageKey,
+    {
+      architechName: false,
+      source: false,
+      createdAt: false,
+      altContact: false,
+      email: false,
+      designerRemark: false,
+    }
+  );
 
   // ✅ DETERMINE ACTIVE STATE BASED ON VIEW TYPE
   const activePagination =
@@ -725,7 +767,24 @@ export function UniversalTable({
     }
   };
 
+  const selectedStoreId =
+    activeFranchisesFilter.length > 0
+      ? String(activeFranchisesFilter[0])
+      : "ALL_STORES";
+
+  const handleStoreFilterChange = (val: string) => {
+    const filterVal = val === "ALL_STORES" ? [] : [Number(val)];
+    setMyFranchisesFilter(filterVal);
+    setOverallFranchisesFilter(filterVal);
+    if (effectiveViewType === "my") {
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
+
   const showFranchiseFilter = useMemo(() => {
+    if (isAdminOverallLeads) return false;
     if (ignoreFranchiseScope) return false;
     if (isHOUser) return true;
     const cleanRole = (userType || "")
@@ -741,7 +800,7 @@ export function UniversalTable({
       "site-supervisor",
     ];
     return allowedRoles.includes(cleanRole);
-  }, [ignoreFranchiseScope, isHOUser, userType]);
+  }, [ignoreFranchiseScope, isHOUser, userType, isAdminOverallLeads]);
 
   const servicingDateRange = useMemo(() => {
     if (!showServicingColumn || !pendingServicesOnly || !servicingMonthFilter) {
@@ -789,12 +848,16 @@ export function UniversalTable({
         : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : [];
 
+    const callerSelectedFranchiseId =
+      isCaller && myFranchisesFilter.length > 0 ? myFranchisesFilter[0] : undefined;
+
     return {
+      ...(includeComplaintPlaceholders ? { include_complaint_placeholders: true } : {}),
       userId: userId!,
-      franchise_id:
+      franchise_id: isAdminOverallLeads ? assignedFranchiseId ?? undefined :
         !ignoreFranchiseScope && shouldIncludeFranchise
           ? franchiseId!
-          : undefined,
+          : callerSelectedFranchiseId,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
@@ -831,14 +894,18 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises:
+      franchises: isAdminOverallLeads ? (assignedFranchiseId ? [assignedFranchiseId] : undefined) :
         !ignoreFranchiseScope && myFranchisesFilter.length > 0
           ? myFranchisesFilter
           : undefined,
     };
   }, [
+    includeComplaintPlaceholders,
     userId,
     userType,
+    isCaller,
+    isAdminOverallLeads,
+    assignedFranchiseId,
     shouldIncludeFranchise,
     ignoreFranchiseScope,
     type,
@@ -870,14 +937,18 @@ export function UniversalTable({
         ? [userId]
         : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
-    const overallUserId = isAdmin || allVendorLeads ? undefined : userId;
+    const overallUserId = isAdminOverallLeads ? userId : isAdmin || allVendorLeads ? undefined : userId;
+
+    const callerSelectedFranchiseId =
+      isCaller && overallFranchisesFilter.length > 0 ? overallFranchisesFilter[0] : undefined;
 
     return {
+      ...(includeComplaintPlaceholders ? { include_complaint_placeholders: true } : {}),
       userId: overallUserId,
-      franchise_id:
+      franchise_id: isAdminOverallLeads ? assignedFranchiseId ?? undefined :
         !ignoreFranchiseScope && shouldIncludeFranchise
           ? franchiseId!
-          : undefined,
+          : callerSelectedFranchiseId,
       tag: type,
       strict_status_tag: strictStatusTag || undefined,
       material_issue_ready_only: materialIssueReadyOnly || undefined,
@@ -919,15 +990,19 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises:
+      franchises: isAdminOverallLeads ? (assignedFranchiseId ? [assignedFranchiseId] : undefined) :
         !ignoreFranchiseScope && overallFranchisesFilter.length > 0
           ? overallFranchisesFilter
           : undefined,
     };
   }, [
+    includeComplaintPlaceholders,
     userId,
     userType,
     isAdmin,
+    isAdminOverallLeads,
+    assignedFranchiseId,
+    isCaller,
     allVendorLeads,
     shouldIncludeFranchise,
     ignoreFranchiseScope,
@@ -1307,11 +1382,20 @@ export function UniversalTable({
     const isType8 = normalizedType === "type 8";
     const isType9 = normalizedType === "type 9";
     const isType10 = normalizedType === "type 10";
+    const isLaterStage = /^type (1[1-7])$/.test(normalizedType);
+    const isLargeScaleLead = (lead: any) =>
+      handlesLargeScaleProjectsFromAuth ||
+      lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+      lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
     const primarySort = activeSorting[0];
     const shouldSortByCreatedAt = primarySort?.id === "createdAt";
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
     const filteredActiveData = activeData.filter((lead: any) => {
-      if (normalizedType === "type 1" && lead?.is_draft === true) {
+      if (
+        normalizedType === "type 1" &&
+        lead?.is_draft === true &&
+        lead?.draft_in_open_leads !== true
+      ) {
         return false;
       }
 
@@ -1345,7 +1429,7 @@ export function UniversalTable({
 
     let rows: LeadColumn[];
 
-    if (!isType8 && !isType9 && !isType10) {
+    if (!isType8 && !isType9 && !isType10 && !(isLaterStage && filteredActiveData.some(isLargeScaleLead))) {
       const isDesc = primarySort ? createdAtDirection === "desc" : true;
       const baseData = [...filteredActiveData].sort((a, b) => {
         if (normalizedType === "type 1" && isOnlineLeadFeatureEnabled) {
@@ -1402,11 +1486,7 @@ export function UniversalTable({
       const expanded: LeadColumn[] = [];
 
       filteredActiveData.forEach((lead) => {
-        const handlesLargeScaleProjects =
-          handlesLargeScaleProjectsFromAuth ||
-          (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects ===
-            true ||
-          (lead as any)?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+        const handlesLargeScaleProjects = isLargeScaleLead(lead);
 
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
           normalizedType,
@@ -1417,10 +1497,13 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (
-          handlesLargeScaleProjects &&
-          (!isType9 || materialIssueReadyOnly || materialIssueCompletedOnly)
-        ) {
+        if (isLaterStage && !handlesLargeScaleProjects) {
+          expanded.push(mapUniversalRow(lead, expanded.length, { rowKey: String(lead.id), type8StatusLoggedAt }));
+          return;
+        }
+
+        // Large-scale leads stay grouped only in Tech Check.
+        if (handlesLargeScaleProjects && isType8) {
           const structureTypes = Array.from(
             new Set(
               instances
@@ -1438,6 +1521,8 @@ export function UniversalTable({
           expanded.push(
             mapUniversalRow(lead, expanded.length, {
               rowKey: String(lead.id),
+              // Only a single-instance lead has an unambiguous instance to link to.
+              instanceId: instances.length === 1 ? instances[0]?.id : undefined,
               leadCodeSuffix: "",
               furnitureStructureOverride: structureTypes || undefined,
               type8StatusLoggedAt,
@@ -1447,7 +1532,18 @@ export function UniversalTable({
         }
 
         let instanceRows = instances;
-        if (isType8) {
+        if (isLaterStage) {
+          instanceRows = instances.filter((instance: any) => {
+            if (instance?.is_archived === true) return false;
+            const stageTag = instance?.stageStatus?.tag ?? lead?.statusType?.tag;
+            return !stageTag || stageTag.toLowerCase() === normalizedType;
+          });
+          if (!instanceRows.length) {
+            // Keep legacy leads without any instances accessible.
+            if (!instances.length) expanded.push(mapUniversalRow(lead, expanded.length, { rowKey: String(lead.id), type8StatusLoggedAt }));
+            return;
+          }
+        } else if (isType8) {
           instanceRows = instances.filter(
             (instance: any) => instance?.is_tech_check_completed !== true,
           );
@@ -1462,6 +1558,13 @@ export function UniversalTable({
             (instance: any) =>
               instance?.is_tech_check_completed === true &&
               instance?.is_order_login_completed === true,
+          );
+        }
+
+        if (handlesLargeScaleProjects && (isType9 || isType10)) {
+          instanceRows = instanceRows.filter((instance: any) =>
+            instance?.is_archived !== true &&
+            (!instance?.stageStatus?.tag || ["Type 8", "Type 9", "Type 10"].includes(instance.stageStatus.tag)),
           );
         }
 
@@ -1664,6 +1767,7 @@ export function UniversalTable({
       rowSelection,
     },
     meta: {
+      adminOverallFranchiseScope: isAdminOverallLeads,
       showFranchiseFilter,
       franchisesFilter: activeFranchisesFilter,
       setFranchisesFilter: setActiveFranchisesFilter,
@@ -1833,6 +1937,24 @@ export function UniversalTable({
               onChange={handleProductionStatusFilterChange}
             />
           )}
+          {isCaller && (
+            <Select
+              value={selectedStoreId}
+              onValueChange={handleStoreFilterChange}
+            >
+              <SelectTrigger className="h-8 w-[140px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                <SelectValue placeholder="All Stores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                {callerStores.map((s: any) => (
+                  <SelectItem key={s.id} value={s.id.toString()}>
+                    {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {/* <DataTableSortList table={table} />
           <DataTableFilterList table={table} /> */}
           <DataTableViewOptions table={table} />
@@ -1886,6 +2008,25 @@ export function UniversalTable({
               placeholder="Search..."
               className="h-8 w-64"
             />
+
+            {isCaller && (
+              <Select
+                value={selectedStoreId}
+                onValueChange={handleStoreFilterChange}
+              >
+                <SelectTrigger className="h-8 w-[160px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                  <SelectValue placeholder="All Stores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                  {callerStores.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {showServicingColumn && pendingServicesOnly ? (
               <DataTableMonthFilter

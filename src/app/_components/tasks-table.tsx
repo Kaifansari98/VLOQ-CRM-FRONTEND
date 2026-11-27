@@ -506,6 +506,13 @@ const MyTaskTable = () => {
         return;
       }
 
+      // Complaint tasks are worked on the complaint's details page.
+      if (row.complaintId) {
+        router.push(`/dashboard/client-complaints/details/${row.complaintId}`);
+        return;
+      }
+
+   
       if (
         row.leadStatus?.toLowerCase() === "completed" ||
         isCompletedTabActive
@@ -796,6 +803,7 @@ const MyTaskTable = () => {
       isFastProductionRequestTask:
         task.userLeadTask.task_type === "Request Fast Production",
       isOnlineLead: (task.leadMaster as any).isOnlineLead ?? false,
+      complaintId: task.userLeadTask.complaint_id ?? null,
     }));
 
     return prioritizeFastProductionTasks(rows).map((row, index) => ({

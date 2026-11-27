@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface FranchiseListItem {
+  shift_minutes?: number;
+  Department?: string;
   id: number;
   vendor_id: number;
   franchise_name: string;
@@ -13,6 +15,9 @@ export interface FranchiseListItem {
   contact_number: string | null;
   address: string | null;
   pincode: string | null;
+  /** The vendor's store city (city master). */
+  store_city_id?: number | null;
+  storeCity?: { name: string } | null;
   is_head_office: boolean;
   status: string;
   createdAt: string | null;
@@ -25,6 +30,7 @@ export interface FranchisesResponse {
 }
 
 export interface CreateFranchisePayload {
+  shift_minutes?: number;
   vendor_id: number;
   franchise_name: string;
   franchise_code?: string | null;
@@ -33,6 +39,26 @@ export interface CreateFranchisePayload {
   contact_person?: string | null;
   is_head_office: boolean;
   address?: string | null;
+  store_city_id?: number | null;
+}
+
+export type UpdateFranchisePayload = Partial<
+  Pick<
+    CreateFranchisePayload,
+    | "shift_minutes"
+    | "franchise_name"
+    | "franchise_code"
+    | "contact_number"
+    | "contact_email"
+    | "contact_person"
+    | "address"
+    | "store_city_id"
+  >
+> & { status?: "active" | "inactive" };
+
+export interface StoreCity {
+  id: number;
+  name: string;
 }
 
 // ─── API fn ──────────────────────────────────────────────────────────────────
@@ -69,5 +95,48 @@ export const useCreateFranchise = (vendorId: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franchises", "vendor", vendorId] });
     },
+  });
+};
+
+export const updateFranchise = async (id: number, payload: UpdateFranchisePayload) => {
+  const { data } = await apiClient.put(`/franchises/${id}`, payload);
+  return data;
+};
+
+export const useUpdateFranchise = (vendorId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: UpdateFranchisePayload & { id: number }) => updateFranchise(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franchises", "vendor", vendorId] });
+    },
+  });
+};
+
+/** The vendor's active cities from the city master (StoreCityMaster). */
+export const useStoreCities = (vendorId: number, enabled = true) =>
+  useQuery({
+    queryKey: ["franchises", "store-cities", vendorId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: StoreCity[] }>(`/franchises/vendor/${vendorId}/store-cities`);
+      return data.data;
+    },
+    enabled: enabled && !!vendorId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+/** Adds a city to the vendor's city master; an existing one with that name is reused. */
+export const useAddStoreCity = (vendorId: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data } = await apiClient.post<{ data: StoreCity & { created: boolean } }>(
+        `/franchises/vendor/${vendorId}/store-cities`,
+        { name },
+      );
+      return data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["franchises", "store-cities", vendorId] }),
   });
 };

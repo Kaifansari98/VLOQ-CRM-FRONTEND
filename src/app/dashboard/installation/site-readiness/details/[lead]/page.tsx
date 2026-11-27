@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -161,8 +165,13 @@ export default function ReadyToDispatchLeadDetails() {
     }
   }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
+  // Large-scale vendors complete Site Readiness (checklist + photos) per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const siteReadinessInstanceId = handlesLargeScaleProjects ? validInstanceId : null;
   const { data: readinessStatus, isLoading: checkingStatus } =
-    useCheckSiteReadinessCompletion(vendorId, leadIdNum);
+    useCheckSiteReadinessCompletion(vendorId, leadIdNum, siteReadinessInstanceId);
 
   const moveToDispatchMutation = useMoveLeadToDispatchPlanning();
 
@@ -222,10 +231,13 @@ export default function ReadyToDispatchLeadDetails() {
         vendorId: vendorId!,
         leadId: leadIdNum,
         updated_by: userId!,
+        instanceId: siteReadinessInstanceId,
       });
 
-      // Auto-complete any open or in_progress tasks for this lead
-      try {
+      // Auto-complete any open or in_progress tasks for this lead. Large-scale
+      // vendors move one instance; the backend completes that instance's Site
+      // Readiness task and other instances' tasks must stay open.
+      if (!siteReadinessInstanceId) try {
         const tasks = await getActiveLeadTasks(vendorId!, leadIdNum);
         const pendingTasks = (tasks as any[]).filter(
           (t) => t.status === "open" || t.status === "in_progress",
@@ -245,7 +257,9 @@ export default function ReadyToDispatchLeadDetails() {
       }
 
       toastManager.add({
-        title: "Lead moved to Dispatch Planning successfully!",
+        title: siteReadinessInstanceId
+          ? "Instance moved to Dispatch Planning successfully!"
+          : "Lead moved to Dispatch Planning successfully!",
         type: "success",
       });
       router.push("/dashboard/installation/dispatch-planning/");
@@ -661,6 +675,18 @@ export default function ReadyToDispatchLeadDetails() {
                 Documents
               </TabsTrigger>
             )}
+              {isClientTrackerEnabled && (
+                <TabsTrigger value="client-tracker">
+                  <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                  Client Tracker
+                </TabsTrigger>
+              )}
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
           </TabsList>
 
           <ScrollBar orientation="horizontal" />
@@ -717,6 +743,16 @@ export default function ReadyToDispatchLeadDetails() {
             />
           </TabsContent>
         )}
+        {isClientTrackerEnabled && (
+          <TabsContent value="client-tracker">
+            <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}
@@ -762,10 +798,15 @@ export default function ReadyToDispatchLeadDetails() {
       <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move Lead to Dispatch Planning?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {siteReadinessInstanceId
+                ? "Move Instance to Dispatch Planning?"
+                : "Move Lead to Dispatch Planning?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to move this lead to the Dispatch Planning
-              stage? This action will update the lead’s workflow stage.
+              {siteReadinessInstanceId
+                ? "Are you sure you want to move this instance to the Dispatch Planning stage? Only this instance’s workflow stage will be updated; the lead’s other instances stay where they are."
+                : "Are you sure you want to move this lead to the Dispatch Planning stage? This action will update the lead’s workflow stage."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

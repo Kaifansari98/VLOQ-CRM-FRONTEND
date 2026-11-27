@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -749,6 +753,18 @@ export default function FinalMeasurementLeadDetails() {
                 Documents
               </TabsTrigger>
             )}
+              {isClientTrackerEnabled && (
+                <TabsTrigger value="client-tracker">
+                  <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                  Client Tracker
+                </TabsTrigger>
+              )}
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
           </TabsList>
 
           <ScrollBar orientation="horizontal" />
@@ -792,6 +808,16 @@ export default function FinalMeasurementLeadDetails() {
               vendorId={vendorId ?? 0}
               upToStage="ism"
             />
+          </TabsContent>
+        )}
+        {isClientTrackerEnabled && (
+          <TabsContent value="client-tracker">
+            <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
           </TabsContent>
         )}
       </Tabs>

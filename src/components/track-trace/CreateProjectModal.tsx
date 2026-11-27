@@ -251,7 +251,7 @@ const isCrmEnabled = !!vendorConfig?.is_crm_enabled;
   const handleDownloadTemplate = () => {
     try {
       const link = document.createElement("a");
-      link.href = "/track-trace-template.xlsx";
+      link.href = `/track-trace-template.xlsx?v=${Date.now()}`;
       link.download = "TrackTrace_Project_Template.xlsx";
       document.body.appendChild(link);
       link.click();

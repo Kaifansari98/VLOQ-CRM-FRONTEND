@@ -2,10 +2,12 @@ import { apiClient } from "@/lib/apiClient";
 import { useQuery } from "@tanstack/react-query";
 
 export interface FranchiseSummary {
+  shift_minutes?: number;
   id: number;
   vendor_id: number;
   franchise_name: string;
   franchise_code?: string | null;
+  Department?: "BRANCH" | "FRANCHISE" | "FACTORY" | string | null;
   is_head_office?: boolean;
   moduled_for_b2b?: boolean;
   status?: string | null;
@@ -48,6 +50,34 @@ export const useHeadSiteSupervisorFranchiseMapping = (
     queryKey: ["head-site-supervisor-mapping", vendorId, franchiseId],
     queryFn: () =>
       fetchHeadSiteSupervisorFranchiseMapping(vendorId!, franchiseId!),
+    enabled: !!vendorId && !!franchiseId && enabled,
+  });
+};
+
+export interface SiteSupervisorMappingOption {
+  id: number;
+  user_name: string;
+  user_contact?: string | null;
+}
+
+export const fetchSiteSupervisorFranchiseMapping = async (
+  vendorId: number,
+  franchiseId: number
+) => {
+  const { data } = await apiClient.get(`/franchises/site-supervisor-mapping`, {
+    params: { vendor_id: vendorId, franchise_id: franchiseId },
+  });
+  return (data?.data ?? []) as SiteSupervisorMappingOption[];
+};
+
+export const useSiteSupervisorFranchiseMapping = (
+  vendorId?: number,
+  franchiseId?: number,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ["site-supervisor-mapping", vendorId, franchiseId],
+    queryFn: () => fetchSiteSupervisorFranchiseMapping(vendorId!, franchiseId!),
     enabled: !!vendorId && !!franchiseId && enabled,
   });
 };

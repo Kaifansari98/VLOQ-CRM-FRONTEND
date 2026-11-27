@@ -93,6 +93,7 @@ import {
 import { formatBlockedAt } from "@/lib/utils";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useCheckIsmUploaded } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import { createCadbidCustomerWithToast } from "@/hooks/useCadbid";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -185,6 +186,8 @@ export default function SiteMeasurementLead() {
           queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
           setOpenMoveToDesigning(false);
           router.push("/dashboard/leads/designing-stage");
+
+          createCadbidCustomerWithToast(leadIdNum);
         },
         onError: (err) => {
           toastManager.add({

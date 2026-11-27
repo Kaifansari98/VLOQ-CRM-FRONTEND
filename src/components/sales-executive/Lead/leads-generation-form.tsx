@@ -72,6 +72,9 @@ import {
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
 import { getErrorMessage } from "@/lib/utils";
 import { FileUploadField } from "@/components/custom/file-upload";
+import WalkinLeadQuestions from "./walkin-lead-questions";
+import { useWalkinLeadQuestions, useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
+import { isWalkinSource } from "@/lib/walkin-lead-questions";
 
 const priorityOptions = [
   { id: 1, label: "High", value: "High" },
@@ -102,11 +105,14 @@ const renameLeadSitePhotoFiles = ({
   clientName,
   targetLabel,
   uploadDate,
+  prefix = "CSP",
 }: {
   files: File[];
   clientName: string;
   targetLabel: string;
   uploadDate: string;
+  /** CSP = Current Site Photos, CSD = Current Site Dimension */
+  prefix?: "CSP" | "CSD";
 }) => {
   const safeClientName = sanitizeFileSegment(clientName || "Client");
   const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
@@ -115,7 +121,7 @@ const renameLeadSitePhotoFiles = ({
     (file, index) =>
       new File(
         [file],
-        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        `${prefix}${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
           file.name,
         )}`,
         {
@@ -311,12 +317,16 @@ const draftFormSchema = (
 interface LeadsGenerationFormProps {
   onClose: () => void;
   mode?: "standard" | "lead-pool";
+  draftInOpenLeads?: boolean;
 }
 export default function LeadsGenerationForm({
   onClose,
   mode = "standard",
+  draftInOpenLeads = false,
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
+  // Large-scale vendors: Current Site Dimension documents (named CSD like CSP).
+  const [siteDimensionFiles, setSiteDimensionFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);
   const vendorCustomUserTypeMode = useAppSelector(
@@ -637,6 +647,16 @@ export default function LeadsGenerationForm({
   }, [sourceTypes?.data, form, handlesLargeScaleProjects, mode]);
 
   const selectedProductTypes = form.watch("product_types");
+  const selectedSource = sourceTypes?.data?.find(
+    (source: { id: number; type: string }) => String(source.id) === selectedSourceId,
+  );
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
+  const walkinQuestions = useWalkinLeadQuestions({
+    vendorId,
+    sourceId: selectedSourceId ? Number(selectedSourceId) : undefined,
+    productTypeIds: (selectedProductTypes ?? []).map(Number),
+    enabled: walkinQuestionsEnabled && mode === "standard" && requiresFurnitureSelection && isWalkinSource(selectedSource?.type ?? ""),
+  });
   const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =
     useProductStructureTypes();
@@ -874,10 +894,11 @@ export default function LeadsGenerationForm({
       vendorCustomUserTypeMode === true
         ? {
             assigneeUserType: "custom",
-            requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
+            requiredPrivilegeCode: "leads.designing_stage.designs.upload",
           }
         : {
           assigneeUserType: "designer",
+          requiredPrivilegeCode: "leads.designing_stage.designs.upload",
         },
     );
   const designersList = Array.isArray(designerUsers?.data)
@@ -914,9 +935,11 @@ export default function LeadsGenerationForm({
     mutationFn: ({
       payload,
       files,
+      siteDimensionFiles = [],
     }: {
       payload: any;
       files: File[];
+      siteDimensionFiles?: File[];
     }) => {
       if (mode === "lead-pool") {
         const walkInPayload = {
@@ -942,7 +965,7 @@ export default function LeadsGenerationForm({
         };
         return createWalkInLead(walkInPayload);
       }
-      return createLead(payload, files);
+      return createLead(payload, files, undefined, siteDimensionFiles);
     },
     onSuccess: async (data: any) => {
       if (mode === "lead-pool") {
@@ -950,10 +973,17 @@ export default function LeadsGenerationForm({
         await invalidateLeadTableQueries();
         form.reset();
         setFiles([]);
+      setSiteDimensionFiles([]);
         onClose();
-        router.push("/dashboard/online-leads");
         if (typeof window !== "undefined") {
-          window.location.reload();
+          if (window.location.pathname.includes("/dashboard/lead-pool")) {
+            window.location.reload();
+          } else if (window.location.pathname.includes("/dashboard/online-leads")) {
+            window.location.reload();
+          } else {
+            router.push("/dashboard/lead-pool");
+            window.location.reload();
+          }
         }
         return;
       }
@@ -980,18 +1010,29 @@ export default function LeadsGenerationForm({
       await invalidateLeadTableQueries();
       form.reset();
       setFiles([]);
+      setSiteDimensionFiles([]);
       onClose();
       router.push("/dashboard/leads/leadstable");
     },
     onError: (error: any) => {
       console.error("Form submission error:", error);
+      if (error?.response?.status === 409 && walkinQuestions.enabled && getErrorMessage(error).toLowerCase().includes("questionnaire")) {
+        walkinQuestions.refreshAfterConflict();
+      }
       toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
 
   const saveDraftMutation = useMutation({
-    mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
-      createLead(payload, files),
+    mutationFn: ({
+      payload,
+      files,
+      siteDimensionFiles = [],
+    }: {
+      payload: any;
+      files: File[];
+      siteDimensionFiles?: File[];
+    }) => createLead(payload, files, undefined, siteDimensionFiles),
     onSuccess: async (data: any) => {
       const selectedDesignerId = form.getValues("designer_id");
       const createdLead = data?.data?.lead || data?.data || data;
@@ -1019,15 +1060,21 @@ export default function LeadsGenerationForm({
       });
       form.reset();
       setFiles([]);
+      setSiteDimensionFiles([]);
       onClose();
       router.push(
-        isOnlineLeadFeatureEnabled
-          ? "/dashboard/leads/online-lead"
-          : "/dashboard/leads/draft-lead"
+        draftInOpenLeads
+          ? "/dashboard/leads/leadstable?tab=open"
+          : isOnlineLeadFeatureEnabled
+            ? "/dashboard/leads/online-lead"
+            : "/dashboard/leads/draft-lead"
       );
     },
     onError: (error: any) => {
       console.error("Draft save error:", error);
+      if (error?.response?.status === 409 && walkinQuestions.enabled && getErrorMessage(error).toLowerCase().includes("questionnaire")) {
+        walkinQuestions.refreshAfterConflict();
+      }
       toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
@@ -1220,7 +1267,39 @@ export default function LeadsGenerationForm({
     structureQuantityItems,
   ]);
 
+  // Current Site Dimension files follow the Site Photos naming, with CSD for CSP.
+  const buildRenamedSiteDimensionFiles = useCallback(() => {
+    if (!handlesLargeScaleProjects || isB2b) return [];
+    if (!(isCustomVendorFlow || isCustomDocNomenclatureEnabled)) {
+      return siteDimensionFiles;
+    }
+    const clientName = `${form.getValues("firstname") || ""} ${form.getValues("lastname") || ""
+      }`.trim();
+    const furnitureTypeName =
+      productTypes?.data?.find(
+        (type: any) => String(type.id) === selectedProductTypes?.[0],
+      )?.type || "Furniture Type";
+    return renameLeadSitePhotoFiles({
+      files: siteDimensionFiles,
+      clientName,
+      targetLabel: furnitureTypeName,
+      uploadDate: formatFileDate(new Date()),
+      prefix: "CSD",
+    });
+  }, [
+    form,
+    handlesLargeScaleProjects,
+    isB2b,
+    isCustomDocNomenclatureEnabled,
+    isCustomVendorFlow,
+    productTypes?.data,
+    selectedProductTypes,
+    siteDimensionFiles,
+  ]);
+
   function onSubmit(values: FormValues) {
+    const walkinSubmission = walkinQuestions.prepare();
+    if (!walkinSubmission.ok) return;
     if (similarLeadWarning) {
       toastManager.add({ title: similarLeadErrorMessage, type: "error" });
       return;
@@ -1249,6 +1328,7 @@ export default function LeadsGenerationForm({
     const altContactNo = values.alt_contact_no?.replace(/\D/g, "") || undefined;
 
     const payload = {
+      walkin_answers: walkinSubmission.groups,
       firstname: values.firstname,
       lastname: values.lastname,
       email: values.email,
@@ -1307,14 +1387,16 @@ export default function LeadsGenerationForm({
     };
 
     // ── Pre-flight validation ──────────────────────────────────────────────
-    if (files.length > 40) {
+    // Site Photos and Current Site Dimension upload together (40 files total).
+    const allUploadFiles = [...files, ...siteDimensionFiles];
+    if (allUploadFiles.length > 40) {
       toastManager.add({
         title: "Maximum 40 files allowed. Please remove some files.",
         type: "error",
       });
       return;
     }
-    const totalSizeBytes = files.reduce((sum, f) => sum + f.size, 0);
+    const totalSizeBytes = allUploadFiles.reduce((sum, f) => sum + f.size, 0);
     const MAX_TOTAL_MB = 400;
     if (totalSizeBytes > MAX_TOTAL_MB * 1024 * 1024) {
       toastManager.add({
@@ -1325,7 +1407,11 @@ export default function LeadsGenerationForm({
     }
 
     createLeadMutation.mutate(
-      { payload, files: buildRenamedSitePhotoFiles() },
+      {
+        payload,
+        files: buildRenamedSitePhotoFiles(),
+        siteDimensionFiles: buildRenamedSiteDimensionFiles(),
+      },
       {
         onSuccess: async () => {
           await invalidateLeadTableQueries();
@@ -1336,6 +1422,8 @@ export default function LeadsGenerationForm({
   }
 
   async function handleSaveAsDraft() {
+    const walkinSubmission = walkinQuestions.prepare(true);
+    if (!walkinSubmission.ok) return;
     // Temporarily switch to draft schema for validation
     const draftSchema = draftFormSchema(userType, isB2b, referenceSourceIds);
     const values = form.getValues();
@@ -1426,10 +1514,16 @@ export default function LeadsGenerationForm({
           assign_to: createdBy,
           assigned_by: createdBy,
         }),
+      walkin_answers: walkinSubmission.groups,
       is_draft: true,
+      draft_in_open_leads: draftInOpenLeads,
     };
 
-    saveDraftMutation.mutate({ payload, files: buildRenamedSitePhotoFiles() });
+    saveDraftMutation.mutate({
+      payload,
+      files: buildRenamedSitePhotoFiles(),
+      siteDimensionFiles: buildRenamedSiteDimensionFiles(),
+    });
   }
 
   return (
@@ -2204,6 +2298,11 @@ export default function LeadsGenerationForm({
           </>
         )}
 
+        <WalkinLeadQuestions
+          model={walkinQuestions}
+          disabled={createLeadMutation.isPending || saveDraftMutation.isPending}
+        />
+
         {!isB2b && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
             <FormField
@@ -2420,6 +2519,24 @@ export default function LeadsGenerationForm({
           />
         )}
 
+        {handlesLargeScaleProjects && !isB2b && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium leading-none">
+              Current Site Dimension
+            </p>
+            <FileUploadField
+              value={siteDimensionFiles}
+              onChange={setSiteDimensionFiles}
+              multiple={true}
+              maxFiles={40}
+              maxSizeMB={400}
+            />
+            <p className="text-xs text-muted-foreground">
+              Upload site dimension drawings or documents.
+            </p>
+          </div>
+        )}
+
         <AlertDialog
           open={duplicatePrompt.open}
           onOpenChange={(open) => {
@@ -2469,7 +2586,7 @@ export default function LeadsGenerationForm({
                   type="button"
                   variant="secondary"
                   className="text-sm"
-                  disabled={saveDraftMutation.isPending}
+                  disabled={saveDraftMutation.isPending || createLeadMutation.isPending || walkinQuestions.isUploading || walkinQuestions.isLoading}
                 >
                   {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
                 </Button>
@@ -2504,6 +2621,9 @@ export default function LeadsGenerationForm({
             className="text-sm"
             disabled={
               createLeadMutation.isPending ||
+              saveDraftMutation.isPending ||
+              walkinQuestions.isUploading ||
+              walkinQuestions.isLoading ||
               checkSimilarLeadMutation.isPending ||
               Boolean(similarLeadWarning)
             }

@@ -23,12 +23,20 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/store";
 import {
   Search,
   X,
   Plus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -61,6 +69,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { RaisePurchaseIntentModal } from "@/components/inventory/RaisePurchaseIntentModal";
 
 type StatusUi = {
   label: string;
@@ -72,47 +81,47 @@ type StatusUi = {
 const STATUS_CFG: Record<string, StatusUi> = {
   Draft: {
     label: "Draft",
-    color: "bg-slate-100 text-slate-700 border-slate-200",
+    color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700",
     soft: "bg-slate-50 text-slate-700",
     icon: Pencil,
   },
   PendingApproval: {
     label: "Pending Approval",
-    color: "bg-amber-100 text-amber-700 border-amber-200",
+    color: "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60",
     soft: "bg-amber-50 text-amber-700",
     icon: Clock,
   },
   Approved: {
     label: "Approved",
-    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60",
     soft: "bg-emerald-50 text-emerald-700",
     icon: CheckCircle2,
   },
   Rejected: {
     label: "Rejected",
-    color: "bg-red-100 text-red-700 border-red-200",
+    color: "bg-red-50 text-red-700 border-red-200/80 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/60",
     soft: "bg-red-50 text-red-700",
     icon: XCircle,
   },
   ConvertedToPO: {
     label: "Converted to PO",
-    color: "bg-blue-100 text-blue-700 border-blue-200",
-    soft: "bg-blue-50 text-blue-700",
+    color: "bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-800/60 dark:text-zinc-200 dark:border-zinc-700",
+    soft: "bg-zinc-50 text-zinc-800",
     icon: ShoppingCart,
   },
   Cancelled: {
     label: "Cancelled",
-    color: "bg-gray-100 text-gray-600 border-gray-200",
-    soft: "bg-gray-50 text-gray-600",
+    color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/60 dark:text-gray-300 dark:border-gray-700",
+    soft: "bg-gray-50 text-gray-700",
     icon: X,
   },
 };
 
 const PRIORITY_CFG: Record<PIPriority, string> = {
-  Low: "bg-slate-100 text-slate-700",
-  Medium: "bg-blue-100 text-blue-700",
-  High: "bg-amber-100 text-amber-700",
-  Urgent: "bg-red-100 text-red-700",
+  Low: "bg-transparent text-muted-foreground border border-border/70",
+  Medium: "bg-transparent text-foreground border border-border",
+  High: "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold",
+  Urgent: "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold",
 };
 
 const ALL_STATUSES = Object.keys(STATUS_CFG) as PIStatus[];
@@ -207,11 +216,11 @@ function StatusBadge({ status }: { status: PIStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
         cfg.color
       )}
     >
-      <Icon size={12} />
+      <Icon size={12} className="shrink-0" />
       {cfg.label}
     </span>
   );
@@ -239,25 +248,25 @@ function ApprovalModal({
       onClick={onClose}
     >
       <div
-        className="flex w-full max-w-md flex-col gap-5 rounded-3xl border bg-background p-6 shadow-2xl"
+        className="flex w-full max-w-md flex-col gap-4 rounded-lg border bg-background p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              "rounded-2xl p-3",
+              "rounded-md p-2.5",
               isReject ? "bg-red-100" : "bg-emerald-100"
             )}
           >
             {isReject ? (
-              <XCircle size={22} className="text-red-600" />
+              <XCircle size={20} className="text-red-600" />
             ) : (
-              <CheckCircle2 size={22} className="text-emerald-600" />
+              <CheckCircle2 size={20} className="text-emerald-600" />
             )}
           </div>
 
           <div>
-            <h3 className="text-base font-black">
+            <h3 className="text-base font-bold">
               {isReject ? "Reject" : "Approve"} Purchase Enquiry
             </h3>
             <p className="text-xs text-muted-foreground">{intentNo}</p>
@@ -265,7 +274,7 @@ function ApprovalModal({
         </div>
 
         <div>
-          <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
+          <label className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             {isReject ? "Reason for Rejection *" : "Remarks"}
           </label>
 
@@ -275,12 +284,12 @@ function ApprovalModal({
             onChange={(e) => setRemarks(e.target.value)}
             placeholder={isReject ? "Provide a reason..." : "Add optional remarks..."}
             rows={4}
-            className="mt-1 w-full resize-none rounded-2xl border bg-muted/30 px-3 py-2 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-indigo-300"
+            className="mt-1 w-full resize-none rounded-md border bg-muted/30 px-3 py-2 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-foreground/20"
           />
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={loading} className="rounded-md">
             Cancel
           </Button>
 
@@ -289,7 +298,7 @@ function ApprovalModal({
             disabled={loading || (isReject && !remarks.trim())}
             onClick={() => onConfirm(remarks)}
             className={cn(
-              "gap-1.5",
+              "gap-1.5 rounded-md",
               isReject
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-emerald-600 hover:bg-emerald-700"
@@ -322,10 +331,34 @@ function SummaryCard({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-2xl border bg-muted/30 p-4", className)}>
-      <Icon size={17} className="mb-3 text-indigo-500" />
-      <p className="text-[10px] font-black uppercase text-muted-foreground">{label}</p>
-      <div className="mt-1 text-base font-black">{value}</div>
+    <div className={cn("rounded-md border bg-muted/30 p-3", className)}>
+      <Icon size={16} className="mb-2 text-muted-foreground" />
+      <p className="text-[10px] font-bold uppercase text-muted-foreground">{label}</p>
+      <div className="mt-1 text-base font-bold">{value}</div>
+    </div>
+  );
+}
+
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border bg-background p-5 shadow-xs">
+      <div className="flex items-center justify-between">
+        <Icon size={18} className="text-muted-foreground" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <p className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+        {value}
+      </p>
     </div>
   );
 }
@@ -394,8 +427,8 @@ function IntentDetailPanel({
         <div className="shrink-0 border-b bg-background px-5 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950">
-                <ReceiptText size={20} />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/50 text-foreground">
+                <ReceiptText size={18} />
               </div>
 
               <div className="min-w-0">
@@ -420,7 +453,7 @@ function IntentDetailPanel({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 gap-1.5 rounded-xl text-xs"
+                    className="h-8 gap-1.5 rounded-md text-xs"
                     onClick={() =>
                       router.push(`/dashboard/inventory/purchase-intents/${intentId}/edit`)
                     }
@@ -431,7 +464,7 @@ function IntentDetailPanel({
 
                   <Button
                     size="sm"
-                    className="h-9 gap-1.5 rounded-xl bg-indigo-600 text-xs hover:bg-indigo-700"
+                    className="h-8 gap-1.5 rounded-md bg-foreground text-background text-xs hover:bg-foreground/90 font-medium"
                     onClick={() => {
                       onClose();
                       onConvert(data as unknown as PISummary);
@@ -447,7 +480,7 @@ function IntentDetailPanel({
                 <>
                   <Button
                     size="sm"
-                    className="h-9 gap-1.5 rounded-xl bg-emerald-600 text-xs hover:bg-emerald-700"
+                    className="h-8 gap-1.5 rounded-md bg-emerald-600 text-xs hover:bg-emerald-700"
                     onClick={() => setApproval({ action: "Approved" })}
                   >
                     <CheckCircle2 size={13} />
@@ -457,7 +490,7 @@ function IntentDetailPanel({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 gap-1.5 rounded-xl border-red-200 text-xs text-red-600 hover:bg-red-50"
+                    className="h-8 gap-1.5 rounded-md border-red-200 text-xs text-red-600 hover:bg-red-50"
                     onClick={() => setApproval({ action: "Rejected" })}
                   >
                     <XCircle size={13} />
@@ -470,7 +503,7 @@ function IntentDetailPanel({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 gap-1.5 rounded-xl text-xs"
+                  className="h-8 gap-1.5 rounded-md text-xs"
                   onClick={() => handleStatusAction("Draft" as PIStatus, "Re-opened for revision")}
                 >
                   <RefreshCw size={13} />
@@ -481,9 +514,9 @@ function IntentDetailPanel({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <X size={19} />
+                <X size={18} />
               </button>
             </div>
           </div>
@@ -509,33 +542,31 @@ function IntentDetailPanel({
           ) : (
             <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
               <section className="space-y-5">
-                <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
-                  <div className="relative p-5">
-                    <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-indigo-500/10" />
-
+                <div className="overflow-hidden rounded-md border bg-background shadow-sm">
+                  <div className="relative p-4">
                     <div className="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div>
-                        <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-                          <Sparkles size={13} className="text-indigo-500" />
+                        <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                          <Sparkles size={12} className="text-foreground" />
                           Purchase Enquiry Workspace
                         </div>
 
-                        <h2 className="text-2xl font-black tracking-tight">
+                        <h2 className="text-xl font-bold tracking-tight">
                           {data.intent_no}
                         </h2>
 
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {data.category?.category_name ?? "—"} •{" "}
                           {financials.productCount} products •{" "}
                           {financials.supplierCount} supplier quotations
                         </p>
                       </div>
 
-                      <div className="rounded-3xl border bg-indigo-50/70 p-4 text-right dark:bg-indigo-950/30">
-                        <p className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300">
+                      <div className="rounded-md border bg-muted/40 p-3 text-right">
+                        <p className="text-[10px] font-bold uppercase text-muted-foreground">
                           Grand Total
                         </p>
-                        <p className="mt-1 text-2xl font-black text-indigo-700 dark:text-indigo-300">
+                        <p className="mt-0.5 text-xl font-bold text-foreground">
                           {fmtMoney(financials.grandTotal)}
                         </p>
                       </div>
@@ -563,22 +594,22 @@ function IntentDetailPanel({
                 </div>
 
                 {data.rejection_reason && (
-                  <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-red-700">
-                    <p className="mb-1 flex items-center gap-2 text-xs font-black uppercase">
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700">
+                    <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase">
                       <XCircle size={14} />
                       Rejection Reason
                     </p>
-                    <p className="text-sm">{data.rejection_reason}</p>
+                    <p className="text-xs">{data.rejection_reason}</p>
                   </div>
                 )}
 
                 {data.remarks && (
-                  <div className="rounded-3xl border bg-background p-4 shadow-sm">
-                    <p className="mb-1 flex items-center gap-2 text-xs font-black uppercase text-muted-foreground">
+                  <div className="rounded-md border bg-background p-3 shadow-sm">
+                    <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                       <MessageSquare size={14} />
                       Overall Remarks
                     </p>
-                    <p className="text-sm">{data.remarks}</p>
+                    <p className="text-xs">{data.remarks}</p>
                   </div>
                 )}
 
@@ -612,17 +643,17 @@ function IntentDetailPanel({
                       return (
                         <div
                           key={item.id}
-                          className="overflow-hidden rounded-[28px] border bg-background shadow-sm"
+                          className="overflow-hidden rounded-md border bg-background shadow-sm"
                         >
-                          <div className="border-b bg-muted/20 p-4">
+                          <div className="border-b bg-muted/20 p-3">
                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                               <div className="flex min-w-0 gap-3">
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950">
-                                  <Package size={19} />
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/50 text-foreground">
+                                  <Package size={17} />
                                 </div>
 
                                 <div className="min-w-0">
-                                  <p className="truncate text-sm font-black">
+                                  <p className="truncate text-sm font-bold">
                                     {item.product?.product_name ?? "—"}
                                   </p>
 
@@ -631,12 +662,12 @@ function IntentDetailPanel({
                                       <span>{item.product.article_code}</span>
                                     )}
                                     {item.uom && (
-                                      <span className="rounded-full bg-muted px-2 py-0.5">
+                                      <span className="rounded-md bg-muted px-1.5 py-0.5">
                                         UOM: {item.uom}
                                       </span>
                                     )}
                                     {item.product?.hsn_code && (
-                                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+                                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">
                                         HSN {item.product.hsn_code}
                                       </span>
                                     )}
@@ -651,25 +682,25 @@ function IntentDetailPanel({
                               </div>
 
                               <div className="grid grid-cols-3 gap-2 text-right">
-                                <div className="rounded-2xl bg-muted/40 px-3 py-2">
-                                  <p className="text-[9px] font-black uppercase text-muted-foreground">
+                                <div className="rounded-md bg-muted/40 px-2.5 py-1.5">
+                                  <p className="text-[9px] font-bold uppercase text-muted-foreground">
                                     Base
                                   </p>
                                   <p className="text-xs font-bold">{fmtMoney(itemBase)}</p>
                                 </div>
 
-                                <div className="rounded-2xl bg-amber-50 px-3 py-2 text-amber-700 dark:bg-amber-950/30">
-                                  <p className="text-[9px] font-black uppercase">
+                                <div className="rounded-md bg-amber-50 px-2.5 py-1.5 text-amber-700 dark:bg-amber-950/30">
+                                  <p className="text-[9px] font-bold uppercase">
                                     Tax
                                   </p>
                                   <p className="text-xs font-bold">{fmtMoney(itemTax)}</p>
                                 </div>
 
-                                <div className="rounded-2xl bg-indigo-50 px-3 py-2 text-indigo-700 dark:bg-indigo-950/30">
-                                  <p className="text-[9px] font-black uppercase">
+                                <div className="rounded-md bg-muted/40 px-2.5 py-1.5 text-foreground">
+                                  <p className="text-[9px] font-bold uppercase text-muted-foreground">
                                     Total
                                   </p>
-                                  <p className="text-xs font-black">
+                                  <p className="text-xs font-bold">
                                     {fmtMoney(itemTotal)}
                                   </p>
                                 </div>
@@ -678,20 +709,20 @@ function IntentDetailPanel({
                           </div>
 
                           {mappings.length > 0 ? (
-                            <div className="grid gap-3 p-4">
+                            <div className="grid gap-3 p-3">
                               {mappings.map((vm: any) => (
                                 <div
                                   key={vm.id}
-                                  className="rounded-3xl border bg-muted/20 p-4"
+                                  className="rounded-md border bg-muted/20 p-3"
                                 >
-                                  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                    <div className="flex gap-3">
-                                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-background text-indigo-600">
-                                        <Building2 size={17} />
+                                  <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div className="flex gap-2.5">
+                                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background text-foreground border">
+                                        <Building2 size={16} />
                                       </div>
 
                                       <div>
-                                        <p className="text-sm font-black">
+                                        <p className="text-sm font-bold">
                                           {vm.companyVendor?.company_name ?? "—"}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
@@ -704,11 +735,11 @@ function IntentDetailPanel({
                                       </div>
                                     </div>
 
-                                    <div className="rounded-2xl bg-indigo-50 px-4 py-2 text-right text-indigo-700 dark:bg-indigo-950/30">
-                                      <p className="text-[9px] font-black uppercase">
+                                    <div className="rounded-md bg-muted/40 px-3 py-1.5 text-right text-foreground">
+                                      <p className="text-[9px] font-bold uppercase text-muted-foreground">
                                         Supplier Total
                                       </p>
-                                      <p className="text-base font-black">
+                                      <p className="text-sm font-bold">
                                         {fmtMoney(vm.total_amount)}
                                       </p>
                                     </div>
@@ -816,50 +847,50 @@ function IntentDetailPanel({
               </section>
 
               <aside className="lg:sticky lg:top-5 lg:h-fit">
-                <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
-                  <div className="border-b p-5">
-                    <p className="text-base font-black">Financial Summary</p>
+                <div className="overflow-hidden rounded-md border bg-background shadow-sm">
+                  <div className="border-b p-4">
+                    <p className="text-sm font-bold">Financial Summary</p>
                     <p className="text-xs text-muted-foreground">
                       Amount calculated from supplier quotations.
                     </p>
                   </div>
 
-                  <div className="space-y-3 p-5">
-                    <div className="flex items-center justify-between rounded-2xl bg-muted/40 p-3">
-                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Package size={15} />
+                  <div className="space-y-2.5 p-4">
+                    <div className="flex items-center justify-between rounded-md bg-muted/40 p-2.5">
+                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Package size={14} />
                         Products
                       </span>
-                      <span className="font-bold">{financials.productCount}</span>
+                      <span className="text-xs font-bold">{financials.productCount}</span>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-2xl bg-muted/40 p-3">
-                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building2 size={15} />
+                    <div className="flex items-center justify-between rounded-md bg-muted/40 p-2.5">
+                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Building2 size={14} />
                         Suppliers
                       </span>
-                      <span className="font-bold">{financials.supplierCount}</span>
+                      <span className="text-xs font-bold">{financials.supplierCount}</span>
                     </div>
 
-                    <div className="rounded-2xl bg-muted/40 p-3">
-                      <p className="text-[10px] font-black uppercase text-muted-foreground">
+                    <div className="rounded-md bg-muted/40 p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
                         Base Amount
                       </p>
-                      <p className="mt-1 text-lg font-black">
+                      <p className="mt-0.5 text-base font-bold">
                         {fmtMoney(financials.baseAmount)}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-amber-50 p-3 text-amber-700 dark:bg-amber-950/30">
-                      <p className="text-[10px] font-black uppercase">Tax Amount</p>
-                      <p className="mt-1 text-lg font-black">
+                    <div className="rounded-md bg-amber-50 p-2.5 text-amber-700 dark:bg-amber-950/30">
+                      <p className="text-[10px] font-bold uppercase">Tax Amount</p>
+                      <p className="mt-0.5 text-base font-bold">
                         {fmtMoney(financials.taxAmount)}
                       </p>
                     </div>
 
-                    <div className="rounded-3xl border bg-indigo-50/70 p-4 text-indigo-700 dark:bg-indigo-950/30">
-                      <p className="text-[10px] font-black uppercase">Grand Total</p>
-                      <p className="mt-1 text-2xl font-black">
+                    <div className="rounded-md border bg-muted/40 p-3 text-foreground">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Grand Total</p>
+                      <p className="mt-0.5 text-xl font-bold">
                         {fmtMoney(financials.grandTotal)}
                       </p>
                     </div>
@@ -955,7 +986,7 @@ function Pagination({
         <Button
           size="sm"
           variant="outline"
-          className="h-8 w-8 rounded-xl p-0"
+          className="h-8 w-8 rounded-md p-0"
           disabled={page === 1}
           onClick={() => onChange(page - 1)}
         >
@@ -972,7 +1003,7 @@ function Pagination({
               key={p}
               size="sm"
               variant={p === page ? "default" : "outline"}
-              className="h-8 w-8 rounded-xl p-0 text-xs"
+              className="h-8 w-8 rounded-md p-0 text-xs"
               onClick={() => onChange(p as number)}
             >
               {p}
@@ -983,7 +1014,7 @@ function Pagination({
         <Button
           size="sm"
           variant="outline"
-          className="h-8 w-8 rounded-xl p-0"
+          className="h-8 w-8 rounded-md p-0"
           disabled={page === totalPages || totalPages === 0}
           onClick={() => onChange(page + 1)}
         >
@@ -1005,8 +1036,17 @@ export default function PurchaseIntentListPage() {
   const [statusFilter, setStatusFilter] = useState<PIStatus | "">("");
 
   const [deleteTarget, setDeleteTarget] = useState<PISummary | null>(null);
-
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showRaiseModal, setShowRaiseModal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("new") === "true" || params.get("raiseModal") === "true") {
+        setShowRaiseModal(true);
+      }
+    }
+  }, []);
 
   const openDetailsPage = (intentId: number) => {
     router.push(`/dashboard/inventory/purchase-intents/${intentId}`);
@@ -1117,8 +1157,8 @@ export default function PurchaseIntentListPage() {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            className="gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => router.push("/dashboard/inventory/purchase-intents/new")}
+            className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium"
+            onClick={() => setShowRaiseModal(true)}
           >
             <Plus size={14} />
             Raise Enquiry
@@ -1131,137 +1171,123 @@ export default function PurchaseIntentListPage() {
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
         <div className="flex w-full flex-col gap-5">
-          <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
-            <div className="relative p-5 md:p-6">
-              <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-indigo-500/10" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Purchase Enquiries
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Review purchase requirements, supplier quotations and conversion status.
+            </p>
+          </div>
 
-              <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950">
-                    <ShoppingCart size={22} />
-                  </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard icon={ClipboardList} label="TOTAL ENQUIRIES" value={totals.count} />
+            <KpiCard icon={Pencil} label="DRAFTS ON PAGE" value={totals.draft} />
+            <KpiCard icon={ShoppingCart} label="CONVERTED ON PAGE" value={totals.converted} />
+            <KpiCard
+              icon={IndianRupee}
+              label="AMOUNT ON PAGE"
+              value={totals.amount > 0 ? fmtMoney(totals.amount) : "₹0.00"}
+            />
+          </div>
 
-                  <div>
-                    <div className="mb-2 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-                      <Sparkles size={13} className="text-indigo-500" />
-                      Procurement Workspace
-                    </div>
-
-                    <h1 className="text-2xl font-black tracking-tight">
-                      Purchase Enquiries
-                    </h1>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Review purchase requirements, supplier quotations and conversion status.
-                    </p>
-                  </div>
-                </div>
-
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-72 md:w-80">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search enquiry no..."
+                className="h-9 w-full rounded-lg border bg-background pl-9 pr-8 text-xs outline-none transition-colors hover:bg-muted/20 focus:border-foreground/30 focus:ring-1 focus:ring-foreground/20"
+              />
+              {search && (
                 <button
                   type="button"
-                  onClick={fetchData}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => handleSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+                  <X size={13} />
                 </button>
-              </div>
-
-              <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <SummaryCard icon={ClipboardList} label="Total Enquiries" value={totals.count} />
-                <SummaryCard icon={Pencil} label="Drafts on Page" value={totals.draft} />
-                <SummaryCard
-                  icon={ShoppingCart}
-                  label="Converted on Page"
-                  value={totals.converted}
-                />
-                <SummaryCard
-                  icon={IndianRupee}
-                  label="Amount on Page"
-                  value={
-                    <span className="text-indigo-600">
-                      {totals.amount > 0 ? fmtMoney(totals.amount) : "—"}
-                    </span>
-                  }
-                />
-              </div>
+              )}
             </div>
+
+            <Select
+              value={statusFilter || "all"}
+              onValueChange={(val) =>
+                handleStatus(val === "all" ? "" : (val as PIStatus))
+              }
+            >
+              <SelectTrigger className="h-9 w-[170px] rounded-lg border bg-background text-xs font-medium">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border bg-popover text-xs shadow-lg">
+                <SelectItem value="all" className="text-xs">
+                  All Statuses
+                </SelectItem>
+                <SelectItem value="Draft" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                    Draft
+                  </span>
+                </SelectItem>
+                <SelectItem value="PendingApproval" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    Pending Approval
+                  </span>
+                </SelectItem>
+                <SelectItem value="Approved" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Approved
+                  </span>
+                </SelectItem>
+                <SelectItem value="ConvertedToPO" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-zinc-700 dark:bg-zinc-300" />
+                    Converted to PO
+                  </span>
+                </SelectItem>
+                <SelectItem value="Rejected" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Rejected
+                  </span>
+                </SelectItem>
+                <SelectItem value="Cancelled" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                    Cancelled
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <button
+              type="button"
+              onClick={fetchData}
+              title="Refresh"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            </button>
           </div>
 
-          <div className="rounded-[28px] border bg-background p-4 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap gap-1.5">
-                {([["", "All"], ...ALL_STATUSES.map((s) => [s, getStatusCfg(s).label])] as [
-                  string,
-                  string,
-                ][]).map(([val, label]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => handleStatus(val as PIStatus | "")}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
-                      statusFilter === val
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-border bg-background text-muted-foreground hover:border-indigo-300 hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative w-full lg:w-80">
-                <Search
-                  size={15}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-
-                <input
-                  value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Search enquiry no..."
-                  className="h-10 w-full rounded-xl border bg-muted/30 pl-9 pr-9 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-indigo-300"
-                />
-
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => handleSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
+          <div className="overflow-hidden rounded-xl border bg-background shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b bg-muted/40">
-                    <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Enquiry
-                    </th>
-                    <th className="px-5 py-4 text-right text-[10px] font-black uppercase text-muted-foreground">
-                      Amount
-                    </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Items
-                    </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Priority
-                    </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Created
-                    </th>
-                    <th className="px-5 py-4 text-right text-[10px] font-black uppercase text-muted-foreground">
-                      Actions
-                    </th>
+                  <tr className="border-b bg-muted/20 text-muted-foreground">
+                    <th className="px-4 py-3.5 text-left font-semibold">Enquiry</th>
+                    <th className="px-4 py-3.5 text-right font-semibold">Amount</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Items</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Status</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Priority</th>
+                    <th className="px-4 py-3.5 text-left font-semibold">Created</th>
+                    <th className="px-4 py-3.5 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
 
@@ -1269,19 +1295,19 @@ export default function PurchaseIntentListPage() {
                   {loading ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className="border-b">
-                        {Array.from({ length: 8 }).map((_, j) => (
-                          <td key={j} className="px-5 py-4">
-                            <Skeleton className="h-8 w-full rounded-xl" />
+                        {Array.from({ length: 7 }).map((_, j) => (
+                          <td key={j} className="px-4 py-3.5">
+                            <Skeleton className="h-6 w-full rounded-md" />
                           </td>
                         ))}
                       </tr>
                     ))
                   ) : !data || data.intents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-20 text-center text-muted-foreground">
+                      <td colSpan={7} className="py-20 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
-                          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-muted">
-                            <ShoppingCart size={30} className="opacity-40" />
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-muted">
+                            <ShoppingCart size={24} className="opacity-40" />
                           </div>
 
                           <p className="text-sm font-semibold">No purchase enquiries found</p>
@@ -1295,133 +1321,124 @@ export default function PurchaseIntentListPage() {
                   ) : (
                     data.intents.map((intent: any) => {
                       const amount = getListAmount(intent);
+                      const itemCount = intent._count?.items ?? intent.items?.length ?? 0;
+                      const supplierCount =
+                        getFinancials(intent).supplierCount ||
+                        (intent.items ?? []).flatMap((it: any) => it.vendorMappings ?? []).length ||
+                        0;
 
                       return (
                         <tr
                           key={intent.id}
-                          className="group cursor-pointer border-b transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20"
+                          className="group cursor-pointer border-b transition-colors hover:bg-muted/30"
                           onClick={() => openDetailsPage(intent.id)}
                         >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-1 rounded-full bg-indigo-500 opacity-30 transition-opacity group-hover:opacity-100" />
-
-                              <div>
-                                <p className="font-mono text-sm font-black text-indigo-600">
-                                  {intent.intent_no}
-                                </p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  by {intent.createdBy?.user_name ?? "—"}
-                                </p>
-                              </div>
-                            </div>
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-xs text-foreground">
+                              {intent.intent_no}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              by {intent.createdBy?.user_name ?? "—"}
+                            </p>
                           </td>
 
-
-
-                          <td className="px-5 py-4 text-right">
-                            <p className="text-base font-black text-indigo-600">
+                          <td className="px-4 py-3.5 text-right">
+                            <p className="font-bold text-xs text-foreground">
                               {fmtMoney(amount)}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
                               Grand total
                             </p>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <div className="inline-flex items-center gap-2 rounded-2xl bg-muted/50 px-3 py-2">
-                              <Package size={14} className="text-indigo-500" />
-                              <div>
-                                <p className="text-xs font-black">
-                                  {intent._count?.items ?? intent.items?.length ?? 0} Products
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {getFinancials(intent).supplierCount || "—"} Suppliers
-                                </p>
-                              </div>
+                          <td className="px-4 py-3.5">
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-3 py-1 text-xs text-muted-foreground">
+                              <Package size={13} className="shrink-0 text-muted-foreground" />
+                              <span className="font-medium text-foreground">
+                                {itemCount} Products
+                              </span>
+                              <span>·</span>
+                              <span>{supplierCount} Suppliers</span>
                             </div>
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3.5">
                             <StatusBadge status={intent.status} />
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3.5">
                             <span
                               className={cn(
-                                "rounded-full px-2.5 py-1 text-xs font-bold",
-                                PRIORITY_CFG[intent.priority as PIPriority]
+                                "inline-block rounded-md px-2.5 py-0.5 text-xs font-semibold",
+                                PRIORITY_CFG[intent.priority as PIPriority] ??
+                                  "border border-border text-foreground"
                               )}
                             >
                               {intent.priority}
                             </span>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <p className="text-xs font-semibold">{fmt(intent.created_at)}</p>
-                            <p className="text-[10px] text-muted-foreground">
+                          <td className="px-4 py-3.5">
+                            <p className="text-xs font-semibold text-foreground">
+                              {fmt(intent.created_at)}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
                               {fmtDt(intent.created_at)}
                             </p>
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3.5 text-right">
                             <div
                               className="flex items-center justify-end gap-1"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
+                                type="button"
                                 title="View details"
                                 onClick={() => openDetailsPage(intent.id)}
-                                className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-indigo-600"
+                                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               >
                                 <Eye size={15} />
                               </button>
 
                               {intent.status === "Draft" && (
-                                <button
-                                  title="Edit"
-                                  onClick={() =>
-                                    router.push(
-                                      `/dashboard/inventory/purchase-intents/${intent.id}/edit`
-                                    )
-                                  }
-                                  className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-amber-600"
-                                >
-                                  <Pencil size={15} />
-                                </button>
-                              )}
+                                <>
+                                  <button
+                                    type="button"
+                                    title="Edit"
+                                    onClick={() =>
+                                      router.push(
+                                        `/dashboard/inventory/purchase-intents/${intent.id}/edit`
+                                      )
+                                    }
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
 
-                              {intent.status === "Draft" && (
-                                <button
-                                  title="Convert to Purchase Order"
-                                  onClick={() => {
-                                    router.push(
-                                      `/dashboard/inventory/purchase-intents/${intent.id}/convert-to-po`
-                                    );
-                                  }}
-                                  className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-indigo-600"
-                                >
-                                  <ShoppingCart size={15} />
-                                </button>
-                              )}
+                                  <button
+                                    type="button"
+                                    title="Convert to Purchase Order"
+                                    onClick={() => {
+                                      router.push(
+                                        `/dashboard/inventory/purchase-intents/${intent.id}/convert-to-po`
+                                      );
+                                    }}
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  >
+                                    <ShoppingCart size={15} />
+                                  </button>
 
-                              {["Draft", "Cancelled", "Rejected"].includes(intent.status) && (
-                                <button
-                                  title="Delete"
-                                  onClick={() => setDeleteTarget(intent)}
-                                  className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                  <button
+                                    type="button"
+                                    title="Delete"
+                                    onClick={() => setDeleteTarget(intent)}
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </>
                               )}
-
-                              {/* <button
-                                title="Open"
-                                onClick={() => setSelectedId(intent.id)}
-                                className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                              >
-                                <ArrowRight size={15} />
-                              </button> */}
                             </div>
                           </td>
                         </tr>
@@ -1456,23 +1473,23 @@ export default function PurchaseIntentListPage() {
           onClick={() => setDeleteTarget(null)}
         >
           <div
-            className="flex w-full max-w-sm flex-col gap-5 rounded-3xl border bg-background p-6 shadow-2xl"
+            className="flex w-full max-w-sm flex-col gap-4 rounded-lg border bg-background p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-red-100 p-3">
-                <Trash2 size={20} className="text-red-600" />
+              <div className="rounded-md bg-red-100 p-2.5">
+                <Trash2 size={18} className="text-red-600" />
               </div>
 
               <div>
-                <h3 className="text-base font-black">Delete Enquiry</h3>
+                <h3 className="text-base font-bold">Delete Enquiry</h3>
                 <p className="text-xs text-muted-foreground">
                   {deleteTarget.intent_no}
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               This will permanently delete the purchase enquiry. This action cannot be
               undone.
             </p>
@@ -1483,6 +1500,7 @@ export default function PurchaseIntentListPage() {
                 size="sm"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleteLoading}
+                className="rounded-md"
               >
                 Cancel
               </Button>
@@ -1491,7 +1509,7 @@ export default function PurchaseIntentListPage() {
                 size="sm"
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="gap-1.5 bg-red-600 hover:bg-red-700"
+                className="gap-1.5 rounded-md bg-red-600 hover:bg-red-700"
               >
                 {deleteLoading ? (
                   <Loader2 size={13} className="animate-spin" />
@@ -1504,6 +1522,23 @@ export default function PurchaseIntentListPage() {
           </div>
         </div>
       )}
+
+      <RaisePurchaseIntentModal
+        open={showRaiseModal}
+        onClose={() => {
+          setShowRaiseModal(false);
+          if (typeof window !== "undefined" && (window.location.search.includes("new=true") || window.location.search.includes("raiseModal=true"))) {
+            window.history.replaceState({}, "", "/dashboard/inventory/purchase-intents");
+          }
+        }}
+        onSuccess={() => {
+          setShowRaiseModal(false);
+          if (typeof window !== "undefined" && (window.location.search.includes("new=true") || window.location.search.includes("raiseModal=true"))) {
+            window.history.replaceState({}, "", "/dashboard/inventory/purchase-intents");
+          }
+          fetchData();
+        }}
+      />
     </>
   );
 }

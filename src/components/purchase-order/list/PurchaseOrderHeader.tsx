@@ -41,7 +41,7 @@ export function PurchaseOrderHeader() {
       <div className="flex items-center gap-2">
         <Button
           size="sm"
-          className="gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+          className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs h-9 px-3.5"
           onClick={() => router.push("/dashboard/inventory/purchase-intents")}
         >
           <Plus size={14} />

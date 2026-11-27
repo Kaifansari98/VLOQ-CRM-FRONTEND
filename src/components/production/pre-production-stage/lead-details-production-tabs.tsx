@@ -2,10 +2,11 @@
 
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import PreProductionDetails from "./PreProductionDetails";
+import ProductionMachineMatrix from "@/components/track-trace/ProductionMachineMatrix";
 import PostProductionDetails from "./PostProductionDetails";
 import {
   useCheckPostProductionReady,
-  useCheckPreProductionFilesReady,
+  useMetalCutlist,
 } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
@@ -41,6 +42,16 @@ export default function LeadDetailsProductionUtil({
   instanceId,
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const showMachineMatrix = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+      s.auth.user?.vendor?.is_inventory_enabled === true,
+  );
+  // Track & Trace large-scale vendors: Order Login is optional, so Under
+  // Production shows the live matrix directly.
+  const isTrackTraceLargeScale = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+      s.auth.user?.vendor?.is_tracktrace_enabled === true,
+  );
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
@@ -112,11 +123,6 @@ export default function LeadDetailsProductionUtil({
 
   console.log("data: ", data)
 
-  const { data: preProductionReadyData } = useCheckPreProductionFilesReady(
-    vendorId,
-    leadId,
-    scopedInstanceId ?? undefined,
-  );
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -144,12 +150,20 @@ export default function LeadDetailsProductionUtil({
         ? structureInstances[0]
         : null;
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? scopedInstanceId;
+
+  // Each instance has its own Track & Trace project, which only exists once a
+  // woodwork or metalwork cutlist has been uploaded in its Pre-Production Files.
+  const { data: leadCutlist } = useMetalCutlist(
+    isTrackTraceLargeScale ? vendorId : undefined,
+    leadId,
+    effectiveInstanceId,
+  );
+  const trackTraceProject = isTrackTraceLargeScale ? leadCutlist?.project : null;
+  const hasTrackTraceProject = !!trackTraceProject;
   const isOrderLoginFilled =
     resolvedCurrentInstance?.is_order_login_filled === true;
-  const isPreProdDone = resolvedCurrentInstance?.is_pre_prod_done === true;
-  const readyForUnderProduction = effectiveInstanceId
-    ? isPreProdDone
-    : (preProductionReadyData?.readyForUnderProduction ?? false);
+  const readyForUnderProduction =
+    resolvedCurrentInstance?.is_order_login_completed === true;
   console.log("[LeadDetailsProductionUtil] under production gate", {
     leadId,
     scopedInstanceId,
@@ -157,7 +171,7 @@ export default function LeadDetailsProductionUtil({
     resolvedCurrentInstance,
     is_order_login_filled: resolvedCurrentInstance?.is_order_login_filled,
     isOrderLoginFilled,
-    is_pre_prod_done: resolvedCurrentInstance?.is_pre_prod_done,
+    is_order_login_completed: resolvedCurrentInstance?.is_order_login_completed,
     readyForUnderProduction,
     shouldRequirePreProduction,
   });
@@ -177,6 +191,12 @@ export default function LeadDetailsProductionUtil({
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.production_files.view_download",
+        )
+      : canAccessAllTabs;
+  const canViewRequiredProductionMaterials =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.required_production_materials.view",
         )
       : canAccessAllTabs;
   const canViewPreProductionFiles =
@@ -232,6 +252,30 @@ export default function LeadDetailsProductionUtil({
         />
       ),
     },
+    ...(showMachineMatrix
+      ? [
+          {
+            id: "requiredProductionMaterials",
+            title: "Required Production Materials",
+            color: "bg-zinc-900 hover:bg-zinc-900",
+            disabled: !canViewRequiredProductionMaterials,
+            disabledReason:
+              normalizedUserType === "custom"
+                ? "You don’t have permission to view Required Production Materials."
+                : "Only super-admin and factory can access this tab.",
+            cardContent: (
+              <ProductionFilesSection
+                showRequiredMaterials
+                viewOnly
+                hideDeliveryDateBanner
+                leadId={leadId}
+                accountId={accountId ?? null}
+                instanceId={effectiveInstanceId}
+              />
+            ),
+          },
+        ]
+      : []),
     ...(showPreProductionTab
       ? [
           {
@@ -259,20 +303,32 @@ export default function LeadDetailsProductionUtil({
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled:
         !canAccessUnderProduction ||
-        (shouldRequirePreProduction && !readyForUnderProduction),
+        (!isTrackTraceLargeScale &&
+          shouldRequirePreProduction &&
+          !readyForUnderProduction),
       disabledReason: !canAccessUnderProduction
         ? normalizedUserType === "custom"
           ? "You don’t have permission to access Under Production."
           : "Only super-admin and factory can access this tab."
-        : shouldRequirePreProduction
-          ? "Click Mark Pre Prod Done first to enable Under Production."
+        : shouldRequirePreProduction && !isTrackTraceLargeScale
+          ? "Complete Order Login first to enable Under Production."
           : "",
-      cardContent: isOrderLoginFilled ? (
-        <PreProductionDetails
+      cardContent: isTrackTraceLargeScale ? (
+        <ProductionMachineMatrix
+          vendorId={vendorId}
           leadId={leadId}
-          accountId={accountId}
-          instanceId={effectiveInstanceId}
+          projectId={trackTraceProject?.id ?? null}
         />
+      ) : isOrderLoginFilled ? (
+        showMachineMatrix ? (
+          <ProductionMachineMatrix vendorId={vendorId} leadId={leadId} />
+        ) : (
+          <PreProductionDetails
+            leadId={leadId}
+            accountId={accountId}
+            instanceId={effectiveInstanceId}
+          />
+        )
       ) : (
         <ComingSoon
           heading="Order Login Is Still Pending"
@@ -286,13 +342,17 @@ export default function LeadDetailsProductionUtil({
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled:
         !canViewPostProduction ||
-        (!readyForPostProduction &&
-          !["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
-            normalizedUserType ?? "",
-          )),
+        (isTrackTraceLargeScale
+          ? !hasTrackTraceProject
+          : !readyForPostProduction &&
+            !["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
+              normalizedUserType ?? "",
+            )),
       disabledReason: !canViewPostProduction
         ? "You don’t have permission to access Post Production."
-        : "You can access Post Production only after completing Under-Production.",
+        : isTrackTraceLargeScale
+          ? "Upload a Woodwork or Metalwork cutlist in Pre-Production Files to create the Track & Trace project first."
+          : "You can access Post Production only after completing Under-Production.",
       cardContent: (
         <PostProductionDetails
           leadId={leadId}
@@ -302,6 +362,10 @@ export default function LeadDetailsProductionUtil({
       ),
     },
   ], [
+    showMachineMatrix,
+    isTrackTraceLargeScale,
+    vendorId,
+    shouldRequirePreProduction,
     canViewProductionFiles,
     normalizedUserType,
     leadId,
@@ -314,6 +378,8 @@ export default function LeadDetailsProductionUtil({
     isOrderLoginFilled,
     canViewPostProduction,
     readyForPostProduction,
+    hasTrackTraceProject,
+    trackTraceProject?.id,
   ]);
 
   const showInstanceTabs =

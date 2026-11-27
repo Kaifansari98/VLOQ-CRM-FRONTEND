@@ -32,6 +32,7 @@ import {
   useFastProductionRequestDraft,
 } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
+import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
@@ -51,6 +52,11 @@ import CustomeTooltip from "@/components/custom-tooltip";
 import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
 import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
 import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
+import { useBookingLeadById } from "@/hooks/booking-stage/use-booking";
+import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
+import { getDesignRevisionKey } from "@/lib/design-revision";
+import { urlToFile } from "@/utils/file.utils";
+import { Lock } from "lucide-react";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -70,16 +76,34 @@ interface Props {
   isFastProductionEnabled?: boolean;
 }
 
-const formSchema = z
+const getLockedDocMimeType = (fileName: string) => {
+  if (/\.pdf$/i.test(fileName)) return "application/pdf";
+  if (/\.(jpg|jpeg)$/i.test(fileName)) return "image/jpeg";
+  if (/\.png$/i.test(fileName)) return "image/png";
+  return "application/octet-stream";
+};
+
+const getFormSchema = (hasLockedRequiredDocuments: boolean) => z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
     task_type: z.string().min(1, "Task Type is required"),
     due_date: z.string().min(1, "Due Date is required"),
     remark: z.string().optional(),
+    required_documents: z.array(z.instanceof(File)).optional(),
     current_site_photos: z.array(z.instanceof(File)).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.task_type === "Final Measurements") {
+      if (
+        !hasLockedRequiredDocuments &&
+        (!data.required_documents || data.required_documents.length === 0)
+      ) {
+        ctx.addIssue({
+          path: ["required_documents"],
+          message: "Required documents are mandatory",
+          code: z.ZodIssueCode.custom,
+        });
+      }
       if (!data.current_site_photos || data.current_site_photos.length === 0) {
         ctx.addIssue({
           path: ["current_site_photos"],
@@ -152,6 +176,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     (state) => state.customPrivileges.codes,
   );
 
+  const currentUserType = useAppSelector(
+    (s) =>
+      s.auth.user?.user_type?.user_type ||
+      s.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
+
   const isCustomUser = (userRole ?? "").toLowerCase() === "custom";
   const canAccessRestrictedTasks = ["super-admin", "admin", "sales-executive"].includes(userRole ?? "");
   const normalizedUserRole = (userRole ?? "").toLowerCase();
@@ -194,7 +227,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useVendorSalesExecutiveUsers(vendorId!, undefined, {
     assigneeUserType: "custom",
     requiredPrivilegeCode:
-      "project.final_measurement.fm_action_upload_of_fm.enable_disable",
+      "project.final_measurement.fm_action_upload_of_fm.enable_disable,project.final_measurement.measurement_documents.upload,project.final_measurement.current_site_photos.upload",
   });
 
   const router = useRouter();
@@ -206,9 +239,22 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }
 
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const largeScaleProjectsFlag = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects,
+  );
+  const useCurrentSupervisor = largeScaleProjectsFlag === false && vendorCustomUserTypeMode !== true;
+  const {
+    data: currentSupervisor,
+    isPending: supervisorPending,
+    isFetching: supervisorRefreshing,
+    isError: assignedSupervisorError,
+  } = useAssignedSiteSupervisor(vendorId, leadId, open && useCurrentSupervisor);
+  const waitingForSupervisor = useCurrentSupervisor && (supervisorPending || supervisorRefreshing);
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   console.log("Assigned site supervisor: ", siteSupervisorCheck)
-  const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
+  const isSiteSupervisorAssigned = useCurrentSupervisor
+    ? !!currentSupervisor?.user_id
+    : siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
   const {
     data: taskConflicts,
     isLoading: restrictedTaskConflictsLoading,
@@ -242,11 +288,39 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const assignedSiteSupervisorFromMapping =
     leadData?.data?.lead?.assigned_site_supervisor_from_mapping ?? null;
-  const assignedSiteSupervisorId =
-    assignedSiteSupervisorFromMapping?.user_id ??
+  const assignedSiteSupervisorId = useCurrentSupervisor
+    ? currentSupervisor?.user_id
+    : assignedSiteSupervisorFromMapping?.user_id ??
     leadData?.data?.lead?.siteSupervisors?.[0]?.supervisor?.id ??
     leadData?.data?.lead?.siteSupervisors?.[0]?.user_id ??
     undefined;
+
+  // Large-scale vendors: designs selected at booking are always sent as Required Documents
+  const handlesLargeScaleProjects = largeScaleProjectsFlag === true;
+  const { data: bookingLeadData, isLoading: bookingDocsLoading } =
+    useBookingLeadById(vendorId, handlesLargeScaleProjects ? leadId : undefined);
+  const { data: designDocsData, isLoading: designDocsLoading } = useDesignsDoc(
+    vendorId ?? 0,
+    handlesLargeScaleProjects ? leadId : 0,
+  );
+  const lockedRequiredDocuments = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+    const designNames = new Set(
+      (designDocsData?.data?.documents ?? []).map((doc) => doc.doc_og_name),
+    );
+    return (bookingLeadData?.documents ?? []).filter(
+      (doc) =>
+        doc.s3Key.includes("final-documents-booking") &&
+        (designNames.has(doc.originalName) ||
+          !!getDesignRevisionKey(doc.originalName)),
+    );
+  }, [handlesLargeScaleProjects, bookingLeadData?.documents, designDocsData?.data?.documents]);
+  const hasLockedRequiredDocuments = lockedRequiredDocuments.length > 0;
+  const lockedRequiredDocumentsLoading = bookingDocsLoading || designDocsLoading;
+  const formSchema = React.useMemo(
+    () => getFormSchema(hasLockedRequiredDocuments),
+    [hasLockedRequiredDocuments],
+  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -255,6 +329,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
       due_date: "",
       remark: "N/A",
+      required_documents: [],
       current_site_photos: [],
     },
   });
@@ -278,6 +353,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
       due_date: "",
       remark: "N/A",
+      required_documents: [],
       current_site_photos: [],
     });
   }, [canAccessRestrictedTasks, form]);
@@ -446,32 +522,52 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useApprovalRequestAssignableUsers(vendorId, leadId);
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
-  const eligibleCustomUsers = (salesExecutives?.data?.sales_executives ?? []).filter(
-    (user: any) =>
-      String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
-  );
-  const eligibleFinalMeasurementCustomUsers =
-    (customFinalMeasurementUsers?.data?.sales_executives ?? []).filter(
-      (user: any) =>
-        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  const eligibleCustomUsers = React.useMemo(() => {
+    return (salesExecutives?.data?.sales_executives ?? []).filter(
+      (user: any) => {
+        const role = String(user.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
     );
+  }, [salesExecutives?.data?.sales_executives, isSuperAdmin]);
+
+  const eligibleFinalMeasurementCustomUsers = React.useMemo(() => {
+    return (customFinalMeasurementUsers?.data?.sales_executives ?? []).filter(
+      (user: any) => {
+        const role = String(user.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
+    );
+  }, [customFinalMeasurementUsers?.data?.sales_executives, isSuperAdmin]);
 
   const baseFinalMeasurementUsers = React.useMemo(() => {
     if (assignedSiteSupervisorId) {
+      if (useCurrentSupervisor && currentSupervisor?.supervisor) {
+        return [currentSupervisor.supervisor];
+      }
       const assigned = (siteSupervisors?.data?.site_supervisors ?? []).find(
         (user: any) => user.id === assignedSiteSupervisorId
       );
-      return assigned &&
-        String(assigned.user_type?.user_type ?? "").toLowerCase() !== "master-admin"
-        ? [assigned]
-        : [];
+      if (!assigned) return [];
+      const role = String(assigned.user_type?.user_type ?? "").trim().toLowerCase();
+      if (role === "master-admin") return false;
+      if (role === "super-admin" && !isSuperAdmin) return false;
+      return [assigned];
     }
 
     return (siteSupervisors?.data?.site_supervisors ?? []).filter(
-      (user: any) =>
-        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+      (user: any) => {
+        const role = String(user.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
     );
-  }, [assignedSiteSupervisorId, siteSupervisors]);
+  }, [assignedSiteSupervisorId, siteSupervisors, isSuperAdmin, useCurrentSupervisor, currentSupervisor]);
 
   const finalMeasurementUsers = React.useMemo(() => {
     if (vendorCustomUserTypeMode === true) {
@@ -534,16 +630,23 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     [approvalRequestUsers],
   );
 
-  const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
-    (u: any) =>
-      String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
-  );
+  const followUpAssignableUsers = React.useMemo(() => {
+    return (followUpUsersData?.data?.users ?? []).filter(
+      (u: any) => {
+        const role = String(u.user_type?.user_type ?? "").trim().toLowerCase();
+        if (role === "master-admin") return false;
+        if (role === "super-admin" && !isSuperAdmin) return false;
+        return true;
+      },
+    );
+  }, [followUpUsersData?.data?.users, isSuperAdmin]);
+
   const customFollowUpAssignableUsers = React.useMemo(() => {
     const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
       (u: any) =>
         String(u.user_type?.user_type ?? "").toLowerCase() === "super-admin",
     );
-    const users = [...eligibleCustomUsers, ...superAdminUsers];
+    const users = [...eligibleCustomUsers, ...(isSuperAdmin ? superAdminUsers : [])];
 
     if (!userId || !loggedInUserName || !isCustomUser) {
       return users.filter(
@@ -694,7 +797,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }, [form, mappedData, open, taskType, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
-    if (isCustomUser || vendorCustomUserTypeMode !== null && vendorCustomUserTypeMode !== undefined) {
+    if (isCustomUser || vendorCustomUserTypeMode === true) {
       return;
     }
 
@@ -704,10 +807,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }, [taskType, assignedSiteSupervisorId, form, isCustomUser, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
-    if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned && !vendorCustomUserTypeMode) {
+    if (!waitingForSupervisor && siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned && !vendorCustomUserTypeMode) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege, vendorCustomUserTypeMode]);
+  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege, vendorCustomUserTypeMode, waitingForSupervisor]);
 
   React.useEffect(() => {
     if (!open) {
@@ -884,6 +987,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   ]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (values.task_type === "Final Measurements" &&
+        (waitingForSupervisor || (useCurrentSupervisor && assignedSupervisorError))) return;
     try {
       if (values.task_type === "Approval Request") {
         approvalRequestMutation.mutate(
@@ -916,7 +1021,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
                 due_date: "",
                 remark: "N/A",
-                current_site_photos: [],
+                required_documents: [],
+      current_site_photos: [],
               });
               onOpenChange(false);
             },
@@ -991,6 +1097,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       }
 
       if (values.task_type === "Final Measurements") {
+        const lockedDocumentFiles = await Promise.all(
+          lockedRequiredDocuments.map((doc) =>
+            urlToFile(
+              doc.signedUrl,
+              doc.originalName,
+              getLockedDocMimeType(doc.originalName),
+            ),
+          ),
+        );
+
         await uploadCSPMutation.mutateAsync({
           lead_id: leadId,
           account_id: accountId,
@@ -998,6 +1114,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           assigned_to: values.assign_lead_to!,
           created_by: userId!,
           site_photos: values.current_site_photos!,
+          required_documents: [
+            ...lockedDocumentFiles,
+            ...(values.required_documents ?? []),
+          ],
         });
       }
 
@@ -1314,13 +1434,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         value={field.value}
                         onChange={field.onChange}
                         disabled={
+                          (taskType === "Final Measurements" && waitingForSupervisor) ||
                           isSelfAssignTask ||
                           (taskType === "Final Measurements" &&
                             !!assignedSiteSupervisorId &&
-                            vendorCustomUserTypeMode == null)
+                            vendorCustomUserTypeMode !== true)
                         }
                       />
                     </FormControl>
+                    {taskType === "Final Measurements" && useCurrentSupervisor && assignedSupervisorError && (
+                      <p role="alert" className="text-sm text-destructive">Could not load the assigned supervisor. Reopen this form to retry.</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1383,6 +1507,60 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
             {form.watch("task_type") === "Final Measurements" && (
               <FormField
                 control={form.control}
+                name="required_documents"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Required Documents{" "}
+                      <span className="text-red-500">*</span>
+                    </FormLabel>
+                    {hasLockedRequiredDocuments && (
+                      <ul className="space-y-2">
+                        {lockedRequiredDocuments.map((doc) => (
+                          <li
+                            key={doc.id}
+                            className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                          >
+                            <Lock className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{doc.originalName}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {handlesLargeScaleProjects ? (
+                      !hasLockedRequiredDocuments && (
+                        <p
+                          className={
+                            lockedRequiredDocumentsLoading
+                              ? "text-sm text-muted-foreground"
+                              : "text-sm text-destructive"
+                          }
+                        >
+                          {lockedRequiredDocumentsLoading
+                            ? "Loading design files..."
+                            : "No design files were selected at booking for this lead."}
+                        </p>
+                      )
+                    ) : (
+                      <FormControl>
+                        <FileUploadField
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                          multiple
+                          maxFiles={10}
+                        />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {form.watch("task_type") === "Final Measurements" && (
+              <FormField
+                control={form.control}
                 name="current_site_photos"
                 render={({ field }) => (
                   <FormItem>
@@ -1420,11 +1598,19 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 disabled={
                   mutation.isPending ||
                   uploadCSPMutation.isPending ||
+                  form.formState.isSubmitting ||
                   (form.watch("task_type") === "Final Measurements" &&
-                    form.watch("current_site_photos")?.length === 0)
+                    (waitingForSupervisor ||
+                      (useCurrentSupervisor && assignedSupervisorError) ||
+                      lockedRequiredDocumentsLoading ||
+                      (!hasLockedRequiredDocuments &&
+                        !form.watch("required_documents")?.length) ||
+                      !form.watch("current_site_photos")?.length))
                 }
               >
-                {uploadCSPMutation.isPending || mutation.isPending
+                {uploadCSPMutation.isPending ||
+                mutation.isPending ||
+                form.formState.isSubmitting
                   ? "Submitting..."
                   : "Submit"}
               </Button>

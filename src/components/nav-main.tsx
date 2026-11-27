@@ -72,7 +72,7 @@ export interface NavSubItem {
 export interface NavItem {
   title: string;
   url: string;
-  icon?: LucideIcon;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
   customCount?: number;
   customCountLoading?: boolean;
   className?: string;
@@ -122,6 +122,17 @@ function isUrlActive(
   if (searchParams.get("source") === "material-issue") {
     return urlPath === "/dashboard/inventory/material-issue/projects";
   }
+  const woodworkProjectsPath = "/dashboard/track-trace/manage-project";
+  const metalworkProjectsPath = "/dashboard/track-trace/metalwork-projects";
+  if (
+    (pathname === woodworkProjectsPath || pathname.startsWith(`${woodworkProjectsPath}/`)) &&
+    (urlPath === woodworkProjectsPath || urlPath === metalworkProjectsPath)
+  ) {
+    const activeProjectsPath = searchParams.get("fabrication") === "METALWORK"
+      ? metalworkProjectsPath
+      : woodworkProjectsPath;
+    return urlPath === activeProjectsPath;
+  }
   if (!pathname.startsWith(urlPath)) return false;
   if (!urlQuery) {
     const tabParam = searchParams.get("tab");
@@ -154,30 +165,40 @@ export function NavMain({
   items,
   trackTraceItems,
   inventoryItems,
+  hrmsItems,
   mastersItems,
-  inventoryMasterItems
+  integrationItems,
+  crmGroupLabel,
 }: {
   items: NavItem[];
   trackTraceItems?: NavItem[];
   inventoryItems?: NavItem[];
+  hrmsItems?: NavItem[];
   mastersItems?: NavItem[];
-  inventoryMasterItems?: NavItem[];
+  integrationItems?: NavItem[];
+  crmGroupLabel?: string;
 }) {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  const handlesLargeScaleProjects = useAppSelector(
-    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
-  );
-  const isCrmEnabled = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_crm_enabled !== false,
-  );
-  const isOnlineLeadFeatureEnabled = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
-  );
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type as string | undefined,
-  );
-  const normalizedUserType = userType?.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
+  const user = useAppSelector((state) => state.auth.user);
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
+  const handlesLargeScaleProjects =
+    user?.vendor?.handlesLargeScaleProjects === true;
+  const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
+  const isOnlineLeadFeatureEnabled =
+    user?.vendor?.is_online_lead_feature_enabled === true;
+  const rawUserType =
+    (typeof user?.user_type === "object"
+      ? user?.user_type?.user_type
+      : user?.user_type) ||
+    user?.user_role ||
+    "";
+  const userType = (rawUserType as string | undefined) || undefined;
+  const normalizedUserType = String(rawUserType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+  const isEmployee = normalizedUserType === "employee";
   const franchiseId =
     useAppSelector((state) => state.auth.franchise_id) ??
     useAppSelector((state) => state.auth.user?.franchise_id) ??
@@ -195,21 +216,27 @@ export function NavMain({
     "pre-prod",
     "factory",
   ].includes(normalizedUserType ?? "");
+  const isCaller = [
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
+    "caller",
+    "store-caller",
+    "store caller",
+  ].includes(normalizedUserType ?? "");
+  const statsFranchiseId = isCaller ? undefined : franchiseId;
   const { data: leadStats, isLoading } = useLeadStats(
     vendorId,
     userId,
+    statsFranchiseId,
     franchiseId
   );
-  const isFilterByUser =
-    normalizedUserType === "sales-executive" ||
-    normalizedUserType === "telecaller" ||
-    normalizedUserType === "telecaller-team-lead" ||
-    normalizedUserType === "telecaller team lead";
+  const isFilterByUser = normalizedUserType === "sales-executive";
 
   const { data: activityStatusCounts, isLoading: isActivityStatusCountsLoading } =
     useActivityStatusCounts(
       vendorId,
-      franchiseId,
+      statsFranchiseId,
       isFilterByUser ? userId : undefined,
     );
   const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
@@ -409,8 +436,8 @@ export function NavMain({
     ...enhancedNavItems,
     ...(trackTraceItems ?? []),
     ...(inventoryItems ?? []),
+    ...(hrmsItems ?? []),
     ...(enhancedMastersItems ?? []),
-    ...(inventoryMasterItems ?? [])
   ];
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -639,7 +666,7 @@ export function NavMain({
               if (!item.showCount && item.customCount === undefined) return null;
               const count = getSingleItemCount(item);
               if (count === undefined || count === null) return null;
-              if (isOnlineLeadFeatureEnabled && Number(count) === 0) return null;
+              if (Number(count) === 0) return null;
               return (
                 <Badge
                   className={cn(
@@ -670,7 +697,9 @@ export function NavMain({
       {/* ── CRM Platform Group ── */}
       {isCrmEnabled && enhancedNavItems.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {crmGroupLabel || (isEmployee ? "HRMS" : "CRM Platform")}
+          </SidebarGroupLabel>
           <SidebarMenu>{enhancedNavItems.map((item) => renderItem(item))}</SidebarMenu>
         </SidebarGroup>
       )}
@@ -685,25 +714,40 @@ export function NavMain({
         </SidebarGroup>
       )}
 
-      {((inventoryItems?.length ?? 0) > 0 ||
-        (inventoryMasterItems?.length ?? 0) > 0) && (
+      {(inventoryItems?.length ?? 0) > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Inventory Management</SidebarGroupLabel>
 
             <SidebarMenu>
               {inventoryItems?.map((item) => renderItem(item))}
-
-              {/* Displays Master below Inventory */}
-              {inventoryMasterItems?.map((item) => renderItem(item))}
             </SidebarMenu>
           </SidebarGroup>
         )}
+
+      {(hrmsItems?.length ?? 0) > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>HRMS Management</SidebarGroupLabel>
+          <SidebarMenu>
+            {hrmsItems?.map((item) => renderItem(item))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
 
       {enhancedMastersItems && enhancedMastersItems.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel>Masters Management</SidebarGroupLabel>
           <SidebarMenu>
             {enhancedMastersItems.map((item) => renderItem(item))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+
+      {/* ── Integration Group ── */}
+      {integrationItems && integrationItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Integration</SidebarGroupLabel>
+          <SidebarMenu>
+            {integrationItems.map((item) => renderItem(item))}
           </SidebarMenu>
         </SidebarGroup>
       )}

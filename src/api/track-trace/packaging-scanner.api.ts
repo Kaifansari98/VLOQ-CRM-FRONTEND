@@ -47,6 +47,7 @@ export interface PackagingBox {
   box_position?: number | null;
   boxes_per_product?: number | null;
   is_auto_created?: boolean;
+  location_name?: string | null;
 }
 
 export interface CreatePackagingBoxPayload {
@@ -121,11 +122,13 @@ export const updatePackagingBoxStatus = async (
   boxId: number,
   status: PackagingBoxStatus,
   userId: number,
+  reason?: string,
 ) => {
   const { data } = await apiClient.put<PackagingBox>(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
+      reason,
     },
   );
 
@@ -136,10 +139,142 @@ export const getPackagingBoxPrint = async (
   boxId: number,
   projectId: number,
   vendorId: number,
+  locationName?: string | null,
 ) => {
   const { data } = await apiClient.get<PackagingBoxPrintResponse>(
     `/boxes/boxes/pdf/${boxId}/${projectId}/${vendorId}/web`,
+    {
+      params: locationName ? { location: locationName } : undefined,
+    },
   );
 
   return data;
 };
+
+export interface ManualPackingItem {
+  id: number;
+  project_id: number;
+  vendor_id: number;
+  lead_id: number | null;
+  item_name: string;
+  description: string | null;
+  material_details: string | null;
+  qty: number;
+  total_qty: number;
+  packed_qty: number;
+  pending_qty: number;
+  packing_status: "Pending" | "Partially Packed" | "Packed" | "Pending QC";
+  unique_code: string | null;
+  unique_code_2: string | null;
+  length: number | null;
+  width: number | null;
+  thickness: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  group_name: string | null;
+  procurement: string | null;
+  weight: number | null;
+  use_in_assembled_packing?: boolean;
+  include_in_packing?: boolean;
+  scan_pack_validate?: boolean;
+  qc_passed_qty?: number;
+  is_qc_routed?: boolean;
+  effective_max_qty?: number;
+}
+
+export interface ManualPackingSummary {
+  total_items: number;
+  total_qty: number;
+  packed_qty: number;
+  pending_qty: number;
+}
+
+export interface ManualPackingResponseData {
+  project: {
+    id: number;
+    project_name: string;
+    unique_project_id: string;
+  };
+  summary: ManualPackingSummary;
+  items: ManualPackingItem[];
+}
+
+export interface ManualPackingApiResponse {
+  success: boolean;
+  message: string;
+  data: ManualPackingResponseData;
+}
+
+export interface AddManualPackingItemPayload {
+  project_id: number;
+  vendor_id: number;
+  box_id: number;
+  cut_list_id: number;
+  qty: number;
+  user_id: number;
+  location_name?: string;
+}
+
+export interface AddManualPackingItemResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export interface AddManualQualityItemPayload {
+  project_id: number;
+  vendor_id: number;
+  machine_id: number;
+  cut_list_id: number;
+  qty: number;
+  user_id: number;
+}
+
+export interface AddManualQualityItemResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export const getManualPackingItems = async (
+  vendorId: number,
+  projectId: number,
+  machineId?: number,
+) => {
+  const { data } = await apiClient.get<ManualPackingApiResponse>(
+    "/track-trace/boxes/packing/manual-items",
+    {
+      params: {
+        vendor_id: vendorId,
+        project_id: projectId,
+        ...(machineId ? { machine_id: machineId } : {}),
+      },
+    },
+  );
+
+  return data.data;
+};
+
+export const addManualPackingItem = async (
+  payload: AddManualPackingItemPayload,
+) => {
+  const { data } = await apiClient.post<AddManualPackingItemResponse>(
+    "/track-trace/boxes/packing/manual-items",
+    payload,
+  );
+
+  return data;
+};
+
+export const addManualQualityItem = async (
+  payload: AddManualQualityItemPayload,
+) => {
+  const { data } = await apiClient.post<AddManualQualityItemResponse>(
+    "/track-trace/quality/manual-items",
+    payload,
+  );
+
+  return data;
+};
+
+

@@ -17,7 +17,7 @@ import { ClipboardList, Plus } from "lucide-react";
 
 export function GRNPageHeader({ onCreate }: { onCreate: () => void }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background/90 px-4 backdrop-blur-xl">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator
@@ -42,7 +42,7 @@ export function GRNPageHeader({ onCreate }: { onCreate: () => void }) {
         <Button
           size="sm"
           onClick={onCreate}
-          className="h-8 gap-1.5 rounded-xl bg-indigo-600 text-xs font-bold hover:bg-indigo-700"
+          className="gap-1.5 rounded-md bg-foreground text-background hover:bg-foreground/90 font-medium text-xs h-9 px-3.5"
         >
           <Plus size={14} />
           New GRN

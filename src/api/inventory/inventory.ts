@@ -3,6 +3,7 @@ import { apiClient } from "@/lib/apiClient";
 export interface Product {
   id:                 number;
   item_id:            number;
+  item_code?:         string | null;
   product_name:       string;
   article_code:       string | null;
   vendor_code:        string | null;
@@ -93,16 +94,17 @@ export interface ProductFilters {
 export const getProducts = async (
   vendorId: number,
   params: {
-    page?: number; search?: string; category_id?: number;
+    page?: number; pageSize?: number; search?: string; category_id?: number;
     brand_id?: number; active?: string; procurement?: string;
   }
 ) => {
   const query = new URLSearchParams();
   if (params.page)        query.set("page",        String(params.page));
+  if (params.pageSize)    query.set("page_size",   String(params.pageSize));
   if (params.search)      query.set("search",      params.search);
   if (params.category_id) query.set("category_id", String(params.category_id));
   if (params.brand_id)    query.set("brand_id",    String(params.brand_id));
-  if (params.active)      query.set("active",      params.active);
+  if (params.active !== undefined) query.set("active", params.active);
   if (params.procurement) query.set("procurement", params.procurement);
 
   const { data } = await apiClient.get(`/inventory/products/${vendorId}?${query.toString()}`);

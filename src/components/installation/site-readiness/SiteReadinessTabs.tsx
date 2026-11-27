@@ -19,10 +19,16 @@ export default function SiteReadinessTabs({
   leadId,
   accountId,
   name,
+  instanceId,
 }: SiteReadinessTabsProps) {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  // Large-scale vendors run Site Readiness (checklist + photos) per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const scopedInstanceId = handlesLargeScaleProjects ? instanceId ?? null : null;
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -49,6 +55,7 @@ export default function SiteReadinessTabs({
             leadId={leadId}
             accountId={accountId}
             name={name}
+            instanceId={scopedInstanceId}
           />
         </div>
       ),
@@ -69,6 +76,7 @@ export default function SiteReadinessTabs({
           <CurrentSitePhotosReadinessSection
             leadId={leadId}
             accountId={accountId}
+            instanceId={scopedInstanceId}
           />
         </div>
       ),

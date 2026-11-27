@@ -22,6 +22,10 @@ import SimpleCompanyVendorMastersTable from "@/components/custom/SimpleCompanyVe
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
+import SiteReadinessQuestionMasters from "@/components/custom/SiteReadinessQuestionMasters";
+import FMRequirementMasters from "@/components/custom/FMRequirementMasters";
+import WalkinQuestionMasters from "@/components/custom/WalkinQuestionMasters";
+import { useWalkinQuestionsEnabled } from "@/hooks/useWalkinLeadQuestions";
 import * as React from "react";
 import { useMemo } from "react";
 import ProcessBriefsTable from "@/components/custom/ProcessBriefsTable";
@@ -40,6 +44,7 @@ export default function FieldMastersPage() {
     (state) => state.auth.user?.vendor?.is_broadcast_enabled === true,
   );
   const isVendorUser = useAppSelector((state) => Boolean(state.auth.user?.vendor_id));
+  const walkinQuestionsEnabled = useWalkinQuestionsEnabled();
   const sessionVendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorId = vendorIdOverride ?? sessionVendorId;
 
@@ -61,6 +66,8 @@ export default function FieldMastersPage() {
   const showBroadcastMaster = vendorIdOverride
     ? (vendorResponse?.data as any)?.is_broadcast_enabled === true
     : sessionVendorAllowsBroadcast;
+  const sessionVendorAllowsFMRequirements = useAppSelector((state) => state.auth.user?.vendor?.handlesLargeScaleProjects === false);
+  const showFMRequirements = isVendorUser && (!vendorIdOverride || vendorIdOverride === sessionVendorId) && sessionVendorAllowsFMRequirements;
   const showSpecsMaster = isVendorUser && !vendorIdOverride && !sessionVendorAllowsLargeScale;
 
   const showProcessBriefMaster = useMemo(() => {
@@ -138,6 +145,21 @@ export default function FieldMastersPage() {
             cardContent: <SpecsMasterTable />,
           },
         ]
+      : []),
+    ...(showFMRequirements ? [{ id: "fm-requirements", title: "FM Requirements", color: "bg-black hover:bg-black", cardContent: <FMRequirementMasters /> }] : []),
+    // The walk-in question APIs only serve the signed-in user's own vendor.
+    ...(isVendorUser && walkinQuestionsEnabled && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
+      ? [
+          {
+            id: "walkin-questions-master",
+            title: "Walk In Questions",
+            color: "bg-black hover:bg-black",
+            cardContent: <WalkinQuestionMasters />,
+          },
+        ]
+      : []),
+    ...(isVendorUser && (!vendorIdOverride || vendorIdOverride === sessionVendorId)
+      ? [{ id: "site-readiness-list", title: "Site Readiness List", color: "bg-black hover:bg-black", cardContent: <SiteReadinessQuestionMasters /> }]
       : []),
     ...(showBroadcastMaster
       ? [

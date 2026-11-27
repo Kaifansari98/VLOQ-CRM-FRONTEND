@@ -17,15 +17,22 @@ export interface VendorListItem {
   is_crm_enabled: boolean | null;
   is_inventory_enabled: boolean | null;
   is_tracktrace_enabled: boolean | null;
+  cutlist_configuration?: string | null;
+  show_status_on_scan?: string | null;
   is_scanpack_enabled: boolean | null;
+  is_hrms_master_enabled: boolean | null;
   is_available_unique_code: boolean | null;
   push_lead_to_cadbid: boolean | null;
   is_this_vendor_is_custom_usertype_only: boolean | null;
+  is_online_lead_feature_enabled?: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl?: string;
   iconUrl?: string;
   loginImageUrl?: string;
+  logo?: string | null;
+  icon?: string | null;
+  login_image?: string | null;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
@@ -38,6 +45,9 @@ export interface VendorListItem {
     id: number;
     name: string;
   } | null;
+  time_zone?: string;
+  time_zone_id?: number | null;
+  time_zone_master?: TimeZoneItem | null;
 }
 
 export interface VendorListParams {
@@ -76,12 +86,15 @@ export interface OnboardVendorPayload {
   status: "active";
   logo: string;
   time_zone: string;
+  time_zone_id?: number | null;
   handlesLargeScaleProjects?: boolean;
   is_crm_enabled?: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  show_status_on_scan?: string;
   is_available_unique_code?: boolean;
   push_lead_to_cadbid?: boolean;
+  is_online_lead_feature_enabled?: boolean;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
@@ -105,12 +118,15 @@ export interface UpdateVendorPayload {
   primary_contact_email: string;
   status: "active";
   time_zone: string;
+  time_zone_id?: number | null;
   handlesLargeScaleProjects: boolean;
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  show_status_on_scan?: string;
   is_available_unique_code: boolean;
   push_lead_to_cadbid?: boolean;
+  is_online_lead_feature_enabled?: boolean;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
@@ -209,13 +225,14 @@ export const useUpdateVendor = () => {
   });
 };
 
-export const useVendorById = (vendorId?: number) => {
+export const useVendorById = (vendorId?: number, options?: { refetchOnWindowFocus?: boolean | "always"; refetchOnMount?: boolean | "always" }) => {
   return useQuery({
     queryKey: ["vendor", vendorId],
     queryFn: () => fetchVendorById(vendorId as number),
     enabled: !!vendorId,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    refetchOnMount: options?.refetchOnMount,
   });
 };
 
@@ -241,3 +258,35 @@ export const useStates = () => {
     refetchOnWindowFocus: false,
   });
 };
+
+export interface TimeZoneItem {
+  id: number;
+  name: string;
+  time_zone_code: string;
+  time_zone_name?: string;
+  country?: string;
+  is_active: boolean;
+  active?: boolean;
+}
+
+export const fetchTimeZones = async (params?: {
+  is_active?: boolean;
+}): Promise<{
+  success: boolean;
+  data: TimeZoneItem[];
+}> => {
+  const query =
+    params?.is_active !== undefined ? `?active=${params.is_active}` : "";
+  const { data } = await apiClient.get(`/time-zones${query}`);
+  return data;
+};
+
+export const useTimeZones = (params?: { is_active?: boolean }) => {
+  return useQuery({
+    queryKey: ["time-zones", params],
+    queryFn: () => fetchTimeZones(params),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+

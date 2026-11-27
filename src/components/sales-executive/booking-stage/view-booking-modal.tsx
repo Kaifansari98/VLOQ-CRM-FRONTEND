@@ -23,7 +23,9 @@ import {
   UserPlus,
   UserPen,
   Package,
+  MapPin,
 } from "lucide-react";
+import BillingInformationModal from "@/components/payment-screen/BillingInformationModal";
 import { DocumentBooking, PaymentDetails } from "@/types/booking-types";
 import UploadFinalDoc from "./add-final-doc";
 import {
@@ -220,6 +222,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const [reassignConfirmOpen, setReassignConfirmOpen] = useState(false);
   const [mrpModalOpen, setMrpModalOpen] = useState(false);
   const [totalProjectModalOpen, setTotalProjectModalOpen] = useState(false);
+  const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [bookingAmountModalOpen, setBookingAmountModalOpen] = useState(false);
   const [initialSitePhotosOpen, setInitialSitePhotosOpen] = useState(false);
   const [replaceInitialDocId, setReplaceInitialDocId] = useState<number | null>(
@@ -246,6 +249,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     isError,
   } = useBookingLeadById(vendorId, leadId);
   const { data, isLoading: loading } = useLeadById(leadId, vendorId, userId);
+  const lead = data?.data?.lead;
+  const leadFranchiseId =
+    leadData?.franchiseId ?? lead?.franchise_id ?? undefined;
   const { data: leadStatus, error } = useLeadStatus(leadId, vendorId);
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
@@ -253,7 +259,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     handlesLargeScaleProjects,
   );
   const { data: siteSupervisorsData, isLoading: loadingSupervisors } =
-    useSiteSupervisors(vendorId!);
+    useSiteSupervisors(vendorId, leadFranchiseId, leadId);
   const { mutate: reassignSupervisor, isPending: reassigning } =
     useReassignSiteSupervisor();
   const { mutate: updateMrp, isPending: updatingMrp } = useUpdateMrpValue();
@@ -345,6 +351,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     });
 
   const bookingStagePhotos = cspBookingData?.documents ?? [];
+  const fmRequiredDocuments = cspBookingData?.requiredDocuments ?? [];
   const initialMeasurementDocs =
     siteMeasurementDetails?.initial_site_measurement_documents || [];
   const initialCurrentSitePhotos =
@@ -381,7 +388,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const isSupervisorAssigned =
     siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
 
-  const lead = data?.data?.lead;
   const isDesignerAssignedIfRequired =
     !isCustomVendor ||
     loading ||
@@ -1040,6 +1046,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             },
           );
           queryClient.invalidateQueries({
+            queryKey: ["bookingLeadById", vendorId, leadId],
+          });
+          queryClient.invalidateQueries({
             queryKey: ["bookingLead", leadId],
           });
           queryClient.invalidateQueries({
@@ -1047,6 +1056,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           });
           queryClient.invalidateQueries({
             queryKey: ["vendorSiteSupervisors", vendorId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["site-supervisors"],
           });
           setReassignConfirmOpen(false);
           setReassignOpen(false);
@@ -1361,6 +1373,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       Product-type totals captured during booking submission.
                     </p>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setBillingModalOpen(true)}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Billing Information
+                  </Button>
                 </div>
 
                 <div className="p-5">
@@ -1550,6 +1570,48 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           </div>
                         }
                       />
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+          {/* -------- Booking Stage – Required Documents (Final Measurement assign task) -------- */}
+          {!handlesLargeScaleProjects &&
+            !cspLoading &&
+            canViewBookingStageCurrentSitePhotos &&
+            fmRequiredDocuments.length > 0 && (
+              <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-border overflow-hidden">
+                <SectionHeader
+                  title="Booking Stage – Required Documents"
+                  icon={<FileText size={20} />}
+                />
+
+                <motion.div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {fmRequiredDocuments.map((doc, index) =>
+                      /\.(png|jpe?g|gif|webp)$/i.test(doc.originalName) ? (
+                        <ImageComponent
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            doc_og_name: doc.originalName,
+                            signedUrl: doc.signedUrl,
+                            created_at: doc.createdAt,
+                          }}
+                          index={index}
+                        />
+                      ) : (
+                        <DocumentCard
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            originalName: doc.originalName,
+                            signedUrl: doc.signedUrl,
+                            created_at: doc.createdAt,
+                          }}
+                        />
+                      ),
                     )}
                   </div>
                 </motion.div>
@@ -2176,6 +2238,19 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               </div>
             )}
         </div>
+
+        {vendorId && (
+          <BillingInformationModal
+            open={billingModalOpen}
+            onOpenChange={setBillingModalOpen}
+            leadId={leadId}
+            vendorId={vendorId}
+            productTypeTabs={productTypeGroups.map(({ productTypeId, label }) => ({
+              productTypeId,
+              label,
+            }))}
+          />
+        )}
 
         {/* -------- Upload Modal -------- */}
         <UploadFinalDoc

@@ -19,6 +19,7 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
   leadId,
   accountId,
   name,
+  instanceId,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userType = useAppSelector(
@@ -28,11 +29,17 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  // Large-scale vendors run the Dispatch stage per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const scopedInstanceId = handlesLargeScaleProjects ? instanceId ?? null : null;
 
   // ✅ Fetch readiness info from API
   const { data: readinessData, isLoading } = useCheckReadyForPostDispatch(
     vendorId,
-    leadId
+    leadId,
+    scopedInstanceId
   );
 
   const isReady = readinessData?.readyForPostDispatch || false;
@@ -60,6 +67,7 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
           leadId={leadId}
           accountId={accountId}
           name={name}
+          instanceId={scopedInstanceId}
         />
       ),
     },

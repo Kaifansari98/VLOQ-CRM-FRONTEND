@@ -53,10 +53,14 @@ export const useMoveToBookingStage = () => {
   });
 };
 
-export const useSiteSupervisors = (vendorId: number) => {
+export const useSiteSupervisors = (
+  vendorId?: number,
+  franchiseId?: number,
+  leadId?: number
+) => {
   return useQuery({
-    queryKey: ["site-supervisors", vendorId], // ✅ unique cache per vendor
-    queryFn: () => getAllSiteSuperVisors(vendorId),
+    queryKey: ["site-supervisors", vendorId, franchiseId, leadId], // ✅ unique cache per vendor & franchise/lead
+    queryFn: () => getAllSiteSuperVisors(vendorId!, franchiseId, leadId),
     enabled: !!vendorId, // ✅ only run when vendorId exists
     staleTime: 5 * 60 * 1000, // cache data for 5 minutes
   });

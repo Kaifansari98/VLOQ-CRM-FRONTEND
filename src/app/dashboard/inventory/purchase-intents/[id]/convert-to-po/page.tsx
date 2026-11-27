@@ -35,6 +35,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import CustomeDatePicker from "@/components/date-picker";
 
 type SelectionState = {
   checked: boolean;
@@ -68,7 +69,7 @@ type SelectedRow = {
 };
 
 const inputClass =
-  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-foreground/20";
 
 const n = (value: any) => {
   const num = Number(value ?? 0);
@@ -444,13 +445,14 @@ export default function ConvertPIToPOPage() {
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
         <div className="w-full space-y-5">
-          <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 rounded-md border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="rounded-md"
                   onClick={() =>
                     router.push(`/dashboard/inventory/purchase-intents/${piId}`)
                   }
@@ -470,11 +472,11 @@ export default function ConvertPIToPOPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="rounded-xl border bg-muted/30 px-4 py-2">
+              <div className="rounded-md border bg-muted/30 px-3 py-2">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">
                   Selected Total
                 </p>
-                <p className="text-lg font-bold text-indigo-600">
+                <p className="text-lg font-bold text-foreground">
                   {fmtMoney(totals.total_amount)}
                 </p>
               </div>
@@ -522,12 +524,12 @@ export default function ConvertPIToPOPage() {
                   return (
                     <div
                       key={item.id}
-                      className="overflow-hidden rounded-2xl border bg-background shadow-sm"
+                      className="overflow-hidden rounded-md border bg-background shadow-sm"
                     >
-                      <div className="flex flex-col gap-3 border-b bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
-                            <Package size={18} />
+                      <div className="flex flex-col gap-3 border-b bg-muted/30 p-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-2.5">
+                          <div className="rounded-md border bg-muted p-2 text-foreground">
+                            <Package size={17} />
                           </div>
 
                           <div>
@@ -576,7 +578,7 @@ export default function ConvertPIToPOPage() {
                               <th className="px-3 py-3 text-left">Supplier Code</th>
                               <th className="px-3 py-3 text-left">Payment Term *</th>
                               <th className="px-3 py-3 text-right">Qty *</th>
-                              <th className="px-3 py-3 text-left">Delivery</th>
+                              <th className="px-3 py-3 text-left min-w-[170px] w-[170px]">Delivery</th>
                               <th className="px-3 py-3 text-right">MRP</th>
                               <th className="px-3 py-3 text-right">Disc %</th>
                               <th className="px-3 py-3 text-right">Rate *</th>
@@ -626,7 +628,7 @@ export default function ConvertPIToPOPage() {
                                     key={vm.id}
                                     className={
                                       sel.checked
-                                        ? "border-t bg-indigo-50/40 dark:bg-indigo-950/20"
+                                        ? "border-t bg-muted/40"
                                         : "border-t"
                                     }
                                   >
@@ -641,7 +643,7 @@ export default function ConvertPIToPOPage() {
                                         {sel.checked ? (
                                           <CheckSquare
                                             size={17}
-                                            className="text-indigo-600"
+                                            className="text-foreground"
                                           />
                                         ) : (
                                           <Square
@@ -700,18 +702,19 @@ export default function ConvertPIToPOPage() {
                                       />
                                     </td>
 
-                                    <td className="px-3 py-2">
-                                      <input
-                                        type="date"
+                                    <td className="px-3 py-2 min-w-[170px] w-[170px]">
+                                      <CustomeDatePicker
                                         value={sel.expected_delivery_date}
-                                        onChange={(e) =>
+                                        onChange={(val) =>
                                           updateField(
                                             vm.id,
                                             "expected_delivery_date",
-                                            e.target.value
+                                            val ?? ""
                                           )
                                         }
-                                        className={inputClass}
+                                        dateFormat="dd MMM yyyy"
+                                        placeholder="Select date"
+                                        className="h-8 text-xs font-normal"
                                       />
                                     </td>
 
@@ -779,7 +782,7 @@ export default function ConvertPIToPOPage() {
                                       {fmtMoney(sel.tax_amount)}
                                     </td>
 
-                                    <td className="px-3 py-2 text-right font-bold text-indigo-600">
+                                    <td className="px-3 py-2 text-right font-bold text-foreground">
                                       {fmtMoney(sel.total_amount)}
                                     </td>
 
@@ -809,7 +812,7 @@ export default function ConvertPIToPOPage() {
                 })}
               </div>
 
-              <div className="sticky bottom-4 z-20 rounded-2xl border bg-background p-4 shadow-xl">
+              <div className="sticky bottom-4 z-20 rounded-md border bg-background p-3.5 shadow-xl">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-bold">
@@ -826,7 +829,7 @@ export default function ConvertPIToPOPage() {
                       <p className="text-xs font-bold uppercase text-muted-foreground">
                         Grand Total
                       </p>
-                      <p className="text-xl font-bold text-indigo-600">
+                      <p className="text-xl font-bold text-foreground">
                         {fmtMoney(totals.total_amount)}
                       </p>
                     </div>
@@ -835,6 +838,7 @@ export default function ConvertPIToPOPage() {
                       type="button"
                       disabled={saving || selectedRows.length === 0}
                       onClick={handleCreatePO}
+                      className="rounded-md"
                     >
                       {saving ? (
                         <Loader2 size={14} className="mr-1 animate-spin" />

@@ -14,8 +14,16 @@ import {
   type FileUploadProps,
   FileUploadTrigger,
 } from "@/components/ui/file-upload";
-import { Upload, X } from "lucide-react";
+import { Download, ExternalLink, Eye, Upload, X } from "lucide-react";
 import { toastManager } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface FileUploadFieldProps {
   value: File[];
@@ -30,6 +38,8 @@ interface FileUploadFieldProps {
   isUploadDeniedAndSelectEnabled?: boolean;
   onSelectEnabledClick?: () => void;
   invalid?: boolean;
+  previewUrl?: string | null;
+  showPreview?: boolean;
 }
 
 export function FileUploadField({
@@ -43,11 +53,81 @@ export function FileUploadField({
   isUploadDeniedAndSelectEnabled = false,
   onSelectEnabledClick,
   invalid,
+  previewUrl,
+  showPreview = false,
 }: FileUploadFieldProps) {
   const finalAccept = accept ?? "*/*";
 
   // For single-file mode, maxFiles is always 1. For multiple, use the prop if provided.
   const finalMaxFiles = !multiple ? 1 : maxFiles ?? undefined;
+
+  const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
+  const [imageError, setImageError] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = value?.[0];
+    if (
+      file &&
+      file instanceof File &&
+      (file.type.startsWith("image/") || finalAccept.includes("image"))
+    ) {
+      const url = URL.createObjectURL(file);
+      setObjectUrl(url);
+      setImageError(false);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+    setObjectUrl(null);
+  }, [value, finalAccept]);
+
+  const activePreviewUrl =
+    objectUrl ||
+    (previewUrl && typeof previewUrl === "string" && previewUrl.trim() !== ""
+      ? previewUrl.trim()
+      : null);
+
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [activePreviewUrl]);
+
+  const handleDownload = React.useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!activePreviewUrl) return;
+
+      const fileName =
+        value?.[0]?.name ||
+        activePreviewUrl.split("/").pop()?.split("?")[0] ||
+        "download-image";
+
+      try {
+        const res = await fetch(activePreviewUrl);
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch {
+        const a = document.createElement("a");
+        a.href = activePreviewUrl;
+        a.download = fileName;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    },
+    [activePreviewUrl, value]
+  );
 
   // Immediately mark files as successfully staged (no fake upload simulation)
   // The actual upload happens on form submit via FormData.
@@ -256,7 +336,98 @@ export function FileUploadField({
             {multiple ? "Select files" : "Select file"}
           </Button>
         </FileUploadTrigger>
+
+        {(showPreview || previewUrl) && activePreviewUrl && !imageError && (
+          <div
+            className="mt-3 flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activePreviewUrl}
+              alt="Preview"
+              onError={() => setImageError(true)}
+              onClick={() => setIsPreviewOpen(true)}
+              className="max-h-24 max-w-full cursor-pointer rounded-md border bg-background object-contain p-1 shadow-xs transition-opacity hover:opacity-90"
+              title="Click to preview"
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-2.5 text-xs hover:bg-accent"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsPreviewOpen(true);
+                }}
+              >
+                <Eye className="size-3.5" />
+                Preview
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-2.5 text-xs hover:bg-accent"
+                onClick={handleDownload}
+              >
+                <Download className="size-3.5" />
+                Download
+              </Button>
+            </div>
+          </div>
+        )}
       </FileUploadDropzone>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent
+          className="flex max-w-3xl flex-col items-center justify-center gap-3 p-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader className="flex w-full flex-col gap-1 text-left">
+            <DialogTitle className="text-base font-semibold">Image Preview</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs">
+              View full size image preview
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative flex max-h-[70vh] w-full items-center justify-center overflow-auto rounded-lg border bg-muted/30 p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activePreviewUrl ?? undefined}
+              alt="Full size preview"
+              className="max-h-[65vh] max-w-full rounded-md object-contain shadow-sm"
+            />
+          </div>
+          <DialogFooter className="flex w-full items-center justify-end gap-2 border-t pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={handleDownload}
+            >
+              <Download className="size-3.5" />
+              Download
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => {
+                if (activePreviewUrl) {
+                  window.open(activePreviewUrl, "_blank", "noopener,noreferrer");
+                }
+              }}
+            >
+              <ExternalLink className="size-3.5" />
+              Open in new tab
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <FileUploadList>
         {value?.map((file, index) => (

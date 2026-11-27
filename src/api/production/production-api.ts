@@ -504,6 +504,64 @@ export const useUploadPreProductionFiles = (
   });
 };
 
+export type MetalCutlistRow = {
+  id: number;
+  item_name: string;
+  length: number | null;
+  width: number | null;
+  qty: number;
+  unique_code: string | null;
+  image_url: string | null;
+  created_at: string;
+};
+
+export type MetalCutlistData = {
+  project: { id: number; unique_project_id: string; project_name: string } | null;
+  rows: MetalCutlistRow[];
+};
+
+/** The lead's Track & Trace project; with an instanceId, that instance's own project. */
+export const useMetalCutlist = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
+  return useQuery({
+    queryKey: ["metalCutlist", vendorId, leadId, instanceId ?? "all"],
+    queryFn: async (): Promise<MetalCutlistData> => {
+      const { data } = await apiClient.get(
+        `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/metal-cutlist`,
+        {
+          params: instanceId ? { instance_id: instanceId } : undefined,
+        }
+      );
+      return data?.data ?? { project: null, rows: [] };
+    },
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useSaveMetalCutlist = (vendorId?: number, leadId?: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      if (!vendorId || !leadId) throw new Error("Missing vendorId or leadId");
+      const { data } = await apiClient.post(
+        `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/metal-cutlist`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["metalCutlist", vendorId, leadId] });
+      queryClient.invalidateQueries({ queryKey: ["track-trace-cutlist"] });
+      queryClient.invalidateQueries({ queryKey: ["track-trace-projects", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["track-trace-leads", vendorId] });
+    },
+  });
+};
+
 export const useCheckPreProductionFilesReady = (
   vendorId?: number,
   leadId?: number,

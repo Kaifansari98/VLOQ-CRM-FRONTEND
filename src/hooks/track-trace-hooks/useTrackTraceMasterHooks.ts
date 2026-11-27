@@ -8,6 +8,7 @@ import {
   getMachinesByVendor,
   postVendorLeads,
   updateMachine,
+  deleteMachineApi,
   searchTrackTraceLeadsApi,
   getTrackTraceProjectApi,
   updateTrackTraceProjectApi,
@@ -86,6 +87,22 @@ export const useUpdateMachine = (vendorId: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["machines", vendorId],
+      });
+    },
+  });
+};
+
+export const useDeleteMachine = (vendorId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteMachineApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["machines", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["active-machines", vendorId],
       });
     },
   });

@@ -22,12 +22,15 @@ interface PendingMaterialDetailsProps {
   leadId: number;
   accountId: number;
   disabled: boolean;
+  /** Large-scale vendors: the pending material belongs to this instance. */
+  instanceId?: number | null;
 }
 
 export default function PendingMaterialDetails({
   leadId,
   accountId,
   disabled,
+  instanceId = null,
 }: PendingMaterialDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -80,9 +83,27 @@ export default function PendingMaterialDetails({
     return map;
   }, [instances]);
 
-  const selectedInstanceId = selectedInstanceLabel
-    ? instanceIdByLabel.get(selectedInstanceLabel)
-    : undefined;
+  // Per-instance dispatch: the instance is fixed to the one being dispatched.
+  const scopedInstanceLabel = useMemo(() => {
+    if (!instanceId) return "";
+    const instance = instances.find(
+      (item: any) => Number(item?.id) === instanceId,
+    );
+    return instance
+      ? instance?.title ||
+          `Instance ${instance?.quantity_index ?? instance?.id}`
+      : "";
+  }, [instances, instanceId]);
+
+  useEffect(() => {
+    if (scopedInstanceLabel) setSelectedInstanceLabel(scopedInstanceLabel);
+  }, [scopedInstanceLabel]);
+
+  const selectedInstanceId = instanceId
+    ? instanceId
+    : selectedInstanceLabel
+      ? instanceIdByLabel.get(selectedInstanceLabel)
+      : undefined;
 
   useEffect(() => {
     setTitle("");
@@ -117,6 +138,7 @@ export default function PendingMaterialDetails({
           created_by: userId,
           due_date: dueDate,
           remark: combinedRemark,
+          ...(instanceId ? { instance_id: instanceId } : {}),
         },
       });
 
@@ -230,7 +252,11 @@ export default function PendingMaterialDetails({
                   emptyLabel={
                     instanceOptions.length ? "Select instance" : "No instances"
                   }
-                  disabled={loadingInstances || instanceOptions.length === 0}
+                  disabled={
+                    loadingInstances ||
+                    instanceOptions.length === 0 ||
+                    !!instanceId
+                  }
                 />
               </div>
 

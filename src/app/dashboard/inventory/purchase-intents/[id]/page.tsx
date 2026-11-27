@@ -71,7 +71,7 @@ const STATUS_CFG: Record<string, StatusUi> = {
   },
   ConvertedToPO: {
     label: "Converted to PO",
-    color: "bg-blue-100 text-blue-700 border-blue-200",
+    color: "bg-muted text-foreground border-border",
     icon: ShoppingCart,
   },
   Cancelled: {
@@ -159,7 +159,7 @@ function StatusBadge({ status }: { status: PIStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold",
         cfg.color
       )}
     >
@@ -191,7 +191,7 @@ function ApprovalModal({
       onClick={onClose}
     >
       <div
-        className="flex w-full max-w-md flex-col gap-5 rounded-2xl border bg-background p-6 shadow-2xl"
+        className="flex w-full max-w-md flex-col gap-4 rounded-lg border bg-background p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div>
@@ -212,7 +212,7 @@ function ApprovalModal({
             onChange={(e) => setRemarks(e.target.value)}
             placeholder={isReject ? "Provide a reason..." : "Add optional remarks..."}
             rows={4}
-            className="mt-1 w-full resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+            className="mt-1 w-full resize-none rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-foreground/20"
           />
         </div>
 
@@ -335,8 +335,8 @@ export default function PurchaseIntentDetailPage() {
       </header>
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-        <div className="w-full space-y-5">
-          <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="w-full space-y-4">
+          <div className="flex flex-col gap-3 rounded-md border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <Button
@@ -443,7 +443,7 @@ export default function PurchaseIntentDetailPage() {
               <Skeleton className="h-80 rounded-xl" />
             </div>
           ) : !data ? (
-            <div className="rounded-2xl border bg-background p-10 text-center text-muted-foreground">
+            <div className="rounded-md border bg-background p-10 text-center text-muted-foreground">
               Failed to load enquiry details.
             </div>
           ) : (
@@ -456,14 +456,14 @@ export default function PurchaseIntentDetailPage() {
               </div>
 
               {data.rejection_reason && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700">
                   <p className="text-xs font-bold uppercase">Rejection Reason</p>
                   <p className="mt-1 text-sm">{data.rejection_reason}</p>
                 </div>
               )}
 
               {data.remarks && (
-                <div className="rounded-2xl border bg-background p-4">
+                <div className="rounded-md border bg-background p-3">
                   <p className="text-xs font-bold uppercase text-muted-foreground">
                     Overall Remarks
                   </p>
@@ -471,7 +471,7 @@ export default function PurchaseIntentDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-2xl border bg-background shadow-sm">
+              <div className="rounded-md border bg-background shadow-sm">
                 <div className="border-b px-4 py-3">
                   <p className="font-bold">Products & Supplier Quotations</p>
                   <p className="text-xs text-muted-foreground">
@@ -570,7 +570,7 @@ export default function PurchaseIntentDetailPage() {
                             <td className="px-3 py-3 text-right">
                               {fmtMoney(vm.tax_amount)}
                             </td>
-                            <td className="px-3 py-3 text-right font-bold text-indigo-600">
+                            <td className="px-3 py-3 text-right font-bold text-foreground">
                               {fmtMoney(vm.total_amount)}
                             </td>
                             <td className="px-3 py-3">
@@ -593,7 +593,7 @@ export default function PurchaseIntentDetailPage() {
                         <td className="px-3 py-3 text-right">
                           {fmtMoney(financials.taxAmount)}
                         </td>
-                        <td className="px-3 py-3 text-right text-indigo-600">
+                        <td className="px-3 py-3 text-right font-bold text-foreground">
                           {fmtMoney(financials.grandTotal)}
                         </td>
                         <td className="px-3 py-3" />
@@ -604,7 +604,7 @@ export default function PurchaseIntentDetailPage() {
               </div>
 
               {data.statusLogs?.length > 0 && (
-                <div className="rounded-2xl border bg-background shadow-sm">
+                <div className="rounded-md border bg-background shadow-sm">
                   <div className="border-b px-4 py-3">
                     <p className="font-bold">Status Timeline</p>
                   </div>
@@ -694,7 +694,7 @@ function SummaryBox({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-background p-4 shadow-sm">
+    <div className="rounded-md border bg-background p-3 shadow-sm">
       <p className="text-[10px] font-bold uppercase text-muted-foreground">
         {label}
       </p>

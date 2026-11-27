@@ -38,7 +38,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useLeadSpecifications,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  getItemGroupSpecifications,
+  SpecificationDocumentCard,
+} from "./specification-documents";
 import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
 import SectionHeader from "@/utils/sectionHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -394,7 +401,17 @@ export default function TechCheckDetails({
         ? fallbackPythaDocsByInstance
         : rawPythaDocs;
 
-  const allDocs = [...pptDocs, ...pythaDocs];
+  const { data: leadSpecifications = [] } = useLeadSpecifications(
+    vendorId,
+    handlesLargeScaleProjects ? leadId : undefined,
+  );
+  const specificationDocs = getItemGroupSpecifications(
+    leadSpecifications,
+    Array.isArray(structureInstancesData?.data) ? structureInstancesData.data : [],
+    selectedProductTypeId,
+  );
+
+  const allDocs = [...pptDocs, ...pythaDocs, ...specificationDocs];
 
   // ✅ Delete mutation
   const { mutate: deleteDocument, isPending: deleting } =
@@ -419,6 +436,7 @@ export default function TechCheckDetails({
     "pyo",
   ];
 
+  const filteredSpecificationDocs = filterDocs(specificationDocs);
   const filteredPptDocs = filterDocs(pptDocs);
   const filteredPythaDocs = filterDocs(pythaDocs);
 
@@ -755,6 +773,65 @@ export default function TechCheckDetails({
           </div>
 
           <div className="p-6 space-y-8 bg-[#fff] dark:bg-[#0a0a0a]">
+            {/* ========== SPECIFICATIONS ========== */}
+            {handlesLargeScaleProjects && (
+              <motion.div
+                variants={itemVariants}
+                className="space-y-4 bg-[#fff] dark:bg-[#0a0a0a]"
+              >
+                <div
+                  className="
+          flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
+          px-4 py-2 border border-border rounded-xl
+          bg-[#fff] dark:bg-[#0a0a0a]
+        "
+                >
+                  <div className="flex items-center gap-2">
+                    <Layers3 size={18} className="opacity-70 shrink-0" />
+                    <h2 className="text-base font-semibold tracking-tight">
+                      Specifications
+                    </h2>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0 text-right">
+                    {filteredSpecificationDocs.length}{" "}
+                    {filteredSpecificationDocs.length === 1 ? "Document" : "Documents"}
+                  </span>
+                </div>
+
+                {filteredSpecificationDocs.length === 0 ? (
+                  <div
+                    className="
+            flex flex-col items-center justify-center 
+            py-14 px-6 
+            border border-dashed border-border/60 
+            rounded-xl 
+            bg-[#fff] dark:bg-[#0a0a0a]
+          "
+                  >
+                    <Ban size={38} className="text-muted-foreground mb-2" />
+                    <h3 className="font-semibold text-sm mb-1">
+                      No Specifications Found
+                    </h3>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Specifications will appear here once added.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                    {filteredSpecificationDocs.map((spec: any) => (
+                      <div key={spec.id} className="space-y-2 min-w-0">
+                        <SpecificationDocumentCard
+                          vendorId={vendorId}
+                          specification={spec}
+                          status={spec.tech_check_status ?? "PENDING"}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {/* ========== PROJECT FILES ========== */}
             <motion.div
               variants={itemVariants}

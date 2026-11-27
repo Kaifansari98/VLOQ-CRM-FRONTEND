@@ -142,11 +142,17 @@ export default function LeadsGenerationPage() {
   };
   const [openPopover, setOpenPopover] = useState(false);
 
+  const isCaller = [
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
+    "caller",
+    "store-caller",
+    "store caller",
+  ].includes(normalizedUserType || "");
+
   const isFilterByUser =
-    normalizedUserType === "sales-executive" ||
-    normalizedUserType === "telecaller" ||
-    normalizedUserType === "telecaller-team-lead" ||
-    normalizedUserType === "telecaller team lead";
+    normalizedUserType === "sales-executive" || isCaller;
 
   const { data: counts } = useActivityStatusCounts(
     vendorId,
@@ -373,6 +379,7 @@ export default function LeadsGenerationPage() {
                 </Button>
 
                 <GenerateLeadFormModal
+                  draftInOpenLeads
                   open={openCreateLead}
                   onOpenChange={setOpenCreateLead}
                 />

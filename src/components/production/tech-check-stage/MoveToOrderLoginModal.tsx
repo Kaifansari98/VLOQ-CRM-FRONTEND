@@ -59,7 +59,10 @@ const buildSchema = (
           .string()
           .min(1, "Please select a date")
           .refine((value) => value >= minDate, {
-            message: `Client required date must be at least ${minDays} days from today`,
+            message:
+              minDays === 0
+                ? "Client required date cannot be in the past"
+                : `Client required date must be at least ${minDays} days from today`,
           }),
   });
 
@@ -106,6 +109,21 @@ export default function MoveToOrderLoginModal({
         | null
         | undefined,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const currentUserType = useAppSelector(
+    (s) =>
+      s.auth.user?.user_type?.user_type ||
+      s.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
+
+  // Standard vendors assign only to users of the backend user type
+  const isBackendOnlyFlow =
+    !handlesLargeScaleProjects && vendorCustomUserTypeMode !== true;
 
   const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate: approveTechCheck, isPending } = useApproveTechCheck();
@@ -130,9 +148,12 @@ export default function MoveToOrderLoginModal({
     vendorCustomUserTypeMode === true
       ? "Confirm Order Login Assignment"
       : "Confirm Move to Order Login";
+  // Large-scale project vendors can pick today or any future date
   const minDays =
-    (leadStatusData as any)?.total_required_chs_manufacturing_days ??
-    DEFAULT_MIN_DAYS;
+    handlesLargeScaleProjects
+      ? 0
+      : ((leadStatusData as any)?.total_required_chs_manufacturing_days ??
+        DEFAULT_MIN_DAYS);
   const isFastProductionLead =
     (leadStatusData as any)?.is_fast_production === true;
   const fastProductionLeadRequiredDate = (leadStatusData as any)
@@ -172,12 +193,34 @@ export default function MoveToOrderLoginModal({
     [isFastProductionLead, minClientRequiredDate, minDays],
   );
 
-  const mappedUsers =
-    backendUsers?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+  const activeUsers = useMemo(() => {
+    const rawUsers = backendUsers ?? [];
+    return rawUsers.filter((user: any) => {
+      const userType = String(user.user_type?.user_type || "")
+        .trim()
+        .toLowerCase();
+      if (isBackendOnlyFlow) {
+        return userType === "backend";
+      }
+      if (userType === "super-admin") {
+        return isSuperAdmin;
+      }
+      return true;
+    });
+  }, [isBackendOnlyFlow, backendUsers, isSuperAdmin]);
 
+  const mappedUsers = useMemo(
+    () =>
+      activeUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+        subLabel: user.user_email || user.email || "",
+      })),
+    [activeUsers],
+  );
+
+  const singleBackendUser =
+    isBackendOnlyFlow && mappedUsers.length === 1 ? mappedUsers[0] : null;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -200,6 +243,13 @@ export default function MoveToOrderLoginModal({
       setSelectedRequiredDate("");
     }
   }, [open, form]);
+
+  const singleBackendUserId = singleBackendUser?.id;
+  useEffect(() => {
+    if (open && singleBackendUserId) {
+      form.setValue("assign_to_user_id", singleBackendUserId);
+    }
+  }, [open, singleBackendUserId, form]);
 
   // ❇️ Final Confirm Submit
   const handleConfirmSubmit = () => {
@@ -289,14 +339,28 @@ export default function MoveToOrderLoginModal({
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
-                  <FormField
-                    control={form.control}
-                    name="assign_to_user_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">
-                          {assignUserLabel}
-                        </FormLabel>
+                  {singleBackendUser ? (
+                    <p className="text-sm text-muted-foreground">
+                      This lead will be assigned to{" "}
+                      <strong className="text-foreground">
+                        {singleBackendUser.label}
+                      </strong>
+                      .
+                    </p>
+                  ) : isBackendOnlyFlow && mappedUsers.length === 0 ? (
+                    <p className="text-sm text-destructive">
+                      No active Backend user found. Please add one to
+                      continue.
+                    </p>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="assign_to_user_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            {assignUserLabel}
+                          </FormLabel>
                           <FormControl>
                             <AssignToPicker
                               data={mappedUsers}
@@ -306,10 +370,11 @@ export default function MoveToOrderLoginModal({
                               }
                             />
                           </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   {!isFastProductionLead ? (
                     <FormField
@@ -377,7 +442,13 @@ export default function MoveToOrderLoginModal({
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={isPending}>
+                    <Button
+                      type="submit"
+                      disabled={
+                        isPending ||
+                        (isBackendOnlyFlow && mappedUsers.length === 0)
+                      }
+                    >
                       {isPending ? "Processing..." : "Move To Order Login"}
                     </Button>
                   </div>

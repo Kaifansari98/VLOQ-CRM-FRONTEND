@@ -19,6 +19,15 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { formatSalesExecutiveName } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 // API & REDUX IMPORTS
 import { useAppSelector } from "@/redux/store";
@@ -30,6 +39,8 @@ import { mapTableFiltersToPayload } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { toastManager } from "@/components/ui/toast";
+
+import { usePersistedColumnVisibility } from "@/hooks/usePersistedColumnVisibility";
 
 export default function DraftLeadsTable({
   stageTitle = "Draft Leads",
@@ -62,6 +73,31 @@ export default function DraftLeadsTable({
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive" ||
     normalizedUserType === "head-site-supervisor";
+
+  const isCaller =
+    [
+      "telecaller",
+      "telecaller-team-lead",
+      "caller",
+      "store-caller",
+    ].includes(normalizedUserType || "") ||
+    /^(telecaller|caller|store[-_\s]*caller)/i.test(normalizedUserType || "");
+
+  const { data: rawStores = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const stores = React.useMemo(() => {
+    return (rawStores || []).filter((s: any) => {
+      const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+      return name !== "b2b";
+    });
+  }, [rawStores]);
+
+  const [storeFilter, setStoreFilter] = React.useState<string>("");
+
+  const canSeeMyOverallTabs =
+    normalizedUserType === "sales-executive" ||
+    (isOnlineLeadFeatureEnabled && isCaller);
+
+  const [viewType, setViewType] = React.useState<"my" | "overall">("my");
 
   const [actingLeadId, setActingLeadId] = React.useState<number | null>(null);
 
@@ -129,16 +165,21 @@ export default function DraftLeadsTable({
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    isOnlineLeadFeatureEnabled ? "online_leads" : "draft_leads",
+    {}
+  );
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const postPayload: DraftLeadTableDataPostPayload = React.useMemo(() => {
+  const basePostPayload: DraftLeadTableDataPostPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(columnFilters);
 
     return {
       userId: userId!,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id: isCaller
+        ? (storeFilter ? Number(storeFilter) : undefined)
+        : (shouldIncludeFranchise ? franchiseId! : undefined),
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       global_search: globalFilter || "",
@@ -170,16 +211,44 @@ export default function DraftLeadsTable({
     userId,
     shouldIncludeFranchise,
     franchiseId,
+    isCaller,
+    storeFilter,
     pagination,
     sorting,
     columnFilters,
     globalFilter,
   ]);
 
-  const { data, isLoading } = useDraftLeadTableDataPost(
-    vendorId!,
-    postPayload
+  const myPayload = React.useMemo(
+    () => ({
+      ...basePostPayload,
+      view_type: "my" as const,
+    }),
+    [basePostPayload],
   );
+
+  const overallPayload = React.useMemo(
+    () => ({
+      ...basePostPayload,
+      view_type: "overall" as const,
+    }),
+    [basePostPayload],
+  );
+
+  const { data: myData, isLoading: isMyLoading } = useDraftLeadTableDataPost(
+    vendorId!,
+    myPayload,
+  );
+
+  const { data: overallData, isLoading: isOverallLoading } =
+    useDraftLeadTableDataPost(vendorId!, overallPayload);
+
+  const effectiveViewType = canSeeMyOverallTabs ? viewType : "my";
+  const data = effectiveViewType === "overall" ? overallData : myData;
+  const isLoading =
+    effectiveViewType === "overall" ? isOverallLoading : isMyLoading;
+  const myCount = myData?.count ?? 0;
+  const overallCount = overallData?.count ?? 0;
 
 
   const tableData: DraftLeadRow[] = React.useMemo(() => {
@@ -294,6 +363,44 @@ export default function DraftLeadsTable({
             {stageDescription}
           </p>
         </div>
+
+        {canSeeMyOverallTabs && (
+          <div className="flex gap-2 items-end">
+            <Button
+              size="sm"
+              variant={effectiveViewType === "my" ? "default" : "secondary"}
+              onClick={() => {
+                setViewType("my");
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              className="flex-1 md:flex-none"
+            >
+              My Leads
+              {isOnlineLeadFeatureEnabled &&
+              (myCount === 0 || Number(myCount) === 0)
+                ? ""
+                : ` (${myCount})`}
+            </Button>
+
+            <Button
+              size="sm"
+              variant={
+                effectiveViewType === "overall" ? "default" : "secondary"
+              }
+              onClick={() => {
+                setViewType("overall");
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              className="flex-1 md:flex-none"
+            >
+              Overall Leads
+              {isOnlineLeadFeatureEnabled &&
+              (overallCount === 0 || Number(overallCount) === 0)
+                ? ""
+                : ` (${overallCount})`}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ================= TABLE ================= */}
@@ -312,6 +419,28 @@ export default function DraftLeadsTable({
               title="Created At"
               multiple
             />
+
+            {isCaller && (
+              <Select
+                value={storeFilter || "ALL_STORES"}
+                onValueChange={(val) => {
+                  setStoreFilter(val === "ALL_STORES" ? "" : val);
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                }}
+              >
+                <SelectTrigger className="h-8 w-[140px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                  <SelectValue placeholder="All Stores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                  {stores.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <ClearInput
@@ -327,7 +456,7 @@ export default function DraftLeadsTable({
 
         {/* ================= DESKTOP LAYOUT ================= */}
         <div className="hidden md:flex justify-between items-end">
-          <div className="flex items-end gap-3">
+          <div className="flex items-center gap-3">
             <ClearInput
               value={globalFilter ?? ""}
               onChange={(e) => {
@@ -337,6 +466,28 @@ export default function DraftLeadsTable({
               placeholder="Search…"
               className="h-8 w-64"
             />
+
+            {isCaller && (
+              <Select
+                value={storeFilter || "ALL_STORES"}
+                onValueChange={(val) => {
+                  setStoreFilter(val === "ALL_STORES" ? "" : val);
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                }}
+              >
+                <SelectTrigger className="h-8 w-[160px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                  <SelectValue placeholder="All Stores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_STORES">All Stores</SelectItem>
+                  {stores.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <DataTableDateFilter
               column={table.getColumn("createdAt")!}

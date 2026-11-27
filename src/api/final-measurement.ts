@@ -1,6 +1,9 @@
+import { uploadFMFile } from "@/api/fm-requirements";
+import type { FMAnswerGroup } from "@/lib/fm-requirements";
 import { apiClient } from "@/lib/apiClient";
 
 export interface FinalMeasurementPayload {
+  fm_requirements?: FMAnswerGroup[];
   lead_id: number;
   account_id: number;
   vendor_id: number;
@@ -90,6 +93,16 @@ export const getRestrictedTaskConflicts = async (leadId: number) => {
 export const UploadFinalMeasurement = async (
   payload: FinalMeasurementPayload
 ) => {
+  if (payload.fm_requirements) {
+    const documentFiles = await Promise.all((payload.final_measurement_docs ?? []).map(file => uploadFMFile(payload.vendor_id, payload.lead_id, file)));
+    const photoFiles = await Promise.all((payload.site_photos ?? []).map(file => uploadFMFile(payload.vendor_id, payload.lead_id, file)));
+    const { data } = await apiClient.post(`/leads/fm-requirements/vendor/${payload.vendor_id}/lead/${payload.lead_id}/submit`, {
+      groups: payload.fm_requirements,
+      primary_uploads: { measurement_document: documentFiles.map(file => file.id), site_photos: photoFiles.map(file => file.id) },
+      critical_discussion_notes: payload.critical_discussion_notes,
+    });
+    return data;
+  }
   const formData = new FormData();
   formData.append("lead_id", payload.lead_id.toString());
   formData.append("account_id", payload.account_id.toString());
@@ -161,6 +174,7 @@ export interface uploadClientDocPayload {
   productStructureInstanceId?: number;
   pptDocuments: File[];
   pythaDocuments: File[];
+  keepOriginalNames?: boolean;
 }
 
 export const UploadClientDocumantation = async (
@@ -176,6 +190,10 @@ export const UploadClientDocumantation = async (
       "product_structure_instance_id",
       payload.productStructureInstanceId.toString()
     );
+  }
+  // Must be appended before the files: the upload filter reads it
+  if (payload.keepOriginalNames) {
+    formData.append("keep_original_name", "true");
   }
 
   payload.pptDocuments.forEach((file) => {
@@ -337,6 +355,7 @@ export interface UploadCSPBookingPayload {
   assigned_to: number;
   created_by: number;
   site_photos: File[];
+  required_documents?: File[];
 }
 
 export const uploadCSPBooking = async (
@@ -352,6 +371,10 @@ export const uploadCSPBooking = async (
 
   payload.site_photos.forEach((file) => {
     formData.append("current_site_photos", file);
+  });
+
+  payload.required_documents?.forEach((file) => {
+    formData.append("required_documents", file);
   });
 
   const { data } = await apiClient.post(
@@ -378,6 +401,7 @@ export interface CSPBookingPhoto {
 export interface GetCSPBookingResponse {
   count: number;
   documents: CSPBookingPhoto[];
+  requiredDocuments?: CSPBookingPhoto[];
 }
 
 export const getCSPBookingPhotos = async (

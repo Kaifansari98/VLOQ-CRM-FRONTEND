@@ -46,16 +46,18 @@ type TabId =
   | "task-history"
   | "follow-ups"
   | "approvals"
+  | "track-trace"
   | "online-history";
 
 const HISTORY_TYPE_MAP: Record<
   Exclude<TabId, "online-history">,
-  "Lead" | "Task" | "FollowUp" | "Approval"
+  "Lead" | "Task" | "FollowUp" | "Approval" | "TrackTrace"
 > = {
   "lead-history": "Lead",
   "task-history": "Task",
   "follow-ups": "FollowUp",
   approvals: "Approval",
+  "track-trace": "TrackTrace",
 };
 
 const getActionIcon = (actionType: string) => {
@@ -300,9 +302,10 @@ export default function SiteHistoryTab({
         "task-history",
         "follow-ups",
         "approvals",
+        "track-trace",
         "online-history",
       ]
-    : ["task-history", "follow-ups", "approvals", "online-history"];
+    : ["task-history", "follow-ups", "approvals", "track-trace", "online-history"];
   const defaultTabId: TabId = canSeeLeadHistoryTab
     ? "lead-history"
     : "task-history";
@@ -1256,6 +1259,12 @@ export default function SiteHistoryTab({
       cardContent: isApprovalTimeline ? approvalContent : timelineContent,
     },
     {
+      id: "track-trace",
+      title: "Track Trace",
+      color: "bg-foreground",
+      cardContent: timelineContent,
+    },
+    {
       id: "online-history",
       title: "Online History",
       color: "bg-foreground",
@@ -1278,6 +1287,8 @@ export default function SiteHistoryTab({
               ? "View chronological online lifecycle ingestion and allocations"
               : isApprovalTimeline
               ? "View all approval requests and their status"
+              : activeTab === "track-trace"
+              ? "Track all part-to-machine mapping changes in this lead's Track & Trace cutlists"
               : "Track all activities and changes for this lead"}
           </p>
         </div>

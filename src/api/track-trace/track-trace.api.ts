@@ -19,6 +19,7 @@ export type ProjectSortBy =
   | "track_trace_status";
 
 export interface TrackTraceProjectFilters {
+  fabrication?: "WOODWORK" | "METALWORK";
   page: number;
   limit: number;
 
@@ -44,6 +45,7 @@ export type TrackTraceProjectListRow =
     deleted_at?: string | null;
 
     created_at?: string;
+    vendor_time_zone?: string;
   };
 
 export interface ProjectPagination {
@@ -57,6 +59,7 @@ export interface ProjectPagination {
 
 export interface TrackTraceProjectsResponse {
   projects: TrackTraceProjectListRow[];
+  vendor_time_zone?: string;
 
   pagination: ProjectPagination;
 }
@@ -69,6 +72,7 @@ export const getAllTrackTraceProjects = async (
     `/track-trace/project/${vendorId}`,
     {
       params: {
+        fabrication: filters.fabrication,
         page: filters.page,
         limit: filters.limit,
 

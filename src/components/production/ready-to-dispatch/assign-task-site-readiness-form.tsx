@@ -107,6 +107,8 @@ interface Props {
   };
   onlyFollowUp?: boolean;
   userType?: string;
+  /** Large-scale vendors move this instance (not the whole lead) to Site Readiness. */
+  instanceId?: number | null;
 }
 
 const AssignTaskSiteReadinessForm: React.FC<Props> = ({
@@ -114,6 +116,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   onOpenChange,
   data,
   userType,
+  instanceId,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const loggedInUserType = useAppSelector(
@@ -145,6 +148,11 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (state) => state.auth.user?.user_name ?? "",
   );
   const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  // Site Readiness runs per instance only for large-scale vendors.
+  const scopedInstanceId = handlesLargeScaleProjects ? instanceId ?? null : null;
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
@@ -179,19 +187,20 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     return formatLocalDate(minDate);
   }, [normalizedUserType]);
 
-  const { data: assignedSiteSupervisor } = useAssignedSiteSupervisor(
+  const { data: assignedSiteSupervisor, isFetching: refreshingSupervisor } = useAssignedSiteSupervisor(
     vendorId,
     leadId,
+    open,
   );
 
   const {
     data: currentSitePhotosCount,
     isLoading: isLoadingCurrentSitePhotosCount,
-  } = useCurrentSitePhotosCount(vendorId, leadId);
+  } = useCurrentSitePhotosCount(vendorId, leadId, scopedInstanceId);
   const {
     data: taskConflicts,
     isLoading: isLoadingSiteReadinessTaskConflicts,
-  } = useSiteReadinessTaskConflicts(leadId);
+  } = useSiteReadinessTaskConflicts(leadId, scopedInstanceId);
 
   const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
   const siteReadinessTaskConflicts =
@@ -248,6 +257,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   });
 
   const taskType = form.watch("task_type");
+  const selectedAssigneeId = form.watch("assign_lead_to");
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isApprovalRequestTask = taskType === "Approval Request";
   const canShowApprovalRequestOption = canUserShowApprovalRequest({
@@ -374,7 +384,24 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const shouldUseCustomSiteReadinessUsers =
     isCustomUsertypeOnlyVendor && taskType === "Site Readiness";
 
-  const mappedData = isApprovalRequestTask
+  const assignedSupervisorId =
+    assignedSiteSupervisor?.supervisor?.id ??
+    assignedSiteSupervisor?.user_id ??
+    undefined;
+  const isSiteReadinessTask = taskType === "Site Readiness";
+  const shouldLockAssignee = isSiteReadinessTask && !!assignedSupervisorId;
+
+  const mappedData = shouldLockAssignee
+    ? [{
+        id: assignedSupervisorId!,
+        label:
+          assignedSiteSupervisor?.supervisor?.user_name ??
+          siteSupervisorList.find(
+            (user: { id: number; label: string }) => user.id === assignedSupervisorId,
+          )?.label ??
+          "Assigned Site Supervisor",
+      }]
+    : isApprovalRequestTask
     ? approvalRequestUsers.map((user) => ({
         id: user.id,
         label: user.user_name,
@@ -412,18 +439,6 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           }))
         : siteSupervisorList;
 
-  const assignedSupervisorId =
-    assignedSiteSupervisor?.supervisor?.id ??
-    assignedSiteSupervisor?.user_id ??
-    undefined;
-  const matchedSupervisorId = siteSupervisorList.find(
-    (user: { id: number; label: string }) => user.id === assignedSupervisorId,
-  )?.id;
-  const isSiteReadinessTask = taskType === "Site Readiness";
-  const shouldLockAssignee =
-    normalizedUserType !== "custom" &&
-    isSiteReadinessTask &&
-    !!matchedSupervisorId;
   const isSiteReadinessSelectionDisabled =
     isLoadingSiteReadinessTaskConflicts ||
     isSiteReadinessConflictLocked ||
@@ -432,7 +447,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     ? "Checking existing tasks"
     : isSiteReadinessConflictLocked
       ? "Site Readiness task already created and not completed"
-      : "Please upload current site photos before moving this lead to Site Readiness.";
+      : scopedInstanceId
+        ? "Please upload current site photos for this instance before moving it to Site Readiness."
+        : "Please upload current site photos before moving this lead to Site Readiness.";
 
   React.useEffect(() => {
     if (!open || isLoadingCurrentSitePhotosCount) return;
@@ -485,19 +502,19 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
   React.useEffect(() => {
     if (
-      normalizedUserType !== "custom" &&
-      isSiteReadinessTask &&
       shouldLockAssignee &&
-      form.getValues("assign_lead_to") !== matchedSupervisorId
+      assignedSupervisorId &&
+      selectedAssigneeId !== assignedSupervisorId
     ) {
-      form.setValue("assign_lead_to", matchedSupervisorId);
+      form.setValue("assign_lead_to", assignedSupervisorId, {
+        shouldValidate: true,
+      });
     }
   }, [
-    isSiteReadinessTask,
     shouldLockAssignee,
-    matchedSupervisorId,
+    assignedSupervisorId,
+    selectedAssigneeId,
     form,
-    normalizedUserType,
   ]);
 
   React.useEffect(() => {
@@ -546,6 +563,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   ]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (values.task_type === "Site Readiness" && refreshingSupervisor) return;
     if (values.task_type === "Approval Request") {
       approvalRequestMutation.mutate(
         {
@@ -629,6 +647,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       remark: values.remark,
       user_id: values.assign_lead_to!,
       created_by: userId!,
+      instance_id: scopedInstanceId,
     };
 
     mutation.mutate(payload, {
@@ -638,6 +657,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           type: "success",
         });
         queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+        queryClient.invalidateQueries({
+          queryKey: ["siteReadinessTaskConflicts", leadId],
+        });
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
           exact: false,
@@ -905,7 +927,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
               <Button
                 type="submit"
                 className="text-sm"
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || (isSiteReadinessTask && refreshingSupervisor)}
               >
                 {mutation.isPending ? "Submitting..." : "Submit"}
               </Button>

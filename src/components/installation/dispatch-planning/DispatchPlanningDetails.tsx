@@ -53,6 +53,7 @@ import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequired
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -146,6 +147,7 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 export default function DispatchPlanningDetails({
   leadId,
   accountId,
+  instanceId,
 }: DispatchPlanningDetailsProps) {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
@@ -157,6 +159,11 @@ export default function DispatchPlanningDetails({
   const isAccountLocInEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
   );
+  // Large-scale vendors plan dispatch (info + payment) per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const scopedInstanceId = handlesLargeScaleProjects ? instanceId ?? null : null;
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -166,6 +173,7 @@ export default function DispatchPlanningDetails({
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "dispatch_planning");
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [existingPaymentDoc, setExistingPaymentDoc] = useState<{
@@ -189,7 +197,7 @@ export default function DispatchPlanningDetails({
     data: dispatchInfoData,
     isLoading: loadingDispatchInfo,
     refetch: refetchDispatchInfo,
-  } = useDispatchPlanningInfo(vendorId, leadId);
+  } = useDispatchPlanningInfo(vendorId, leadId, scopedInstanceId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
@@ -239,7 +247,7 @@ export default function DispatchPlanningDetails({
     data: paymentData,
     isLoading: loadingPaymentInfo,
     refetch: refetchPaymentInfo,
-  } = useDispatchPlanningPayment(vendorId, leadId);
+  } = useDispatchPlanningPayment(vendorId, leadId, scopedInstanceId);
 
   const { data: pendingAmountData } = usePendingProjectAmount(vendorId, leadId);
   const project_pending_amount = pendingAmountData?.pending_amount ?? 0;
@@ -296,6 +304,17 @@ export default function DispatchPlanningDetails({
     }
   }, [dispatchInfoData, setValueDispatch]);
 
+  // Switching instance: drop the previous instance's payment from the form.
+  useEffect(() => {
+    resetPayment({
+      pending_payment: "",
+      pending_payment_details: "",
+      payment_proof_file: [],
+    });
+    setPaymentSaved(false);
+    setExistingPaymentDoc(null);
+  }, [scopedInstanceId, resetPayment]);
+
   // Load payment info data
   useEffect(() => {
     if (paymentData) {
@@ -331,6 +350,7 @@ export default function DispatchPlanningDetails({
           ? "true"
           : "false",
         created_by: userId,
+        ...(scopedInstanceId ? { instance_id: scopedInstanceId } : {}),
       };
 
       await saveInfoMutation.mutateAsync({ vendorId, leadId, payload });
@@ -384,6 +404,9 @@ export default function DispatchPlanningDetails({
       );
       formData.append("account_id", accountId.toString());
       formData.append("created_by", userId.toString());
+      if (scopedInstanceId) {
+        formData.append("instance_id", scopedInstanceId.toString());
+      }
 
       if (data.payment_proof_file && data.payment_proof_file.length > 0) {
         formData.append("payment_proof_file", data.payment_proof_file[0]);
@@ -477,6 +500,8 @@ export default function DispatchPlanningDetails({
   const hasPendingDispatchPlanningApproval = dispatchPlanningLockIns.some(
     (lockIn) => !lockIn.is_approved,
   );
+  const pendingApproval = dispatchPlanningLockIns.find(lockIn => !lockIn.is_approved);
+  const approvalTask = pendingApproval?.pending_tasks?.[0] ?? pendingApproval?.latest_task;
   const isDispatchPlanningInfoLocked = isAccountLocInEnabled
     ? dispatchPlanningLockInsLoading || hasPendingDispatchPlanningApproval
     : false;
@@ -514,6 +539,26 @@ export default function DispatchPlanningDetails({
   return (
     <div className="space-y-4 pb-6">
       <ClientRequiredDeliveryDateBanner leadId={leadId} />
+
+      {isAccountLocInEnabled && pendingApproval && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              {approvalTask?.status === "completed" ? "Task completed · Approval pending" : "Dispatch Planning approval pending"}
+            </p>
+            <p className="text-xs text-muted-foreground">Super Admin approval is required before dispatch details can be entered.</p>
+          </div>
+          {userType?.toLowerCase() === "super-admin" && approvalTask && (
+            <Button type="button" variant="outline" size="sm" disabled={shouldDisableBlockedActions} onClick={() => setApprovalOpen(true)}>
+              <CheckCircle2 className="size-4" />
+              Review approval
+            </Button>
+          )}
+        </div>
+      )}
+      {userType?.toLowerCase() === "super-admin" && approvalTask && (
+        <DispatchPlanningApprovalModal open={approvalOpen} onOpenChange={setApprovalOpen} data={{ leadId, taskId: approvalTask.id }} />
+      )}
 
       {/* ── Dispatch Planning Information ────────────────────────────────────── */}
       <div className="border h-full rounded-lg overflow-y-auto bg-background">

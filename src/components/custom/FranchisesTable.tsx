@@ -9,16 +9,22 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+import { useAppSelector } from "@/redux/store";
+import { Button } from "@/components/ui/button";
+import FranchiseShiftEditor from "@/components/hrms/FranchiseShiftEditor";
 import { cn } from "@/lib/utils";
 import { useFranchisesByVendor, type FranchiseListItem } from "@/api/franchises";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pencil } from "lucide-react";
+import FranchiseFormDialog from "@/components/custom/FranchiseFormDialog";
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
 type FranchiseRow = {
+  shift_minutes: number;
   srNo: number;
   id: number;
   franchise_name: string;
@@ -28,6 +34,7 @@ type FranchiseRow = {
   contact_number: string;
   address: string;
   pincode: string;
+  city: string;
   is_head_office: boolean;
   status: string;
   createdAt: string;
@@ -48,7 +55,8 @@ function formatDate(value?: string | null) {
 
 // ─── Columns ─────────────────────────────────────────────────────────────────
 
-const columns: ColumnDef<FranchiseRow>[] = [
+const baseColumns: ColumnDef<FranchiseRow>[] = [
+  { accessorKey: "shift_minutes", header: "Daily shift", cell: ({ row }) => <span className="whitespace-nowrap text-xs">{row.original.shift_minutes / 60} hours</span> },
   {
     accessorKey: "srNo",
     header: ({ column }) => (
@@ -113,6 +121,12 @@ const columns: ColumnDef<FranchiseRow>[] = [
     cell: ({ row }) => (
       <span>{row.getValue("contact_number") || "—"}</span>
     ),
+    enableSorting: false,
+  },
+  {
+    accessorKey: "city",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="City" />,
+    cell: ({ row }) => <span className="text-sm">{row.getValue("city") || "—"}</span>,
     enableSorting: false,
   },
   {
@@ -202,13 +216,44 @@ interface FranchisesTableProps {
 }
 
 export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
+  const [shiftOpen, setShiftOpen] = React.useState(false);
+  const user = useAppSelector(state => state.auth.user);
+  const canEditShifts = user?.vendor_id === vendorId && String(user?.user_type?.user_type || "").trim().toLowerCase().replace(/[ _]+/g, "-") === "super-admin" && user?.vendor?.is_hrms_master_enabled === true;
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const { data, isLoading, isError, error } = useFranchisesByVendor(vendorId);
+  const [editing, setEditing] = React.useState<FranchiseListItem | null>(null);
+
+  // Edit button on every row; it opens the franchise form with its details.
+  const columns = React.useMemo<ColumnDef<FranchiseRow>[]>(
+    () => [
+      ...baseColumns,
+      {
+        id: "actions",
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setEditing(data?.data?.find((f) => f.id === row.original.id) ?? null)}
+            aria-label={`Edit ${row.original.franchise_name}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Button>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+    ],
+    [data],
+  );
 
   const tableData = React.useMemo<FranchiseRow[]>(
     () =>
       (data?.data ?? []).map((item: FranchiseListItem, index: number) => ({
+        shift_minutes: item.shift_minutes ?? 480,
         srNo: index + 1,
         id: item.id,
         franchise_name: item.franchise_name ?? "",
@@ -218,6 +263,7 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
         contact_number: item.contact_number ?? "",
         address: item.address ?? "",
         pincode: item.pincode ?? "",
+        city: item.storeCity?.name ?? "",
         is_head_office: item.is_head_office === true,
         status: item.status ?? "",
         createdAt: item.createdAt ?? "",
@@ -237,6 +283,8 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
   return (
     <Card className="rounded-2xl border-0 p-0">
       <CardContent className="p-0">
+        {canEditShifts && <div className="mb-3 flex justify-end"><Button variant="outline" size="sm" onClick={() => setShiftOpen(true)}>Manage location shifts</Button></div>}
+        {canEditShifts && <FranchiseShiftEditor vendorId={vendorId} locations={(data?.data || []).map(item => ({ id: String(item.id), name: item.franchise_name, unit: item.Department || "FRANCHISE", shift_minutes: item.shift_minutes ?? 480 }))} open={shiftOpen} onOpenChange={setShiftOpen} />}
         {isLoading ? (
           <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
             Loading franchises...
@@ -262,6 +310,12 @@ export default function FranchisesTable({ vendorId }: FranchisesTableProps) {
             <DataTable table={table} />
           </div>
         )}
+        <FranchiseFormDialog
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditing(null)}
+          vendorId={vendorId}
+          franchise={editing}
+        />
       </CardContent>
     </Card>
   );

@@ -28,7 +28,9 @@ const getLoginErrorMessage = (message?: string) => {
   const normalizedMessage = message.toLowerCase();
 
   if (normalizedMessage.includes("logout from another device first")) {
-    return "You have already reached the maximum of 10 active devices for this account. Please log out from one of your other devices and try again.";
+    const limitMatch = message.match(/\d+/);
+    const limit = limitMatch ? limitMatch[0] : "10";
+    return `You have already reached the maximum of ${limit} active devices for this account. Please log out from one of your other devices and try again.`;
   }
 
   return message;
@@ -87,7 +89,8 @@ export function LoginForm({
 }: React.ComponentProps<"form">) {
   // 🟢 Email first by default
   const [loginType, setLoginType] = useState<"email" | "phone">("email");
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
   const loginMutation = useLogin();
@@ -109,8 +112,15 @@ export function LoginForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const identifier = (loginType === "email" ? email : phone).trim();
     if (!identifier || !password) {
-      toastManager.add({ title: "Please enter your credentials", type: "error" });
+      toastManager.add({
+        title:
+          loginType === "email"
+            ? "Please enter your email and password"
+            : "Please enter your phone number and password",
+        type: "error",
+      });
       return;
     }
 
@@ -210,6 +220,7 @@ export function LoginForm({
   return (
     <form
       onSubmit={handleSubmit}
+      noValidate
       className={cn("flex flex-col gap-6", className)}
       {...props}
     >                              
@@ -224,7 +235,7 @@ export function LoginForm({
       {/* 🔹 Tabs for Email / Phone selection */}
       <Tabs
         value={loginType}
-        onValueChange={(val) => setLoginType(val as any)}
+        onValueChange={(val) => setLoginType(val as "email" | "phone")}
         className="w-full"
       >
         {/* 🧭 Email first */}
@@ -242,9 +253,9 @@ export function LoginForm({
                 id="email"
                 type="email"
                 placeholder="Enter your email address"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
               />
             </div>
           </div>
@@ -259,9 +270,9 @@ export function LoginForm({
                 defaultCountry="IN"
                 id="phone"
                 placeholder="Enter phone number"
-                value={identifier}
-                onChange={(value) => setIdentifier(value)}
-                required
+                value={phone}
+                onChange={(value) => setPhone(value || "")}
+                autoComplete="tel"
               />
             </div>
           </div>
@@ -274,7 +285,6 @@ export function LoginForm({
         <PasswordInput
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
         />
       </div>
 

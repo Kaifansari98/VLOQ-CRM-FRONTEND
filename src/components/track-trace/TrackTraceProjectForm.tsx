@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { getCutlistHeaderMappings } from "@/api/cutlist-headers";
+import {
+  previewCutlistMachineMapping,
+  PreviewMachineInfo,
+} from "@/api/track-trace/active-machines.api";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,6 +33,14 @@ import { FileUploadField } from "../custom/file-upload";
 import { useAppSelector } from "@/redux/store";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { Separator } from "@/components/ui/separator";
 import {
@@ -45,6 +58,10 @@ import {
   Trash2,
   Package,
   Upload,
+  AlertCircle,
+  FileSpreadsheet,
+  Hammer,
+  Wrench,
 } from "lucide-react";
 
 import {
@@ -97,6 +114,10 @@ const getProjectFormSchema = (mode: "create" | "edit" = "create") =>
         .min(1, "Project name is required")
         .min(3, "Project name must be at least 3 characters")
         .max(100, "Project name must not exceed 100 characters"),
+
+      fabrication: z
+        .enum(["WOODWORK", "METALWORK"])
+        .default("WOODWORK"),
 
       lead_id: z.number().nullable().optional(),
 
@@ -191,6 +212,7 @@ type ProjectFormData = z.output<typeof projectFormSchema>;
 type TrackTraceProjectFormProps = {
   mode: "create" | "edit";
   uniqueProjectId?: string;
+  initialFabrication?: "WOODWORK" | "METALWORK";
 };
 
 type ExtendedLeadOption = TrackTraceLeadOption & {
@@ -235,7 +257,8 @@ const normalizePackingType = (value: unknown): PackingType => {
 };
 
 const validateCustomPackingGroupWorkbook = async (
-  file: File
+  file: File,
+  vendorId: number,
 ): Promise<string | null> => {
   try {
     const ExcelJS = await import("exceljs");
@@ -249,10 +272,14 @@ const validateCustomPackingGroupWorkbook = async (
       return "Excel sheet not found";
     }
 
+    const { mappings, fields } = await getCutlistHeaderMappings(vendorId);
+    const customPackingGroupField = fields.find((field) => field.field_key === "custom_packing_group");
     let customPackingGroupColumn = 0;
 
     worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column) => {
-      if (normalizeExcelHeader(cell.text) === "custom packing group") {
+      const header = normalizeExcelHeader(cell.text);
+      const mapping = mappings.find((entry) => normalizeExcelHeader(entry.source_header) === header);
+      if (mapping ? mapping.rule_field_id === customPackingGroupField?.id : header === "custom packing group") {
         customPackingGroupColumn = column;
       }
     });
@@ -297,6 +324,406 @@ const validateCustomPackingGroupWorkbook = async (
     return null;
   } catch {
     return "Unable to read the Excel file. Upload a valid .xlsx workbook";
+  }
+};
+
+type CutlistPreviewField = {
+  key: string;
+  label: string;
+  required: boolean;
+  present: boolean;
+  missingRows: number[];
+};
+
+type CutlistPreviewRow = {
+  row: number;
+  values: Record<string, string>;
+  missing: string[];
+  duplicates: string[];
+  machineAssignments?: Record<string, boolean>;
+  assignedMachineCodes?: string[];
+};
+
+type CutlistPreview = {
+  fileName: string;
+  rowCount: number;
+  fields: CutlistPreviewField[];
+  machines?: PreviewMachineInfo[];
+  rows: CutlistPreviewRow[];
+  rowErrors: Array<{ row: number; missing: string[]; duplicates: string[] }>;
+  uniqueCodeMode: "all-filled" | "all-blank" | "mixed";
+  parseError?: string;
+};
+
+const buildCutlistPreview = async (
+  file: File,
+  vendorId: number,
+  packingType: PackingType = PackingType.DEFAULT,
+  fabrication: "WOODWORK" | "METALWORK" = "WOODWORK"
+): Promise<CutlistPreview> => {
+  try {
+    const ExcelJS = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await file.arrayBuffer());
+    const worksheet = workbook.worksheets[0];
+
+    if (!worksheet) {
+      return {
+        fileName: file.name,
+        rowCount: 0,
+        fields: [],
+        rows: [],
+        rowErrors: [],
+        uniqueCodeMode: "all-blank",
+        parseError: "Excel sheet not found.",
+      };
+    }
+
+    const isCustomGroup = packingType === PackingType.CUSTOM_GROUP;
+
+    const { mappings, fields: configuredFields } =
+      await getCutlistHeaderMappings(vendorId);
+    const mappedHeaders = new Map(
+      mappings.map((mapping) => [
+        normalizeExcelHeader(mapping.source_header),
+        configuredFields.find((field) => field.id === mapping.rule_field_id)
+          ?.field_key,
+      ])
+    );
+
+    const excelHeaders: Array<{ column: number; header: string; normalized: string }> = [];
+    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column) => {
+      const header = cell.text.trim();
+      const normalized = normalizeExcelHeader(header);
+      if (header) {
+        excelHeaders.push({ column, header, normalized });
+      }
+    });
+
+    const getColumnForAliases = (
+      fieldKey: string,
+      aliases: readonly string[]
+    ): number => {
+      const mappedEntry = excelHeaders.find(
+        (h) => mappedHeaders.get(h.normalized) === fieldKey
+      );
+      if (mappedEntry) return mappedEntry.column;
+
+      const aliasNormalized = [fieldKey, ...aliases].map(normalizeExcelHeader);
+      const aliasEntry = excelHeaders.find((h) =>
+        aliasNormalized.includes(h.normalized)
+      );
+      return aliasEntry ? aliasEntry.column : 0;
+    };
+
+    const KNOWN_FIELDS_DEF = [
+      {
+        key: "item_name",
+        label: "Item Name",
+        aliases: ["item name", "name", "description"],
+        required: true,
+        alwaysInclude: true,
+      },
+      {
+        key: "material_details",
+        label: "Article Code",
+        aliases: ["article code", "material details", "articlecode"],
+        required: true,
+        alwaysInclude: true,
+      },
+      {
+        key: "category_name",
+        label: "Category Name",
+        aliases: ["category name", "category"],
+        required: true,
+        alwaysInclude: true,
+      },
+      {
+        key: "group_name",
+        label: "Group Name",
+        aliases: ["group name", "group"],
+        required: true,
+        alwaysInclude: true,
+      },
+      {
+        key: "length",
+        label: "Length",
+        aliases: ["length", "l1"],
+        required: false,
+        alwaysInclude: true,
+      },
+      {
+        key: "width",
+        label: "Width",
+        aliases: ["width", "l2"],
+        required: false,
+        alwaysInclude: true,
+      },
+      {
+        key: "thickness",
+        label: "Thickness",
+        aliases: ["thickness", "l3"],
+        required: false,
+        alwaysInclude: true,
+      },
+      {
+        key: "qty",
+        label: "Quantity",
+        aliases: ["qty", "quantity"],
+        required: true,
+        alwaysInclude: true,
+      },
+      {
+        key: "unique_code",
+        label: "Unique Code",
+        aliases: ["unique code", "barcode1", "barcode 1", "unique code 1"],
+        required: true,
+        alwaysInclude: true,
+      },
+      {
+        key: "elf",
+        label: "EL1 / ELF",
+        aliases: ["el1", "elf", "el 1", "elf1"],
+        required: false,
+      },
+      {
+        key: "elb",
+        label: "EL2 / ELB",
+        aliases: ["el2", "elb", "el 2", "elb2"],
+        required: false,
+      },
+      {
+        key: "esl",
+        label: "SL1 / ESL",
+        aliases: ["sl1", "esl", "sl 1", "esl1"],
+        required: false,
+      },
+      {
+        key: "esr",
+        label: "SL2 / ESR",
+        aliases: ["sl2", "esr", "sl 2", "esr2"],
+        required: false,
+      },
+      {
+        key: "weight",
+        label: "Weight",
+        aliases: [
+          "weight",
+          "wt",
+          "wt.",
+          "weight kg",
+          "weight (kg)",
+          "total weight",
+          "totalweight",
+        ],
+        required: false,
+      },
+      {
+        key: "custom_packing_group",
+        label: "Custom Packing Group",
+        aliases: [
+          "custom packing group",
+          "custom_packing_group",
+          "custom packing",
+          "packing group",
+        ],
+        required: isCustomGroup,
+        alwaysInclude: isCustomGroup,
+      },
+      {
+        key: "top_drill",
+        label: "Top Drill",
+        aliases: ["top drill", "topdrill", "top_drill"],
+        required: false,
+      },
+      {
+        key: "bottom_drill",
+        label: "Bottom Drill",
+        aliases: [
+          "bottom drill",
+          "bottomdrill",
+          "bottom_drill",
+          "btm drill",
+          "btmdrill",
+        ],
+        required: false,
+      },
+      {
+        key: "is_drill",
+        label: "Is Drill",
+        aliases: ["is drill", "isdrill", "is_drill", "drill"],
+        required: false,
+      },
+    ];
+
+    const matchedKnownFields = KNOWN_FIELDS_DEF.map((def) => {
+      const column = getColumnForAliases(def.key, def.aliases);
+      return {
+        key: def.key,
+        label: def.label,
+        required: def.required,
+        alwaysInclude: Boolean(def.alwaysInclude),
+        column,
+      };
+    });
+
+    // Show only the columns that exist in our Excel template
+    const activePreviewFields = matchedKnownFields
+      .filter((f) => f.alwaysInclude || f.column > 0)
+      .sort((a, b) => {
+        if (a.column > 0 && b.column > 0) {
+          return a.column - b.column;
+        }
+        if (a.column > 0) return -1;
+        if (b.column > 0) return 1;
+        return 0;
+      });
+
+    const dataRows: Array<{ row: number; values: Record<string, string> }> = [];
+    let dataRowIndex = 1;
+
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const values: Record<string, string> = {};
+      let hasData = false;
+      activePreviewFields.forEach((field) => {
+        const value = field.column ? row.getCell(field.column).text.trim() : "";
+        values[field.key] = value;
+        if (value) hasData = true;
+      });
+      if (hasData) dataRows.push({ row: dataRowIndex++, values });
+    });
+
+    const isFieldMissingOrInvalid = (fieldKey: string, val?: string) => {
+      if (!val) return true;
+      if (fieldKey === "qty") {
+        const num = Number(val);
+        return isNaN(num) || num <= 0;
+      }
+      return false;
+    };
+
+    const uniqueCodeValues = dataRows.map((row) => Boolean(row.values.unique_code));
+    const hasUniqueCode = uniqueCodeValues.some(Boolean);
+    const hasBlankUniqueCode = uniqueCodeValues.some((value) => !value);
+    const uniqueCodeMode =
+      hasUniqueCode && hasBlankUniqueCode
+        ? "mixed"
+        : hasUniqueCode
+          ? "all-filled"
+          : "all-blank";
+
+    const fields = activePreviewFields.map((field) => {
+      const isUniqueCodeAllBlank =
+        field.key === "unique_code" && uniqueCodeMode === "all-blank";
+      const isPresent = field.column > 0 || isUniqueCodeAllBlank;
+      const missingRows = dataRows
+        .filter(
+          (row) =>
+            field.required &&
+            !isUniqueCodeAllBlank &&
+            isFieldMissingOrInvalid(field.key, row.values[field.key])
+        )
+        .map((row) => row.row);
+
+      return {
+        key: field.key,
+        label: field.label,
+        required: field.required,
+        present: isPresent,
+        missingRows,
+      };
+    });
+
+    const codeCounts = new Map<string, number>();
+    dataRows.forEach((row) => {
+      if (row.values.unique_code) {
+        codeCounts.set(
+          row.values.unique_code,
+          (codeCounts.get(row.values.unique_code) ?? 0) + 1
+        );
+      }
+    });
+
+    let previewMachines: PreviewMachineInfo[] = [];
+    let previewRowMappings: Array<{
+      rowIndex: number;
+      assignedMachineIds: number[];
+      assignedMachineCodes: string[];
+      machineAssignments: Record<string, boolean>;
+    }> = [];
+
+    if (vendorId && dataRows.length > 0) {
+      try {
+        const mappingRes = await previewCutlistMachineMapping(
+          vendorId,
+          dataRows.map((r) => r.values),
+          packingType,
+          fabrication
+        );
+        previewMachines = mappingRes.machines || [];
+        previewRowMappings = mappingRes.rowMappings || [];
+      } catch (err) {
+        console.warn("Could not preview machine mappings:", err);
+      }
+    }
+
+    const rows: CutlistPreviewRow[] = dataRows.map((row, idx) => {
+      const missing = fields
+        .filter(
+          (field) =>
+            field.required &&
+            !(field.key === "unique_code" && uniqueCodeMode === "all-blank") &&
+            isFieldMissingOrInvalid(field.key, row.values[field.key])
+        )
+        .map((field) => {
+          if (field.key === "qty" && row.values.qty && (Number(row.values.qty) <= 0 || isNaN(Number(row.values.qty)))) {
+            return "Quantity cannot be 0";
+          }
+          return field.label;
+        });
+      const duplicates =
+        row.values.unique_code &&
+        (codeCounts.get(row.values.unique_code) ?? 0) > 1
+          ? ["Unique Code"]
+          : [];
+
+      const mapping = previewRowMappings[idx];
+      const machineAssignments = mapping?.machineAssignments || {};
+      const assignedMachineCodes = mapping?.assignedMachineCodes || [];
+
+      return {
+        ...row,
+        missing,
+        duplicates,
+        machineAssignments,
+        assignedMachineCodes,
+      };
+    });
+
+    const rowErrors = rows
+      .filter((row) => row.missing.length > 0 || row.duplicates.length > 0)
+      .map(({ row, missing, duplicates }) => ({ row, missing, duplicates }));
+
+    return {
+      fileName: file.name,
+      rowCount: dataRows.length,
+      fields,
+      machines: previewMachines,
+      rows,
+      rowErrors,
+      uniqueCodeMode,
+    };
+  } catch {
+    return {
+      fileName: file.name,
+      rowCount: 0,
+      fields: [],
+      rows: [],
+      rowErrors: [],
+      uniqueCodeMode: "all-blank",
+      parseError: "Unable to read the Excel file.",
+    };
   }
 };
 
@@ -478,8 +905,19 @@ function LeadSearchBox({
 export default function TrackTraceProjectForm({
   mode,
   uniqueProjectId,
+  initialFabrication,
 }: TrackTraceProjectFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryFabrication =
+    searchParams.get("fabrication")?.toUpperCase() === "METALWORK"
+      ? "METALWORK"
+      : searchParams.get("fabrication")?.toUpperCase() === "WOODWORK"
+        ? "WOODWORK"
+        : undefined;
+
+  const defaultFabrication: "WOODWORK" | "METALWORK" =
+    initialFabrication ?? queryFabrication ?? "WOODWORK";
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
 
@@ -515,12 +953,16 @@ export default function TrackTraceProjectForm({
   const [selectedRemoveBoxIds, setSelectedRemoveBoxIds] = useState<number[]>([]);
   const [pendingUpdatePayload, setPendingUpdatePayload] = useState<any | null>(null);
   const [isValidatingExcel, setIsValidatingExcel] = useState(false);
+  const [isPreviewingCutlist, setIsPreviewingCutlist] = useState(false);
+  const [cutlistPreview, setCutlistPreview] = useState<CutlistPreview | null>(null);
+  const [cutlistPreviewOpen, setCutlistPreviewOpen] = useState(false);
   const excelValidationId = useRef(0);
 
   const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
     resolver: zodResolver(getProjectFormSchema(mode)),
     defaultValues: {
       projectName: "",
+      fabrication: defaultFabrication,
       lead_id: null,
       order_no: "",
       client_name: "",
@@ -558,6 +1000,35 @@ export default function TrackTraceProjectForm({
     selectedPackingType === PackingType.GROUPWISE && selectedNoOfBoxes > 0;
   const showNoOfBoxes = !isCustomGroupPacking;
   const showMultiLocation = !isGroupwiseWithConfiguredBoxes;
+
+  const watchedProjectName = form.watch("projectName");
+  const watchedOrderNo = form.watch("order_no");
+  const watchedClientName = form.watch("client_name");
+  const watchedClientContactNo = form.watch("client_contact_no");
+  const watchedClientAddress = form.watch("client_address");
+
+  const missingProjectDetails = useMemo(() => {
+    const missing: string[] = [];
+    if (!watchedProjectName?.trim() || watchedProjectName.trim().length < 3) {
+      missing.push("Project Name");
+    }
+    if (!selectedLeadId) {
+      if (!watchedOrderNo?.trim()) missing.push("Order No");
+      if (!watchedClientName?.trim()) missing.push("Client Name");
+      if (!watchedClientContactNo?.trim()) missing.push("Client Contact No");
+      if (!watchedClientAddress?.trim()) missing.push("Client Address");
+    }
+    return missing;
+  }, [
+    watchedProjectName,
+    selectedLeadId,
+    watchedOrderNo,
+    watchedClientName,
+    watchedClientContactNo,
+    watchedClientAddress,
+  ]);
+
+  const isFormComplete = missingProjectDetails.length === 0;
 
   useEffect(() => {
     if (isCustomGroupPacking && selectedNoOfBoxes !== 0) {
@@ -602,7 +1073,9 @@ export default function TrackTraceProjectForm({
     }
 
     setIsValidatingExcel(true);
-    const errorMessage = await validateCustomPackingGroupWorkbook(file);
+    const errorMessage = vendorId
+      ? await validateCustomPackingGroupWorkbook(file, vendorId)
+      : "Vendor is required to validate the Excel file.";
 
     if (validationId !== excelValidationId.current) {
       return false;
@@ -626,6 +1099,39 @@ export default function TrackTraceProjectForm({
     return true;
   };
 
+  const previewCutlistFile = async (
+    files: File[],
+    overrideFabrication?: "WOODWORK" | "METALWORK"
+  ) => {
+    const file = files[0];
+    setCutlistPreview(null);
+    if (!file) return;
+
+    setIsPreviewingCutlist(true);
+    const packingType = form.getValues("packing_type");
+    const fabrication =
+      overrideFabrication ?? form.getValues("fabrication") ?? defaultFabrication;
+    const preview = vendorId
+      ? await buildCutlistPreview(file, Number(vendorId), packingType, fabrication)
+      : { fileName: file.name, rowCount: 0, fields: [], rows: [], rowErrors: [], uniqueCodeMode: "all-blank" as const, parseError: "Vendor information not found." };
+    setCutlistPreview(preview);
+    setIsPreviewingCutlist(false);
+    setCutlistPreviewOpen(true);
+  };
+
+  const cutlistPreviewHasErrors = Boolean(
+    cutlistPreview?.parseError ||
+      cutlistPreview?.rowCount === 0 ||
+      cutlistPreview?.rowErrors.length ||
+      cutlistPreview?.uniqueCodeMode === "mixed" ||
+      cutlistPreview?.fields.some((field) => field.required && !field.present)
+  );
+  const previewRows = cutlistPreview?.rows ?? [];
+  const previewInvalidRows = previewRows.filter((row) => row.missing.length > 0 || row.duplicates.length > 0);
+  const previewDuplicateRows = previewRows.filter((row) => row.duplicates.length > 0);
+  const previewPassedRows = previewRows.length - previewInvalidRows.length;
+  const previewCompleteRows = previewPassedRows;
+
   useEffect(() => {
     if (mode !== "edit" || !projectData) return;
 
@@ -634,9 +1140,14 @@ export default function TrackTraceProjectForm({
     const persistedPackingType =
       project.packing_type ?? project.packingType ?? project.project_type;
     const normalizedPackingType = normalizePackingType(persistedPackingType);
+    const persistedFabrication =
+      (project as any)?.fabrication === "METALWORK"
+        ? "METALWORK"
+        : defaultFabrication;
 
     resetProjectForm({
       projectName: project.project_name || "",
+      fabrication: persistedFabrication,
       lead_id: project.lead_id || null,
       order_no: project.order_no || "",
       client_name: project.client_name || "",
@@ -691,7 +1202,7 @@ export default function TrackTraceProjectForm({
   const handleDownloadTemplate = () => {
     try {
       const link = document.createElement("a");
-      link.href = "/TrackTrace_Project_Template.xlsx";
+      link.href = `/TrackTrace_Project_Template.xlsx?v=${Date.now()}`;
       link.download = "TrackTrace_Project_Template.xlsx";
       document.body.appendChild(link);
       link.click();
@@ -963,6 +1474,18 @@ export default function TrackTraceProjectForm({
       return;
     }
 
+    if (data.file?.[0]) {
+      const previewMatchesFile = cutlistPreview?.fileName === data.file[0].name;
+      if (!previewMatchesFile || cutlistPreviewHasErrors) {
+        setCutlistPreviewOpen(true);
+        toastManager.add({
+          title: "Please fix the missing CutList data before uploading",
+          type: "error",
+        });
+        return;
+      }
+    }
+
     const normalizedNoOfBoxes =
       data.packing_type === PackingType.CUSTOM_GROUP
         ? 0
@@ -978,6 +1501,7 @@ export default function TrackTraceProjectForm({
       vendorId,
       lead_id: isCrmEnabled && data.lead_id ? Number(data.lead_id) : null,
       projectName: data.projectName.trim(),
+      fabrication: data.fabrication,
 
       order_no: data.order_no?.trim() || undefined,
       client_name: data.client_name?.trim() || undefined,
@@ -1047,7 +1571,15 @@ export default function TrackTraceProjectForm({
           type: "success",
         });
 
-        router.push("/dashboard/track-trace/manage-project");
+        if (payload.is_multi_location && response.unique_project_id) {
+          router.push(`/dashboard/track-trace/manage-project/${response.unique_project_id}/locations?fabrication=${data.fabrication}`);
+        } else {
+          router.push(
+            data.fabrication === "METALWORK"
+              ? "/dashboard/track-trace/metalwork-projects"
+              : "/dashboard/track-trace/manage-project"
+          );
+        }
       },
 
       onError: (error: any) => {
@@ -1062,6 +1594,35 @@ export default function TrackTraceProjectForm({
         });
       },
     });
+  };
+
+  const handleContinueWithUpload = async () => {
+    if (
+      cutlistPreviewHasErrors ||
+      isPreviewingCutlist ||
+      isPending ||
+      !isFormComplete
+    ) {
+      return;
+    }
+
+    await form.handleSubmit(
+      async (data) => {
+        setCutlistPreviewOpen(false);
+        await onSubmit(data);
+      },
+      (errors) => {
+        setCutlistPreviewOpen(false);
+        const firstErrorKey = Object.keys(errors)[0] as keyof typeof errors;
+        const message =
+          errors[firstErrorKey]?.message?.toString() ||
+          "Please complete all required project fields before submitting.";
+        toastManager.add({
+          title: message,
+          type: "error",
+        });
+      }
+    )();
   };
 
   if (mode === "edit" && projectLoading) {
@@ -1083,7 +1644,13 @@ export default function TrackTraceProjectForm({
           type="button"
           variant="outline"
           className="mt-4"
-          onClick={() => router.push("/dashboard/track-trace/manage-project")}
+          onClick={() =>
+            router.push(
+              form.getValues("fabrication") === "METALWORK"
+                ? "/dashboard/track-trace/metalwork-projects"
+                : "/dashboard/track-trace/manage-project"
+            )
+          }
         >
           Back to Projects
         </Button>
@@ -1097,7 +1664,9 @@ export default function TrackTraceProjectForm({
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">
-            {mode === "edit" ? "Edit Track & Trace Project" : "Create New Project"}
+            {mode === "edit"
+              ? `Edit ${form.watch("fabrication") === "METALWORK" ? "Metalwork" : "Woodwork"} Project`
+              : `Create New ${form.watch("fabrication") === "METALWORK" ? "Metalwork" : "Woodwork"} Project`}
           </h1>
           {mode === "edit" && (
             <Badge
@@ -1642,6 +2211,7 @@ export default function TrackTraceProjectForm({
                       value={field.value || []}
                       onChange={(files) => {
                         field.onChange(files);
+                        void previewCutlistFile(files);
                         void validateUploadedExcel(
                           files,
                           form.getValues("packing_type")
@@ -1649,11 +2219,30 @@ export default function TrackTraceProjectForm({
                       }}
                       accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                       multiple={false}
-                      disabled={isPending || isValidatingExcel}
+                      disabled={isPending || isValidatingExcel || isPreviewingCutlist}
                       maxFiles={1}
                       invalid={Boolean(form.formState.errors.file)}
                     />
                   </FormControl>
+                  {field.value && field.value.length > 0 && (
+                    <div className="flex items-center justify-between pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void previewCutlistFile(field.value || [])}
+                        disabled={isPreviewingCutlist || isValidatingExcel}
+                        className="h-8 text-xs gap-1.5"
+                      >
+                        {isPreviewingCutlist ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="size-3.5" />
+                        )}
+                        Review Cutlist Excel Preview
+                      </Button>
+                    </div>
+                  )}
                   {selectedPackingType === PackingType.CUSTOM_GROUP && (
                     <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                       <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -1717,6 +2306,283 @@ export default function TrackTraceProjectForm({
           </div>
         </form>
       </Form>
+
+      <Dialog open={cutlistPreviewOpen} onOpenChange={setCutlistPreviewOpen}>
+        <DialogContent className="h-[min(880px,calc(100vh-2rem))] w-[98vw] max-w-[1800px] gap-0 overflow-hidden p-0 sm:max-w-[1800px]">
+          <DialogHeader className="shrink-0 border-b bg-gradient-to-b from-muted/40 to-background px-6 py-5 pr-12 text-left">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border bg-background p-2.5 text-primary shadow-sm">
+                <FileSpreadsheet className="size-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <DialogTitle className="text-lg">Review CutList Excel</DialogTitle>
+                  <Badge variant="outline" className="text-[11px] font-semibold gap-1">
+                    {form.watch("fabrication") === "METALWORK" ? (
+                      <>
+                        <Wrench className="size-3" /> Metalwork
+                      </>
+                    ) : (
+                      <>
+                        <Hammer className="size-3" /> Woodwork
+                      </>
+                    )}
+                  </Badge>
+                </div>
+                <DialogDescription className="mt-1 text-xs">
+                  Check your Excel rows and required fields before uploading the project.
+                </DialogDescription>
+                {cutlistPreview?.fileName && <p className="mt-2 max-w-[70vw] truncate font-mono text-[11px] text-muted-foreground">{cutlistPreview.fileName}</p>}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {cutlistPreview && (
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">File</p>
+                  <p className="mt-0.5 truncate text-xs font-medium">{cutlistPreview.fileName}</p>
+                </div>
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Data rows</p>
+                  <p className="mt-0.5 text-xs font-medium">{cutlistPreview.rowCount}</p>
+                </div>
+                <div className={cn("rounded-md border px-3 py-2", cutlistPreviewHasErrors ? "border-destructive/40 bg-destructive/5" : "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20")}>
+                  <p className="text-xs text-muted-foreground">Overall status</p>
+                  <p className={cn("mt-0.5 text-xs font-semibold", cutlistPreviewHasErrors ? "text-destructive" : "text-emerald-700 dark:text-emerald-400")}>
+                    {cutlistPreviewHasErrors ? "Needs correction" : "Ready to upload"}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-emerald-50/60 px-3 py-2 dark:bg-emerald-950/20">
+                  <p className="text-xs text-muted-foreground">Passed rows</p>
+                  <p className="mt-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">{previewPassedRows}</p>
+                </div>
+                <div className={cn("rounded-md border px-3 py-2", previewInvalidRows.length ? "border-amber-300 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20" : "bg-muted/20")}>
+                  <p className="text-xs text-muted-foreground">Needs attention</p>
+                  <p className={cn("mt-0.5 text-xs font-semibold", previewInvalidRows.length ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>{previewInvalidRows.length}</p>
+                </div>
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Machine routing</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+                    {cutlistPreview.machines && cutlistPreview.machines.length > 0
+                      ? `${cutlistPreview.machines.length} machine${cutlistPreview.machines.length > 1 ? "s" : ""} active`
+                      : "No machines"}
+                  </p>
+                </div>
+              </div>
+
+              {cutlistPreview.parseError ? (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {cutlistPreview.parseError}
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-md border border-b-0 bg-slate-50 px-3 py-2 dark:bg-slate-900/70">
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="font-semibold text-foreground">Rows preview</span>
+                      <span>{previewRows.length} item{previewRows.length === 1 ? "" : "s"}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-destructive" />Missing</span>
+                      <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Duplicate</span>
+                      <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Passed</span>
+                      <span className="hidden sm:inline h-3 w-px bg-border" />
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">Machines:</span>
+                      <span className="inline-flex items-center gap-1"><span className="inline-flex size-3.5 items-center justify-center rounded bg-rose-600 text-[9px] font-bold text-white shadow-xs">✕</span> Not routed</span>
+                      <span className="inline-flex items-center gap-1"><span className="inline-flex size-3.5 items-center justify-center rounded bg-emerald-600 text-[9px] font-bold text-white shadow-xs">✓</span> Routed</span>
+                    </div>
+                  </div>
+                  <div className="max-h-[430px] overflow-auto rounded-b-md border bg-background shadow-sm">
+                    <table className="w-full min-w-max text-[11px]">
+                      <thead className="sticky top-0 z-10 bg-slate-100 text-left text-[10px] uppercase tracking-wide text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                        <tr>
+                          <th className="w-16 whitespace-nowrap border-r px-2 py-2">Row</th>
+                          <th className="w-28 whitespace-nowrap border-r px-2.5 py-2">Status</th>
+                          {cutlistPreview.fields.map((field) => (
+                            <th key={field.key} className="min-w-[110px] whitespace-nowrap border-r px-2.5 py-2">{field.label}</th>
+                          ))}
+                          {cutlistPreview.machines?.map((machine, mIdx) => {
+                            const routedCount = cutlistPreview.rows.filter(
+                              (r) => r.machineAssignments?.[machine.machine_code]
+                            ).length;
+                            return (
+                              <th
+                                key={machine.id}
+                                className="min-w-[125px] whitespace-nowrap border-r bg-slate-200/70 px-2.5 py-2 text-center dark:bg-slate-800/80"
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="rounded bg-background px-1 font-mono text-[9px] text-muted-foreground ring-1 ring-border">
+                                    {String(mIdx + 1).padStart(2, "0")}
+                                  </span>
+                                  <span className="font-semibold text-foreground">
+                                    {machine.machine_code}
+                                  </span>
+                                </div>
+                                <div className="mt-0.5 text-[9px] font-normal normal-case text-muted-foreground">
+                                  {routedCount}/{cutlistPreview.rows.length} routed
+                                </div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {cutlistPreview.rows.map((row) => {
+                          const rowHasError = row.missing.length > 0 || row.duplicates.length > 0;
+                          return (
+                            <tr key={row.row} className={rowHasError ? "bg-destructive/5" : "bg-background"}>
+                              <td className="border-r px-2 py-2 font-mono font-semibold text-muted-foreground">{row.row}</td>
+                              <td className={cn("whitespace-nowrap border-r px-2.5 py-2 font-semibold", rowHasError ? "text-destructive" : "text-emerald-700 dark:text-emerald-400")}>
+                                {rowHasError ? "Needs correction" : "Passed"}
+                              </td>
+                              {cutlistPreview.fields.map((field) => {
+                                const isQty = field.key === "qty";
+                                const isZeroQty = isQty && Boolean(row.values[field.key]) && (Number(row.values[field.key]) <= 0 || isNaN(Number(row.values[field.key])));
+                                const missing = isQty
+                                  ? row.missing.includes(field.label) || row.missing.includes("Quantity cannot be 0")
+                                  : row.missing.includes(field.label);
+                                const duplicate = row.duplicates.includes(field.label);
+                                return (
+                                  <td
+                                    key={field.key}
+                                    className={cn(
+                                      "max-w-[220px] truncate border-r px-2.5 py-2",
+                                      missing && "bg-destructive/10 font-semibold text-destructive",
+                                      duplicate && "bg-amber-100 font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                    )}
+                                    title={
+                                      isZeroQty
+                                        ? "Quantity can never be 0"
+                                        : missing
+                                          ? `${field.label} is missing`
+                                          : duplicate
+                                            ? "Duplicate Unique Code"
+                                            : row.values[field.key]
+                                    }
+                                  >
+                                    {isZeroQty
+                                      ? `${row.values[field.key]} (cannot be 0)`
+                                      : missing
+                                        ? "Missing"
+                                        : row.values[field.key] || ""}
+                                    {duplicate && <span className="ml-1">(duplicate)</span>}
+                                  </td>
+                                );
+                              })}
+                              {cutlistPreview.machines?.map((machine) => {
+                                const isAssigned = Boolean(row.machineAssignments?.[machine.machine_code]);
+                                return (
+                                  <td
+                                    key={machine.id}
+                                    className={cn(
+                                      "border-r px-2.5 py-2 text-center transition-colors",
+                                      isAssigned
+                                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+                                        : ""
+                                    )}
+                                    title={
+                                      isAssigned
+                                        ? `Will route to ${machine.machine_code}`
+                                        : `Not routed to ${machine.machine_code}`
+                                    }
+                                  >
+                                    {isAssigned ? (
+                                      <span className="inline-flex size-5 items-center justify-center rounded bg-emerald-600 text-[11px] font-bold text-white shadow-xs dark:bg-emerald-500 dark:text-emerald-950">
+                                        ✓
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex size-5 items-center justify-center rounded bg-rose-600 text-[11px] font-bold text-white shadow-xs dark:bg-rose-600 dark:text-white">
+                                        ✕
+                                      </span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className={cn("rounded-md border px-3 py-2 text-xs", cutlistPreview.uniqueCodeMode === "mixed" ? "border-destructive/30 bg-destructive/5 text-destructive" : "bg-muted/30")}>
+                    <span className="font-semibold">Unique Code: </span>
+                    {cutlistPreview.uniqueCodeMode === "all-filled" && "Provided for every row; Excel and database duplicate rules will apply."}
+                    {cutlistPreview.uniqueCodeMode === "all-blank" && "Blank for every row; the system will generate CutList IDs automatically."}
+                    {cutlistPreview.uniqueCodeMode === "mixed" && "Some rows have a code and some rows are blank. Fill every row or clear every row."}
+                  </div>
+
+                  {cutlistPreview.rowErrors.length > 0 && (
+                    <div className="max-h-36 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                      <p className="mb-1 text-xs font-semibold text-destructive">Validation details by row</p>
+                      <div className="space-y-0.5 text-[11px] text-destructive">
+                        {cutlistPreview.rowErrors.slice(0, 20).map((error) => (
+                          <p key={error.row}>
+                            Row {error.row}: {[...error.missing, ...error.duplicates.map((field) => `${field} duplicate`)].join(", ")}
+                          </p>
+                        ))}
+                        {cutlistPreview.rowErrors.length > 20 && <p>And {cutlistPreview.rowErrors.length - 20} more row(s).</p>}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="shrink-0 flex-col gap-2 border-t bg-muted/20 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            {!isFormComplete ? (
+              <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <Info className="size-3.5 shrink-0" />
+                <span>
+                  Please fill{" "}
+                  <strong className="font-semibold">
+                    {missingProjectDetails.join(", ")}
+                  </strong>{" "}
+                  to enable upload.
+                </span>
+              </p>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setCutlistPreviewOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={
+                  cutlistPreviewHasErrors ||
+                  isPreviewingCutlist ||
+                  isPending ||
+                  !isFormComplete
+                }
+                onClick={() => void handleContinueWithUpload()}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === "edit" ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Continue with upload
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {boxRemovalDialogOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">

@@ -100,21 +100,64 @@ export default function MoveToProductionModal({
       ? "Confirm Production Assignment"
       : "Confirm Move To Production";
 
+  const currentUserType = useAppSelector(
+    (s) =>
+      s.auth.user?.user_type?.user_type ||
+      s.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
+
   const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
   const { data: dateDetails } = useClientRequiredCompletionDate(vendorId, data?.id);
 
-  const mappedUsers =
-    factoryUsers?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+  // Standard vendors assign only to users of the factory user type
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isFactoryOnlyFlow =
+    !handlesLargeScaleProjects && vendorCustomUserTypeMode !== true;
+
+  const activeUsers = React.useMemo(() => {
+    const rawUsers = factoryUsers ?? [];
+    return rawUsers.filter((user: any) => {
+      const userType = String(user.user_type?.user_type || "")
+        .trim()
+        .toLowerCase();
+      if (isFactoryOnlyFlow) {
+        return userType === "factory";
+      }
+      if (userType === "super-admin") {
+        return isSuperAdmin;
+      }
+      return true;
+    });
+  }, [isFactoryOnlyFlow, factoryUsers, isSuperAdmin]);
+
+  const mappedUsers = React.useMemo(
+    () =>
+      activeUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+        subLabel: user.user_email || user.email || "",
+      })),
+    [activeUsers],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { assign_to_user_id: 0 },
   });
 
-
+  const singleFactoryUser =
+    isFactoryOnlyFlow && mappedUsers.length === 1 ? mappedUsers[0] : null;
+  const singleFactoryUserId = singleFactoryUser?.id;
+  useEffect(() => {
+    if (open && singleFactoryUserId) {
+      form.setValue("assign_to_user_id", singleFactoryUserId);
+    }
+  }, [open, singleFactoryUserId, form]);
 
   // ✅ Handle confirm submit
   const handleConfirmSubmit = () => {
@@ -200,27 +243,42 @@ export default function MoveToProductionModal({
                     onSubmit={form.handleSubmit(onSubmit)}
                     className="space-y-6"
                   >
-                    <FormField
-                      control={form.control}
-                      name="assign_to_user_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            {assignUserLabel}
-                          </FormLabel>
-                          <FormControl>
-                            <AssignToPicker
-                              data={mappedUsers}
-                              value={field.value}
-                              onChange={(value) =>
-                                field.onChange(Number(value) || 0)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {singleFactoryUser ? (
+                      <p className="text-sm text-muted-foreground">
+                        This lead will be assigned to{" "}
+                        <strong className="text-foreground">
+                          {singleFactoryUser.label}
+                        </strong>
+                        .
+                      </p>
+                    ) : isFactoryOnlyFlow && mappedUsers.length === 0 ? (
+                      <p className="text-sm text-destructive">
+                        No active Factory user found. Please add one to
+                        continue.
+                      </p>
+                    ) : (
+                      <FormField
+                        control={form.control}
+                        name="assign_to_user_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">
+                              {assignUserLabel}
+                            </FormLabel>
+                            <FormControl>
+                              <AssignToPicker
+                                data={mappedUsers}
+                                value={field.value}
+                                onChange={(value) =>
+                                  field.onChange(Number(value) || 0)
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                     <div className="flex justify-end gap-2 pt-2">
                       <Button
@@ -230,7 +288,13 @@ export default function MoveToProductionModal({
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={isPending}>
+                      <Button
+                        type="submit"
+                        disabled={
+                          isPending ||
+                          (isFactoryOnlyFlow && mappedUsers.length === 0)
+                        }
+                      >
                         {isPending ? "Processing..." : "Move To Production"}
                       </Button>
                     </div>

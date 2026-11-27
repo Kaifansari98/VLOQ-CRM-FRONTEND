@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { OnlineLeadExecutiveMappingCard } from "@/components/vendors/OnlineLeadExecutiveMappingCard";
+import { ComplaintExecutiveMappingCard } from "@/components/vendors/ComplaintExecutiveMappingCard";
+import { CutlistHeaderMappingCard } from "@/components/vendors/CutlistHeaderMappingCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Breadcrumb,
@@ -26,11 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useOnboardVendor, useUpdateVendor, useStates, useVendorById } from "@/api/vendors";
+import { useOnboardVendor, useUpdateVendor, useStates, useVendorById, useTimeZones } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
-import { Building2, ShieldCheck, Image as ImageIcon, MapPin, Save, User } from "lucide-react";
+import { Building2, ShieldCheck, Image as ImageIcon, MapPin, Save, User, SlidersHorizontal } from "lucide-react";
 
 const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const websiteRegex = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
@@ -66,7 +69,10 @@ const createVendorSchema = z.object({
   is_crm_enabled: z.boolean(),
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
+  cutlist_configuration: z.string().optional().default("default"),
+  show_status_on_scan: z.string().optional().default("1"),
   is_scanpack_enabled: z.boolean(),
+  is_hrms_master_enabled: z.boolean(),
   is_available_unique_code: z.boolean(),
   status: z.enum(["active", "inactive"]),
   gst_no: z
@@ -98,6 +104,7 @@ const createVendorSchema = z.object({
     }),
   city: z.string().trim().optional().or(z.literal("")),
   state_id: z.number().nullable().optional(),
+  time_zone_id: z.number().int().positive("Time zone is required"),
 });
 
 type CreateVendorForm = z.infer<typeof createVendorSchema>;
@@ -112,7 +119,19 @@ function OnboardVendorFormContent() {
   const statesQuery = useStates();
   const states = statesQuery.data?.data || [];
 
+  const timeZonesQuery = useTimeZones({ is_active: true });
+  const activeTimeZones = timeZonesQuery.data?.data || [];
+
   const { data: vendorDetailResponse } = useVendorById(editingVendorId || undefined);
+
+  const displayTimeZones = React.useMemo(() => {
+    const list = [...activeTimeZones];
+    const currentVendorTz = vendorDetailResponse?.data?.time_zone_master;
+    if (currentVendorTz && !list.some((tz) => tz.id === currentVendorTz.id)) {
+      list.unshift(currentVendorTz);
+    }
+    return list;
+  }, [activeTimeZones, vendorDetailResponse?.data?.time_zone_master]);
 
   const [form, setForm] = React.useState<CreateVendorForm>({
     vendor_name: "",
@@ -125,7 +144,10 @@ function OnboardVendorFormContent() {
     is_crm_enabled: true,
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
+    cutlist_configuration: "default",
+    show_status_on_scan: "1",
     is_scanpack_enabled: false,
+    is_hrms_master_enabled: false,
     is_available_unique_code: false,
     status: "active",
     gst_no: "",
@@ -136,6 +158,7 @@ function OnboardVendorFormContent() {
     pincode: "",
     city: "",
     state_id: null,
+    time_zone_id: (null as any),
   });
 
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
@@ -161,7 +184,10 @@ function OnboardVendorFormContent() {
         is_crm_enabled: v.is_crm_enabled !== false,
         is_inventory_enabled: v.is_inventory_enabled === true,
         is_tracktrace_enabled: v.is_tracktrace_enabled === true,
+        cutlist_configuration: v.cutlist_configuration || "default",
+        show_status_on_scan: (v as any).show_status_on_scan ?? "1",
         is_scanpack_enabled: v.is_scanpack_enabled === true,
+        is_hrms_master_enabled: (v as any).is_hrms_master_enabled === true,
         is_available_unique_code: v.is_available_unique_code === true,
         status: (v.status || "active").toLowerCase() as "active" | "inactive",
         gst_no: v.gst_no || "",
@@ -172,9 +198,22 @@ function OnboardVendorFormContent() {
         pincode: v.pincode || "",
         city: v.city || "",
         state_id: v.state_id || (v.state?.id ?? null),
+        time_zone_id: v.time_zone_id || (displayTimeZones.find((t) => t.time_zone_name === v.time_zone)?.id ?? (null as any)),
       });
     }
-  }, [vendorDetailResponse]);
+  }, [vendorDetailResponse, displayTimeZones]);
+
+  const handleTimeZoneChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setForm((prev) => ({
+      ...prev,
+      time_zone_id: value ? Number(value) : (null as any),
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      time_zone_id: undefined,
+    }));
+  };
 
   const handleStateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -220,6 +259,7 @@ function OnboardVendorFormContent() {
         | "is_inventory_enabled"
         | "is_tracktrace_enabled"
         | "is_scanpack_enabled"
+        | "is_hrms_master_enabled"
         | "is_available_unique_code",
       value: boolean,
     ) =>
@@ -247,6 +287,7 @@ function OnboardVendorFormContent() {
         website_link: nextFieldErrors.website_link?.[0],
         pincode: nextFieldErrors.pincode?.[0],
         state_id: nextFieldErrors.state_id?.[0],
+        time_zone_id: nextFieldErrors.time_zone_id?.[0],
       };
       setFieldErrors(errorsObj);
 
@@ -280,12 +321,17 @@ function OnboardVendorFormContent() {
         formData.append("country_code", "+91");
         formData.append("head_office_id", "");
         formData.append("status", validatedForm.data.status);
-        formData.append("time_zone", "Asia/Kolkata");
+        formData.append("time_zone_id", String(validatedForm.data.time_zone_id));
+        const selectedTz = displayTimeZones.find((t) => t.id === validatedForm.data.time_zone_id);
+        formData.append("time_zone", selectedTz?.time_zone_name || "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
+        formData.append("show_status_on_scan", validatedForm.data.show_status_on_scan || "1");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
+        formData.append("is_hrms_master_enabled", String(validatedForm.data.is_hrms_master_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
@@ -324,12 +370,17 @@ function OnboardVendorFormContent() {
         formData.append("country_code", "+91");
         formData.append("head_office_id", "");
         formData.append("status", validatedForm.data.status);
-        formData.append("time_zone", "Asia/Kolkata");
+        formData.append("time_zone_id", String(validatedForm.data.time_zone_id));
+        const selectedTz = displayTimeZones.find((t) => t.id === validatedForm.data.time_zone_id);
+        formData.append("time_zone", selectedTz?.time_zone_name || "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
+        formData.append("show_status_on_scan", validatedForm.data.show_status_on_scan || "1");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
+        formData.append("is_hrms_master_enabled", String(validatedForm.data.is_hrms_master_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
@@ -361,10 +412,11 @@ function OnboardVendorFormContent() {
         type: "success",
       });
       router.push("/dashboard/vendors");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       toastManager.add({
         title:
-          error?.response?.data?.message ||
+          err?.response?.data?.message ||
           (editingVendorId ? "Failed to update vendor" : "Failed to onboard vendor"),
         type: "error",
       });
@@ -629,7 +681,7 @@ function OnboardVendorFormContent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="pincode" className="text-xs font-semibold">Pincode</Label>
                   <Input
@@ -677,6 +729,29 @@ function OnboardVendorFormContent() {
                     <p className="text-xs text-destructive font-medium mt-0.5">{fieldErrors.state_id}</p>
                   )}
                 </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="time_zone_id" className="text-xs font-semibold">Time Zone *</Label>
+                  <select
+                    id="time_zone_id"
+                    value={form.time_zone_id || ""}
+                    onChange={handleTimeZoneChange}
+                    className={cn(
+                      "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      fieldErrors.time_zone_id && "border-destructive focus-visible:ring-destructive"
+                    )}
+                  >
+                    <option value="">Select Time Zone</option>
+                    {displayTimeZones.map((tz) => (
+                      <option key={tz.id} value={tz.id}>
+                        {tz.country} ({tz.time_zone_name}){!tz.active ? " - (Inactive)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.time_zone_id && (
+                    <p className="text-xs text-destructive font-medium mt-0.5">{fieldErrors.time_zone_id}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -699,7 +774,7 @@ function OnboardVendorFormContent() {
               </div>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                 <div className="grid gap-2 border p-4 rounded-xl bg-background">
                   <Label className="font-semibold text-xs text-foreground">Handles Large Scale Projects</Label>
                   <div className="flex items-center gap-6 pt-1">
@@ -802,6 +877,69 @@ function OnboardVendorFormContent() {
                       </label>
                     ))}
                   </div>
+
+                  {form.is_tracktrace_enabled && (
+                    <>
+                      <div className="pt-2 border-t mt-1 flex items-center justify-between gap-2">
+                        <Label htmlFor="cutlist_configuration" className="font-medium text-xs text-muted-foreground shrink-0">
+                          Cutlist Configuration
+                        </Label>
+                        <Select
+                          value={form.cutlist_configuration || "default"}
+                          onValueChange={(value) =>
+                            setForm((prev) =>
+                              prev.cutlist_configuration === value
+                                ? prev
+                                : { ...prev, cutlist_configuration: value }
+                            )
+                          }
+                        >
+                          <SelectTrigger id="cutlist_configuration" className="h-8 text-xs w-[130px] bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default" className="text-xs">Default</SelectItem>
+                            <SelectItem value="rule manage" className="text-xs">Rule Manage</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="pt-2 border-t mt-1 flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <Label htmlFor="show_status_on_scan" className="font-medium text-xs text-muted-foreground shrink-0">
+                            Mobile Scan Mode
+                          </Label>
+                          <span className="text-[11px] text-muted-foreground">
+                            {form.show_status_on_scan === "0"
+                              ? "Continuous scan without confirmation modal"
+                              : "Manual confirmation modal before completing"}
+                          </span>
+                        </div>
+                        <Select
+                          value={form.show_status_on_scan || "1"}
+                          onValueChange={(value) =>
+                            setForm((prev) =>
+                              prev.show_status_on_scan === value
+                                ? prev
+                                : { ...prev, show_status_on_scan: value }
+                            )
+                          }
+                        >
+                          <SelectTrigger id="show_status_on_scan" className="h-8 text-xs w-[170px] bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1" className="text-xs">
+                              Manual / Normal
+                            </SelectItem>
+                            <SelectItem value="0" className="text-xs">
+                              Continuous Scan
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="grid gap-2 border p-4 rounded-xl bg-background">
@@ -821,6 +959,32 @@ function OnboardVendorFormContent() {
                           checked={form.is_scanpack_enabled === option.value}
                           onCheckedChange={handleBooleanFieldChange(
                             "is_scanpack_enabled",
+                            option.value,
+                          )}
+                        />
+                        <span className="text-sm font-medium">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 border p-4 rounded-xl bg-background">
+                  <Label className="font-semibold text-xs text-foreground">HRMS Master Enabled</Label>
+                  <div className="flex items-center gap-6 pt-1">
+                    {[
+                      { label: "Yes", value: true },
+                      { label: "No", value: false },
+                    ].map((option) => (
+                      <label
+                        key={`hrms-master-${String(option.value)}`}
+                        className="flex items-center gap-2 cursor-pointer"
+                        htmlFor={`hrms-master-${String(option.value)}`}
+                      >
+                        <Checkbox
+                          id={`hrms-master-${String(option.value)}`}
+                          checked={form.is_hrms_master_enabled === option.value}
+                          onCheckedChange={handleBooleanFieldChange(
+                            "is_hrms_master_enabled",
                             option.value,
                           )}
                         />
@@ -904,6 +1068,11 @@ function OnboardVendorFormContent() {
                     accept="image/*"
                     multiple={false}
                     maxFiles={1}
+                    previewUrl={
+                      vendorDetailResponse?.data?.logoUrl ||
+                      vendorDetailResponse?.data?.logo
+                    }
+                    showPreview
                   />
                 </div>
                 <div className="grid gap-2">
@@ -914,6 +1083,11 @@ function OnboardVendorFormContent() {
                     accept="image/*"
                     multiple={false}
                     maxFiles={1}
+                    previewUrl={
+                      vendorDetailResponse?.data?.iconUrl ||
+                      vendorDetailResponse?.data?.icon
+                    }
+                    showPreview
                   />
                 </div>
                 <div className="grid gap-2">
@@ -924,11 +1098,28 @@ function OnboardVendorFormContent() {
                     accept="image/*"
                     multiple={false}
                     maxFiles={1}
+                    previewUrl={
+                      vendorDetailResponse?.data?.loginImageUrl ||
+                      vendorDetailResponse?.data?.login_image
+                    }
+                    showPreview
                   />
                 </div>
               </div>
             </div>
           </div>
+
+          {editingVendorId ? (
+            <>
+              <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
+              <OnlineLeadExecutiveMappingCard key={`online-leads-${editingVendorId}`} vendorId={editingVendorId} />
+              <ComplaintExecutiveMappingCard key={`complaints-${editingVendorId}`} vendorId={editingVendorId} />
+            </>
+          ) : (
+            <div className="rounded-xl border bg-muted/20 p-5 text-sm text-muted-foreground">
+              Save the vendor first to configure custom cutlist Excel headers.
+            </div>
+          )}
 
           {/* Bottom Footer Submit Action Buttons */}
           <div className="border-t pt-6 flex items-center justify-end gap-3">

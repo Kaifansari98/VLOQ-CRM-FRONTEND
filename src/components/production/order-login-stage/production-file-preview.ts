@@ -24,6 +24,7 @@ export type ProductionPreviewRow = {
   // frozenQty: reserved via Freeze (already deducted from stock at freeze time).
   // issuedQty: handed off via Issue — the final, consumed state.
   frozenQty?: number; issuedQty?: number;
+  orderLoginId?: number | null;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -122,7 +123,7 @@ export async function matchProductionInventory(
           if (cancelled()) return;
           const result = await fetchProducts(vendorId, { search: code, page, page_size: 100, active });
           for (const product of result.products as InventoryProduct[]) {
-            if (product.vendor_id === vendorId && product.article_code?.trim() === code) found.set(product.id, product);
+            if ((!product.vendor_id || product.vendor_id === vendorId) && product.article_code?.trim() === code) found.set(product.id, product);
           }
           totalPages = result.total_pages;
           page++;

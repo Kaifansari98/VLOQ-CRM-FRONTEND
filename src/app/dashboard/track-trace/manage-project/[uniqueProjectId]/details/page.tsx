@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { toastManager } from "@/components/ui/toast";
 import {
   getBoxItems,
@@ -18,7 +19,10 @@ import {
   downloadDispatchDocument,
   TrackTraceBoxStatus,
   updateTrackTraceBoxStatus,
+  revertBoxFactoryOut,
+  FactoryOutRevertLogItem,
 } from "@/api/track-trace/track-trace-cutlist.api";
+import { useTimeZones } from "@/api/vendors";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -67,6 +71,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
@@ -104,33 +121,84 @@ import {
   Trash2,
   TrendingUp,
   UserCheck,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmtDateTime = (iso: string | null) => {
+const fmtDateTime = (
+  iso: string | null | undefined,
+  timeZone?: string | null,
+) => {
   if (!iso) return null;
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return null;
+
+  const targetTimeZone = timeZone?.trim() || "UTC";
+
+  try {
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: targetTimeZone,
+    });
+  } catch {
+    try {
+      return date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "UTC",
+      });
+    } catch {
+      return date.toISOString();
+    }
+  }
 };
 
-const fmtDate = (iso: string | null) => {
+const fmtDate = (
+  iso: string | null | undefined,
+  timeZone?: string | null,
+) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "—";
+
+  const targetTimeZone = timeZone?.trim() || "UTC";
+
+  try {
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: targetTimeZone,
+    });
+  } catch {
+    try {
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    } catch {
+      return "—";
+    }
+  }
 };
 
 const formatWeight = (value: unknown) => {
@@ -312,6 +380,7 @@ function BoxCard({
   downloading,
   packingType,
   viewMode = "grid",
+  timeZone,
 }: {
   box: ProjectDetailData["boxes"][0];
   onClick: () => void;
@@ -319,9 +388,11 @@ function BoxCard({
   downloading?: boolean;
   packingType: ProjectDetailData["project"]["packing_type"];
   viewMode?: BoxViewMode;
+  timeZone?: string;
 }) {
   const isPacked = getBoxStatus(box) === "packed";
   const itemCount = getBoxItemCount(box);
+  const receivedQty = box.received_qty || 0;
   const boxWeight = getBoxWeight(box);
   const hasItems = itemCount > 0;
   const factoryOut = !!box.factory_out_at;
@@ -353,15 +424,16 @@ function BoxCard({
     return (
       <div
         onClick={onClick}
-        className="cursor-pointer group grid w-full grid-cols-1 gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40 md:grid-cols-[minmax(130px,1fr)_130px_130px_170px_44px]"
+        className="group flex w-full min-w-0 flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40 cursor-pointer"
       >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
+        {/* Top/Left Section: Icon, Box info, Badges */}
+        <div className="flex min-w-0 flex-1 items-start sm:items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold mt-0.5 sm:mt-0">
             <Box size={16} />
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-bold text-foreground">
                 Box {boxDisplayNumber}
               </p>
@@ -398,72 +470,108 @@ function BoxCard({
               </p>
             )}
           </div>
+
+          {/* Mobile-only print button in header row */}
+          <div className="flex sm:hidden shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all",
+                "hover:border-primary/40 hover:bg-muted text-foreground",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
+              title="Print box label"
+            >
+              {downloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Printer size={14} />
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 md:justify-center">
-          <span className="text-xs font-semibold text-foreground">
-            {itemCount} item{itemCount === 1 ? "" : "s"}
-          </span>
-        </div>
+        {/* Bottom/Right Section: Stats, Movement Badges, Print & Chevron */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 border-t sm:border-t-0 pt-2 sm:pt-0">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <span>
+              {itemCount} item{itemCount === 1 ? "" : "s"}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="tabular-nums">{formatWeight(boxWeight)}</span>
+          </div>
 
-        <div className="flex items-center gap-2 md:justify-center">
-          <span className="text-xs font-semibold text-foreground tabular-nums">
-            {formatWeight(boxWeight)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs md:justify-end">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-              factoryOut
-                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                : "bg-muted text-muted-foreground",
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            {receivedQty > 0 && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                  receivedQty < itemCount
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                )}
+              >
+                {receivedQty}/{itemCount} at site
+              </span>
             )}
-          >
-            <TruckIcon size={11} />
-            Factory
-          </span>
 
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-              siteIn
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            <MapPin size={11} />
-            Site
-          </span>
-        </div>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                factoryOut
+                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              <TruckIcon size={11} />
+              Factory
+            </span>
 
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            disabled={downloading}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload();
-            }}
-            className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all",
-              "hover:border-primary/40 hover:bg-muted text-foreground",
-              "disabled:cursor-not-allowed disabled:opacity-60",
-            )}
-            title="Print box label"
-          >
-            {downloading ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Printer size={14} />
-            )}
-          </button>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                siteIn
+                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              <MapPin size={11} />
+              Site
+            </span>
+          </div>
 
-          <ChevronRight
-            size={16}
-            className="text-muted-foreground transition-colors group-hover:text-foreground"
-          />
+          <div className="hidden sm:flex shrink-0 items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all",
+                "hover:border-primary/40 hover:bg-muted text-foreground",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
+              title="Print box label"
+            >
+              {downloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Printer size={14} />
+              )}
+            </button>
+
+            <ChevronRight
+              size={16}
+              className="text-muted-foreground transition-colors group-hover:text-foreground"
+            />
+          </div>
         </div>
       </div>
     );
@@ -593,28 +701,51 @@ function BoxCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <DispatchStep
-          label="Factory Out"
-          done={factoryOut}
-          by={box.factory_out_by}
-          at={box.factory_out_at}
-          Icon={TruckIcon}
-        />
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+        {receivedQty > 0 && (
+          <div className={cn(
+            "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2",
+            receivedQty < itemCount
+              ? "border-amber-500/30 bg-amber-500/10"
+              : "border-emerald-500/20 bg-emerald-500/10"
+          )}>
+            <MapPin size={13} className={receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
+            <div className="flex flex-col">
+              <span className={cn("text-[9px] sm:text-[10px] font-bold uppercase leading-none", receivedQty < itemCount ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                At Site
+              </span>
+              <span className={cn("text-[11px] sm:text-xs font-semibold mt-0.5", receivedQty < itemCount ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300")}>
+                {receivedQty} / {itemCount} items
+              </span>
+            </div>
+          </div>
+        )}
 
-        <div className="h-px w-6 shrink-0 bg-border" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <DispatchStep
+            label="Factory Out"
+            done={factoryOut}
+            by={box.factory_out_by}
+            at={box.factory_out_at}
+            Icon={TruckIcon}
+            timeZone={timeZone}
+          />
 
-        <DispatchStep
-          label="Site In"
-          done={siteIn}
-          by={box.site_in_by}
-          at={box.site_in_at}
-          Icon={MapPin}
-        />
+          <div className="hidden min-[420px]:block h-px w-4 sm:w-6 shrink-0 bg-border" />
+
+          <DispatchStep
+            label="Site In"
+            done={siteIn}
+            by={box.site_in_by}
+            at={box.site_in_at}
+            Icon={MapPin}
+            timeZone={timeZone}
+          />
+        </div>
 
         <ChevronRight
           size={16}
-          className="ml-auto text-muted-foreground transition-colors group-hover:text-indigo-500"
+          className="ml-auto text-muted-foreground transition-colors group-hover:text-indigo-500 shrink-0"
         />
       </div>
     </div>
@@ -627,12 +758,14 @@ function DispatchStep({
   by,
   at,
   Icon,
+  timeZone,
 }: {
   label: string;
   done: boolean;
   by: string | null;
   at: string | null;
   Icon: any;
+  timeZone?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -654,7 +787,7 @@ function DispatchStep({
           {label}
         </p>
         {done && at && (
-          <p className="text-[9px] text-muted-foreground">{fmtDateTime(at)}</p>
+          <p className="text-[9px] text-muted-foreground">{fmtDateTime(at, timeZone)}</p>
         )}
         {done && by && (
           <p className="text-[9px] text-muted-foreground">by {by}</p>
@@ -698,6 +831,7 @@ function BoxesSection({
   onPrintBox,
   onDownloadDispatch,
   onFilterChange,
+  vendorTimeZone,
 }: {
   boxes: ProjectDetailData["boxes"];
   boxesPagination?: ProjectDetailData["boxes_pagination"];
@@ -717,6 +851,7 @@ function BoxesSection({
     page?: number;
     limit?: number;
   }) => void;
+  vendorTimeZone?: string;
 }) {
   const [search, setSearch] = useState("");
   const [productGroup, setProductGroup] = useState("all");
@@ -882,8 +1017,8 @@ function BoxesSection({
   };
 
   return (
-    <div className="rounded-2xl border bg-card overflow-hidden">
-      <div className="border-b bg-muted/30 p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border bg-card">
+      <div className="border-b bg-muted/30 p-3.5 sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div
             onClick={() => setCollapsed((value) => !value)}
@@ -893,8 +1028,8 @@ function BoxesSection({
               <Box size={18} />
             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-bold text-foreground">
                   Boxes ({filteredBoxes.length}/
                   {boxesPagination?.total ?? boxes.length})
@@ -916,7 +1051,7 @@ function BoxesSection({
               variant="outline"
               size="sm"
               onClick={() => setCollapsed((value) => !value)}
-              className="h-8 text-xs gap-1.5 rounded-lg"
+              className="h-8 text-xs gap-1.5 rounded-lg flex-1 sm:flex-none justify-center"
             >
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               {collapsed ? "Expand" : "Collapse"}
@@ -961,7 +1096,7 @@ function BoxesSection({
               variant="outline"
               disabled={downloadingDispatch}
               onClick={onDownloadDispatch}
-              className="h-8 text-xs gap-1.5 rounded-lg"
+              className="h-8 text-xs gap-1.5 rounded-lg w-full sm:w-auto justify-center"
             >
               {downloadingDispatch ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -1096,7 +1231,7 @@ function BoxesSection({
             </div>
 
             {/* Controls Row 2: Sort By, Reset */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
               <div className="w-full sm:w-64 space-y-1">
                 <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground block">
                   Sort By
@@ -1127,7 +1262,7 @@ function BoxesSection({
                   variant="ghost"
                   size="sm"
                   onClick={resetBoxFilters}
-                  className="h-9 gap-2 rounded-lg text-muted-foreground hover:text-foreground"
+                  className="h-9 gap-2 rounded-lg text-muted-foreground hover:text-foreground w-full sm:w-auto justify-center"
                 >
                   <X size={14} />
                   Reset
@@ -1193,7 +1328,7 @@ function BoxesSection({
               className={cn(
                 viewMode === "compact"
                   ? "space-y-2"
-                  : "grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4",
+                  : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4",
               )}
             >
               {paginatedBoxes.map((box) => (
@@ -1205,6 +1340,7 @@ function BoxesSection({
                   downloading={downloadingBoxId === box.id}
                   onClick={() => onSelectBox(box)}
                   onDownload={() => onPrintBox(box)}
+                  timeZone={vendorTimeZone}
                 />
               ))}
             </div>
@@ -1212,8 +1348,8 @@ function BoxesSection({
 
           {/* Boxes Pagination UI */}
           {activePagination.total > 0 && (
-            <div className="mt-4 flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto border-t bg-muted/10 p-3 sm:flex-row sm:gap-8 rounded-b-xl">
-              <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
+            <div className="mt-4 flex w-full flex-col-reverse sm:flex-row items-center justify-between gap-3 sm:gap-6 border-t bg-muted/10 p-3 rounded-b-xl max-w-full overflow-hidden">
+              <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                 Showing{" "}
                 <span className="font-semibold text-foreground">
                   {activePagination.from}
@@ -1229,10 +1365,10 @@ function BoxesSection({
                 {" boxes"}
               </div>
 
-              <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-                <div className="flex items-center space-x-2">
-                  <p className="whitespace-nowrap text-sm font-medium">
-                    Rows per page
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                <div className="flex items-center space-x-1.5">
+                  <p className="whitespace-nowrap text-xs sm:text-sm font-medium">
+                    Rows
                   </p>
                   <Select
                     value={`${pageSize}`}
@@ -1254,11 +1390,11 @@ function BoxesSection({
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-center text-sm font-medium">
+                <div className="text-xs sm:text-sm font-medium whitespace-nowrap">
                   Page {activePagination.page} of {activePagination.total_pages}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
                   <Button
                     aria-label="Go to first page"
                     variant="outline"
@@ -1328,6 +1464,7 @@ function BoxItemsDialog({
   boxName,
   userId,
   onBoxUpdated,
+  vendorTimeZone,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1338,11 +1475,21 @@ function BoxItemsDialog({
   boxName: string;
   userId: number;
   onBoxUpdated: () => void | Promise<void>;
+  vendorTimeZone?: string;
 }) {
+  const authUser = useAppSelector((state) => state.auth.user);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getBoxItems>
   > | null>(null);
+
+  const activeTimeZone =
+    vendorTimeZone ||
+    (data as any)?.vendor_time_zone ||
+    authUser?.vendor?.time_zone_master?.time_zone_name ||
+    authUser?.vendor?.time_zone_master?.time_zone_code ||
+    authUser?.vendor?.time_zone ||
+    "UTC";
   const [pendingStatus, setPendingStatus] =
     useState<TrackTraceBoxStatus | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -1351,6 +1498,13 @@ function BoxItemsDialog({
     name: string;
   } | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [revertModalOpen, setRevertModalOpen] = useState(false);
+  const [revertDescription, setRevertDescription] = useState("");
+  const [reverting, setReverting] = useState(false);
+  const [unpackModalOpen, setUnpackModalOpen] = useState(false);
+  const [unpackReason, setUnpackReason] = useState("");
+  const [unpacking, setUnpacking] = useState(false);
 
   const loadBoxItems = useCallback(async () => {
     setLoading(true);
@@ -1369,6 +1523,11 @@ function BoxItemsDialog({
   useEffect(() => {
     if (!open) return;
     setData(null);
+    setRevertDescription("");
+    setRevertModalOpen(false);
+    setUnpackModalOpen(false);
+    setUnpackReason("");
+    setDeleteReason("");
     void loadBoxItems();
   }, [loadBoxItems, open]);
 
@@ -1385,6 +1544,56 @@ function BoxItemsDialog({
 
   const boxStatus = String(data?.box.box_status || "").toLowerCase();
   const isPacked = boxStatus === "packed";
+  const isFactoryOut = Boolean(data?.box.factory_out_at);
+  const isFactoryOutForUnpack =
+    data?.box.factory_out_at != null && data?.box.factory_out_by != null;
+  const isSiteIn = Boolean(data?.box.site_in_at || data?.box.site_in_by);
+  const isPackedValid = Boolean(data?.box.packed_at && data?.box.packed_by);
+
+  const canRevertFactoryOut = isFactoryOut && !isSiteIn && isPackedValid;
+
+  let revertDisabledReason = "";
+  if (!isFactoryOut) {
+    revertDisabledReason = "Box has not been marked as Factory Out.";
+  } else if (isSiteIn) {
+    revertDisabledReason = "Cannot revert: Box is already at the site.";
+  } else if (!isPackedValid) {
+    revertDisabledReason = "Cannot revert: Box packing details (date/operator) are incomplete.";
+  }
+
+  const handleRevertFactoryOut = async () => {
+    if (!revertDescription.trim() || reverting) return;
+
+    try {
+      setReverting(true);
+      await revertBoxFactoryOut({
+        boxId,
+        projectId: projectMasterId,
+        vendorId,
+        userId,
+        description: revertDescription.trim(),
+      });
+
+      toastManager.add({
+        title: "Factory Out reverted successfully",
+        type: "success",
+      });
+
+      setRevertModalOpen(false);
+      setRevertDescription("");
+      await refreshBoxViews();
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to revert factory out",
+        type: "error",
+      });
+    } finally {
+      setReverting(false);
+    }
+  };
 
   const handleStatusUpdate = async () => {
     if (!pendingStatus || updatingStatus) return;
@@ -1413,8 +1622,54 @@ function BoxItemsDialog({
     }
   };
 
+  const handleUnpackBox = async () => {
+    if (!unpackReason.trim() || unpacking) return;
+
+    if (isSiteIn || isFactoryOutForUnpack) {
+      toastManager.add({
+        title:
+          isSiteIn
+            ? "Cannot unpack box: Box is already at the site (Site In has been recorded)"
+            : "Cannot unpack box: Box has already been marked as Factory Out",
+        type: "error",
+      });
+      setUnpackModalOpen(false);
+      return;
+    }
+
+    try {
+      setUnpacking(true);
+      await updateTrackTraceBoxStatus(boxId, "unpacked", userId, unpackReason.trim());
+      toastManager.add({
+        title: "Box marked as unpacked",
+        type: "success",
+      });
+      setUnpackModalOpen(false);
+      setUnpackReason("");
+      await refreshBoxViews();
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to unpack box",
+        type: "error",
+      });
+    } finally {
+      setUnpacking(false);
+    }
+  };
+
   const handleDeleteItem = async () => {
     if (!itemToDelete || deletingItemId) return;
+
+    if (!deleteReason.trim()) {
+      toastManager.add({
+        title: "Reason is required to remove item from box",
+        type: "warning",
+      });
+      return;
+    }
 
     if (isPacked) {
       toastManager.add({
@@ -1433,6 +1688,7 @@ function BoxItemsDialog({
         projectId: projectMasterId,
         boxId,
         userId,
+        reason: deleteReason.trim(),
       });
       await refreshBoxViews();
       toastManager.add({
@@ -1440,6 +1696,7 @@ function BoxItemsDialog({
         type: "success",
       });
       setItemToDelete(null);
+      setDeleteReason("");
     } catch (error: any) {
       toastManager.add({
         title:
@@ -1450,6 +1707,7 @@ function BoxItemsDialog({
       });
       void refreshBoxViews();
       setItemToDelete(null);
+      setDeleteReason("");
     } finally {
       setDeletingItemId(null);
     }
@@ -1475,27 +1733,76 @@ function BoxItemsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] w-full max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl border">
-        <DialogHeader className="flex flex-row items-center justify-between gap-4 border-b bg-muted/30 px-6 py-4 pr-14">
-          <DialogTitle className="flex items-center gap-3 text-lg font-bold">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
+      <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] max-h-[92vh] sm:max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl border">
+        <DialogHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b bg-muted/30 p-3.5 sm:px-6 sm:py-4 pr-12 sm:pr-14">
+          <DialogTitle className="flex items-start sm:items-center gap-3 text-base sm:text-lg font-bold min-w-0 flex-1">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold mt-0.5 sm:mt-0">
               <Box size={18} />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-foreground">Box {boxName}</span>
-              {data && (
-                <Badge
-                  variant="outline"
-                  className="text-xs font-semibold"
-                >
-                  {data.items.length}{" "}
-                  {data.items.length === 1 ? "Item" : "Items"}
-                </Badge>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-foreground truncate">Box {boxName}</span>
+                {data && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs font-semibold shrink-0"
+                  >
+                    {data.items.length}{" "}
+                    {data.items.length === 1 ? "Item" : "Items"}
+                  </Badge>
+                )}
+                {data && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "sm:hidden capitalize text-xs font-semibold shrink-0",
+                      isPacked
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                    )}
+                  >
+                    {boxStatus}
+                  </Badge>
+                )}
+              </div>
+              {data && (data.box.factory_out_at || data.box.site_in_at) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground mt-0.5">
+                  {data.box.factory_out_at && (
+                    <span className="flex items-center gap-1.5">
+                      <span>Factory Out:</span>
+                      {data.box.factoryOutByUser && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={11} />
+                          {data.box.factoryOutByUser.user_name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 size={11} />
+                        {fmtDateTime(data.box.factory_out_at, activeTimeZone)}
+                      </span>
+                    </span>
+                  )}
+                  {data.box.site_in_at && (
+                    <span className="flex items-center gap-1.5">
+                      <span>Site In:</span>
+                      {data.box.siteInByUser && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={11} />
+                          {data.box.siteInByUser.user_name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <CheckCircle2 size={11} />
+                        {fmtDateTime(data.box.site_in_at, activeTimeZone)}
+                      </span>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </DialogTitle>
           {data && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
               <Badge
                 variant="outline"
                 className={cn(
@@ -1507,25 +1814,131 @@ function BoxItemsDialog({
               >
                 {boxStatus}
               </Badge>
-              <Button
-                type="button"
-                size="sm"
-                variant={isPacked ? "outline" : "default"}
-                className="gap-1.5"
-                disabled={updatingStatus}
-                onClick={() =>
-                  setPendingStatus(isPacked ? "unpacked" : "packed")
-                }
-              >
-                {updatingStatus ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : isPacked ? (
-                  <PackageOpen className="size-4" />
-                ) : (
-                  <PackageCheck className="size-4" />
-                )}
-                {isPacked ? "Unpack box" : "Pack box"}
-              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 font-medium shadow-xs"
+                    disabled={updatingStatus || reverting}
+                  >
+                    {updatingStatus || reverting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <SlidersHorizontal className="size-3.5" />
+                    )}
+                    Actions
+                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5">
+                  {isPacked ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="w-full">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!isSiteIn && !isFactoryOutForUnpack) {
+                                setUnpackModalOpen(true);
+                              }
+                            }}
+                            disabled={
+                              isSiteIn ||
+                              isFactoryOutForUnpack ||
+                              updatingStatus ||
+                              reverting ||
+                              unpacking
+                            }
+                            className={cn(
+                              "gap-2.5 py-2 w-full",
+                              isSiteIn || isFactoryOutForUnpack
+                                ? "!pointer-events-auto opacity-60 cursor-not-allowed"
+                                : "cursor-pointer",
+                            )}
+                          >
+                            <PackageOpen className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium text-xs">Unpack box</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                Allow box items to be edited
+                              </span>
+                            </div>
+                          </DropdownMenuItem>
+                        </div>
+                      </TooltipTrigger>
+                      {(isSiteIn || isFactoryOutForUnpack) && (
+                        <TooltipContent
+                          side="left"
+                          align="center"
+                          className="z-[100] max-w-xs text-xs font-normal"
+                        >
+                          {isSiteIn
+                            ? "Cannot unpack: Box is already at the site (Site In has been recorded)."
+                            : "Cannot unpack: Box has already been marked as Factory Out."}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setPendingStatus("packed")}
+                      disabled={updatingStatus || reverting}
+                      className="gap-2.5 cursor-pointer py-2"
+                    >
+                      <PackageCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-xs">Pack box</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          Seal box for movement
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-full">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (canRevertFactoryOut) {
+                              setRevertModalOpen(true);
+                            }
+                          }}
+                          disabled={!canRevertFactoryOut || updatingStatus || reverting}
+                          className={cn(
+                            "gap-2.5 py-2 w-full",
+                            canRevertFactoryOut
+                              ? "text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                              : "!pointer-events-auto opacity-60 cursor-not-allowed"
+                          )}
+                        >
+                          <RotateCcw className="size-4 shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium text-xs">Revert Factory Out</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Clear factory out status
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    {!canRevertFactoryOut && (
+                      <TooltipContent
+                        side="left"
+                        align="center"
+                        className="z-[100] max-w-xs text-xs font-normal"
+                      >
+                        {isFactoryOut && isSiteIn
+                          ? "Cannot revert Factory Out: Box is already at the site (Site In has been recorded)."
+                          : revertDisabledReason}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </DialogHeader>
@@ -1551,7 +1964,7 @@ function BoxItemsDialog({
             </div>
           ) : (
             <div className="w-full overflow-x-auto border-0 bg-background">
-              <Table className="w-full">
+              <Table className="w-full min-w-[850px]">
                 <TableHeader className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs">
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="text-xs font-bold uppercase text-foreground py-3.5 whitespace-nowrap px-4">
@@ -1632,7 +2045,7 @@ function BoxItemsDialog({
                           {item.actual_in_at ? (
                             <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
                               <CheckCircle2 size={12} />
-                              {fmtDateTime(item.actual_in_at)}
+                              {fmtDateTime(item.actual_in_at, activeTimeZone)}
                             </span>
                           ) : (
                             <span className="text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[11px]">
@@ -1654,7 +2067,7 @@ function BoxItemsDialog({
                           {item.site_in_at ? (
                             <span className="text-blue-600 dark:text-blue-400 font-medium inline-flex items-center gap-1">
                               <CheckCircle2 size={12} />
-                              {fmtDateTime(item.site_in_at)}
+                              {fmtDateTime(item.site_in_at, activeTimeZone)}
                             </span>
                           ) : (
                             "—"
@@ -1705,20 +2118,20 @@ function BoxItemsDialog({
                   <TableRow className="hover:bg-muted/40 border-0">
                     <TableCell
                       colSpan={3}
-                      className="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-foreground"
+                      className="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-foreground whitespace-nowrap"
                     >
                       Total Box Summary ({data.items.length}{" "}
                       {data.items.length === 1 ? "Item" : "Items"})
                     </TableCell>
-                    <TableCell className="py-3.5 px-4 text-sm font-bold text-center text-foreground tabular-nums">
+                    <TableCell className="py-3.5 px-4 text-sm font-bold text-center text-foreground tabular-nums whitespace-nowrap">
                       {totalQty}
                     </TableCell>
-                    <TableCell className="py-3.5 px-4 text-sm font-bold text-foreground tabular-nums">
+                    <TableCell className="py-3.5 px-4 text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
                       {formatWeight(totalWeight)}
                     </TableCell>
                     <TableCell
                       colSpan={7}
-                      className="py-3.5 px-4 text-xs text-muted-foreground text-right pr-6"
+                      className="py-3.5 px-4 text-xs text-muted-foreground text-right pr-6 whitespace-nowrap"
                     >
                       Total Weight:{" "}
                       <Badge variant="outline" className="font-semibold text-xs ml-1.5">
@@ -1735,22 +2148,16 @@ function BoxItemsDialog({
       </Dialog>
 
       <AlertDialog
-        open={pendingStatus !== null}
+        open={pendingStatus === "packed"}
         onOpenChange={(nextOpen) => {
           if (!nextOpen && !updatingStatus) setPendingStatus(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingStatus === "packed"
-                ? "Pack this box?"
-                : "Unpack this box?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Pack this box?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingStatus === "packed"
-                ? "The box will be marked as packed. Items cannot be removed until the box is unpacked again."
-                : "The box will be marked as unpacked, allowing its contents to be changed or removed."}
+              The box will be marked as packed. Items cannot be removed until the box is unpacked again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1765,47 +2172,330 @@ function BoxItemsDialog({
               }}
             >
               {updatingStatus && <Loader2 className="size-4 animate-spin" />}
-              {pendingStatus === "packed" ? "Pack box" : "Unpack box"}
+              Pack box
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={itemToDelete !== null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen && deletingItemId === null) setItemToDelete(null);
-        }}
+      {/* ── Unpack Box Dialog ── */}
+      <Dialog
+        open={unpackModalOpen}
+        onOpenChange={(val) => !unpacking && setUnpackModalOpen(val)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove item from box?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {itemToDelete
-                ? `Remove “${itemToDelete.name}” from ${boxName}? This action is only allowed while the box is unpacked.`
-                : "This action is only allowed while the box is unpacked."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingItemId !== null}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20"
-              disabled={deletingItemId !== null}
-              onClick={(event) => {
-                event.preventDefault();
-                void handleDeleteItem();
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-amber-500/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <PackageOpen className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Unpack Box {boxName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Unpack this box to modify or remove its contents. Previous packing details will be archived in the audit log.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Box Info Summary Card */}
+            <div className="rounded-xl border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Box</span>
+                <span className="font-bold text-foreground">Box {boxName}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Packed At
+                </span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {data?.box.packed_at
+                    ? fmtDateTime(data.box.packed_at, activeTimeZone)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Packed By
+                </span>
+                <span className="font-semibold text-foreground">
+                  {data?.box.packedByUser?.user_name ||
+                    (data?.box.packed_by
+                      ? `User #${data.box.packed_by}`
+                      : "N/A")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Created At
+                </span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {(data?.box as any)?.created_date
+                    ? fmtDateTime((data?.box as any).created_date, activeTimeZone)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Created By
+                </span>
+                <span className="font-semibold text-foreground">
+                  {data?.box.createdByUser?.user_name ||
+                    (data?.box.created_by
+                      ? `User #${data.box.created_by}`
+                      : "N/A")}
+                </span>
+              </div>
+            </div>
+
+            {/* Mandatory Reason */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Reason for Unpacking <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={unpackReason}
+                onChange={(e) => setUnpackReason(e.target.value)}
+                placeholder="Explain why this box is being unpacked (e.g., replace damaged piece, repack items)..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={unpacking}
+              />
+            </div>
+
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                Unpacking will mark the box as <strong>Unpacked</strong> and reset packing timestamps.
+                The previous packing operator, timestamps, and this reason will be preserved in the audit log.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={unpacking}
+              onClick={() => {
+                setUnpackModalOpen(false);
+                setUnpackReason("");
               }}
             >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!unpackReason.trim() || unpacking}
+              onClick={handleUnpackBox}
+              className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {unpacking && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm Unpack
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Remove Item Dialog ── */}
+      <Dialog
+        open={itemToDelete !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && deletingItemId === null) {
+            setItemToDelete(null);
+            setDeleteReason("");
+          }
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-destructive/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
+                <Trash2 className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Remove Item from Box {boxName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Item removal is only allowed while the box is unpacked.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Item Info Summary Card */}
+            <div className="rounded-xl border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Item Name</span>
+                <span className="font-bold text-foreground">{itemToDelete?.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Destination Box</span>
+                <span className="font-semibold text-foreground">Box {boxName}</span>
+              </div>
+            </div>
+
+            {/* Mandatory Reason */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Reason for Removal <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Explain why this item is being removed from the box..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={deletingItemId !== null}
+              />
+            </div>
+
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-[11px] text-destructive flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+              <span>
+                This will remove the item from the box. The deletion, timestamp, user, and reason will be recorded in the box item delete audit log.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={deletingItemId !== null}
+              onClick={() => {
+                setItemToDelete(null);
+                setDeleteReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={!deleteReason.trim() || deletingItemId !== null}
+              onClick={handleDeleteItem}
+              className="gap-1.5"
+            >
               {deletingItemId !== null && (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin" />
               )}
-              Remove item
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Remove Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Revert Factory Out Dialog ── */}
+      <Dialog
+        open={revertModalOpen}
+        onOpenChange={(val) => !reverting && setRevertModalOpen(val)}
+      >
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-destructive/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
+                <RotateCcw className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Revert Factory Out for Box {boxName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Clear Factory Out status and archive past scan details in
+                  audit log.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Box Info Summary Card */}
+            <div className="rounded-xl border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Box</span>
+                <span className="font-bold text-foreground">Box {boxName}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Factory Out At
+                </span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {data?.box.factory_out_at
+                    ? fmtDateTime(data.box.factory_out_at, activeTimeZone)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Factory Out By
+                </span>
+                <span className="font-semibold text-foreground">
+                  {data?.box.factoryOutByUser?.user_name ||
+                    (data?.box.factory_out_by
+                      ? `User #${data.box.factory_out_by}`
+                      : "N/A")}
+                </span>
+              </div>
+            </div>
+
+            {/* Mandatory Description */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Detailed Description <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={revertDescription}
+                onChange={(e) => setRevertDescription(e.target.value)}
+                placeholder="Explain why this box factory out is being reverted..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={reverting}
+              />
+            </div>
+
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                Reverting will clear <strong>Factory Out</strong> on this box.
+                Its previous factory out timestamp and user will be preserved
+                in the audit records.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={reverting}
+              onClick={() => setRevertModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={
+                !revertDescription.trim() || reverting
+              }
+              onClick={handleRevertFactoryOut}
+              className="gap-1.5"
+            >
+              {reverting && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm Revert
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -1816,6 +2506,7 @@ function CutListSection({
   vendorId,
   projectId,
   machineIds,
+  vendorTimeZone,
 }: {
   vendorId: number;
   projectId: string;
@@ -1824,7 +2515,9 @@ function CutListSection({
     name: string;
     sequence_no?: number;
   }[];
+  vendorTimeZone?: string;
 }) {
+  const authUser = useAppSelector((state) => state.auth.user);
   /*
   |--------------------------------------------------------------------------
   | Filter state
@@ -1887,6 +2580,14 @@ function CutListSection({
   const [cutListData, setCutListData] = useState<ProjectCutListResponse | null>(
     null,
   );
+
+  const activeTimeZone =
+    vendorTimeZone ||
+    (cutListData as any)?.vendor_time_zone ||
+    authUser?.vendor?.time_zone_master?.time_zone_name ||
+    authUser?.vendor?.time_zone_master?.time_zone_code ||
+    authUser?.vendor?.time_zone ||
+    "UTC";
 
   /*
   |--------------------------------------------------------------------------
@@ -2142,18 +2843,18 @@ function CutListSection({
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
       {/* Header */}
-      <div className="border-b bg-muted/30 p-4">
+      <div className="border-b bg-muted/30 p-3.5 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div
             onClick={() => setCollapsed((value) => !value)}
-            className="flex items-center gap-3 cursor-pointer"
+            className="flex items-center gap-3 cursor-pointer min-w-0 flex-1"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
               <Layers size={18} />
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-bold text-sm text-foreground">
                   Cut List ({summary?.filtered_qty ?? 0}/
                   {summary?.total_project_qty ?? 0} items)
@@ -2163,19 +2864,19 @@ function CutListSection({
                   {formatWeight(summary?.filtered_weight ?? 0)}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground truncate">
                 Itemized cut list details and machine status tracking.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <Button
               type="button"
               size="sm"
               variant="outline"
               onClick={() => setCollapsed((value) => !value)}
-              className="h-8 gap-1.5 text-xs rounded-lg"
+              className="h-8 gap-1.5 text-xs rounded-lg flex-1 sm:flex-none justify-center"
             >
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               {collapsed ? "Expand" : "Collapse"}
@@ -2187,7 +2888,7 @@ function CutListSection({
                 size="sm"
                 variant="outline"
                 onClick={resetFilters}
-                className="h-8 gap-1.5 text-xs rounded-lg"
+                className="h-8 gap-1.5 text-xs rounded-lg flex-1 sm:flex-none justify-center"
               >
                 <X size={13} />
                 Reset Filters
@@ -2520,8 +3221,8 @@ function CutListSection({
 
           {/* Table */}
           {!loading && !error && (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto w-full max-w-full">
+              <Table className="w-full min-w-[900px]">
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="w-8 text-xs font-black uppercase">
@@ -2722,7 +3423,7 @@ function CutListSection({
                             {/* Received time */}
                             {item.received_at && (
                               <span className="text-[9px] text-muted-foreground">
-                                {fmtDateTime(item.received_at)}
+                                {fmtDateTime(item.received_at, activeTimeZone)}
                               </span>
                             )}
                           </div>
@@ -2768,7 +3469,7 @@ function CutListSection({
 
                                   {mapping.scanned_at && (
                                     <span className="text-[9px] text-muted-foreground">
-                                      {fmtDateTime(mapping.scanned_at)}
+                                      {fmtDateTime(mapping.scanned_at, activeTimeZone)}
                                     </span>
                                   )}
 
@@ -2797,8 +3498,8 @@ function CutListSection({
 
           {/* Pagination */}
           {!loading && !error && pagination && pagination.total > 0 && (
-            <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto border-t bg-muted/10 p-3 sm:flex-row sm:gap-8 rounded-b-xl">
-              <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
+            <div className="flex w-full flex-col-reverse sm:flex-row items-center justify-between gap-3 sm:gap-6 border-t bg-muted/10 p-3 rounded-b-xl max-w-full overflow-hidden">
+              <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                 Showing{" "}
                 <span className="font-semibold text-foreground">
                   {pagination.from}
@@ -2814,10 +3515,10 @@ function CutListSection({
                 {" matching items"}
               </div>
 
-              <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-                <div className="flex items-center space-x-2">
-                  <p className="whitespace-nowrap text-sm font-medium">
-                    Rows per page
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                <div className="flex items-center space-x-1.5">
+                  <p className="whitespace-nowrap text-xs sm:text-sm font-medium">
+                    Rows
                   </p>
                   <Select
                     value={`${pageSize}`}
@@ -2839,11 +3540,11 @@ function CutListSection({
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-center text-sm font-medium">
+                <div className="text-xs sm:text-sm font-medium whitespace-nowrap">
                   Page {pagination.page} of {pagination.total_pages}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
                   <Button
                     aria-label="Go to first page"
                     variant="outline"
@@ -2908,7 +3609,25 @@ export default function ProjectDetailPage() {
   const vendorId = currentUser?.vendor_id;
   const { uniqueProjectId } = useParams<{ uniqueProjectId: string }>();
 
+  const { data: tzResponse } = useTimeZones();
+
+  const tzFromMaster = useMemo(() => {
+    const tzId = currentUser?.vendor?.time_zone_id;
+    if (!tzId || !tzResponse?.data) return undefined;
+    const match = tzResponse.data.find((tz) => tz.id === tzId);
+    return match?.time_zone_name || match?.time_zone_code;
+  }, [currentUser?.vendor?.time_zone_id, tzResponse?.data]);
+
   const [data, setData] = useState<ProjectDetailData | null>(null);
+
+  const vendorTimeZone =
+    (data as any)?.vendor_time_zone ||
+    tzFromMaster ||
+    currentUser?.vendor?.time_zone_master?.time_zone_name ||
+    currentUser?.vendor?.time_zone_master?.time_zone_code ||
+    currentUser?.vendor?.time_zone ||
+    "UTC";
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const activeBoxFiltersRef = useRef<
@@ -2969,6 +3688,8 @@ export default function ProjectDetailPage() {
   const receivedStats = data
     ? (data.stats as ProjectDetailData["stats"] & ReceivedQuantityStats)
     : null;
+
+  const [activeSection, setActiveSection] = useState("overview");
 
   const machineIds = data
     ? data.machines
@@ -3118,40 +3839,40 @@ export default function ProjectDetailPage() {
   return (
     <>
       {/* ── Header ── */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-3 sm:px-4 border-b">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <SidebarTrigger className="-ml-1 shrink-0" />
           <Separator
             orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
+            className="mr-1 sm:mr-2 data-[orientation=vertical]:h-4 shrink-0"
           />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
+          <Breadcrumb className="min-w-0">
+            <BreadcrumbList className="flex-nowrap">
+              <BreadcrumbItem className="hidden md:block shrink-0">
                 <BreadcrumbLink href="/dashboard/track-trace">
                   Track & Trace
                 </BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>
+              <BreadcrumbSeparator className="hidden md:block shrink-0" />
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="truncate max-w-[140px] xs:max-w-[220px] sm:max-w-[340px] md:max-w-md">
                   {data?.project.project_name ?? "Project Detail"}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 sm:gap-6 p-3.5 sm:p-5 md:p-6 max-w-full overflow-x-hidden">
         {loading && (
           <div className="space-y-4">
             <Skeleton className="h-24 w-full rounded-xl" />
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 rounded-xl" />
               ))}
@@ -3160,7 +3881,7 @@ export default function ProjectDetailPage() {
         )}
 
         {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 sm:px-5 py-3 sm:py-4 text-sm text-destructive">
             ⚠ Failed to load project detail. Please refresh.
           </div>
         )}
@@ -3168,17 +3889,17 @@ export default function ProjectDetailPage() {
         {!loading && !error && data && (
           <>
             {/* ── Integrated Project Header & Packing Overview Card ── */}
-            <div className="rounded-2xl border bg-card p-5 space-y-5">
+            <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4 sm:space-y-5">
               {/* Top Row: Project Icon, Name & Lead on Left, Status Badges on Right */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b -mx-5 px-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 sm:gap-4 pb-4 border-b -mx-4 px-4 sm:-mx-5 sm:px-5">
                 {/* Left Column: Icon + Project Name + Connected Lead */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-foreground text-background font-bold">
-                    <FolderKanban size={20} />
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-foreground text-background font-bold">
+                    <FolderKanban size={18} className="sm:size-5" />
                   </div>
 
-                  <div className="space-y-0.5 min-w-0">
-                    <h1 className="text-base font-bold tracking-tight text-foreground truncate">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <h1 className="text-lg sm:text-2xl font-black tracking-tight text-foreground truncate" title={data.project.project_name}>
                       {data.project.project_name}
                     </h1>
 
@@ -3188,7 +3909,7 @@ export default function ProjectDetailPage() {
                           size={13}
                           className="text-muted-foreground shrink-0"
                         />
-                        <span>{data.project.lead.lead_name}</span>
+                        <span className="truncate">{data.project.lead.lead_name}</span>
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
@@ -3199,7 +3920,7 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Right Column: Status Badges & Due Date */}
-                <div className="flex flex-wrap items-center gap-2 shrink-0 sm:justify-end">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 sm:justify-end">
                   {data.project.details?.estimated_completion_date && (
                     <span className="inline-flex items-center gap-1.5 rounded-lg border bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground">
                       <Calendar
@@ -3210,6 +3931,7 @@ export default function ProjectDetailPage() {
                       <strong className="text-foreground font-semibold">
                         {fmtDate(
                           data.project.details.estimated_completion_date,
+                          vendorTimeZone,
                         )}
                       </strong>
                     </span>
@@ -3225,7 +3947,7 @@ export default function ProjectDetailPage() {
                   <Badge
                     variant="secondary"
                     className={cn(
-                      "h-7 px-3 text-xs font-semibold rounded-lg border inline-flex items-center gap-1.5",
+                      "h-7 px-2.5 sm:px-3 text-xs font-semibold rounded-lg border inline-flex items-center gap-1.5",
                       data.project.track_trace_status === "Completed"
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                         : "bg-primary/10 text-primary border-primary/20",
@@ -3246,10 +3968,10 @@ export default function ProjectDetailPage() {
 
               {/* Bottom Row: Metric Stat Cards */}
               <div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5">
                   {/* Product Types */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Product Types
                       </p>
@@ -3257,7 +3979,7 @@ export default function ProjectDetailPage() {
                         <Layers size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.product_types}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3266,8 +3988,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Total Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Total Qty
                       </p>
@@ -3275,7 +3997,7 @@ export default function ProjectDetailPage() {
                         <Package size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3284,8 +4006,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Packed Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Packed Qty
                       </p>
@@ -3293,7 +4015,7 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_packed_qty}
                     </p>
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
@@ -3302,8 +4024,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Pending Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Qty
                       </p>
@@ -3311,7 +4033,7 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_pending_qty}
                     </p>
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate">
@@ -3320,8 +4042,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Packing Progress */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Packing Progress
                       </p>
@@ -3329,7 +4051,7 @@ export default function ProjectDetailPage() {
                         <TrendingUp size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.packing_progress_pct}%
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3342,9 +4064,64 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Packing method + product status ── */}
+            <Tabs value={activeSection} onValueChange={setActiveSection} className="min-w-0 gap-4">
+              <TabsList className="sticky top-0 z-10 grid h-auto w-full grid-cols-2 gap-1 sm:gap-1.5 rounded-xl border border-border/80 bg-muted/80 p-1 sm:p-1.5 shadow-xs backdrop-blur-md sm:grid-cols-4">
+                {[
+                  { id: "overview", label: "Overview", icon: SlidersHorizontal },
+                  { id: "boxes", label: "Boxes", icon: Package, count: data?.boxes?.length },
+                  { id: "receiving", label: "Dispatch & receiving", icon: TruckIcon },
+                  { id: "production", label: "Production", icon: Cpu, count: data?.machines?.length },
+                ].map((tab) => {
+                  const isActive = activeSection === tab.id;
+                  const Icon = tab.icon;
+
+                  return (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className={cn(
+                        "relative min-h-[36px] sm:min-h-[38px] h-auto py-1 sm:py-1.5 px-2 gap-1.5 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold select-none cursor-pointer transition-colors duration-200 z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none justify-center",
+                        isActive
+                          ? "text-primary-foreground font-bold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/40",
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeDetailsTabPill"
+                          transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                          className="absolute inset-0 rounded-lg bg-primary shadow-sm -z-10 pointer-events-none"
+                        />
+                      )}
+                      <Icon className="size-3.5 sm:size-4 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                      {typeof tab.count === "number" && tab.count > 0 && (
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums transition-colors shrink-0",
+                            isActive
+                              ? "bg-primary-foreground/20 text-primary-foreground"
+                              : "bg-muted-foreground/20 text-muted-foreground",
+                          )}
+                        >
+                          {tab.count}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              <TabsContent value="overview" className="mt-0 space-y-4 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
               {/* Left Side: Packing Method */}
-              <div className="xl:col-span-4 rounded-2xl border bg-card p-5 space-y-4 flex flex-col justify-between h-full">
+              <div className="xl:col-span-4 rounded-2xl border bg-card p-4 sm:p-5 space-y-4 flex flex-col justify-between h-full">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                     <SlidersHorizontal size={18} />
@@ -3359,9 +4136,9 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                   {/* Scanned Packed */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Scanned Packed
@@ -3372,7 +4149,7 @@ export default function ProjectDetailPage() {
                     </div>
 
                     <div className="flex items-baseline justify-between gap-1">
-                      <p className="text-xl font-bold text-foreground tabular-nums">
+                      <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                         {data.stats.scanned_packed_qty}
                       </p>
                       <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -3382,7 +4159,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Manual Packed */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Manual Packed
@@ -3393,7 +4170,7 @@ export default function ProjectDetailPage() {
                     </div>
 
                     <div className="flex items-baseline justify-between gap-1">
-                      <p className="text-xl font-bold text-foreground tabular-nums">
+                      <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                         {data.stats.manual_packed_qty}
                       </p>
                       <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
@@ -3404,8 +4181,8 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* Right Side: Product Packing Status (All 5 in 1 Row) */}
-              <div className="xl:col-span-8 rounded-2xl border bg-card p-5 space-y-4 flex flex-col justify-between h-full">
+              {/* Right Side: Product Packing Status (Responsive Grid) */}
+              <div className="xl:col-span-8 rounded-2xl border bg-card p-4 sm:p-5 space-y-4 flex flex-col justify-between h-full">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                     <PackageCheck size={18} />
@@ -3415,15 +4192,14 @@ export default function ProjectDetailPage() {
                       Product Packing Status
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Unique products grouped by their current packing
-                      completion.
+                      Unique products grouped by their current packing completion.
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
                   {/* Fully Packed */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Fully Packed
@@ -3432,13 +4208,13 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.fully_packed_products}
                     </p>
                   </div>
 
                   {/* Partial */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Partial
@@ -3447,13 +4223,13 @@ export default function ProjectDetailPage() {
                         <Clock size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.partially_packed_products}
                     </p>
                   </div>
 
                   {/* Not Started */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Not Started
@@ -3462,13 +4238,13 @@ export default function ProjectDetailPage() {
                         <Layers size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.not_started_products}
                     </p>
                   </div>
 
                   {/* Machine Completion */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Machine Comp.
@@ -3477,13 +4253,13 @@ export default function ProjectDetailPage() {
                         <TrendingUp size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.machine_completion_pct}%
                     </p>
                   </div>
 
                   {/* Pending at Packaging */}
-                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1">
+                  <div className="rounded-xl border bg-card px-3 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0 col-span-2 sm:col-span-1">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Pkg.
@@ -3492,7 +4268,7 @@ export default function ProjectDetailPage() {
                         <Box size={11} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.pending_at_packaging}
                     </p>
                   </div>
@@ -3501,7 +4277,7 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Box / weight statistics ── */}
-            <div className="rounded-2xl border bg-card p-5 space-y-4">
+            <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                   <Box size={18} />
@@ -3516,10 +4292,10 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {/* Total Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Total Boxes
                     </p>
@@ -3527,14 +4303,14 @@ export default function ProjectDetailPage() {
                       <Box size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.total_boxes}
                   </p>
                 </div>
 
                 {/* Boxes With Items */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Boxes With Items
                     </p>
@@ -3542,14 +4318,14 @@ export default function ProjectDetailPage() {
                       <CheckCircle2 size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.boxes_with_items}
                   </p>
                 </div>
 
                 {/* Empty Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Empty Boxes
                     </p>
@@ -3557,14 +4333,14 @@ export default function ProjectDetailPage() {
                       <Clock size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.empty_boxes}
                   </p>
                 </div>
 
                 {/* Packed Weight */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Packed Weight
                     </p>
@@ -3572,7 +4348,7 @@ export default function ProjectDetailPage() {
                       <Package size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {formatWeight(data.stats.total_weight)}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3581,8 +4357,8 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Avg Qty / Box */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0 col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Avg Qty / Box
                     </p>
@@ -3590,7 +4366,7 @@ export default function ProjectDetailPage() {
                       <Layers size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.average_qty_per_box}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3601,6 +4377,15 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* ── Boxes ── */}
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="boxes" className="mt-0 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                >
             {data && (
               <BoxesSection
                 boxes={data.boxes}
@@ -3618,11 +4403,23 @@ export default function ProjectDetailPage() {
                 onPrintBox={handleDownloadBoxPdf}
                 onDownloadDispatch={handleDispatchDocumentClick}
                 onFilterChange={handleBoxesFilterChange}
+                vendorTimeZone={vendorTimeZone}
               />
             )}
 
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="receiving" className="mt-0 space-y-4 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
+
             {/* ── Dispatch / site progress ── */}
-            <div className="rounded-2xl border bg-card p-5 space-y-4">
+            <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
@@ -3638,7 +4435,20 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5 rounded-lg border-primary/30 hover:bg-primary/5 hover:text-primary w-full sm:w-auto justify-center"
+                  >
+                    <Link
+                      href={`/dashboard/track-trace/machines/20/dispatch?projectId=${data.project.id}`}
+                    >
+                      <TruckIcon size={12} className="text-primary" />
+                      Dispatch workstation scanner
+                    </Link>
+                  </Button>
                   <Badge variant="outline" className="text-[11px] font-medium">
                     Packed {data.stats.packed_boxes}/{data.stats.total_boxes}
                   </Badge>
@@ -3653,10 +4463,10 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {/* Packed Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Packed Boxes
                     </p>
@@ -3664,14 +4474,14 @@ export default function ProjectDetailPage() {
                       <CheckCircle2 size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.packed_boxes}
                   </p>
                 </div>
 
                 {/* Unpacked Boxes */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Unpacked Boxes
                     </p>
@@ -3679,14 +4489,14 @@ export default function ProjectDetailPage() {
                       <Clock size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.unpacked_boxes}
                   </p>
                 </div>
 
                 {/* Factory Out */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Factory Out
                     </p>
@@ -3694,14 +4504,14 @@ export default function ProjectDetailPage() {
                       <TruckIcon size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.factory_out_boxes}
                   </p>
                 </div>
 
                 {/* Site Received */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Site Received
                     </p>
@@ -3709,14 +4519,14 @@ export default function ProjectDetailPage() {
                       <MapPin size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.site_received_boxes}
                   </p>
                 </div>
 
                 {/* Dispatch Progress */}
-                <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0 col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                     <p className="text-xs font-semibold capitalize text-foreground truncate">
                       Dispatch Progress
                     </p>
@@ -3724,7 +4534,7 @@ export default function ProjectDetailPage() {
                       <TrendingUp size={12} />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                     {data.stats.dispatch_progress_pct}%
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3776,7 +4586,7 @@ export default function ProjectDetailPage() {
 
             {/* ── Site item receipt / verification ── */}
             {receivedStats && (
-              <div className="rounded-2xl border bg-card p-5 space-y-4">
+              <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
@@ -3815,10 +4625,10 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Top 6 Stat Cards in 1 Row */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 xl:grid-cols-6">
                   {/* Packed Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Packed Qty
                       </p>
@@ -3826,7 +4636,7 @@ export default function ProjectDetailPage() {
                         <Package size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {data.stats.total_packed_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3835,8 +4645,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* At Site Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         At Site Qty
                       </p>
@@ -3844,7 +4654,7 @@ export default function ProjectDetailPage() {
                         <MapPin size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.site_in_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3853,8 +4663,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Received Qty */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Received Qty
                       </p>
@@ -3862,7 +4672,7 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.total_received_qty}
                     </p>
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
@@ -3871,8 +4681,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Pending Receipt */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Receipt
                       </p>
@@ -3880,7 +4690,7 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.total_pending_receipt_qty}
                     </p>
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate">
@@ -3889,8 +4699,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Pending Verification */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Pending Verif.
                       </p>
@@ -3898,7 +4708,7 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.site_in_pending_verification_qty}
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -3907,8 +4717,8 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* Site Verification */}
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Site Verif.
                       </p>
@@ -3916,7 +4726,7 @@ export default function ProjectDetailPage() {
                         <TrendingUp size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.site_item_verification_pct}%
                     </p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">
@@ -4035,9 +4845,9 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Bottom Row: Box Receipt Status */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Fully Received Boxes
                       </p>
@@ -4045,13 +4855,13 @@ export default function ProjectDetailPage() {
                         <CheckCircle2 size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.fully_received_boxes}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Partial Receipt Boxes
                       </p>
@@ -4059,13 +4869,13 @@ export default function ProjectDetailPage() {
                         <Clock size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.partially_received_boxes}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="rounded-xl border bg-card px-3 sm:px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <p className="text-xs font-semibold capitalize text-foreground truncate">
                         Not Received Boxes
                       </p>
@@ -4073,7 +4883,7 @@ export default function ProjectDetailPage() {
                         <Layers size={12} />
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
                       {receivedStats.not_received_boxes}
                     </p>
                   </div>
@@ -4081,36 +4891,48 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="production" className="mt-0 space-y-4 outline-none">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
+
             {/* ── Machine progress ── */}
             {data.machines.length > 0 && (
-              <div className="rounded-2xl border bg-card p-5 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+              <div className="rounded-2xl border bg-card p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
                       <Cpu size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h2 className="text-sm font-bold text-foreground">
                         Machine Progress
                       </h2>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground truncate">
                         Individual machine packaging and scan completion rates.
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[11px] font-semibold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Badge variant="outline" className="text-[11px] font-semibold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 self-start sm:self-auto">
                     Overall {data.stats.machine_completion_pct}%
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {data.machines.map((m) => (
-                    <div
+                    <Link
                       key={m.machine_id}
-                      className="flex-1 min-w-[220px] rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 space-y-2"
+                      href={`/dashboard/track-trace/manage-project/${uniqueProjectId}/machines/${m.machine_id}`}
+                      className="group rounded-xl border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 hover:shadow-xs space-y-2 cursor-pointer block min-w-0"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold capitalize text-foreground truncate" title={m.machine_name}>
+                        <p className="text-xs font-semibold capitalize text-foreground group-hover:text-primary transition-colors truncate" title={m.machine_name}>
                           {m.machine_name}
                         </p>
                         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted/80 border border-border text-emerald-600 dark:text-emerald-400">
@@ -4133,7 +4955,12 @@ export default function ProjectDetailPage() {
                           style={{ width: `${Math.min(100, m.pct)}%` }}
                         />
                       </div>
-                    </div>
+
+                      <p className="text-[10px] font-semibold text-primary/80 group-hover:text-primary pt-0.5 flex items-center justify-between">
+                        <span>View station items</span>
+                        <span>→</span>
+                      </p>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -4144,7 +4971,11 @@ export default function ProjectDetailPage() {
               vendorId={Number(vendorId)}
               projectId={String(uniqueProjectId)}
               machineIds={machineIds}
+              vendorTimeZone={vendorTimeZone}
             />
+                </motion.div>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>
@@ -4155,7 +4986,7 @@ export default function ProjectDetailPage() {
           if (!downloadingDispatch) setDispatchLocationDialogOpen(open);
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Select dispatch locations</DialogTitle>
             <DialogDescription>
@@ -4164,7 +4995,7 @@ export default function ProjectDetailPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center justify-between gap-3 border-y py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-y py-3">
             <p className="text-sm font-medium">
               {selectedDispatchLocations.length} of{" "}
               {data?.filterOptions?.locations?.length ?? 0} selected
@@ -4225,7 +5056,7 @@ export default function ProjectDetailPage() {
             })}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
@@ -4266,6 +5097,7 @@ export default function ProjectDetailPage() {
           boxName={selectedBox.name}
           userId={currentUser.id}
           onBoxUpdated={refreshProjectDetail}
+          vendorTimeZone={vendorTimeZone}
         />
       )}
     </>

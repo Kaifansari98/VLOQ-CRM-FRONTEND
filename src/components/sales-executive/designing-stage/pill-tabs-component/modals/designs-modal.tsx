@@ -145,6 +145,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
 
   const productTypes = uniqueProductTypes?.data ?? [];
+  const showDesignTypeField = isCustomVendor || handlesLargeScaleProjects;
   const shouldRenderProductTypeField =
     isCustomVendor || handlesLargeScaleProjects;
   const showProductTypeSelect =
@@ -254,7 +255,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
       return;
     }
 
-    if (isCustomVendor && !data.design_type) {
+    if ((isCustomVendor || handlesLargeScaleProjects) && !data.design_type) {
       form.setError("design_type", {
         type: "manual",
         message: "Design type is required",
@@ -381,15 +382,15 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             />
           )}
 
-          {(isCustomVendor || showProductTypeSelect) && (
+          {(showDesignTypeField || showProductTypeSelect) && (
             <div
               className={
-                isCustomVendor && showProductTypeSelect
+                showDesignTypeField && showProductTypeSelect
                   ? "grid grid-cols-2 gap-4"
                   : "grid grid-cols-1 gap-4"
               }
             >
-              {isCustomVendor && (
+              {showDesignTypeField && (
                 <FormField
                   control={form.control}
                   name="design_type"

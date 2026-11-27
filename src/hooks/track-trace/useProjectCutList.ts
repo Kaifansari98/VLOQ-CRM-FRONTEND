@@ -4,6 +4,8 @@ import {
   CutListSavePayload,
   getProjectCutList,
   updateCutListMachine,
+  updateCutListQty,
+  UpdateCutListQtyApiPayload,
   Lead,
   LinkLeadPayload,
   linkLeadToProject,
@@ -22,16 +24,31 @@ export const TRACK_TRACE_KEYS = {
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-export function useProjectCutList(vendorId: number, projectId?: string) {
+export function useProjectCutList(vendorId: number, projectId?: string, fabrication?: "WOODWORK" | "METALWORK") {
   return useQuery({
-    queryKey: TRACK_TRACE_KEYS.cutlist(projectId ?? ""),
-    queryFn: () => getProjectCutList(vendorId, projectId!),
-    enabled: !!projectId,
+    queryKey: [...TRACK_TRACE_KEYS.cutlist(projectId ?? ""), vendorId, fabrication ?? "ALL"],
+    queryFn: () => getProjectCutList(vendorId, projectId!, fabrication),
+    enabled: !!projectId && !!vendorId,
   });
 }
 
 export function useCutListMachine(payload: CutListSavePayload) {
   return updateCutListMachine(payload);
+}
+
+export function useUpdateCutListQty(projectToken?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateCutListQtyApiPayload) => updateCutListQty(payload),
+    onSuccess: () => {
+      if (projectToken) {
+        queryClient.invalidateQueries({
+          queryKey: TRACK_TRACE_KEYS.cutlist(projectToken),
+        });
+      }
+    },
+  });
 }
 
 export function useLeadSearch(vendorId: number) {

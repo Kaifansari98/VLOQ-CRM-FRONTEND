@@ -1,329 +1,434 @@
 import * as React from "react";
-import { CheckIcon, ChevronsUpDown } from "lucide-react";
-import * as RPNInput from "react-phone-number-input";
+import { ChevronsUpDown } from "lucide-react";
 import flags from "react-phone-number-input/flags";
+import {
+  CountryCode,
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+  isValidPhoneNumber,
+  AsYouType,
+} from "libphonenumber-js";
 
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { validateIndianMobileRisk } from "@/utils/phoneRiskValidator";
 
-type PhoneInputProps = Omit<
+export type PhoneInputProps = Omit<
   React.ComponentProps<"input">,
-  "onChange" | "value" | "ref"
-> &
-  Omit<RPNInput.Props<typeof RPNInput.default>, "onChange"> & {
-    onChange?: (value: RPNInput.Value) => void;
-    validateIndianNumber?: boolean; // ✅ NEW PROP
-    onValidationChange?: (isValid: boolean) => void;
-    showError?: boolean;
-  };
+  "onChange" | "value"
+> & {
+  value?: string | null;
+  onChange?: (value: string) => void;
+  validateIndianNumber?: boolean;
+  onValidationChange?: (isValid: boolean) => void;
+  showError?: boolean;
+  country?: CountryCode;
+  defaultCountry?: CountryCode;
+  international?: boolean;
+  withCountryCallingCode?: boolean;
+};
 
-const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
-  React.forwardRef<React.ElementRef<typeof RPNInput.default>, PhoneInputProps>(
-    (
-      {
-        className,
-        onChange,
-        value,
-        validateIndianNumber = false,
-        onValidationChange,
-        showError = true,
-        international,
-        ...props
-      },
-      ref,
-    ) => {
-      const [error, setError] = React.useState<string>("");
+// All international calling codes sorted longest-first to match greedily
+const ALL_CALLING_CODES = Array.from(
+  new Set(getCountries().map((c) => getCountryCallingCode(c))),
+).sort((a, b) => b.length - a.length);
 
-      const handleChange = (val: RPNInput.Value | undefined) => {
-        let finalVal = val || ("" as RPNInput.Value);
+// Extract national digits by stripping any country calling code
+function extractNationalDigits(val?: string | null, activeCountry: CountryCode = "IN"): { country: CountryCode; digits: string } {
+  if (!val) return { country: activeCountry, digits: "" };
+  const str = String(val).trim();
+  if (!str) return { country: activeCountry, digits: "" };
 
-        // Strip leading 0 from Indian numbers (+910... -> +91...)
-        if (finalVal.startsWith("+910")) {
-          finalVal = ("+91" + finalVal.slice(4)) as RPNInput.Value;
+  // 1. If starts with '+', parse with libphonenumber-js to detect country and national number
+  if (str.startsWith("+")) {
+    const parsed = parsePhoneNumberFromString(str);
+    if (parsed && parsed.country && parsed.nationalNumber) {
+      return {
+        country: parsed.country as CountryCode,
+        digits: String(parsed.nationalNumber).slice(0, 15),
+      };
+    }
+
+    // Partial international number starting with '+'
+    const digitsOnly = str.replace(/\D/g, "");
+    for (const code of ALL_CALLING_CODES) {
+      if (digitsOnly.startsWith(code)) {
+        return {
+          country: activeCountry,
+          digits: digitsOnly.slice(code.length).slice(0, 15),
+        };
+      }
+    }
+    return { country: activeCountry, digits: digitsOnly.slice(0, 15) };
+  }
+
+  // 2. No '+' sign: clean non-digits
+  let digits = str.replace(/\D/g, "");
+  if (!digits) return { country: activeCountry, digits: "" };
+
+  if (activeCountry === "IN") {
+    if (digits.length === 12 && digits.startsWith("91")) {
+      digits = digits.slice(2);
+    } else if (digits.length === 11 && digits.startsWith("0")) {
+      digits = digits.slice(1);
+    } else if (digits.length > 10) {
+      digits = digits.slice(-10);
+    }
+    return { country: "IN", digits: digits.slice(0, 10) };
+  }
+
+  return { country: activeCountry, digits: digits.slice(0, 15) };
+}
+
+// Format national number without country code (e.g. "82082 71588" for India)
+function formatNationalNumber(digits: string, country: CountryCode = "IN"): string {
+  if (!digits) return "";
+  if (country === "IN") {
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)} ${digits.slice(5, 10)}`;
+  }
+  try {
+    const ayt = new AsYouType(country);
+    ayt.input(digits);
+    const formatted = ayt.getNumber()?.formatNational();
+    return formatted || digits;
+  } catch {
+    return digits;
+  }
+}
+
+// Calculate caret position after target number of digits
+function getCursorAfterDigits(formatted: string, targetDigits: number): number {
+  if (targetDigits <= 0) return 0;
+  let count = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      count++;
+      if (count === targetDigits) return i + 1;
+    }
+  }
+  return formatted.length;
+}
+
+const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
+  (
+    {
+      className,
+      onChange,
+      value,
+      validateIndianNumber = false,
+      onValidationChange,
+      showError = true,
+      country,
+      defaultCountry = "IN",
+      international,
+      withCountryCallingCode,
+      placeholder = "Enter contact number",
+      disabled,
+      onKeyDown,
+      onPaste,
+      onBlur,
+      ...domProps
+    },
+    ref,
+  ) => {
+    const initial = React.useMemo(
+      () => extractNationalDigits(value ?? (domProps.defaultValue as string), country || defaultCountry || "IN"),
+      [], // eslint-disable-line react-hooks/exhaustive-deps
+    );
+
+    const [selectedCountry, setSelectedCountry] = React.useState<CountryCode>(initial.country);
+    const [internalDigits, setInternalDigits] = React.useState<string>(initial.digits);
+    const [error, setError] = React.useState<string>("");
+
+    const internalInputRef = React.useRef<HTMLInputElement | null>(null);
+    React.useImperativeHandle(ref, () => internalInputRef.current as HTMLInputElement);
+
+    const runValidation = React.useCallback(
+      (digits: string, activeCountry: CountryCode, showErrorIfIncomplete = true) => {
+        if (digits.length === 0) {
+          setError("");
+          onValidationChange?.(false);
+          return;
         }
 
-        if (validateIndianNumber) {
-          const digitsOnly = finalVal.replace(/\D/g, "");
-          const nationalNumber = digitsOnly.replace(/^91/, "");
-          const totalDigits = nationalNumber.length;
-
-          if (totalDigits === 0) {
-            setError("");
-            onValidationChange?.(false);
-          } else if (!/^[6-9]/.test(nationalNumber)) {
+        if (activeCountry === "IN") {
+          if (!/^[6-9]/.test(digits)) {
             setError("Mobile number must start with 6, 7, 8 or 9");
             onValidationChange?.(false);
-          } else if (totalDigits !== 10) {
-            setError("Enter a 10 digit mobile number");
+            return;
+          }
+
+          if (digits.length < 10) {
+            if (showErrorIfIncomplete) {
+              setError("Enter a 10 digit mobile number");
+            } else {
+              setError("");
+            }
             onValidationChange?.(false);
-          } else {
-            const riskResult = validateIndianMobileRisk(nationalNumber);
+            return;
+          }
+
+          if (validateIndianNumber) {
+            const riskResult = validateIndianMobileRisk(digits);
             if (!riskResult.isValid) {
               setError(riskResult.reason || "Invalid or fake phone number");
               onValidationChange?.(false);
-            } else {
-              setError("");
-              onValidationChange?.(true);
+              return;
             }
           }
+
+          setError("");
+          onValidationChange?.(true);
+          return;
         }
 
-        onChange?.(finalVal);
-      };
+        // Foreign countries validation
+        try {
+          const callingCode = getCountryCallingCode(activeCountry);
+          const fullNumber = `+${callingCode}${digits}`;
+          const isValid = isValidPhoneNumber(fullNumber, activeCountry);
+          if (!isValid) {
+            if (showErrorIfIncomplete) {
+              setError("Enter a valid phone number");
+            } else {
+              setError("");
+            }
+            onValidationChange?.(false);
+          } else {
+            setError("");
+            onValidationChange?.(true);
+          }
+        } catch {
+          setError("");
+          onValidationChange?.(true);
+        }
+      },
+      [validateIndianNumber, onValidationChange],
+    );
 
-      const formattedValue = React.useMemo(() => {
-        if (!value) return undefined;
-        const strVal = String(value).trim();
-        if (!strVal) return undefined;
-        if (strVal.startsWith("+")) return strVal as RPNInput.Value;
-        const digits = strVal.replace(/\D/g, "");
-        if (!digits) return undefined;
-        return `+91${digits}` as RPNInput.Value;
-      }, [value]);
+    // Sync external value when changed (e.g. opening edit modal or updating from DB)
+    React.useEffect(() => {
+      if (value !== undefined) {
+        const parsed = extractNationalDigits(value, selectedCountry);
+        if (parsed.country !== selectedCountry) {
+          setSelectedCountry(parsed.country);
+        }
+        setInternalDigits((prev) => (prev !== parsed.digits ? parsed.digits : prev));
+        runValidation(parsed.digits, parsed.country, false);
+      }
+    }, [value, runValidation]); // eslint-disable-line react-hooks/exhaustive-deps
 
-      return (
-        <div className="flex flex-col gap-1">
-          <RPNInput.default
-            ref={ref}
-            className={cn("flex", className)}
-            flagComponent={FlagComponent}
-            countrySelectComponent={CountrySelect}
-            inputComponent={InputComponent}
-            smartCaret={true}
-            value={formattedValue}
-            onChange={handleChange}
-            international={international}
-            {...props}
-          />
-          {/* ✅ Error message yahan dikhega */}
-          {showError && error && <p className="text-xs text-red-500">{error}</p>}
-        </div>
-      );
-    },
-  );
-PhoneInput.displayName = "PhoneInput";
+    // Initial mount validation
+    React.useEffect(() => {
+      runValidation(initial.digits, initial.country, false);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-const InputComponent = React.forwardRef<
-  HTMLInputElement,
-  React.ComponentProps<"input">
->(({ className, onKeyDown, onPaste, ...props }, ref) => {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const input = e.currentTarget;
+    const applyDigitsChange = (
+      newDigits: string,
+      targetDigitsBeforeCursor?: number,
+      activeCountry: CountryCode = selectedCountry,
+    ) => {
+      setInternalDigits(newDigits);
+      const formatted = formatNationalNumber(newDigits, activeCountry);
+      const callingCode = getCountryCallingCode(activeCountry);
+      const e164 = newDigits ? `+${callingCode}${newDigits}` : "";
+      onChange?.(e164);
+      runValidation(newDigits, activeCountry, true);
 
-    // Count only digits (ignore spaces)
-    const digitsOnly = input.value.replace(/\D/g, "");
+      if (targetDigitsBeforeCursor !== undefined && internalInputRef.current) {
+        const newCursor = getCursorAfterDigits(formatted, targetDigitsBeforeCursor);
+        requestAnimationFrame(() => {
+          if (internalInputRef.current) {
+            internalInputRef.current.setSelectionRange(newCursor, newCursor);
+          }
+        });
+      }
+    };
 
-    const allowedKeys = [
-      "Backspace",
-      "Delete",
-      "ArrowLeft",
-      "ArrowRight",
-      "Tab",
-      "Home",
-      "End",
-    ];
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.target;
+      const rawValue = input.value;
 
-    if (e.ctrlKey || e.metaKey) {
+      // If user typed something starting with '+'
+      if (rawValue.startsWith("+")) {
+        const parsed = extractNationalDigits(rawValue, selectedCountry);
+        if (parsed.country !== selectedCountry) {
+          setSelectedCountry(parsed.country);
+        }
+        applyDigitsChange(parsed.digits, parsed.digits.length, parsed.country);
+        return;
+      }
+
+      const cursor = input.selectionStart ?? rawValue.length;
+      const digitsBeforeCursor = rawValue.slice(0, cursor).replace(/\D/g, "").length;
+      const parsed = extractNationalDigits(rawValue, selectedCountry);
+      applyDigitsChange(parsed.digits, digitsBeforeCursor, selectedCountry);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const input = e.currentTarget;
+      const digitsOnly = input.value.replace(/\D/g, "");
+
+      const allowedKeys = [
+        "Backspace",
+        "Delete",
+        "ArrowLeft",
+        "ArrowRight",
+        "Tab",
+        "Home",
+        "End",
+      ];
+
+      if (e.ctrlKey || e.metaKey) {
+        onKeyDown?.(e);
+        return;
+      }
+
+      if (allowedKeys.includes(e.key)) {
+        // Backspace right after space (e.g. 82082 |71588 -> delete 5th digit)
+        if (e.key === "Backspace" && input.selectionStart === input.selectionEnd) {
+          const cursor = input.selectionStart ?? 0;
+          if (cursor > 0 && input.value[cursor - 1] === " ") {
+            e.preventDefault();
+            const { digits } = extractNationalDigits(input.value, selectedCountry);
+            const newDigits = digits.slice(0, 4) + digits.slice(5);
+            applyDigitsChange(newDigits, 4, selectedCountry);
+            return;
+          }
+        }
+        // Delete key right before space (e.g. 82082| 71588 -> delete 6th digit)
+        if (e.key === "Delete" && input.selectionStart === input.selectionEnd) {
+          const cursor = input.selectionStart ?? 0;
+          if (cursor < input.value.length && input.value[cursor] === " ") {
+            e.preventDefault();
+            const { digits } = extractNationalDigits(input.value, selectedCountry);
+            const newDigits = digits.slice(0, 5) + digits.slice(6);
+            applyDigitsChange(newDigits, 5, selectedCountry);
+            return;
+          }
+        }
+        onKeyDown?.(e);
+        return;
+      }
+
+      // Allow '+' only as first character
+      if (e.key === "+" && (input.selectionStart === 0 || input.value === "")) {
+        onKeyDown?.(e);
+        return;
+      }
+
+      if (!/^\d$/.test(e.key)) {
+        e.preventDefault();
+        onKeyDown?.(e);
+        return;
+      }
+
+      const isReplacingSelection =
+        input.selectionStart !== null &&
+        input.selectionEnd !== null &&
+        input.selectionStart !== input.selectionEnd;
+
+      const maxLen = selectedCountry === "IN" ? 10 : 15;
+      if (digitsOnly.length >= maxLen && !isReplacingSelection) {
+        e.preventDefault();
+      }
+
       onKeyDown?.(e);
-      return;
-    }
+    };
 
-    if (allowedKeys.includes(e.key)) {
-      onKeyDown?.(e);
-      return;
-    }
-
-    if (!/^\d$/.test(e.key)) {
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
       e.preventDefault();
-      onKeyDown?.(e);
-      return;
-    }
+      const pasted = e.clipboardData.getData("text").trim();
+      if (!pasted) return;
 
-    // Block typing if already 10 digits
-    if (digitsOnly.length >= 10) {
-      e.preventDefault();
-    }
+      // 1. If pasting an international number starting with '+' (e.g. "+82 10 1234 5678" or "+1 202 555 0123")
+      if (pasted.startsWith("+")) {
+        const parsed = parsePhoneNumberFromString(pasted);
+        if (parsed && parsed.country && parsed.nationalNumber) {
+          const newCountry = parsed.country as CountryCode;
+          const newDigits = String(parsed.nationalNumber);
+          setSelectedCountry(newCountry);
+          applyDigitsChange(newDigits, newDigits.length, newCountry);
+          onPaste?.(e);
+          return;
+        }
+      }
 
-    onKeyDown?.(e);
-  };
+      // 2. Pasting without '+': extract digits and apply to current selected country
+      const { digits: pastedDigits } = extractNationalDigits(pasted, selectedCountry);
+      if (!pastedDigits) return;
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const pasted = e.clipboardData.getData("Text");
-    const trimmed = pasted.trim();
-    const currentDigits = e.currentTarget.value.replace(/\D/g, "");
+      const input = e.currentTarget;
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
 
-    if (!/^\d+$/.test(trimmed)) {
-      e.preventDefault();
+      if (start === 0 && end === input.value.length) {
+        applyDigitsChange(pastedDigits, pastedDigits.length, selectedCountry);
+        onPaste?.(e);
+        return;
+      }
+
+      const digitsBefore = input.value.slice(0, start).replace(/\D/g, "");
+      const digitsAfter = input.value.slice(end).replace(/\D/g, "");
+      const maxLen = selectedCountry === "IN" ? 10 : 15;
+      const combined = (digitsBefore + pastedDigits + digitsAfter).slice(0, maxLen);
+      const targetCaretDigits = (digitsBefore + pastedDigits).slice(0, maxLen).length;
+      applyDigitsChange(combined, targetCaretDigits, selectedCountry);
       onPaste?.(e);
-      return;
-    }
+    };
 
-    if (currentDigits.length + trimmed.length > 10) {
-      e.preventDefault();
-    }
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      runValidation(internalDigits, selectedCountry, true);
+      onBlur?.(e);
+    };
 
-    onPaste?.(e);
-  };
+    const displayValue = formatNationalNumber(internalDigits, selectedCountry);
+    const Flag = flags[selectedCountry] || flags["IN"];
 
-  return (
-    <Input
-      type="tel"
-      inputMode="numeric"
-      className={cn("rounded-e-lg rounded-s-none", className)}
-      onKeyDown={handleKeyDown}
-      onPaste={handlePaste}
-      {...props}
-      ref={ref}
-    />
-  );
-});
-InputComponent.displayName = "InputComponent";
+    return (
+      <div className="flex flex-col gap-1 w-full">
+        <div className={cn("flex", className)}>
+          {/* Dynamic Country Flag Indicator */}
+          <Button
+            type="button"
+            variant="outline"
+            className="flex gap-1 rounded-e-none rounded-s-lg border-r-0 px-3 focus:z-10 bg-background pointer-events-none cursor-default select-none"
+            disabled={true}
+            tabIndex={-1}
+            aria-hidden="true"
+            title={selectedCountry}
+          >
+            <span className="flex h-4 w-6 overflow-hidden rounded-sm bg-foreground/20 [&_svg:not([class*='size-'])]:size-full">
+              {Flag && <Flag title={selectedCountry} />}
+            </span>
+            <ChevronsUpDown className="-mr-2 size-4 opacity-50" />
+          </Button>
 
-type CountryEntry = { label: string; value: RPNInput.Country | undefined };
-
-type CountrySelectProps = {
-  disabled?: boolean;
-  value: RPNInput.Country;
-  options: CountryEntry[];
-  onChange: (country: RPNInput.Country) => void;
-};
-
-const CountrySelect = ({
-  disabled,
-  value: selectedCountry,
-  options: countryList,
-  onChange,
-}: CountrySelectProps) => {
-  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
-  const [searchValue, setSearchValue] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  return (
-    <Popover
-      open={isOpen}
-      modal
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        open && setSearchValue("");
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="flex gap-1 rounded-e-none rounded-s-lg border-r-0 px-3 focus:z-10"
-          disabled={true}
-        >
-          <FlagComponent
-            country={selectedCountry}
-            countryName={selectedCountry}
+          {/* National Number Input (No country calling code shown inside) */}
+          <Input
+            ref={internalInputRef}
+            type="tel"
+            inputMode="numeric"
+            className="rounded-e-lg rounded-s-none"
+            value={displayValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onBlur={handleBlur}
+            disabled={disabled}
+            placeholder={placeholder}
+            {...domProps}
           />
-          <ChevronsUpDown
-            className={cn(
-              "-mr-2 size-4 opacity-50",
-              disabled ? "hidden" : "opacity-100",
-            )}
-          />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0">
-        <Command>
-          <CommandInput
-            value={searchValue}
-            onValueChange={(value) => {
-              setSearchValue(value);
-              setTimeout(() => {
-                if (scrollAreaRef.current) {
-                  const viewportElement = scrollAreaRef.current.querySelector(
-                    "[data-radix-scroll-area-viewport]",
-                  );
-                  if (viewportElement) {
-                    viewportElement.scrollTop = 0;
-                  }
-                }
-              }, 0);
-            }}
-            placeholder="Search country..."
-          />
-          <CommandList>
-            <ScrollArea ref={scrollAreaRef} className="h-72">
-              <CommandEmpty>No country found.</CommandEmpty>
-              <CommandGroup>
-                {countryList.map(({ value, label }) =>
-                  value ? (
-                    <CountrySelectOption
-                      key={value}
-                      country={value}
-                      countryName={label}
-                      selectedCountry={selectedCountry}
-                      onChange={onChange}
-                      onSelectComplete={() => setIsOpen(false)}
-                    />
-                  ) : null,
-                )}
-              </CommandGroup>
-            </ScrollArea>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
+        </div>
+        {showError && error && <p className="text-xs text-red-500">{error}</p>}
+      </div>
+    );
+  },
+);
 
-interface CountrySelectOptionProps extends RPNInput.FlagProps {
-  selectedCountry: RPNInput.Country;
-  onChange: (country: RPNInput.Country) => void;
-  onSelectComplete: () => void;
-}
-
-const CountrySelectOption = ({
-  country,
-  countryName,
-  selectedCountry,
-  onChange,
-  onSelectComplete,
-}: CountrySelectOptionProps) => {
-  const handleSelect = () => {
-    onChange(country);
-    onSelectComplete();
-  };
-
-  return (
-    <CommandItem className="gap-2" onSelect={handleSelect}>
-      <FlagComponent country={country} countryName={countryName} />
-      <span className="flex-1 text-sm">{countryName}</span>
-      <span className="text-sm text-foreground/50">{`+${RPNInput.getCountryCallingCode(country)}`}</span>
-      <CheckIcon
-        className={`ml-auto size-4 ${country === selectedCountry ? "opacity-100" : "opacity-0"}`}
-      />
-    </CommandItem>
-  );
-};
-
-const FlagComponent = ({ country, countryName }: RPNInput.FlagProps) => {
-  const Flag = flags[country];
-
-  return (
-    <span className="flex h-4 w-6 overflow-hidden rounded-sm bg-foreground/20 [&_svg:not([class*='size-'])]:size-full">
-      {Flag && <Flag title={countryName} />}
-    </span>
-  );
-};
+PhoneInput.displayName = "PhoneInput";
 
 export { PhoneInput };

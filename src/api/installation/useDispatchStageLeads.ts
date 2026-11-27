@@ -50,10 +50,12 @@ export const useDispatchStageLeads = (
  */
 export const getRequiredDateForDispatch = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch/vendor/${vendorId}/lead/${leadId}/required-date`
+    `/leads/installation/dispatch/vendor/${vendorId}/lead/${leadId}/required-date`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -63,11 +65,12 @@ export const getRequiredDateForDispatch = async (
  */
 export const useRequiredDateForDispatch = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["requiredDateForDispatch", vendorId, leadId],
-    queryFn: () => getRequiredDateForDispatch(vendorId!, leadId!),
+    queryKey: ["requiredDateForDispatch", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getRequiredDateForDispatch(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -76,9 +79,14 @@ export const useRequiredDateForDispatch = (
    🔹 1️⃣ GET Dispatch Details
    @route GET /leads/installation/dispatch/vendor/:vendorId/lead/:leadId/dispatch-details
    ========================================================== */
-export const getDispatchDetails = async (vendorId: number, leadId: number) => {
+export const getDispatchDetails = async (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null
+) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch/vendor/${vendorId}/lead/${leadId}/dispatch-details`
+    `/leads/installation/dispatch/vendor/${vendorId}/lead/${leadId}/dispatch-details`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -86,10 +94,14 @@ export const getDispatchDetails = async (vendorId: number, leadId: number) => {
 /**
  * ✅ React Query Hook for Fetching Dispatch Details
  */
-export const useDispatchDetails = (vendorId?: number, leadId?: number) => {
+export const useDispatchDetails = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["dispatchDetails", vendorId, leadId],
-    queryFn: () => getDispatchDetails(vendorId!, leadId!),
+    queryKey: ["dispatchDetails", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getDispatchDetails(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -105,6 +117,8 @@ export interface AddDispatchDetailsPayload {
   vehicle_no?: string;
   dispatch_remark?: string;
   updated_by?: number;
+  /** Large-scale vendors: save the details on this instance. */
+  instance_id?: number;
 }
 
 /**
@@ -145,10 +159,12 @@ export const useAddDispatchDetails = () => {
    ========================================================== */
 export const getDispatchDocuments = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/dispatch-documents`
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/dispatch-documents`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -156,10 +172,14 @@ export const getDispatchDocuments = async (
 /**
  * ✅ React Query Hook for Dispatch Documents
  */
-export const useDispatchDocuments = (vendorId?: number, leadId?: number) => {
+export const useDispatchDocuments = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["dispatchDocuments", vendorId, leadId],
-    queryFn: () => getDispatchDocuments(vendorId!, leadId!),
+    queryKey: ["dispatchDocuments", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getDispatchDocuments(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -175,6 +195,7 @@ export const uploadDispatchDocuments = async (
     files: File[];
     account_id?: number | null;
     created_by: number;
+    instance_id?: number | null;
   }
 ) => {
   const formData = new FormData();
@@ -187,6 +208,8 @@ export const uploadDispatchDocuments = async (
   formData.append("created_by", payload.created_by.toString());
   if (payload.account_id)
     formData.append("account_id", payload.account_id.toString());
+  if (payload.instance_id)
+    formData.append("instance_id", payload.instance_id.toString());
 
   const { data } = await apiClient.post(
     `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/upload-dispatch-documents`,
@@ -219,6 +242,7 @@ export const useUploadDispatchDocuments = () => {
         files: File[];
         account_id?: number | null;
         created_by: number;
+        instance_id?: number | null;
       };
     }) => uploadDispatchDocuments(vendorId, leadId, payload),
 
@@ -244,10 +268,12 @@ export const useUploadDispatchDocuments = () => {
  */
 export const checkReadyForPostDispatch = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/check-ready-for-post-dispatch`
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/check-ready-for-post-dispatch`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data; // includes { success, readyForPostDispatch, message, missingFields }
 };
@@ -257,11 +283,12 @@ export const checkReadyForPostDispatch = async (
  */
 export const useCheckReadyForPostDispatch = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["readyForPostDispatch", vendorId, leadId],
-    queryFn: () => checkReadyForPostDispatch(vendorId!, leadId!),
+    queryKey: ["readyForPostDispatch", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => checkReadyForPostDispatch(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -361,6 +388,8 @@ export interface CreatePendingMaterialPayload {
   created_by: number;
   due_date: string; // ISO or yyyy-MM-dd
   remark?: string;
+  /** Large-scale vendors: the pending material belongs to this instance. */
+  instance_id?: number;
 }
 
 export const createPendingMaterialTask = async (
@@ -410,10 +439,12 @@ export const useCreatePendingMaterialTask = () => {
    ========================================================== */
 export const getPendingMaterialTasks = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/pending-material-tasks`
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/pending-material-tasks`,
+    { params: instanceId ? { instance_id: instanceId } : undefined }
   );
   return data?.data;
 };
@@ -421,10 +452,14 @@ export const getPendingMaterialTasks = async (
 /* ==========================================================
      ✅ React Query Hook — Fetch Pending Material Tasks
      ========================================================== */
-export const usePendingMaterialTasks = (vendorId?: number, leadId?: number) => {
+export const usePendingMaterialTasks = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["pendingMaterialTasks", vendorId, leadId],
-    queryFn: () => getPendingMaterialTasks(vendorId!, leadId!),
+    queryKey: ["pendingMaterialTasks", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getPendingMaterialTasks(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };

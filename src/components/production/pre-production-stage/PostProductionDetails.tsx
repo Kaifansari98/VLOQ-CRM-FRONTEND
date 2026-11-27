@@ -24,7 +24,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { Hammer, Wrench, Camera, PackagePlus, Pencil } from "lucide-react";
+import { Hammer, Wrench, Camera, PackagePlus, Pencil, Package } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -39,6 +39,7 @@ import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import WoodworkPackingDetailsSection from "../post-production-stage/WoodworkPackingDetailsSection";
 import HardwarePackingDetailsSection from "../post-production-stage/HardwarePackingDetailsSection";
 import PostProductionQcPhotosSection from "../post-production-stage/PostProductionQcPhotosSection";
+import TrackTracePackingDetailsSection from "../post-production-stage/TrackTracePackingDetailsSection";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
@@ -77,6 +78,12 @@ export default function PostProductionDetails({
       ? "sales-executive"
       : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
+  // Track & Trace large-scale vendors: packing comes from the Track & Trace
+  // project, and No. of Boxes is kept in sync by the backend (view only).
+  const isTrackTraceLargeScale = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true &&
+      s.auth.user?.vendor?.is_tracktrace_enabled === true,
+  );
   const queryClient = useQueryClient();
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -182,8 +189,39 @@ const {
     }
   };
 
+  const qcTab = {
+    id: "qc",
+    title: (
+      <div className="flex items-center gap-1">
+        <Camera size={14} /> QC Photos
+      </div>
+    ),
+    color: "bg-zinc-900 hover:bg-zinc-900",
+    disabled: !canViewQcPhotos,
+    disabledReason: "You don’t have permission to access QC Photos.",
+    cardContent: (
+      <PostProductionQcPhotosSection
+        leadId={leadId}
+        accountId={accountId ?? null}
+        instanceId={instanceId}
+      />
+    ),
+  };
+
   // ✅ Tabs Setup
-  const allTabs = [
+  const allTabs = isTrackTraceLargeScale ? [
+    {
+      id: "packingDetails",
+      title: (
+        <div className="flex items-center gap-1">
+          <Package size={14} /> Packing Details
+        </div>
+      ),
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      cardContent: <TrackTracePackingDetailsSection leadId={leadId} instanceId={instanceId} />,
+    },
+    qcTab,
+  ] : [
     {
       id: "woodwork",
       title: (
@@ -220,24 +258,7 @@ const {
         />
       ),
     },
-    {
-      id: "qc",
-      title: (
-        <div className="flex items-center gap-1">
-          <Camera size={14} /> QC Photos
-        </div>
-      ),
-      color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canViewQcPhotos,
-      disabledReason: "You don’t have permission to access QC Photos.",
-      cardContent: (
-        <PostProductionQcPhotosSection
-          leadId={leadId}
-          accountId={accountId ?? null}
-          instanceId={instanceId}
-        />
-      ),
-    },
+    qcTab,
   ];
 
   if (!leadId) return null;
@@ -276,6 +297,28 @@ const {
               >
                 Loading...
               </Badge>
+            ) : isTrackTraceLargeScale ? (
+              <CustomeTooltip
+                truncateValue={
+                  <span>
+                    <Card className="flex min-w-[230px] items-center gap-4 rounded-2xl bg-background px-4 py-2">
+                      <CardContent className="flex items-center gap-3 p-0">
+                        <Package size={18} className="text-muted-foreground" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            No. of Boxes
+                          </span>
+                          <span className="text-sm font-semibold text-foreground sm:text-base">
+                            {Number(boxesData?.data?.no_of_boxes ?? 0)} Box
+                            {Number(boxesData?.data?.no_of_boxes ?? 0) === 1 ? "" : "es"}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </span>
+                }
+                value="Set automatically from the Track & Trace boxes that have items. This cannot be edited."
+              />
             ) : noOfBoxesValue ? (
 <CustomeTooltip
   truncateValue={
@@ -392,7 +435,7 @@ const {
       {/* ✅ Tabs */}
       <SmoothTab
         items={allTabs}
-        defaultTabId="woodwork"
+        defaultTabId={isTrackTraceLargeScale ? "packingDetails" : "woodwork"}
         activeColor="bg-primary"
       />
 

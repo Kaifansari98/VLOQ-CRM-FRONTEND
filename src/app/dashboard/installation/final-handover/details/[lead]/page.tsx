@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -179,11 +183,14 @@ export default function FinalHandoverLeadDetails() {
     );
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
-  const canCreateSmallOrder = [
-    "sales-executive",
-    "admin",
-    "super-admin",
-  ].includes(normalizedEffectiveUserType);
+  const canCreateSmallOrder =
+    normalizedEffectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.final_handover.create_partial_order",
+        )
+      : ["sales-executive", "admin", "super-admin"].includes(
+          normalizedEffectiveUserType,
+        );
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
 
@@ -704,6 +711,18 @@ export default function FinalHandoverLeadDetails() {
                       Documents
                     </TabsTrigger>
                   )}
+              {isClientTrackerEnabled && (
+                <TabsTrigger value="client-tracker">
+                  <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                  Client Tracker
+                </TabsTrigger>
+              )}
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
                 </TabsList>
               </div>
               <ScrollBar orientation="horizontal" />
@@ -776,6 +795,16 @@ export default function FinalHandoverLeadDetails() {
               vendorId={vendorId ?? 0}
               upToStage="finalHandover"
             />
+          </TabsContent>
+        )}
+        {isClientTrackerEnabled && (
+          <TabsContent value="client-tracker">
+            <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
           </TabsContent>
         )}
       </Tabs>

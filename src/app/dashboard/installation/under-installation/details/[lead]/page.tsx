@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -127,11 +131,12 @@ export default function UnderInstallationLeadDetails() {
   const { data: underDetails } = useUnderInstallationDetails(
     vendorId,
     leadIdNum,
+    validInstanceId,
   );
   const { data: usableHandoverData, isLoading: isLoadingUsableHandover } =
     useGetUsableHandover(vendorId ?? 0, leadIdNum);
   const setStartMutation = useSetActualInstallationStartDate();
-  const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
+  const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum, validInstanceId);
 
   const { data: miscStatus, isLoading: isLoadingMisc } =
     useMiscellaneousResolutionStatus(vendorId, leadIdNum);
@@ -194,11 +199,14 @@ export default function UnderInstallationLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
-  const canCreateSmallOrder = [
-    "sales-executive",
-    "admin",
-    "super-admin",
-  ].includes(normalizedEffectiveUserType);
+  const canCreateSmallOrder =
+    normalizedEffectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.create_partial_order",
+        )
+      : ["sales-executive", "admin", "super-admin"].includes(
+          normalizedEffectiveUserType,
+        );
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
     !isAuditor && (
@@ -967,6 +975,18 @@ export default function UnderInstallationLeadDetails() {
                   Documents
                 </TabsTrigger>
               )}
+              {isClientTrackerEnabled && (
+                <TabsTrigger value="client-tracker">
+                  <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                  Client Tracker
+                </TabsTrigger>
+              )}
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -1092,6 +1112,16 @@ export default function UnderInstallationLeadDetails() {
             />
           </TabsContent>
         )}
+        {isClientTrackerEnabled && (
+          <TabsContent value="client-tracker">
+            <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* 🔹 ldals */}
@@ -1160,6 +1190,7 @@ export default function UnderInstallationLeadDetails() {
                   leadId: leadIdNum,
                   updated_by: userId!,
                   actual_installation_start_date: new Date().toISOString(),
+                  instance_id: validInstanceId,
                 });
                 setOpenStartModal(false);
               }}

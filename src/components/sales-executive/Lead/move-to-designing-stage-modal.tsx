@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button";
 import AssignToPicker from "@/components/assign-to-picker";
 import { toastManager } from "@/components/ui/toast";
+import { createCadbidCustomerWithToast } from "@/hooks/useCadbid";
 import { useAppSelector } from "@/redux/store";
 import { assignDesignerToLead, getVendorSalesExecutiveUsers } from "@/api/leads";
 import { useLeadById, useUpdateLeadStage } from "@/hooks/useLeadsQueries";
@@ -58,13 +59,21 @@ export default function MoveToDesigningStageModal({
         | null
         | undefined,
   );
+  const currentUserType = useAppSelector(
+    (state) =>
+      state.auth.user?.user_type?.user_type ||
+      state.auth.user?.user_role ||
+      "",
+  );
+  const isSuperAdmin =
+    String(currentUserType).trim().toLowerCase() === "super-admin";
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: [
       "moveToDesigningUsers",
       vendorId,
       data.franchiseId ?? null,
-      "leads.open_leads.details_of_lead.move_to_designing_stage",
+      "leads.designing_stage.designs.upload",
     ],
     queryFn: async () => {
       if (!vendorId) return [];
@@ -75,10 +84,11 @@ export default function MoveToDesigningStageModal({
         vendorCustomUserTypeMode === true
           ? {
               assigneeUserType: "custom",
-              requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
+              requiredPrivilegeCode: "leads.designing_stage.designs.upload",
             }
           : {
               assigneeUserType: "designer",
+              requiredPrivilegeCode: "leads.designing_stage.designs.upload",
             },
       );
 
@@ -109,11 +119,17 @@ export default function MoveToDesigningStageModal({
 
   const eligibleUsers = useMemo(
     () =>
-      (users || []).filter(
-        (user: any) =>
-          String(user.user_type?.user_type || "").trim().toLowerCase() !== "super-admin",
-      ),
-    [users],
+      (users || []).filter((user: any) => {
+        const isUserSuperAdmin =
+          String(user.user_type?.user_type || "")
+            .trim()
+            .toLowerCase() === "super-admin";
+        if (isUserSuperAdmin) {
+          return isSuperAdmin;
+        }
+        return true;
+      }),
+    [users, isSuperAdmin],
   );
 
   const mappedUsers = useMemo(
@@ -197,6 +213,7 @@ export default function MoveToDesigningStageModal({
       setShowSingleUserConfirm(false);
       onOpenChange(false);
       router.push("/dashboard/leads/designing-stage");
+      createCadbidCustomerWithToast(data.id);
     },
     onError: (error: any) => {
       toastManager.add({

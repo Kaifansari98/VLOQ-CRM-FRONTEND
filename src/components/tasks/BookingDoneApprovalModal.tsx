@@ -70,6 +70,9 @@ export default function BookingDoneApprovalModal({
 
           if (vendorId) {
             queryClient.invalidateQueries({
+              queryKey: ["activeLeadTasks", vendorId, data.leadId],
+            });
+            queryClient.invalidateQueries({
               queryKey: ["vendorUserTasks", vendorId],
             });
             queryClient.invalidateQueries({

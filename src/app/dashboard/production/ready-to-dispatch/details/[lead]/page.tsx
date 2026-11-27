@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientTrackerTab, isClientTrackerEnabled } from "@/components/project-tracker/ClientTrackerTab";
+import { ClientChatTab, isClientChatEnabled } from "@/components/client-chat/ClientChatTab";
+import { MessagesSquare as ClientChatIcon } from "lucide-react";
+import { Smartphone as ClientTrackerIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -33,7 +37,6 @@ import {
   Clock,
   CalendarOff,
   CalendarOffIcon,
-  UserPlus,
   MessageSquare,
   PencilLine,
   History,
@@ -96,6 +99,11 @@ export default function ReadyToDispatchLeadDetails() {
   const validInstanceId = instanceIdParam && !Number.isNaN(Number(instanceIdParam)) ? Number(instanceIdParam) : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  // Large-scale vendors upload site photos and assign Site Readiness per instance.
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const siteReadinessInstanceId = handlesLargeScaleProjects ? validInstanceId : null;
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
@@ -124,6 +132,7 @@ export default function ReadyToDispatchLeadDetails() {
   const { data: sitePhotoCountData } = useCurrentSitePhotosCount(
     vendorId,
     leadIdNum,
+    siteReadinessInstanceId,
   );
   const hasSitePhotos = sitePhotoCountData?.hasPhotos;
 
@@ -365,10 +374,6 @@ export default function ReadyToDispatchLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <UserPlus size={20} />
-                  Assign Task
-                </DropdownMenuItem>
                 {/* Lead block handling added for DropdownMenu action */}
                 {shouldDisableBlockedActions ? (
                   <CustomeTooltip
@@ -554,6 +559,18 @@ export default function ReadyToDispatchLeadDetails() {
                   Documents
                 </TabsTrigger>
               )}
+              {isClientTrackerEnabled && (
+                <TabsTrigger value="client-tracker">
+                  <ClientTrackerIcon size={16} className="mr-1 opacity-60" />
+                  Client Tracker
+                </TabsTrigger>
+              )}
+              {isClientChatEnabled && (
+                <TabsTrigger value="client-chat">
+                  <ClientChatIcon size={16} className="mr-1 opacity-60" />
+                  Client Chat
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -608,6 +625,16 @@ export default function ReadyToDispatchLeadDetails() {
             />
           </TabsContent>
         )}
+        {isClientTrackerEnabled && (
+          <TabsContent value="client-tracker">
+            <ClientTrackerTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
+        {isClientChatEnabled && (
+          <TabsContent value="client-chat">
+            <ClientChatTab leadId={leadIdNum} vendorId={vendorId ?? 0} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}
@@ -635,6 +662,7 @@ export default function ReadyToDispatchLeadDetails() {
           furniture_type: lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A"
         }}
         userType={userType}
+        instanceId={siteReadinessInstanceId}
       />
 
       <ActivityStatusModal

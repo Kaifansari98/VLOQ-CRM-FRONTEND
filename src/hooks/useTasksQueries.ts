@@ -16,6 +16,8 @@ export type ActiveLeadTasksResponse = ActiveLeadTask[];
 export interface VendorUserTask {
   userLeadTask: {
     instance_id: any;
+    /** Set on complaint tasks; the row opens the complaint. */
+    complaint_id?: number | null;
     id: number;
     status: string;
     due_date: string;
@@ -51,6 +53,7 @@ export interface VendorUserTask {
 // -------------------------------
 
 export interface ActiveLeadTask {
+  id: number;
   task_type: string;
   lead_stage: string | null;
   due_date: string;
