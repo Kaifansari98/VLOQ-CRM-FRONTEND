@@ -71,6 +71,8 @@ export default function ClientComplaintsPage() {
             vendorId={vendorId}
             canRegister={meta?.can_register === true}
             visitFee={meta?.can_configure ? meta.visit_fee : undefined}
+            upiId={meta?.upi_id ?? null}
+            upiName={meta?.upi_name ?? null}
             onCreateOpen={() => setIsCreateOpen(true)}
             onViewItem={(item) => router.push(`/dashboard/client-complaints/details/${item.id}`)}
           />

@@ -52,6 +52,9 @@ interface ClientComplaintsViewProps {
   canRegister: boolean;
   // Present only for viewers allowed to change the vendor's visiting charge.
   visitFee?: number;
+  // UPI the client app pays complaint charges to.
+  upiId?: string | null;
+  upiName?: string | null;
   onCreateOpen: () => void;
   onViewItem: (item: ClientComplaintRow) => void;
 }
@@ -77,6 +80,8 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
   vendorId,
   canRegister,
   visitFee,
+  upiId = null,
+  upiName = null,
   onCreateOpen,
   onViewItem,
 }) => {
@@ -145,7 +150,12 @@ export const ClientComplaintsView: React.FC<ClientComplaintsViewProps> = ({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {vendorId && visitFee !== undefined && (
-            <ComplaintSettingsButton vendorId={vendorId} visitFee={visitFee} />
+            <ComplaintSettingsButton
+              vendorId={vendorId}
+              visitFee={visitFee}
+              upiId={upiId}
+              upiName={upiName}
+            />
           )}
           {canRegister && (
             <Button

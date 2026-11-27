@@ -33,14 +33,23 @@ export interface ComplaintMeta {
   components: ComplaintComponent[];
   can_register: boolean;
   visit_fee: number;
+  // UPI ID the client app pays complaint charges to (QR + UPI link).
+  upi_id: string | null;
+  upi_name: string | null;
   can_configure: boolean;
 }
 
 export function useUpdateComplaintSettings(vendorId?: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (settings: { visit_fee: number }) => {
-      const { data } = await apiClient.put<{ data: { visit_fee: number } }>(
+    mutationFn: async (settings: {
+      visit_fee: number;
+      upi_id?: string | null;
+      upi_name?: string | null;
+    }) => {
+      const { data } = await apiClient.put<{
+        data: { visit_fee: number; upi_id: string | null; upi_name: string | null };
+      }>(
         `${path(vendorId!)}/settings`,
         settings,
       );
@@ -400,6 +409,8 @@ export type ComplaintWorkflowRequest =
         | "RESOLVE_WITHOUT_REPAIR";
       remarks: string;
       material_required?: boolean;
+      // With the quotation file: what the client pays (shown in the client app).
+      client_payable_amount?: number;
       // Quotation file shared with the client straight away (START_QUOTATION).
       files?: File[];
     }
@@ -408,6 +419,8 @@ export type ComplaintWorkflowRequest =
       version: number;
       remarks?: string;
       files: File[];
+      // Shown to the client in the app and used for their UPI payment.
+      client_payable_amount?: number;
     }
   | {
       kind: "quotationAction";

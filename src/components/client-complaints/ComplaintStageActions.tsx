@@ -494,6 +494,8 @@ function StageDialog({
   const [reviewed, setReviewed] = useState(false);
   const [rating, setRating] = useState(0);
   const [quoteFiles, setQuoteFiles] = useState<File[]>([]);
+  // What the client pays for this quotation; shown and paid in the client app.
+  const [quoteAmount, setQuoteAmount] = useState("");
   const [paymentOption, setPaymentOption] = useState("PAID_NOW");
   const [payment, setPayment] = useState(emptyPayment());
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -559,6 +561,17 @@ function StageDialog({
       next.pending_work = "Record the pending work, or write None.";
     if (mode === "UPLOAD_QUOTATION" && !quoteFiles.length)
       next.quoteFiles = "Upload the quotation file.";
+    const sharesQuotation =
+      mode === "UPLOAD_QUOTATION" ||
+      (mode === "START_QUOTATION" && quoteFiles.length > 0);
+    const amountValue = Number(quoteAmount);
+    if (
+      sharesQuotation &&
+      (quoteAmount.trim() === "" ||
+        !Number.isFinite(amountValue) ||
+        amountValue < 0)
+    )
+      next.quoteAmount = "Enter the amount the client pays (₹0 if nothing).";
     const paid = takesPayment ? checkPayment(payment) : null;
     if (paid) Object.assign(next, paid.errors);
     if (mode === "CLIENT_CONFIRMATION" && outcome === "SATISFIED" && !rating)
@@ -594,6 +607,10 @@ function StageDialog({
           material_required:
             mode === "PROCEED_WITHOUT_QUOTATION" ? materialRequired : undefined,
           files: mode === "START_QUOTATION" ? quoteFiles : undefined,
+          client_payable_amount:
+            mode === "START_QUOTATION" && quoteFiles.length
+              ? amountValue
+              : undefined,
         };
       case "UPLOAD_QUOTATION":
         return {
@@ -601,6 +618,7 @@ function StageDialog({
           version,
           remarks: note,
           files: quoteFiles,
+          client_payable_amount: amountValue,
         };
       case "REVIEW_QUOTATION":
       case "CLIENT_RESPONSE":
@@ -760,6 +778,24 @@ function StageDialog({
           max={5}
           error={errors.quoteFiles}
         />
+      )}
+      {(mode === "UPLOAD_QUOTATION" ||
+        (mode === "START_QUOTATION" && quoteFiles.length > 0)) && (
+        <Field
+          label="Amount payable by client (₹)"
+          error={errors.quoteAmount}
+        >
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="0.01"
+            value={quoteAmount}
+            onChange={(e) => setQuoteAmount(e.target.value)}
+            placeholder="As per the quotation, after warranty"
+            className="h-9 text-xs"
+          />
+        </Field>
       )}
       {clientMode && (
         <Field label="How the client confirmed" error={errors.client}>
