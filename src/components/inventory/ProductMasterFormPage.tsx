@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import {
   createProductMasterApi,
   fetchProductById,
@@ -71,6 +72,8 @@ const emptyForm: ProductPayload = {
   costing_method: "FIFO",
 
   level1_price: null,
+  purchase_expense_type: "percent",
+  purchase_expense_value: null,
 
   min_stock_qty: null,
   min_stock_unit_id: null,
@@ -369,6 +372,12 @@ export function ProductMasterFormPage({
             costing_method: product.costing_method || "FIFO",
 
             level1_price: product.level1_price ? Number(product.level1_price) : null,
+            purchase_expense_type:
+              product.purchase_expense_type === "amount" ? "amount" : "percent",
+            purchase_expense_value:
+              product.purchase_expense_value === null || product.purchase_expense_value === undefined
+                ? null
+                : Number(product.purchase_expense_value),
 
             min_stock_qty: product.min_stock_qty
               ? Number(product.min_stock_qty)
@@ -666,6 +675,8 @@ export function ProductMasterFormPage({
     shelf_life_days: toNumOrNull(form.shelf_life_days),
 
     level1_price: toNumOrNull(form.level1_price),
+    purchase_expense_type: form.purchase_expense_type === "amount" ? "amount" : "percent",
+    purchase_expense_value: toNumOrNull(form.purchase_expense_value),
 
     min_stock_qty: toNumOrNull(form.min_stock_qty),
     min_stock_unit_id: toNumOrNull(form.min_stock_unit_id),
@@ -1140,6 +1151,16 @@ export function ProductMasterFormPage({
                       onChange={(e) => set("level1_price", e.target.value)}
                       className="input"
                       placeholder="0.00"
+                    />
+                  </Field>
+
+                  <Field label="Purchase Expenses">
+                    <PurchaseExpenseInput
+                      rate={form.level1_price}
+                      type={form.purchase_expense_type === "amount" ? "amount" : "percent"}
+                      value={form.purchase_expense_value}
+                      onTypeChange={(t) => set("purchase_expense_type", t)}
+                      onValueChange={(v) => set("purchase_expense_value", v)}
                     />
                   </Field>
 
@@ -2177,6 +2198,71 @@ export function ProductMasterFormPage({
       </main>
 
     </>
+  );
+}
+
+const inr = (n: number) =>
+  `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Expenses on top of the purchase rate, as % or ₹, with the rate after expenses. */
+function PurchaseExpenseInput({
+  rate,
+  type,
+  value,
+  onTypeChange,
+  onValueChange,
+}: {
+  rate: unknown;
+  type: "percent" | "amount";
+  value: unknown;
+  onTypeChange: (type: "percent" | "amount") => void;
+  onValueChange: (value: string) => void;
+}) {
+  const base = Number(rate);
+  const extra = Number(value);
+  const hasRate = rate !== null && rate !== undefined && rate !== "" && Number.isFinite(base);
+  const hasExtra = value !== null && value !== undefined && value !== "" && Number.isFinite(extra) && extra >= 0;
+  const added = hasExtra ? (type === "percent" ? (base * extra) / 100 : extra) : 0;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-stretch gap-1.5">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={(value as any) ?? ""}
+          onChange={(e) => onValueChange(e.target.value)}
+          className="input min-w-0 flex-1"
+          placeholder={type === "percent" ? "e.g. 10" : "e.g. 100"}
+        />
+        <div className="flex shrink-0 rounded-md border bg-muted/40 p-0.5">
+          {(["percent", "amount"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onTypeChange(t)}
+              className={cn(
+                "w-8 rounded text-xs font-semibold transition-colors",
+                type === t
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title={t === "percent" ? "Percent of purchase rate" : "Rupee amount"}
+            >
+              {t === "percent" ? "%" : "₹"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {hasRate && hasExtra && (
+        <p className="text-[11px] text-muted-foreground">
+          Rate after expenses:{" "}
+          <span className="font-semibold text-foreground">{inr(base + added)}</span>
+          {type === "percent" && <span> (+{inr(added)})</span>}
+        </p>
+      )}
+    </div>
   );
 }
 
