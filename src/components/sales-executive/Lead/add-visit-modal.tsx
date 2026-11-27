@@ -26,6 +26,7 @@ import { createClientVisit } from "@/api/leads";
 import { useGetMeetingTypes } from "@/hooks/designing-stage/use-meeting-types";
 import { formatBlockedAt, getErrorMessage } from "@/lib/utils";
 import { useLeadBlockStatus } from "@/hooks/useLeadsQueries";
+import { AddMeetingTypeButton } from "@/components/sales-executive/meeting-types/AddMeetingTypeButton";
 
 const visitSchema = z
   .object({
@@ -242,7 +243,13 @@ export default function AddVisitModal({
               name="meeting_type_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Type Of Meeting *</FormLabel>
+                  <div className="flex items-center justify-between gap-2">
+                    <FormLabel className="text-sm">Type Of Meeting *</FormLabel>
+                    <AddMeetingTypeButton
+                      vendorId={vendorId}
+                      onCreated={(t) => field.onChange(t.id)}
+                    />
+                  </div>
                   <Select
                     value={field.value ? String(field.value) : undefined}
                     onValueChange={(value) => field.onChange(Number(value))}

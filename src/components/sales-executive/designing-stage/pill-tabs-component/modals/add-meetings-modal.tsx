@@ -37,6 +37,7 @@ import {
   useLeadProductStructureInstances,
 } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
+import { AddMeetingTypeButton } from "@/components/sales-executive/meeting-types/AddMeetingTypeButton";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -181,6 +182,13 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
     vendorId,
   );
   const hasMeetingTypes = meetingTypes.length > 0;
+  const isSuperAdmin = useAppSelector(
+    (s) =>
+      String(s.auth.user?.user_type?.user_type ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_\s]+/g, "-") === "super-admin",
+  );
   const meetingSchema = React.useMemo(
     () => createMeetingSchema(showMeetingTimeFields),
     [showMeetingTimeFields],
@@ -315,13 +323,19 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
               )}
             />
 
-            {hasMeetingTypes ? (
+            {hasMeetingTypes || isSuperAdmin ? (
               <FormField
                 control={form.control}
                 name="meeting_type_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Meeting Type</FormLabel>
+                    <div className="flex items-center justify-between gap-2">
+                      <FormLabel className="text-sm">Meeting Type</FormLabel>
+                      <AddMeetingTypeButton
+                        vendorId={vendorId}
+                        onCreated={(t) => field.onChange(t.id)}
+                      />
+                    </div>
                     <FormControl>
                       <Select
                         value={field.value ? String(field.value) : undefined}

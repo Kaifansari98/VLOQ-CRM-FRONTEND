@@ -169,6 +169,18 @@ export const getMeetingTypes = async (
   return data.data ?? [];
 };
 
+/** Super-admin only: adds a meeting type to the vendor's master. */
+export const createMeetingType = async (
+  vendorId: number,
+  type: string,
+): Promise<MeetingTypeMaster> => {
+  const { data } = await apiClient.post<{ data: MeetingTypeMaster }>(
+    `/leads/designing-stage/vendor/${vendorId}/meeting-types`,
+    { type },
+  );
+  return data.data;
+};
+
 export interface SubmitDesignPayload {
   files: File[];
   vendorId: number;
