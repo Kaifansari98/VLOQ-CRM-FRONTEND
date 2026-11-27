@@ -131,17 +131,17 @@ export default function PaymentStageLeadModal({ open, onOpenChange }: Props) {
         description="Please fill the payment details below."
         open={openAddPaymentModal}
         onOpenChange={setOpenAddPaymentModal}
-        size="xl"
+        size="xxl"
+        className="w-[95vw] max-w-[95vw] lg:max-w-7xl 2xl:max-w-[1500px]"
       >
-      <div className="p-2">
-
-        {selectedLeadId && selectedAccountId && (
-          <PaymentInformation
-            leadIdProps={selectedLeadId}
-            accountId={selectedAccountId}
-          />
-        )}
-      </div>
+        <div className="p-4 md:p-6">
+          {selectedLeadId && selectedAccountId && (
+            <PaymentInformation
+              leadIdProps={selectedLeadId}
+              accountId={selectedAccountId}
+            />
+          )}
+        </div>
       </BaseModal>
     </>
   );

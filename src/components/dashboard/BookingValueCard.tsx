@@ -93,8 +93,8 @@ export default function BookingValueCard({
     mode === "week"
       ? "This Week"
       : mode === "month"
-      ? "This Month"
-      : "This Year";
+        ? "This Month"
+        : "This Year";
 
   return (
     <Card className="w-full h-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">

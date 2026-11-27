@@ -59,8 +59,8 @@ export default function PerformanceLineChart({
     mode === "week"
       ? "This Week"
       : mode === "month"
-      ? "This Month"
-      : "This Year";
+        ? "This Month"
+        : "This Year";
 
   const chartData = useMemo(() => {
     if (mode === "week")

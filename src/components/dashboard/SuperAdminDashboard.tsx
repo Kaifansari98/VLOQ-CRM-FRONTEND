@@ -435,16 +435,18 @@ interface FranchiseChartProps {
   onBarDoubleClick?: (franchise: FranchiseLeadCount) => void;
 }
 
-
 function FranchiseChart({
   data = [],
   isLoading,
   onBarDoubleClick,
 }: FranchiseChartProps) {
   const chartData = useMemo(() => data.map((entry) => ({ ...entry })), [data]);
-  const totalLeads = useMemo(() => chartData.reduce((acc, entry) => acc + (entry.leads || 0), 0), [chartData]);
+  const totalLeads = useMemo(
+    () => chartData.reduce((acc, entry) => acc + (entry.leads || 0), 0),
+    [chartData],
+  );
   const [isOpen, setIsOpen] = useState(false);
-  
+
   return (
     <Card className="w-full h-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="pb-2">
@@ -454,7 +456,7 @@ function FranchiseChart({
           </CardTitle>
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-              <button 
+              <button
                 className="text-muted-foreground hover:text-foreground transition-colors outline-hidden"
                 onMouseEnter={() => setIsOpen(true)}
                 onMouseLeave={() => setIsOpen(false)}
@@ -463,8 +465,8 @@ function FranchiseChart({
                 <Info className="h-4 w-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent 
-              align="end" 
+            <PopoverContent
+              align="end"
               className="w-64 p-3"
               onMouseEnter={() => setIsOpen(true)}
               onMouseLeave={() => setIsOpen(false)}
@@ -472,11 +474,18 @@ function FranchiseChart({
               <h4 className="font-semibold text-sm mb-2">All Franchises</h4>
               <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                 {chartData.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No data available</p>
+                  <p className="text-xs text-muted-foreground">
+                    No data available
+                  </p>
                 ) : (
                   chartData.map((entry: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center text-xs">
-                      <span className="truncate pr-2 font-medium">{entry.name || entry.code}</span>
+                    <div
+                      key={index}
+                      className="flex justify-between items-center text-xs"
+                    >
+                      <span className="truncate pr-2 font-medium">
+                        {entry.name || entry.code}
+                      </span>
                       <span className="bg-muted px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">
                         {entry.leads} Leads
                       </span>
@@ -521,7 +530,10 @@ function FranchiseChart({
               </Pie>
               <Tooltip
                 formatter={(value: any, name: any, props: any) => {
-                  const percentage = totalLeads > 0 ? ((value / totalLeads) * 100).toFixed(1) : 0;
+                  const percentage =
+                    totalLeads > 0
+                      ? ((value / totalLeads) * 100).toFixed(1)
+                      : 0;
                   return [
                     `${value} Leads (${percentage}%)`,
                     props.payload?.name ?? name,
@@ -606,63 +618,63 @@ function FranchiseLeadsModal({
     >
       <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
         <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-background z-10">
-              <tr className="border-b border-border/60">
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Lead Code
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Client
-                </th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Stage
-                </th>
+          <thead className="sticky top-0 bg-background z-10">
+            <tr className="border-b border-border/60">
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                Lead Code
+              </th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                Client
+              </th>
+              <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                Stage
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="border-b border-border/30">
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <div className="h-4 bg-muted animate-pulse rounded" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : data.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="px-4 py-10 text-center text-sm text-muted-foreground"
+                >
+                  No leads found for this franchise
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: 3 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-muted animate-pulse rounded" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : data.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-4 py-10 text-center text-sm text-muted-foreground"
-                  >
-                    No leads found for this franchise
+            ) : (
+              data.map((row) => (
+                <tr
+                  key={`${row.id}-${row.instance_id ?? "lead"}`}
+                  className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                  onDoubleClick={() => handleRowDoubleClick(row)}
+                >
+                  <td className="px-4 py-3 font-bold text-xs font-medium">
+                    {row.lead_code ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 font-medium">{row.name}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted">
+                      {row.stage_tag
+                        ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
+                        : "—"}
+                    </span>
                   </td>
                 </tr>
-              ) : (
-                data.map((row) => (
-                  <tr
-                    key={`${row.id}-${row.instance_id ?? "lead"}`}
-                    className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
-                    onDoubleClick={() => handleRowDoubleClick(row)}
-                  >
-                    <td className="px-4 py-3 font-bold text-xs font-medium">
-                      {row.lead_code ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 font-medium">{row.name}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted">
-                        {row.stage_tag
-                          ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
-                          : "—"}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </BaseModal>
   );
 }
@@ -734,73 +746,77 @@ function StageLeadsModal({
     >
       <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
         <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-background z-10">
-              <tr className="border-b border-border/60">
+          <thead className="sticky top-0 bg-background z-10">
+            <tr className="border-b border-border/60">
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                Lead Code
+              </th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                Client
+              </th>
+              {!franchiseId && (
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Lead Code
+                  Franchise
                 </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Client
-                </th>
-                {!franchiseId && (
-                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                    Franchise
-                  </th>
-                )}
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Stage
-                </th>
+              )}
+              <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                Stage
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="border-b border-border/30">
+                  {Array.from({ length: franchiseId ? 3 : 4 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <div className="h-4 bg-muted animate-pulse rounded" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : data.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={franchiseId ? 3 : 4}
+                  className="px-4 py-10 text-center text-sm text-muted-foreground"
+                >
+                  No leads found for this stage
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: franchiseId ? 3 : 4 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-muted animate-pulse rounded" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : data.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={franchiseId ? 3 : 4}
-                    className="px-4 py-10 text-center text-sm text-muted-foreground"
-                  >
-                    No leads found for this stage
+            ) : (
+              data.map((row, idx) => (
+                <tr
+                  key={
+                    row.instance_id
+                      ? `inst-${row.instance_id}`
+                      : `lead-${row.id}-${idx}`
+                  }
+                  className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                  onDoubleClick={() => handleRowDoubleClick(row)}
+                >
+                  <td className="px-4 py-3 font-mono text-xs font-medium">
+                    {row.lead_code ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 font-medium">{row.name}</td>
+                  {!franchiseId && (
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {row.franchise_name ?? "—"}
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-right">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                      {row.stage_tag
+                        ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
+                        : "—"}
+                    </span>
                   </td>
                 </tr>
-              ) : (
-                data.map((row, idx) => (
-                  <tr
-                    key={row.instance_id ? `inst-${row.instance_id}` : `lead-${row.id}-${idx}`}
-                    className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
-                    onDoubleClick={() => handleRowDoubleClick(row)}
-                  >
-                    <td className="px-4 py-3 font-mono text-xs font-medium">
-                      {row.lead_code ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 font-medium">{row.name}</td>
-                    {!franchiseId && (
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {row.franchise_name ?? "—"}
-                      </td>
-                    )}
-                    <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {row.stage_tag
-                          ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
-                          : "—"}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </BaseModal>
   );
 }
@@ -1204,11 +1220,16 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
                 onClick={(state) => {
                   if (!state) return;
                   const rawState = state as unknown as {
-                    activePayload?: Array<{ payload: (typeof chartData)[number] }>;
+                    activePayload?: Array<{
+                      payload: (typeof chartData)[number];
+                    }>;
                     activeTooltipIndex?: number;
                   };
                   let entry: (typeof chartData)[number] | undefined;
-                  if (rawState.activePayload && rawState.activePayload.length > 0) {
+                  if (
+                    rawState.activePayload &&
+                    rawState.activePayload.length > 0
+                  ) {
                     entry = rawState.activePayload[0].payload;
                   } else if (
                     typeof rawState.activeTooltipIndex === "number" &&
@@ -1248,9 +1269,11 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload as (typeof chartData)[number];
-                    const isInstanceStage = ["Type 8", "Type 9", "Type 10"].includes(
-                      d.tag,
-                    );
+                    const isInstanceStage = [
+                      "Type 8",
+                      "Type 9",
+                      "Type 10",
+                    ].includes(d.tag);
                     const unit = isInstanceStage ? "instance" : "lead";
                     return (
                       <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
@@ -1321,7 +1344,7 @@ function getDisplayLeadCode(
     quantityIndex !== null &&
     quantityIndex !== undefined &&
     leadCode.endsWith(`.${quantityIndex}`)
-      ? leadCode.slice(0, -(`.${quantityIndex}`.length))
+      ? leadCode.slice(0, -`.${quantityIndex}`.length)
       : leadCode;
   if (
     hasMultipleInstances &&
@@ -1464,7 +1487,11 @@ function OverdueInstallationsModal({
               ) : (
                 data.map((row, idx) => (
                   <tr
-                    key={row.instance_id ? `inst-${row.instance_id}` : `lead-${row.id}-${idx}`}
+                    key={
+                      row.instance_id
+                        ? `inst-${row.instance_id}`
+                        : `lead-${row.id}-${idx}`
+                    }
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
@@ -1678,7 +1705,9 @@ function OverdueProductionModal({
                 </tr>
               ) : (
                 filteredData.map((row) => {
-                  const daysFromToday = getDaysFromToday(row.expected_ready_date);
+                  const daysFromToday = getDaysFromToday(
+                    row.expected_ready_date,
+                  );
                   return (
                     <tr
                       key={`${row.id}-${row.instance_id ?? "lead"}`}
@@ -1752,7 +1781,6 @@ function OverdueAlertsCard({
 }: OverdueAlertsCardProps) {
   return (
     <div className="border rounded-2xl py-4 px-5 flex flex-col gap-4 bg-background">
-
       {/* Rows */}
       <div className="flex flex-col gap-2">
         {/* Installation */}

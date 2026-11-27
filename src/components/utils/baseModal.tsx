@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface BaseModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface BaseModalProps {
   size?: "sm" | "md" | "lg" | "xl" | "xxl" | "smd";
   icon?: ReactNode; // icon is optional
   modal?: boolean;
+  className?: string;
 }
 
 const sizeClasses = {
@@ -39,11 +41,16 @@ const BaseModal: React.FC<BaseModalProps> = ({
   size = "lg",
   icon,
   modal = true,
+  className,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <DialogContent
-        className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden`}
+        className={cn(
+          sizeClasses[size],
+          "max-h-[90vh] p-0 gap-0 overflow-hidden",
+          className
+        )}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >

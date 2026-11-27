@@ -34,14 +34,14 @@ export default function SalesExecutiveDashboard() {
   const { data: avgBookingData, isLoading: isLoadingAvg } = useAvgDaysToBooking(
     vendorId,
     userId,
-    franchiseId
+    franchiseId,
   );
 
   const { data: stageCounts, isLoading: isLoadingStageCounts } =
     useSalesExecutiveStageCounts(vendorId, userId, franchiseId);
 
   const [leadFilter, setLeadFilter] = useState<"week" | "month" | "year">(
-    "month"
+    "month",
   );
 
   useEffect(() => {
@@ -54,7 +54,11 @@ export default function SalesExecutiveDashboard() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await getPerformanceSnapshot(vendorId, userId, franchiseId);
+        const data = await getPerformanceSnapshot(
+          vendorId,
+          userId,
+          franchiseId,
+        );
         setPerformanceData(data);
         console.log(data);
       } catch (err: any) {
@@ -100,7 +104,7 @@ export default function SalesExecutiveDashboard() {
           </div>
         </div>
       </div>
-      
+
       {/* Booking value and  Total booking */}
       <div className="w-full h-full flex flex-col lg:flex-row gap-4 items-stretch">
         <div className="lg:w-[40%]">

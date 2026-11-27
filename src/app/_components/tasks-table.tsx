@@ -49,7 +49,11 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import CustomTabs from "@/components/custom/customeTab";
-import { extractTitleText, mapTaskTableFiltersToPayload, formatBlockedAt } from "@/lib/utils";
+import {
+  extractTitleText,
+  mapTaskTableFiltersToPayload,
+  formatBlockedAt,
+} from "@/lib/utils";
 import { toastManager } from "@/components/ui/toast";
 import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
@@ -122,7 +126,9 @@ function FranchiseFilter({
                 >
                   <span className="truncate">{selectedOption.label}</span>
                   <span className="text-muted-foreground">
-                    {selectedOption.isLoading ? "…" : (selectedOption.count ?? 0)}
+                    {selectedOption.isLoading
+                      ? "…"
+                      : (selectedOption.count ?? 0)}
                   </span>
                 </Badge>
               </>
@@ -135,8 +141,11 @@ function FranchiseFilter({
           <button
             key={option.id}
             onClick={() => onChange(option.id)}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${value === option.id ? "bg-accent text-accent-foreground font-medium" : ""
-              }`}
+            className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+              value === option.id
+                ? "bg-accent text-accent-foreground font-medium"
+                : ""
+            }`}
           >
             <span className="truncate">{option.label}</span>
             <span className="shrink-0 text-muted-foreground">
@@ -151,9 +160,7 @@ function FranchiseFilter({
 
 function prioritizeFastProductionTasks<
   T extends { isFastProductionRequestTask?: boolean },
->(
-  rows: T[],
-) {
+>(rows: T[]) {
   return [...rows].sort((a, b) => {
     if (a.isFastProductionRequestTask === b.isFastProductionRequestTask) {
       return 0;
@@ -164,7 +171,9 @@ function prioritizeFastProductionTasks<
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const franchiseId = useAppSelector((state) => state.auth.franchise_id ?? state.auth.user?.franchise_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
   const userType = useAppSelector(
@@ -205,16 +214,15 @@ const MyTaskTable = () => {
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<
     number | undefined
   >(franchiseId ?? undefined);
-  const showFranchiseFilter =
-    isSuperAdmin && franchiseOptions.length > 1;
- 
+  const showFranchiseFilter = isSuperAdmin && franchiseOptions.length > 1;
+
   useEffect(() => {
     if (defaultFranchiseId == null) return;
     setSelectedFranchiseId((current) =>
       current === defaultFranchiseId ? current : defaultFranchiseId,
     );
   }, [defaultFranchiseId]);
- 
+
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
     queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
@@ -285,16 +293,16 @@ const MyTaskTable = () => {
     useState<DataTableRowAction<ProcessedTask> | null>(null);
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [openSelfAssignTask, setOpenSelfAssignTask] = useState(false);
-  const [openOrderLoginCompleted, setOpenOrderLoginCompleted] =
-    useState(false);
+  const [openOrderLoginCompleted, setOpenOrderLoginCompleted] = useState(false);
   const [openPreProdCompleted, setOpenPreProdCompleted] = useState(false);
   const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
   const [openDetailModal, setOpenDetailModal] = useState(false);
 
   const showScopeToggle = isAdminUser && !isAuditor;
-  const {
-    data: selfAssignTaskTypes = [],
-  } = useVendorSelfAssignTaskTypes(vendorId, !!vendorId);
+  const { data: selfAssignTaskTypes = [] } = useVendorSelfAssignTaskTypes(
+    vendorId,
+    !!vendorId,
+  );
   const selfAssignTaskTypeNames = useMemo(
     () =>
       new Set(
@@ -402,7 +410,8 @@ const MyTaskTable = () => {
   } = useVendorAllTasksFilter(vendorId || 0, overallTaskPayload);
 
   const franchiseCountBasePayload = useMemo<TaskFilterPayload>(() => {
-    const activePayload = viewScope === "overall" ? overallTaskPayload : myTaskPayload;
+    const activePayload =
+      viewScope === "overall" ? overallTaskPayload : myTaskPayload;
     return {
       ...activePayload,
       page: 1,
@@ -497,7 +506,10 @@ const MyTaskTable = () => {
         return;
       }
 
-      if (row.leadStatus?.toLowerCase() === "completed" || isCompletedTabActive) {
+      if (
+        row.leadStatus?.toLowerCase() === "completed" ||
+        isCompletedTabActive
+      ) {
         setRowAction({
           row: { original: row } as any,
           variant: "taskdetails" as any,
@@ -507,25 +519,29 @@ const MyTaskTable = () => {
       }
 
       if (isAuditor) {
-        const opensModal = [
-          "Initial Site Measurement",
-          "BookingDone - ISM",
-          "Booking Done Approval",
-          "Order Login Approval",
-          "Dispatch Planning Approval",
-          "Approval Request",
-          "Request Fast Production",
-          "Small order request",
-          "Final Measurements",
-          "Follow Up",
-          "Pending Materials",
-          "Pending Work",
-          "Order Login Completed",
-          "Pre Prod Completed",
-          "Miscellaneous Followup",
-        ].includes(row.taskType) ||
+        const opensModal =
+          [
+            "Initial Site Measurement",
+            "BookingDone - ISM",
+            "Booking Done Approval",
+            "Order Login Approval",
+            "Dispatch Planning Approval",
+            "Approval Request",
+            "Request Fast Production",
+            "Small order request",
+            "Final Measurements",
+            "Follow Up",
+            "Pending Materials",
+            "Pending Work",
+            "Order Login Completed",
+            "Pre Prod Completed",
+            "Miscellaneous Followup",
+          ].includes(row.taskType) ||
           selfAssignTaskTypeNames.has(row.taskType) ||
-          (row.taskType === "Miscellaneous" && (row.remark || "").toLowerCase().includes("required delivery date"));
+          (row.taskType === "Miscellaneous" &&
+            (row.remark || "")
+              .toLowerCase()
+              .includes("required delivery date"));
 
         if (opensModal) {
           toastManager.add({
@@ -542,7 +558,9 @@ const MyTaskTable = () => {
         row.taskType === "Miscellaneous Followup";
 
       if (isBlocked && !isFollowUpTask) {
-        const blockTime = row.lead_blocked_at ? ` at ${formatBlockedAt(row.lead_blocked_at)}` : "";
+        const blockTime = row.lead_blocked_at
+          ? ` at ${formatBlockedAt(row.lead_blocked_at)}`
+          : "";
         toastManager.add({
           title: `This lead has been blocked${blockTime}. Only follow up tasks are allowed.`,
           type: "error",
@@ -861,8 +879,8 @@ const MyTaskTable = () => {
 
   const overallTaskTotal = vendorAllData?.summary
     ? (vendorAllData?.summary?.overdue ?? 0) +
-    (vendorAllData?.summary?.today ?? 0) +
-    (vendorAllData?.summary?.upcoming ?? 0)
+      (vendorAllData?.summary?.today ?? 0) +
+      (vendorAllData?.summary?.upcoming ?? 0)
     : 0;
 
   const DueDateTabs = () => {
@@ -1153,14 +1171,14 @@ const MyTaskTable = () => {
         data={
           rowAction?.row?.original && rowAction?.variant === "miscellaneous"
             ? {
-              leadId: rowAction.row.original.leadId,
-              accountId: rowAction.row.original.accountId,
-              taskId: rowAction.row.original.id,
-              dueDate: rowAction.row.original.dueDate,
-              remark: rowAction.row.original.remark,
-              taskStatus: (rowAction.row.original as any)?.status,
-              requiredDeliveryDate: rowAction.row.original.dueDate,
-            }
+                leadId: rowAction.row.original.leadId,
+                accountId: rowAction.row.original.accountId,
+                taskId: rowAction.row.original.id,
+                dueDate: rowAction.row.original.dueDate,
+                remark: rowAction.row.original.remark,
+                taskStatus: (rowAction.row.original as any)?.status,
+                requiredDeliveryDate: rowAction.row.original.dueDate,
+              }
             : undefined
         }
       />
